@@ -1,0 +1,26 @@
+# Example reverse proxy for self-hosted Supabase (Kong + Studio).
+# - Replace domains (works with DuckDNS too).
+# - Caddy will automatically get/renew TLS certs (requires port 80/443 reachable).
+#
+# Kong (API gateway):
+# - Inside the container it listens on 8000/8443.
+# - On Windows host, the published ports come from `.env`:
+#     KONG_HTTP_PORT (default 8000) / KONG_HTTPS_PORT (default 8443)
+# Studio: 3000
+
+# Example (DuckDNS):
+#   tutordex-api.duckdns.org
+tutordex-api.duckdns.org {
+  # If 8000 is already used on your host (e.g. TutorDexBackend),
+  # change `KONG_HTTP_PORT` in the Supabase docker `.env` (e.g. 8001)
+  # and update this reverse_proxy accordingly.
+  reverse_proxy 127.0.0.1:8001
+}
+
+# Optional (not recommended to expose publicly): Studio
+# You can either:
+# - Create another DuckDNS domain (e.g. tutordex-studio.duckdns.org), or
+# - Keep Studio LAN-only and remove this block.
+tutordex-studio.duckdns.org {
+  reverse_proxy 127.0.0.1:3000
+}

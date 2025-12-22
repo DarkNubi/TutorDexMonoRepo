@@ -1,0 +1,237 @@
+Example 1:
+Raw: Code ID: 1412wg
+(Part/Full-Time Tutor or Ex/Current MOE Teacher)
+Subject: 2026 P5 Science (Marymount Convent)
+Address: 10 Norfolk Road, King's Court, (S)219014
+Frequency: 1.5-2 Hr, 1x A Week
+Rate: $30-40/Hr (PT), $40-55/Hr (FT), $60-80/Hr (MOE)
+
+- Available on: Mon aft 4pm
+- Start: ASAP
+- Face-to-Face Lessons
+- Tutor must not be afraid of dogs
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+Any bugs/questions, WhatsApp 9695 3522
+JSON: {
+    "assignment_code": "1412wg",
+    "is_tuition_centre": false,
+    "academic_tags_raw": "2026 P5 Science (Marymount Convent)",
+    "subjects": ["Science"],
+    "level": ["Primary"],
+    "specific_student_level": ["Primary 5"],
+    "student_gender": null,
+    "student_count": null,
+    "learning_mode": ["Face-to-Face"],
+    "address": ["10 Norfolk Road, King's Court"],
+    "postal_code": ["219014"],
+    "nearest_mrt": null,
+    "frequency": "1x per week",
+    "duration": "1.5-2 hours",
+    "start_date": "ASAP",
+    "time_slots": null,
+    "estimated_time_slots": {
+        "monday": ["16:00-23:00"],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": [],
+        "sunday": []
+    },
+    "time_slots_note": "Mon aft 4pm",
+    "hourly_rate": "$30-40/Hr (PT), $40-55/Hr (FT), $60-80/Hr (MOE)",
+    "rate_min": 30,
+    "rate_max": 80,
+    "tutor_gender": null,
+    "tutor_type": ["PT", "FT", "MOE"],
+    "slot_details": null,
+    "additional_remarks": "Tutor must not be afraid of dogs"
+}
+
+
+Example 2:
+Raw: Code ID: 1412sb
+(Full-Time Tutor or Ex/Current MOE Teacher)
+Subject: 2026 P6 Chinese (East Spring Pri)
+Address: 332 Tampines Street 32. (S)520332
+Frequency: 1.5 Hr, 1x A Week
+Rate: $40-55/Hr (FT), $60-80/Hr (MOE)
+
+- Available on: Mon, Tue & Thu 3pm/ Fri 3-6pm
+- Start: 5 Jan 2026
+- Face-to-Face Lessons
+- Tutor must be familiar with MOE syallbus
+- Student is very weak in the subject (AL7 in EOY exams)
+- Tutor to help student improve his results to AL5 or higher
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+Any bugs/questions, WhatsApp 9695 3522
+JSON: {
+    "assignment_code": "1412sb",
+    "is_tuition_centre": false,
+    "academic_tags_raw": "2026 P6 Chinese (East Spring Pri)",
+    "subjects": ["Chinese"],
+    "level": ["Primary"],
+    "specific_student_level": ["Primary 6"],
+    "student_gender": null,
+    "student_count": null,
+    "learning_mode": ["Face-to-Face"],
+    "address": ["332 Tampines Street 32"],
+    "postal_code": ["520332"],
+    "nearest_mrt": null,
+    "frequency": "1x per week",
+    "duration": "1.5 hours",
+    "start_date": "2026-01-05",
+    "time_slots": {
+        "monday": ["15:00-16:30"],
+        "tuesday": ["15:00-16:30"],
+        "wednesday": [],
+        "thursday": ["15:00-16:30"],
+        "friday": ["15:00-18:00"],
+        "saturday": [],
+        "sunday": []
+    },
+    "estimated_time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": [],
+        "sunday": []
+    },
+    "time_slots_note": "Mon, Tue & Thu 3pm/ Fri 3-6pm",
+    "hourly_rate": "$40-55/Hr (FT), $60-80/Hr (MOE)",
+    "rate_min": 40,
+    "rate_max": 80,
+    "tutor_gender": null,
+    "tutor_type": ["FT", "MOE"],
+    "slot_details": null,
+    "additional_remarks": "Tutor must be familiar with MOE syallbus; Student is very weak in the subject (AL7 in EOY exams); Tutor to help student improve his results to AL5 or higher"
+}
+
+  
+Example 3:
+Raw: Code ID: 1112E (Tuition Centre)
+(All Tutors Welcomed)
+Subject: Sec 1 Math
+Address: Pandan Gardens
+Frequency: 2Hr, multiple timeslots
+Rate: $70/Hr (depending on class size)
+
+- Working Hours: Weekday/Weekend evening
+- Group: 6 pax MAX
+- Start: Jan 2026
+- Tutor to be able to commit until the end of 2026
+- Tutor to be bilingual in English & Chinese
+- Tutor to be able to provide lesson materials
+- Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+Any bugs/questions, WhatsApp 9695 3522
+JSON: {
+    "assignment_code": "1112E",
+    "is_tuition_centre": true,
+    "academic_tags_raw": "Sec 1 Math",
+    "subjects": ["Maths"],
+    "level": ["Secondary"],
+    "specific_student_level": ["Secondary 1"],
+    "student_gender": null,
+    "student_count": 6,
+    "learning_mode": null,
+    "address": ["Pandan Gardens"],
+    "postal_code": null,
+    "nearest_mrt": null,
+    "frequency": "multiple timeslots",
+    "duration": "2 hours",
+    "start_date": "2026-01-01",
+    "time_slots": null,
+    "estimated_time_slots": {
+        "monday": ["16:00-21:00"],
+        "tuesday": ["16:00-21:00"],
+        "wednesday": ["16:00-21:00"],
+        "thursday": ["16:00-21:00"],
+        "friday": ["16:00-21:00"],
+        "saturday": ["16:00-21:00"],
+        "sunday": ["16:00-21:00"]
+    },
+    "time_slots_note": "Weekday/Weekend evening",
+    "hourly_rate": "$70/Hr (depending on class size)",
+    "rate_min": 70,
+    "rate_max": 70,
+    "tutor_gender": null,
+    "tutor_type": null,
+    "slot_details": null,
+    "additional_remarks": "Tutor to be able to commit until the end of 2026; Tutor to be bilingual in English & Chinese; Tutor to be able to provide lesson materials; Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
+}
+
+   
+Example 4:
+Raw: Code ID: 1112A (Tuition Centre)
+(All Tutors Welcomed)
+Subject: Pri Eng/Math/Sci/Chinese, Sec Eng/Creative Writing
+Address: Tampines/East Coast
+Frequency: 1.5-2 Hrs, 1x A Week
+Rate: $25-40/Hr
+
+- Working Hours:
+Slot A: P4 Math - Mon 3pm-4.30pm (2 hrs @ East Coast)
+Slot B: P2 Eng - Mon 5pm-6.30pm (1.5 hrs @ Tampines)
+Slot C: P6 Chi - Mon 5.15pm-6.45pm (1.5 hrs @ East Coast)
+Slot D: P4 Sci - Wed 4pm-5.30pm (1.5 hrs @ Tampines)
+Slot E: P2 Math - Thu 3pm-4.30pm (1.5 hrs @ East Coast)
+Slot F: P4 Chi - Mon 3.45pm-5.15pm (1.5 hrs @ East Coast)
+Slot G: Sec 4 G1 Eng - Fri 2pm-4pm (2 hrs @ Tampines)
+Slot H: P3 Math - Fri 3.30pm-5pm (1.5 hrs @ Tampines)
+Slot i: Sec 3 G3 Eng - Fri 4pm-5.30pm (1.5 hrs @ Tampines)
+Slot J: Sec 2 G3 Eng - Sat 10am-11.30am (1.5 hrs @ Tampines)
+Slot K: Sec 2 G3 Creative Writing - Sat 11.45am-1.15pm (1.5 hrs @ Tampines)
+- Group: 1-3 pax max
+- Start: ASAP
+- Tutor to have taken the A Level exam
+- Tutor must be a Singaporean/PR
+- Tutor to commit until the end of 2026
+- Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+Any bugs/questions, WhatsApp 9695 3522
+JSON: {
+    "assignment_code": "1112A",
+    "is_tuition_centre": true,
+    "academic_tags_raw": "Pri Eng/Math/Sci/Chinese, Sec Eng/Creative Writing",
+    "subjects": ["English", "Maths", "Science", "Chinese", "Creative Writing"],
+    "level": ["Primary", "Secondary"],
+    "specific_student_level": ["Primary 2", "Primary 3", "Primary 4", "Primary 6", "Secondary 2", "Secondary 3", "Secondary 4"],
+    "student_gender": null,
+    "student_count": 3,
+    "learning_mode": null,
+    "address": ["Tampines", "East Coast"],
+    "postal_code": null,
+    "nearest_mrt": null,
+    "frequency": "1x per week",
+    "duration": "1.5-2 hours",
+    "start_date": "ASAP",
+    "time_slots": null,
+    "estimated_time_slots": null,
+    "time_slots_note": "Slot A: P4 Math - Mon 3pm-4.30pm (2 hrs @ East Coast); Slot B: P2 Eng - Mon 5pm-6.30pm (1.5 hrs @ Tampines); Slot C: P6 Chi - Mon 5.15pm-6.45pm (1.5 hrs @ East Coast); Slot D: P4 Sci - Wed 4pm-5.30pm (1.5 hrs @ Tampines); Slot E: P2 Math - Thu 3pm-4.30pm (1.5 hrs @ East Coast); Slot F: P4 Chi - Mon 3.45pm-5.15pm (1.5 hrs @ East Coast); Slot G: Sec 4 G1 Eng - Fri 2pm-4pm (2 hrs @ Tampines); Slot H: P3 Math - Fri 3.30pm-5pm (1.5 hrs @ Tampines); Slot i: Sec 3 G3 Eng - Fri 4pm-5.30pm (1.5 hrs @ Tampines); Slot J: Sec 2 G3 Eng - Sat 10am-11.30am (1.5 hrs @ Tampines); Slot K: Sec 2 G3 Creative Writing - Sat 11.45am-1.15pm (1.5 hrs @ Tampines)",
+    "hourly_rate": "$25-40/Hr",
+    "rate_min": 25,
+    "rate_max": 40,
+    "tutor_gender": null,
+    "tutor_type": null,
+    "slot_details": [
+        {"subject": "Maths", "student_level": "Primary 4", "day": "monday", "start_time": "15:00", "end_time": "16:30", "location": "East Coast"},
+        {"subject": "English", "student_level": "Primary 2", "day": "monday", "start_time": "17:00", "end_time": "18:30", "location": "Tampines"},
+        {"subject": "Chinese", "student_level": "Primary 6", "day": "monday", "start_time": "17:15", "end_time": "18:45", "location": "East Coast"},
+        {"subject": "Science", "student_level": "Primary 4", "day": "wednesday", "start_time": "16:00", "end_time": "17:30", "location": "Tampines"},
+        {"subject": "Maths", "student_level": "Primary 2", "day": "thursday", "start_time": "15:00", "end_time": "16:30", "location": "East Coast"},
+        {"subject": "Chinese", "student_level": "Primary 4", "day": "monday", "start_time": "15:45", "end_time": "17:15", "location": "East Coast"},
+        {"subject": "English", "student_level": "Secondary 4", "day": "friday", "start_time": "14:00", "end_time": "16:00", "location": "Tampines"},
+        {"subject": "Maths", "student_level": "Primary 3", "day": "friday", "start_time": "15:30", "end_time": "17:00", "location": "Tampines"},
+        {"subject": "English", "student_level": "Secondary 3", "day": "friday", "start_time": "16:00", "end_time": "17:30", "location": "Tampines"},
+        {"subject": "English", "student_level": "Secondary 2", "day": "saturday", "start_time": "10:00", "end_time": "11:30", "location": "Tampines"},
+        {"subject": "Creative Writing", "student_level": "Secondary 2", "day": "saturday", "start_time": "11:45", "end_time": "13:15", "location": "Tampines"}
+    ],
+    "additional_remarks": "Tutor to have taken the A Level exam; Tutor must be a Singaporean/PR; Tutor to commit until the end of 2026; Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
+}

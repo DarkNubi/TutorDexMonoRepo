@@ -1,0 +1,369 @@
+Example 1:
+Raw: 🌟 New Assignment Available! 🌟
+Status: 🟢 Open
+
+Assignment code: K16754
+Student's gender: Female
+Tuition venue: Tampines Central 8
+
+Subject: Primary 5 Malay
+No. of lesson per week: 1
+No. of hour per lesson: 2 hours
+Budget: $65-$80/hr (Current or ex-teacher)
+Preferred day & timing: Preferably Tuesday or Thursday after 3pm. Tutor to propose all available timings.
+
+Remarks: Tuition to start ASAP. Need an experienced and committed tutor. Student is studying in Tampines North Primary School and doing alright but inconsistent.
+JSON: {
+  "assignment_code": "K16754",
+  "is_tuition_centre": false,
+  "academic_tags_raw": "Primary 5 Malay",
+  "subjects": ["Malay"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 5"],
+  "student_gender": ["Female"],
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["Tampines Central 8"],
+  "postal_code": null,
+  "nearest_mrt": null,
+  "frequency": "1 lesson/week",
+  "duration": "2 hours",
+  "start_date": "ASAP",
+  "time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "estimated_time_slots": {
+    "monday": [],
+    "tuesday": ["15:00-23:00"],
+    "wednesday": [],
+    "thursday": ["15:00-23:00"],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "time_slots_note": "Preferably Tuesday or Thursday after 3pm. Tutor to propose all available timings.",
+  "hourly_rate": "$65-$80/hr (Current or ex-teacher)",
+  "rate_min": 65,
+  "rate_max": 80,
+  "tutor_gender": null,
+  "tutor_type": ["MOE"],
+  "slot_details": null,
+  "additional_remarks": "Tuition to start ASAP. Need an experienced and committed tutor. Student is studying in Tampines North Primary School and doing alright but inconsistent."
+}
+
+
+Example 2:
+Raw: 🔥 NEW Tuition Job! 🔥
+
+▪️ Job Code: 240710CM7
+▪️ Job Details:
+Info: Poly Engineering Drawing & Modelling and Materials Technology @ 109A Edgedale Plains  (nearest LRT station: Meridian or Coral Edge) on Fri after 7pm, Sat/Sun afternoon [1 lesson/week, 1.5 hrs/lesson]
+
+Requirement: An experienced PART-TIME or FULL-TIME tutor for this NYP male student. Tutor to commit for at least 6 months. Start ASAP.
+
+Rate: PART-TIME $60-$80/hr, FULL-TIME $80-$150/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+Agency fee: FIRST 2 REGULAR LESSONS' WORTH
+
+▪️ Tutor Types: Part-Time Tutor (Undergrad), Part-Time Tutor (Uni Grad), Full-Time Tutor (Poly Grad), Full-Time Tutor (Uni Grad)
+▪️ Hashtags: #Others_Poly
+
+💹 DOUBLE your chances of being selected by applying through the Website!
+
+❤️ Forward this to your friends who might be interested in this assignment!
+
+💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
+JSON: {
+    "assignment_code": "240710CM7",
+    "is_tuition_centre": false,
+    "academic_tags_raw": "Poly Engineering Drawing & Modelling and Materials Technology",
+    "subjects": ["Engineering & Applied Sciences"],
+    "level": ["Diploma"],
+    "specific_student_level": null,
+    "student_gender": ["Male"],
+    "student_count": 1,
+    "learning_mode": ["Face-to-Face"],
+    "address": ["109A Edgedale Plains"],
+    "postal_code": null,
+    "nearest_mrt": ["Meridian", "Coral Edge"],
+    "frequency": "1x per week",
+    "duration": "1.5 hours",
+    "start_date": "ASAP",
+    "time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": ["19:00-23:00"],
+        "saturday": [],
+        "sunday": []
+    },
+    "estimated_time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": ["12:00-17:00"],
+        "sunday": ["12:00-17:00"]
+    },
+    "time_slots_note": "Fri after 7pm, Sat/Sun afternoon",
+    "hourly_rate": "PART-TIME $60-$80/hr, FULL-TIME $80-$150/hr",
+    "rate_min": 60,
+    "rate_max": 150,
+    "tutor_gender": null,
+    "tutor_type": ["PT", "FT", "Undergrad", "Graduate"],
+    "slot_details": null,
+    "additional_remarks": "Tutor to commit for at least 6 months. Justify asking hourly rate with qualification, experience, and track record. Do not over quote. Agency fee: FIRST 2 REGULAR LESSONS' WORTH."
+}
+
+
+Example 3:
+Raw: Code ID: 1112E (Tuition Centre)
+(All Tutors Welcomed)
+Subject: Sec 1 Math
+Address: Pandan Gardens
+Frequency: 2Hr, multiple timeslots
+Rate: $70/Hr (depending on class size)
+
+- Working Hours: Weekday/Weekend evening
+- Group: 6 pax MAX
+- Start: Jan 2026
+- Tutor to be able to commit until the end of 2026
+- Tutor to be bilingual in English & Chinese
+- Tutor to be able to provide lesson materials
+- Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+Any bugs/questions, WhatsApp 9695 3522
+JSON: {
+    "assignment_code": "1112E",
+    "is_tuition_centre": true,
+    "academic_tags_raw": "Sec 1 Math",
+    "subjects": ["Maths"],
+    "level": ["Secondary"],
+    "specific_student_level": ["Secondary 1"],
+    "student_gender": null,
+    "student_count": 6,
+    "learning_mode": null,
+    "address": ["Pandan Gardens"],
+    "postal_code": null,
+    "nearest_mrt": null,
+    "frequency": "multiple timeslots",
+    "duration": "2 hours",
+    "start_date": "2026-01-01",
+    "time_slots": null,
+    "estimated_time_slots": {
+        "monday": ["16:00-21:00"],
+        "tuesday": ["16:00-21:00"],
+        "wednesday": ["16:00-21:00"],
+        "thursday": ["16:00-21:00"],
+        "friday": ["16:00-21:00"],
+        "saturday": ["16:00-21:00"],
+        "sunday": ["16:00-21:00"]
+    },
+    "time_slots_note": "Weekday/Weekend evening",
+    "hourly_rate": "$70/Hr (depending on class size)",
+    "rate_min": 70,
+    "rate_max": 70,
+    "tutor_gender": null,
+    "tutor_type": null,
+    "slot_details": null,
+    "additional_remarks": "Tutor to be able to commit until the end of 2026; Tutor to be bilingual in English & Chinese; Tutor to be able to provide lesson materials; Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
+}
+
+
+Example 4:
+Raw: 🌟P2 Math (2026) #A8652
+🔻Rate: $40-$50/h (1.5h per lesson, once a week)
+🔻Days and time: Wednesday, Thursday or Friday between 2.30-5.30pm
+🔻Location: West Coast, s127466
+🔻Requirements: Full time tutors may apply. Female tutor.
+
+🌟Please contact @ttrhometuition to apply!
+JSON: {
+  "assignment_code": "A8652",
+  "is_tuition_centre": false,
+  "academic_tags_raw": "P2 Math (2026)",
+  "subjects": ["Maths"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 2"],
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["West Coast"],
+  "postal_code": ["127466"],
+  "nearest_mrt": null,
+  "frequency": "1 lesson/week",
+  "duration": "1.5 hours",
+  "start_date": null,
+  "time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": ["14:30-17:30"],
+    "thursday": ["14:30-17:30"],
+    "friday": ["14:30-17:30"],
+    "saturday": [],
+    "sunday": []
+  },
+  "estimated_time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "time_slots_note": "Wednesday, Thursday or Friday between 2.30-5.30pm",
+  "hourly_rate": "$40-$50/h",
+  "rate_min": 40,
+  "rate_max": 50,
+  "tutor_gender": "Female",
+  "tutor_type": ["FT"],
+  "slot_details": null,
+  "additional_remarks": "Full time tutors may apply."
+}
+
+
+Example 5:
+Raw: 🔷 P3&4  Science 🔷
+Location: Pandan Gardens
+www.google.com/maps/search/609335
+Frequency: 1 x 1.5h per week per subject
+Hourly Budget: $45 - $70/h
+Timeslots: Saturdays 10.30am-12pm (Pri 3) and 3-5pm.(Pri 4) preferred
+Remarks:
+Current/ex school teachers OR Full time tutors
+Tuition centre at Pandan Gardens Ayer Rajah community club.
+Commitment till year-end 2025 (can extend till end 2026) 
+🔹Assignment Code: 4335D05
+🔹Application Status: CLOSED
+- - - - - - - - - - - - - - - - - - - - - - - - - -
+Commission: First 2 active weeks 
+Apply Via: @TutorAnywhrBot
+JSON: {
+  "assignment_code": "4335D05",
+  "is_tuition_centre": true,
+  "academic_tags_raw": "P3&4  Science",
+  "subjects": ["Science"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 3", "Primary 4"],
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["Pandan Gardens Ayer Rajah Community Club"],
+  "postal_code": ["609335"],
+  "nearest_mrt": null,
+  "frequency": "1 lesson/week per subject",
+  "duration": "1.5 hours",
+  "start_date": null,
+  "time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": ["10:30-12:00", "15:00-17:00"],
+    "sunday": []
+  },
+  "estimated_time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "time_slots_note": "Saturdays 10.30am-12pm (Primary 3) and 3-5pm (Primary 4)",
+  "hourly_rate": "$45-$70/h",
+  "rate_min": 45,
+  "rate_max": 70,
+  "tutor_gender": null,
+  "tutor_type": ["MOE", "FT"],
+  "slot_details": [
+    {
+      "subject": "Science",
+      "student_level": "Primary 3",
+      "day": "Saturday",
+      "start_time": "10:30",
+      "end_time": "12:00",
+      "location": "Pandan Gardens Ayer Rajah Community Club"
+    },
+    {
+      "subject": "Science",
+      "student_level": "Primary 4",
+      "day": "Saturday",
+      "start_time": "15:00",
+      "end_time": "17:00",
+      "location": "Pandan Gardens Ayer Rajah Community Club"
+    }
+  ],
+  "additional_remarks": "Current or ex-school teachers or full-time tutors preferred. Commitment till year-end 2025 (can extend till end 2026)."
+}
+
+
+Example 6:
+Raw: 2026 SEC 1 G3 MATH + SCIENCE - Blk 238 Hougang Ave 1 530238 (Experienced Female Tutor)
+
+Frequency: 2 Lesson(s) Per Week, 1.5 Hours / Lesson
+
+Timing: WEEKDAYS START AT 5PM OR 6PM / WEEKENDS START AT 11AM OR 12PM
+
+Budget Per Hour: S$60 (Full Time Tutor) S$45 (Part Time Tutor)
+
+Tutor Gender:  Female Tutor 
+
+Additional Requirement: Mum would prefer Full Time Female Tutors with Sec 1 G3 Math and Science teaching experience. Start in Jan. There are 2 SMALL DOGS AT HOME. Tutor must not be scared of dogs. 1 day Math and 1 day Science. 
+
+If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-assignments
+JSON: {
+  "assignment_code": null,
+  "is_tuition_centre": false,
+  "academic_tags_raw": "2026 SEC 1 G3 MATH + SCIENCE",
+  "subjects": ["Maths", "Science"],
+  "level": ["Secondary"],
+  "specific_student_level": ["Secondary 1"],
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["Blk 238 Hougang Ave 1"],
+  "postal_code": ["530238"],
+  "nearest_mrt": null,
+  "frequency": "2 lessons/week",
+  "duration": "1.5 hours",
+  "start_date": "Jan",
+  "time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "estimated_time_slots": {
+    "monday": ["17:00-23:00"],
+    "tuesday": ["17:00-23:00"],
+    "wednesday": ["17:00-23:00"],
+    "thursday": ["17:00-23:00"],
+    "friday": ["17:00-23:00"],
+    "saturday": ["11:00-23:00"],
+    "sunday": ["11:00-23:00"]
+  },
+  "time_slots_note": "Weekdays start at 5pm or 6pm; weekends start at 11am or 12pm",
+  "hourly_rate": "S$60 (Full Time Tutor) S$45 (Part Time Tutor)",
+  "rate_min": 45,
+  "rate_max": 60,
+  "tutor_gender": "Female",
+  "tutor_type": ["FT", "PT"],
+  "slot_details": null,
+  "additional_remarks": "Prefer full-time female tutor with Sec 1 G3 Maths and Science experience. One day Maths and one day Science. There are 2 small dogs at home; tutor must not be afraid of dogs."
+}

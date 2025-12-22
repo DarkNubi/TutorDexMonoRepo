@@ -1,0 +1,245 @@
+Example 1:
+Raw: 🔥 NEW Tuition Job! 🔥
+
+▪️ Job Code: 240710CF9
+▪️ Job Details:
+Info: P2 Chinese @ 323b Thomson Road (nearest MRT station: Novena) on Mon 3.30pm-4.30pm and Wed 2.30pm-3.30pm ONLY [1 lesson/week, 1 hr/lesson]
+
+Requirement: An experienced PART-TIME or FULL-TIME tutor for this Marymount Convent School girl. She finds Chinese challenging and tends to get distracted, as she enjoys games. Family is looking for someone who can help her strengthen her vocabulary and work on comprehension. Although she attends a Chinese tuition center, family also needs a tutor to help her specifically with reviewing homework. Ideally, the session would include 20-30 minutes of schoolwork revision followed by expanding her Chinese conversation and vocabulary. Tutor to commit for at least 6 months. Start ASAP.
+
+Rate: PART-TIME $25-$35/hr, FULL-TIME $35-$50/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+Agency fee: FIRST 2 REGULAR LESSONS' WORTH
+▪️ Tutor Types: Part-Time Tutor (Undergrad), Part-Time Tutor (Uni Grad), Full-Time Tutor (Uni Grad), Full-Time Tutor (Poly Grad)
+▪️ Hashtags: #Primary_Chinese
+
+💹 DOUBLE your chances of being selected by applying through the Website!
+
+❤️ Forward this to your friends who might be interested in this assignment!
+
+💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
+JSON: {
+    "assignment_code": "240710CF9",
+    "is_tuition_centre": false,
+    "academic_tags_raw": "P2 Chinese",
+    "subjects": ["Chinese"],
+    "level": ["Primary"],
+    "specific_student_level": ["Primary 2"],
+    "student_gender": ["Female"],
+    "student_count": 1,
+    "learning_mode": null,
+    "address": ["323b Thomson Road"],
+    "postal_code": null,
+    "nearest_mrt": ["Novena"],
+    "frequency": "1x per week",
+    "duration": "1 hour",
+    "start_date": "ASAP",
+    "time_slots": {
+        "monday": ["15:30-16:30"],
+        "tuesday": [],
+        "wednesday": ["14:30-15:30"],
+        "thursday": [],
+        "friday": [],
+        "saturday": [],
+        "sunday": []
+    },
+    "estimated_time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": [],
+        "sunday": []
+    },
+    "time_slots_note": "Mon 3.30pm-4.30pm and Wed 2.30pm-3.30pm ONLY",
+    "hourly_rate": "PART-TIME $25-$35/hr, FULL-TIME $35-$50/hr",
+    "rate_min": 25,
+    "rate_max": 50,
+    "tutor_gender": null,
+    "tutor_type": ["Part-Time Tutor (Undergrad)", "Part-Time Tutor (Uni Grad)", "Full-Time Tutor (Uni Grad)", "Full-Time Tutor (Poly Grad)"],
+    "slot_details": null,
+    "additional_remarks": "Experienced tutor required; Family needs help reviewing homework, strengthening vocabulary, and improving comprehension; Session includes 20-30 mins of schoolwork revision followed by Chinese conversation and vocabulary expansion; Tutor to commit for at least 6 months"
+}
+
+
+Example 2:
+Raw: 🔥 NEW Tuition Job! 🔥
+
+▪️ Job Code: 240710CM7
+▪️ Job Details:
+Info: Poly Engineering Drawing & Modelling and Materials Technology @ 109A Edgedale Plains  (nearest LRT station: Meridian or Coral Edge) on Fri after 7pm, Sat/Sun afternoon [1 lesson/week, 1.5 hrs/lesson]
+
+Requirement: An experienced PART-TIME or FULL-TIME tutor for this NYP male student. Tutor to commit for at least 6 months. Start ASAP.
+
+Rate: PART-TIME $60-$80/hr, FULL-TIME $80-$150/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+Agency fee: FIRST 2 REGULAR LESSONS' WORTH
+
+▪️ Tutor Types: Part-Time Tutor (Undergrad), Part-Time Tutor (Uni Grad), Full-Time Tutor (Poly Grad), Full-Time Tutor (Uni Grad)
+▪️ Hashtags: #Others_Poly
+
+💹 DOUBLE your chances of being selected by applying through the Website!
+
+❤️ Forward this to your friends who might be interested in this assignment!
+
+💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
+JSON: {
+    "assignment_code": "240710CM7",
+    "is_tuition_centre": false,
+    "academic_tags_raw": "Poly Engineering Drawing & Modelling and Materials Technology",
+    "subjects": ["Engineering & Applied Sciences"],
+    "level": ["Diploma"],
+    "specific_student_level": null,
+    "student_gender": ["Male"],
+    "student_count": 1,
+    "learning_mode": ["Face-to-Face"],
+    "address": ["109A Edgedale Plains"],
+    "postal_code": null,
+    "nearest_mrt": ["Meridian", "Coral Edge"],
+    "frequency": "1x per week",
+    "duration": "1.5 hours",
+    "start_date": "ASAP",
+    "time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": ["19:00-23:00"],
+        "saturday": [],
+        "sunday": []
+    },
+    "estimated_time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": ["12:00-17:00"],
+        "sunday": ["12:00-17:00"]
+    },
+    "time_slots_note": "Fri after 7pm, Sat/Sun afternoon",
+    "hourly_rate": "PART-TIME $60-$80/hr, FULL-TIME $80-$150/hr",
+    "rate_min": 60,
+    "rate_max": 150,
+    "tutor_gender": null,
+    "tutor_type": ["PT", "FT", "Undergrad", "Graduate"],
+    "slot_details": null,
+    "additional_remarks": "Tutor to commit for at least 6 months. Justify asking hourly rate with qualification, experience, and track record. Do not over quote. Agency fee: FIRST 2 REGULAR LESSONS' WORTH."
+}
+
+  
+Example 3:
+Raw: 🔥 NEW Tuition Job! 🔥
+
+▪️ Job Code: 242608CW11
+▪️ Job Details:
+Info: JC1 H2 Physics and H2 Maths @ 290B Bukit Batok Street 24 (nearest MRT station: Bukit Batok) on Thurs 7.30pm, Sat 2pm-5pm [1 lesson/week, 2 hrs/lesson]
+
+Requirement: An experienced PART-TIME or FULL-TIME tutor with at least 8 years of experience for this JPJC male student. Looking for one tutor who can teach both subjects. Main focus is Physics, which he is having difficulty. He is ok in Maths, but may need guidance in some topics, which hopefully the tutor is able to guide him where needed. Tutor to commit for at least Till end 2025 (JC2). Tutor must be okay with paid trial lessons before committing long term. Earliest start date: 12-Sep-24.
+
+Rate: PART-TIME $50-$60/hr, FULL-TIME $60-$70/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+Agency fee: FIRST 2 REGULAR LESSONS' WORTH
+
+▪️ Tutor Types: Part-Time Tutor (Uni Grad), Part-Time Tutor (Undergrad), Full-Time Tutor (Poly Grad), Full-Time Tutor (Uni Grad)
+▪️ Hashtags: #JC_Math, #JC_Physics
+
+💹 DOUBLE your chances of being selected by applying through the Website!
+
+❤️ Forward this to your friends who might be interested in this assignment!
+
+💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
+JSON: {
+    "assignment_code": "242608CW11",
+    "is_tuition_centre": false,
+    "academic_tags_raw": "JC1 H2 Physics and H2 Maths",
+    "subjects": ["Physics", "Maths"],
+    "level": ["Junior College"],
+    "specific_student_level": ["JC 1"],
+    "student_gender": ["Male"],
+    "student_count": 1,
+    "learning_mode": ["Face-to-Face"],
+    "address": ["290B Bukit Batok Street 24"],
+    "postal_code": null,
+    "nearest_mrt": ["Bukit Batok"],
+    "frequency": "1x per week",
+    "duration": "2 hours",
+    "start_date": "2024-09-12",
+    "time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": ["19:30-21:30"],
+        "friday": [],
+        "saturday": ["14:00-17:00"],
+        "sunday": []
+    },
+    "estimated_time_slots": null,
+    "time_slots_note": "Thurs 7.30pm, Sat 2pm-5pm",
+    "hourly_rate": "PART-TIME $50-$60/hr, FULL-TIME $60-$70/hr",
+    "rate_min": 50,
+    "rate_max": 70,
+    "tutor_gender": null,
+    "tutor_type": ["PT", "FT", "Undergrad", "Graduate"],
+    "slot_details": null,
+    "additional_remarks": "Tutor to commit till end 2025 (JC2). Main focus is Physics; Maths guidance optional. Tutor must be okay with paid trial lessons. Justify asking hourly rate with qualification, experience, and track record. Do not over quote. Agency fee: FIRST 2 REGULAR LESSONS' WORTH."
+}
+
+   
+Example 4:
+Raw: 🔥 NEW Tuition Job! 🔥
+
+▪️ Job Code: 242708CF5
+▪️ Job Details:
+Info: K2 Chinese @ 546 Sixth Avenue (nearest MRT station: Holland Village) on Sat morning or afternoon, Sun morning [1 lesson/week, 1-1.5 hrs/lesson]
+
+Requirement: An experienced EX/CURRENT MOE teacher for this Mindchamps boy. Start ASAP.
+
+Rate: $65-$70/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+Agency fee: FIRST 2 REGULAR LESSONS' WORTH
+
+▪️ Tutor Types: Ex-MOE, Current MOE
+▪️ Hashtags: #Preschool_Chinese
+
+💹 DOUBLE your chances of being selected by applying through the Website!
+
+❤️ Forward this to your friends who might be interested in this assignment!
+
+💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
+JSON: {
+    "assignment_code": "242708CF5",
+    "is_tuition_centre": false,
+    "academic_tags_raw": "K2 Chinese",
+    "subjects": ["Chinese"],
+    "level": ["Pre-School"],
+    "specific_student_level": ["Kindergarten 2"],
+    "student_gender": ["Male"],
+    "student_count": 1,
+    "learning_mode": ["Face-to-Face"],
+    "address": ["546 Sixth Avenue"],
+    "postal_code": null,
+    "nearest_mrt": ["Holland Village"],
+    "frequency": "1x per week",
+    "duration": "1-1.5 hours",
+    "start_date": "ASAP",
+    "time_slots": null,
+    "estimated_time_slots": {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": ["08:00-17:00"],
+        "sunday": ["08:00-12:00"]
+    },
+    "time_slots_note": "Sat morning or afternoon, Sun morning",
+    "hourly_rate": "$65-$70/hr",
+    "rate_min": 65,
+    "rate_max": 70,
+    "tutor_gender": null,
+    "tutor_type": ["MOE"],
+    "slot_details": null,
+    "additional_remarks": "Tutor must be an experienced ex/current MOE teacher. Justify asking hourly rate with qualification, experience, and track record. Do not over quote. Agency fee: FIRST 2 REGULAR LESSONS' WORTH."
+}

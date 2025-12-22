@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Dex | Assignments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root { --nike-black: #111111; --nike-gray: #f5f5f5; }
+        body { font-family: 'Inter', sans-serif; background-color: white; color: var(--nike-black); }
+        h1, h2, h3, .brand-font { font-family: 'Anton', sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
+
+        summary::-webkit-details-marker { display: none; }
+        
+        /* Reusing User's Input Styles */
+        .nike-input {
+            width: 100%; padding: 0.8rem 1rem; border: 2px solid #e5e5e5;
+            font-weight: 600; transition: all 0.2s; outline: none; color: black; background: white;
+            border-radius: 0.5rem; appearance: none;
+        }
+        .nike-input:focus { border-color: black; }
+        
+        /* Custom Select Arrow */
+        .select-wrapper { position: relative; }
+        .select-wrapper::after {
+            content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+            position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+            font-size: 0.8rem; pointer-events: none; color: #9ca3af;
+        }
+
+        /* Card Hover Effect */
+        .job-card {
+            border: 2px solid #f3f4f6; transition: all 0.2s ease-out;
+        }
+        .job-card:hover {
+            border-color: black; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+
+        /* Badge/Pill Styles */
+        .badge {
+            background-color: #f3f4f6; color: black; padding: 0.25rem 0.75rem;
+            border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        }
+    </style>
+</head>
+<body class="bg-white" data-require-auth="true">
+
+    <nav class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white z-50 border-b border-gray-100 transition duration-300">
+        <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
+            <div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold rounded-lg">TD</div>
+            <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
+        </a>
+        
+        <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
+            <a href="assignments.html" class="text-black transition" aria-current="page">Assignments</a>
+            <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
+            <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
+            <a href="profile.html" class="hover:text-gray-500 transition">Profile</a>
+        </div>
+
+        <div class="flex items-center gap-3 text-sm font-bold uppercase">
+            <details class="md:hidden relative">
+                <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-gray-100 transition" aria-label="Open menu">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </summary>
+                <div class="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                    <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition" aria-current="page">Assignments</a>
+                    <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition">Profile</a>
+                    <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Agencies</span>
+                    <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Rates</span>
+                </div>
+            </details>
+
+            <button type="button" data-auth-logout class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition">Log Out</button>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-6 py-10">
+
+        <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+            <div>
+                <h1 class="text-5xl md:text-7xl leading-none">Tuition Assignments</h1>
+                <p class="text-gray-500 font-medium mt-2">Live assignments available for application.</p>
+            </div>
+            <div class="text-right">
+                <span class="text-4xl brand-font" id="job-count">0</span>
+                <span class="text-sm font-bold uppercase text-gray-400 block">Active Jobs</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+            <p id="results-summary" class="text-sm font-medium text-gray-500">Showing 0 of 0</p>
+            <div class="flex items-center gap-3 text-[11px] font-bold uppercase text-gray-500">
+                <span class="inline-flex items-center gap-1" title="Recently seen/updated">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>Green
+                </span>
+                <span class="inline-flex items-center gap-1" title="No bumps/updates for a while">
+                    <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>Yellow
+                </span>
+                <span class="inline-flex items-center gap-1" title="Stale">
+                    <span class="w-2 h-2 bg-orange-500 rounded-full"></span>Orange
+                </span>
+                <span class="inline-flex items-center gap-1" title="Very stale (will expire soon)">
+                    <span class="w-2 h-2 bg-red-500 rounded-full"></span>Red
+                </span>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 border border-gray-100 rounded-xl p-6 mb-10 sticky top-24 z-40 shadow-sm">
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                
+                <div class="select-wrapper">
+                    <select id="filter-level" class="nike-input" onchange="updateFilterSpecificLevels(); updateFilterSubjects();">
+                        <option value="">All Levels</option>
+                        <option value="Pre-School">Pre-School</option>
+                        <option value="Primary">Primary</option>
+                        <option value="Secondary">Secondary</option>
+                        <option value="IGCSE">IGCSE</option>
+                        <option value="International Baccalaureate">International Baccalaureate</option>
+                        <option value="Junior College">Junior College</option>
+                        <option value="Diploma">Diploma</option>
+                        <option value="Degree">Degree</option>
+                        <option value="Olympiads">Olympiads</option>
+                        <option value="Independent Learner - Languages">Independent Learner - Languages</option>
+                        <option value="Independent Learner - Computing">Independent Learner - Computing</option>
+                        <option value="Independent Learner - Music">Independent Learner - Music</option>
+                        <option value="Independent Learner - Others">Independent Learner - Others</option>
+                    </select>
+                </div>
+
+                <div class="select-wrapper">
+                    <select id="filter-specific-level" class="nike-input" disabled>
+                        <option value="">All Specific Levels</option>
+                    </select>
+                </div>
+
+                <div class="select-wrapper">
+                    <select id="filter-subject" class="nike-input">
+                        <option value="">All Subjects</option>
+                    </select>
+                </div>
+
+                <div class="select-wrapper">
+                    <select id="filter-location" class="nike-input">
+                        <option value="">All Locations</option>
+                        <option value="North">North</option>
+                        <option value="North-east">North-east</option>
+                        <option value="East">East</option>
+                        <option value="Central">Central</option>
+                        <option value="West">West</option>
+                        <option value="Online">Online</option>
+                    </select>
+                </div>
+
+                <div>
+                    <input type="number" id="filter-rate" placeholder="Min Rate ($/hr)" class="nike-input">
+                </div>
+
+                <div class="col-span-2 md:col-span-1 flex gap-2">
+                    <button onclick="applyFilters()" class="flex-1 bg-black text-white rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition">
+                        Filter
+                    </button>
+                    <button onclick="clearFilters()" class="flex-1 bg-white border-2 border-black text-black rounded-lg font-bold uppercase tracking-wide hover:bg-black hover:text-white transition">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="assignments-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+
+        <div id="load-error" class="hidden text-center py-20">
+            <h2 class="text-3xl text-gray-300">Assignments Unavailable</h2>
+            <p class="text-gray-400 mt-2" id="load-error-message">We couldn’t load assignments right now. Please try again.</p>
+            <button id="retry-load-assignments" type="button" class="mt-4 bg-black text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition">
+                Retry
+            </button>
+        </div>
+
+        <div id="no-results" class="hidden text-center py-20">
+            <h2 class="text-3xl text-gray-300">No Assignments Found</h2>
+            <p class="text-gray-400 mt-2">Try adjusting your filters.</p>
+            <button onclick="clearFilters()" class="mt-4 text-sm font-bold underline">Clear All Filters</button>
+        </div>
+
+    </div>
+
+    <script type="module" src="/src/page-assignments.js"></script>
+
+    <p id="auth-init-error" class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-white border border-red-200 text-red-700 p-4 rounded-xl shadow-lg text-sm">
+    Authentication failed to initialize. If you're running locally, use `firebase emulators:start --only hosting`. If deployed, confirm Firebase Hosting is serving `__/firebase/init.js` and Auth is enabled.
+</p>
+
+    <script src="/__/firebase/10.14.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.14.1/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+</body>
+</html>

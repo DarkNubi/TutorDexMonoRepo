@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Profile Setup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --nike-black: #111111;
+            --nike-gray: #f5f5f5;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: white; color: var(--nike-black); }
+        h1, h2, h3, .brand-font { font-family: 'Anton', sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
+
+        summary::-webkit-details-marker { display: none; }
+        
+        /* Custom Input Styling */
+        .nike-input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e5e5e5;
+            font-weight: 600;
+            transition: all 0.2s;
+            outline: none;
+            color: black;
+        }
+        .nike-input:focus {
+            border-color: black;
+        }
+        .nike-input::placeholder {
+            color: #9ca3af;
+            font-weight: 400;
+        }
+
+        /* Selection Button (Toggle) */
+        .select-btn {
+            border: 2px solid #e5e5e5;
+            transition: all 0.2s;
+        }
+        .select-btn:hover {
+            border-color: black;
+        }
+        .select-btn.active {
+            background-color: black;
+            color: white;
+            border-color: black;
+        }
+
+        /* The Tray Logic */
+        .tray-item {
+            background-color: black;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px; /* Pill */
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            animation: popIn 0.2s ease-out;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden" data-require-auth="true">
+
+    <nav class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white z-50 border-b border-gray-100 transition duration-300">
+        <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
+            <div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold rounded-lg">TD</div>
+            <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
+        </a>
+        
+        <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
+            <a href="assignments.html" class="hover:text-gray-500 transition">Assignments</a>
+            <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
+            <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
+            <a href="profile.html" class="text-black transition" aria-current="page">Profile</a>
+        </div>
+
+        <div class="flex items-center gap-3 text-sm font-bold uppercase">
+            <details class="md:hidden relative">
+                <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-gray-100 transition" aria-label="Open menu">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </summary>
+                <div class="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                    <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition">Assignments</a>
+                    <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition" aria-current="page">Profile</a>
+                    <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Agencies</span>
+                    <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Rates</span>
+                </div>
+            </details>
+
+            <button type="button" data-auth-logout class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition">Log Out</button>
+        </div>
+    </nav>
+
+    <div class="max-w-3xl mx-auto px-6 py-12">
+        
+        <div class="mb-12">
+            <h1 class="text-5xl md:text-7xl leading-none mb-4">Build Your <br> Tutor Profile.</h1>
+            <p class="text-lg font-medium text-gray-500 max-w-lg">Complete your profile to get matched with the best-suited assignments in Singapore.</p>
+        </div>
+
+        <form id="profile-form">
+
+            <section class="mb-16">
+                <h2 class="text-2xl mb-6">01. What kind of tutor are you?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
+                        <div class="brand-font text-xl mb-1">Part-Time</div>
+                        <p class="text-sm text-gray-500 group-hover:text-gray-800"> Student tutors or new tutors </p>
+                    </button>
+                    <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
+                        <div class="brand-font text-xl mb-1">Full-Time</div>
+                        <p class="text-sm text-gray-500 group-hover:text-gray-800">Dedicated and experienced tutors.</p>
+                    </button>
+                    <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
+                        <div class="brand-font text-xl mb-1">MOE- trained Tutors</div>
+                        <p class="text-sm text-gray-500 group-hover:text-gray-800">Tutors with MOE-certification</p>
+                    </button>
+                    <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
+                        <div class="brand-font text-xl mb-1">Ex-MOE Teacher</div>
+                        <p class="text-sm text-gray-500 group-hover:text-gray-800">Former school teachers.</p>
+                    </button>
+                </div>
+                <input type="hidden" id="input-tutor-type" name="tutor_type">
+            </section>
+
+            <hr class="border-gray-200 mb-16">
+
+            <section class="mb-16">
+                <div class="flex justify-between items-end mb-6">
+                    <h2 class="text-2xl">02. Levels & Subjects</h2>
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Multi-Select</span>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <select id="level-select" class="nike-input bg-white rounded-lg" onchange="updateSpecificLevels(); updateSubjects();">
+                            <option value="" disabled selected>Select Level</option>
+                            <option value="Pre-School">Pre-School</option>
+                            <option value="Primary">Primary</option>
+                            <option value="Secondary">Secondary</option>
+                            <option value="IGCSE">IGCSE</option>
+                            <option value="International Baccalaureate">International Baccalaureate</option>
+                            <option value="Junior College">Junior College</option>
+                            <option value="Diploma">Diploma</option>
+                            <option value="Degree">Degree</option>
+                            <option value="Olympiads">Olympiads</option>
+                            <option value="Independent Learner - Languages">Independent Learner - Languages</option>
+                            <option value="Independent Learner - Computing">Independent Learner - Computing</option>
+                            <option value="Independent Learner - Music">Independent Learner - Music</option>
+                            <option value="Independent Learner - Others">Independent Learner - Others</option>
+                        </select>
+                        
+                        <select id="specific-level-select" class="nike-input bg-white rounded-lg" disabled>
+                            <option value="" selected>Select Specific Level (Optional)</option>
+                        </select>
+
+                        <select id="subject-select" class="nike-input bg-white rounded-lg">
+                            <option value="" disabled selected>Select Subject</option>
+                        </select>
+
+                        <button type="button" onclick="addToTray()" class="bg-black text-white brand-font text-lg tracking-wide rounded-lg hover:opacity-80 transition">
+                            ADD +
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500">Select a level (and specific level if needed), then a subject, and click Add.</p>
+                </div>
+
+                <div id="subjects-tray" class="min-h-[80px] w-full border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-wrap gap-2 items-center">
+                    <span class="text-gray-400 text-sm italic w-full text-center" id="empty-tray-msg">Your added subjects will appear here...</span>
+                    </div>
+            </section>
+
+            <hr class="border-gray-200 mb-16">
+
+            <section class="mb-16">
+                <h2 class="text-2xl mb-6">03. Assignment Type</h2>
+                <p class="text-sm text-gray-500 mb-4">Choose what you want to receive.</p>
+                <div id="assignment-type-options" class="flex flex-wrap gap-3">
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">Private</button>
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">Tuition Centre</button>
+                </div>
+            </section>
+
+            <hr class="border-gray-200 mb-16">
+
+            <section class="mb-16">
+                <h2 class="text-2xl mb-6">04. Where do you teach?</h2>
+                <div id="teaching-locations" class="flex flex-wrap gap-3">
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">North</button>
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">North-east</button>
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">East</button>
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">Central</button>
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">West</button>
+                    <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">Online</button>
+                </div>
+            </section>
+
+            <hr class="border-gray-200 mb-16">
+
+            <section class="mb-16">
+                <h2 class="text-2xl mb-6">05. Contact Details</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <label class="block text-xs font-bold uppercase mb-2">Phone Number</label>
+                        <input id="contact-phone" type="tel" placeholder="+65" class="nike-input rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase mb-2">Email Address</label>
+                        <input id="contact-email" type="email" placeholder="you@example.com" class="nike-input rounded-lg bg-gray-50" readonly aria-readonly="true">
+                    </div>
+                    <div class="md:col-span-2">
+    <div class="flex items-center justify-between mb-2">
+        <label class="block text-xs font-bold uppercase">
+            Telegram Handle (Optional)
+        </label>
+
+        <button
+            type="button"
+            class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full flex items-center gap-1 hover:bg-gray-100"
+            onclick="toggleInfo('telegram-info')"
+        >
+            <i class="fa-solid fa-circle-info text-[12px]"></i>
+            Info
+        </button>
+    </div>
+
+    <input id="contact-telegram-handle" type="text" placeholder="@username" class="nike-input rounded-lg">
+
+    <p id="telegram-info" class="mt-1 text-xs text-gray-500 hidden">
+        Telegram handle is required if you want to receive filtered assignments directly from us.
+    </p>
+</div>
+
+                </div>
+
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-bold uppercase">
+                            Telegram DMs
+                        </label>
+
+                        <button
+                            type="button"
+                            class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full flex items-center gap-1 hover:bg-gray-100"
+                            onclick="toggleInfo('telegram-chatid-info')"
+                        >
+                            <i class="fa-solid fa-circle-info text-[12px]"></i>
+                            Info
+                        </button>
+                    </div>
+
+                    <p id="telegram-link-status" class="text-sm font-semibold text-gray-700">
+                        Checking link status...
+                    </p>
+
+                    <p id="telegram-chatid-info" class="mt-1 text-xs text-gray-500 hidden">
+                        To receive DMs, generate a link code and send <span class="font-mono">/link &lt;code&gt;</span> to the TutorDex DM bot. Once linked, we will detect it automatically.
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                        <button
+                            id="generate-link-code"
+                            type="button"
+                            class="px-4 py-2 border-2 border-black rounded-lg font-bold uppercase text-xs tracking-wide hover:bg-black hover:text-white transition"
+                        >
+                            Generate Link Code
+                        </button>
+                        <div id="link-code-box" class="hidden flex flex-wrap items-center gap-2">
+                            <span class="text-xs font-bold uppercase text-gray-500">Code</span>
+                            <span id="link-code-display" class="text-sm font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded"></span>
+                            <button id="copy-link-command" type="button" class="text-xs font-bold uppercase underline text-gray-700 hover:text-black">
+                                Copy /link
+                            </button>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">
+                        After generating a code, send <span class="font-mono">/link &lt;code&gt;</span> to the TutorDex DM bot.
+                    </p>
+                </div>
+
+                <div class="bg-black text-white p-6 rounded-xl">
+                    <h3 class="text-lg mb-4">Preferred Contact Mode</h3>
+                    <div id="preferred-contact-modes" class="flex flex-wrap gap-4">
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <div class="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
+                                <input type="checkbox" data-contact-mode="WhatsApp" class="appearance-none w-3 h-3 bg-white rounded-full opacity-0 checked:opacity-100 transition">
+                            </div>
+                            <span class="font-bold uppercase text-sm group-hover:text-gray-300 transition">WhatsApp</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <div class="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
+                                <input type="checkbox" data-contact-mode="Telegram" class="appearance-none w-3 h-3 bg-white rounded-full opacity-0 checked:opacity-100 transition">
+                            </div>
+                            <span class="font-bold uppercase text-sm group-hover:text-gray-300 transition">Telegram</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <div class="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
+                                <input type="checkbox" data-contact-mode="Email" class="appearance-none w-3 h-3 bg-white rounded-full opacity-0 checked:opacity-100 transition">
+                            </div>
+                            <span class="font-bold uppercase text-sm group-hover:text-gray-300 transition">Email</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <p id="profile-save-status" class="text-sm font-medium text-gray-600 mb-4"></p>
+            <button type="submit" class="w-full bg-black text-white py-5 rounded-full text-xl brand-font tracking-wide hover:bg-gray-800 transition transform hover:-translate-y-1">
+                Save Profile
+            </button>
+
+        </form>
+    </div>
+
+    <script type="module" src="/src/page-profile.js"></script>
+
+    <p id="auth-init-error" class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-white border border-red-200 text-red-700 p-4 rounded-xl shadow-lg text-sm">
+    Authentication failed to initialize. If you're running locally, use `firebase emulators:start --only hosting`. If deployed, confirm Firebase Hosting is serving `__/firebase/init.js` and Auth is enabled.
+</p>
+
+    <script src="/__/firebase/10.14.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.14.1/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+</body>
+</html>

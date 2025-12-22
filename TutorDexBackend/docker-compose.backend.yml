@@ -1,0 +1,32 @@
+services:
+  tutordex-backend-api:
+    build:
+      context: ..
+      dockerfile: TutorDexBackend/Dockerfile
+    container_name: tutordex-backend-api
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Place the Firebase Admin service account JSON at:
+      # `TutorDexBackend/secrets/firebase-admin-service-account.json`
+      # and keep `FIREBASE_ADMIN_CREDENTIALS_PATH=/run/secrets/firebase-admin-service-account.json` in `TutorDexBackend/.env`.
+      - ./secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+    restart: unless-stopped
+
+  tutordex-backend-telegram-link-bot:
+    build:
+      context: ..
+      dockerfile: TutorDexBackend/Dockerfile
+    container_name: tutordex-backend-telegram-link-bot
+    depends_on:
+      - tutordex-backend-api
+    env_file:
+      - .env
+    environment:
+      BACKEND_URL: http://tutordex-backend-api:8000
+    volumes:
+      - ./secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+    command: ["python", "TutorDexBackend/telegram_link_bot.py", "--poll-seconds", "2"]
+    restart: unless-stopped

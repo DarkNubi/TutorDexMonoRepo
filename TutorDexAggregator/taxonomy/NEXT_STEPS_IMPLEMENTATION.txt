@@ -1,0 +1,32 @@
+Next steps to implement taxonomy in the pipeline
+
+This folder currently contains:
+- subjects_taxonomy_v1.json: v1 taxonomy + deterministic mapping from current LLM subject strings + level.
+- MAPPING_RULES_v1.txt: human-readable rules and constraints.
+
+To wire this into TutorDex end-to-end:
+
+1) Database (Supabase)
+- Add columns to assignments:
+  - subjects_canonical text[] default '{}'
+  - subjects_general text[] default '{}'
+  - canonicalization_version int default 1
+  - optional: canonicalization_debug jsonb
+- Add GIN indexes on subjects_canonical and subjects_general for fast filtering.
+
+2) Aggregator canonicalization layer
+- Add a small pure function:
+  - input: parsed.level, parsed.subjects[]
+  - output: subjects_canonical[], subjects_general[], canonicalization_version
+- Use the deterministic mapping table in subjects_taxonomy_v1.json.
+- For ambiguous cases, prefer *_UNKNOWN codes rather than guessing.
+
+3) Persist
+- When upserting an assignment row, compute + write these new arrays.
+- Backfill existing open assignments using a batch script.
+
+4) Website UI (future)
+- Add a "General subject" filter using subjects_general.
+- Add an "Advanced subject" filter using subjects_canonical.
+- Use taxonomy labels to render clean user-facing names.
+

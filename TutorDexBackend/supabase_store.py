@@ -1,0 +1,195 @@
+import os
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional, List
+
+import requests
+
+
+logger = logging.getLogger("supabase_store")
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+@dataclass(frozen=True)
+class SupabaseConfig:
+    url: str
+    key: str
+    enabled: bool = False
+
+
+def load_supabase_config() -> SupabaseConfig:
+    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
+    return SupabaseConfig(url=url, key=key, enabled=enabled)
+
+
+class SupabaseRestClient:
+    def __init__(self, cfg: SupabaseConfig):
+        self.cfg = cfg
+        self.base = f"{cfg.url}/rest/v1"
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "apikey": cfg.key,
+                "authorization": f"Bearer {cfg.key}",
+                "content-type": "application/json",
+            }
+        )
+
+    def _url(self, path: str) -> str:
+        return f"{self.base}/{path.lstrip('/')}"
+
+    def get(self, path: str, *, timeout: int = 15) -> requests.Response:
+        return self.session.get(self._url(path), timeout=timeout)
+
+    def post(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None, extra_headers: Optional[Dict[str, str]] = None) -> requests.Response:
+        headers = {}
+        if prefer:
+            headers["prefer"] = prefer
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.session.post(self._url(path), json=json_body, headers=headers, timeout=timeout)
+
+    def patch(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None) -> requests.Response:
+        headers = {}
+        if prefer:
+            headers["prefer"] = prefer
+        return self.session.patch(self._url(path), json=json_body, headers=headers, timeout=timeout)
+
+
+def _coerce_rows(resp: requests.Response) -> List[Dict[str, Any]]:
+    try:
+        data = resp.json()
+    except Exception:
+        return []
+    return data if isinstance(data, list) else []
+
+
+class SupabaseStore:
+    def __init__(self, cfg: Optional[SupabaseConfig] = None):
+        self.cfg = cfg or load_supabase_config()
+        self.client = SupabaseRestClient(self.cfg) if self.cfg.enabled else None
+
+    def enabled(self) -> bool:
+        return bool(self.client)
+
+    def upsert_user(self, *, firebase_uid: str, email: Optional[str], name: Optional[str]) -> Optional[int]:
+        if not self.client:
+            return None
+        uid = str(firebase_uid).strip()
+        if not uid:
+            return None
+
+        row = {"firebase_uid": uid, "updated_at": _utc_now_iso()}
+        if email:
+            row["email"] = str(email).strip()
+        if name:
+            row["name"] = str(name).strip()
+
+        try:
+            resp = self.client.post(
+                "users?on_conflict=firebase_uid",
+                [row],
+                timeout=20,
+                prefer="resolution=merge-duplicates,return=representation",
+            )
+        except Exception as e:
+            logger.warning("Supabase users upsert failed uid=%s error=%s", uid, e)
+            return None
+
+        if resp.status_code >= 400:
+            logger.warning("Supabase users upsert status=%s body=%s", resp.status_code, resp.text[:500])
+            return None
+
+        rows = _coerce_rows(resp)
+        if rows:
+            return rows[0].get("id")
+
+        # fallback: query it
+        q = f"users?select=id&firebase_uid=eq.{requests.utils.quote(uid, safe='')}&limit=1"
+        r2 = self.client.get(q, timeout=15)
+        if r2.status_code < 400:
+            rr = _coerce_rows(r2)
+            if rr:
+                return rr[0].get("id")
+        return None
+
+    def upsert_preferences(self, *, user_id: int, prefs: Dict[str, Any]) -> bool:
+        if not self.client:
+            return False
+        body = dict(prefs)
+        body["user_id"] = int(user_id)
+        body["updated_at"] = _utc_now_iso()
+
+        try:
+            resp = self.client.post(
+                "user_preferences?on_conflict=user_id",
+                [body],
+                timeout=20,
+                prefer="resolution=merge-duplicates,return=representation",
+            )
+        except Exception as e:
+            logger.warning("Supabase prefs upsert failed user_id=%s error=%s", user_id, e)
+            return False
+        if resp.status_code >= 400:
+            logger.warning("Supabase prefs upsert status=%s body=%s", resp.status_code, resp.text[:500])
+            return False
+        return True
+
+    def get_preferences(self, *, user_id: int) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            return None
+        q = f"user_preferences?select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,updated_at&user_id=eq.{int(user_id)}&limit=1"
+        r = self.client.get(q, timeout=15)
+        if r.status_code >= 400:
+            return None
+        rows = _coerce_rows(r)
+        return rows[0] if rows else None
+
+    def insert_event(self, *, user_id: Optional[int], assignment_id: Optional[int], event_type: str, meta: Optional[Dict[str, Any]] = None) -> bool:
+        if not self.client:
+            return False
+        row: Dict[str, Any] = {"event_type": str(event_type).strip(), "event_time": _utc_now_iso()}
+        if user_id is not None:
+            row["user_id"] = int(user_id)
+        if assignment_id is not None:
+            row["assignment_id"] = int(assignment_id)
+        if meta:
+            row["meta"] = meta
+
+        try:
+            resp = self.client.post("analytics_events", [row], timeout=20, prefer="return=representation")
+        except Exception as e:
+            logger.warning("Supabase event insert failed error=%s", e)
+            return False
+        return resp.status_code < 400
+
+    def resolve_assignment_id(self, *, external_id: str, agency_name: Optional[str] = None) -> Optional[int]:
+        if not self.client:
+            return None
+        ext = str(external_id).strip()
+        if not ext:
+            return None
+        q = f"assignments?select=id&external_id=eq.{requests.utils.quote(ext, safe='')}"
+        if agency_name:
+            q += f"&agency_name=eq.{requests.utils.quote(str(agency_name).strip(), safe='')}"
+        q += "&limit=1"
+        r = self.client.get(q, timeout=15)
+        if r.status_code >= 400:
+            return None
+        rows = _coerce_rows(r)
+        if rows:
+            return rows[0].get("id")
+        return None
+

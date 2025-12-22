@@ -1,0 +1,59 @@
+TutorDex taxonomy mapping rules (v1)
+
+Goal
+- Support hierarchical filtering:
+  - General: e.g., MATH
+  - Advanced: e.g., MATH.SEC_EMATH, MATH.JC_H3
+- Preserve meaning:
+  - Keep raw_text and original parsed_json as evidence.
+  - Canonicalization only adds derived fields for search/filter/analytics.
+
+Inputs
+- level (canonical LEVELS)
+- subjects[] (current LLM output subject strings from SUBJECTS in extract_key_info.py)
+- optional: raw_text (for future regex fallback; not required for v1)
+
+Outputs (per assignment)
+- subjects_canonical[]: stable codes (advanced)
+- subjects_general[]: parent rollups for easy broad filtering
+- optional tags[]: controlled tags for long-tail concepts (separate from subjects)
+- canonicalization_version: int
+- optional canonicalization_debug: json with decisions/ambiguities
+
+Core rules
+1) No guessing
+- If a post says only "Maths" at Secondary level, do NOT guess E Maths vs A Maths.
+  - Use MATH.SEC_UNKNOWN and subjects_general includes MATH.
+- If a post says only "Maths" at JC, do NOT guess H1/H2.
+  - Use MATH.JC_UNKNOWN.
+
+2) Combined subjects expand to components
+- If a post says "Physics/Chem":
+  - subjects_canonical includes SCIENCE.COMBINED_PHYS_CHEM
+  - AND also includes SCIENCE.PHYSICS and SCIENCE.CHEMISTRY
+- Same for Bio/Physics and Bio/Chem.
+Reason: tutors filtering for Physics should still see combined science assignments.
+
+3) subjects_general is derived
+- For every subjects_canonical code, add its parent category to subjects_general.
+- Example:
+  - subjects_canonical: [MATH.SEC_EMATH, SCIENCE.COMBINED_PHYS_CHEM]
+  - subjects_general: [MATH, SCIENCE]
+
+4) MTL general categories are split by language
+- Chinese-related codes roll up to MTL_CHINESE (not a single "MTL" bucket).
+- Same for Malay, Tamil, Hindi.
+Reason: cleaner tutor filtering and analytics.
+
+5) v1 mapping is deterministic from the current LLM subject strings
+- Mapping table lives in subjects_taxonomy_v1.json ("by_level_subject_name_to_codes").
+- When the LLM schema evolves, keep a forward-compatible mapping layer:
+  - Add new codes, do not rename existing codes.
+  - Bump canonicalization_version when the mapping changes materially.
+
+Known gaps / future upgrades (v2 ideas)
+- Add IGCSE Additional Mathematics (Add Maths) and IB Math AA/AI SL/HL once the extractor reliably outputs them.
+- Add a controlled tags layer for concepts like:
+  urgent, exam_soon, weekend_only, female_tutor_only, high_rate, special_needs
+- Add rule-based (regex) backup mapping from raw_text for common misses.
+

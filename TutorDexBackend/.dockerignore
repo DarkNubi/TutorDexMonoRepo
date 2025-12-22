@@ -1,0 +1,16 @@
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+
+.git/
+.github/
+.vscode/
+
+TutorDexBackend/.env
+TutorDexBackend/*.json
+TutorDexBackend/secrets/
+TutorDexBackend/logs/

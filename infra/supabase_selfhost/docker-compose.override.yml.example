@@ -1,0 +1,17 @@
+# Optional hardening: keep Supabase Studio private (localhost-only).
+#
+# Usage (in the Supabase docker folder):
+#   Copy-Item D:\TutorDex\infra\supabase_selfhost\docker-compose.override.yml.example .\docker-compose.override.yml
+#   docker compose up -d
+#
+# Note:
+# - Do NOT bind Kong (API gateway) to localhost via compose override on Windows.
+#   The official compose already publishes Kong ports, and Docker Compose merges port lists,
+#   which can create duplicate bindings like 0.0.0.0:8001 AND 127.0.0.1:8001 and fail with
+#   "address already in use".
+# - Instead, leave Kong as-is and rely on Windows Firewall + only exposing 80/443 via your reverse proxy.
+
+services:
+  studio:
+    ports:
+      - "127.0.0.1:3000:3000/tcp"

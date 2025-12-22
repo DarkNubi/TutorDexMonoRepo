@@ -1,0 +1,38 @@
+## Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+## Virtualenvs
+.venv/
+venv/
+ENV/
+env/
+
+## Secrets / local config
+.env
+.env.*
+!.env.example
+*.local
+
+## Credentials (never commit)
+firebase-admin*.json
+*service-account*.json
+*.pem
+*.p12
+secrets/
+
+## Local runtime state
+telegram_link_bot_offset.json
+*.log
+logs/
+
+## Docker / compose
+.docker/
+
+## Ignore nested repo metadata if present
+.git/

@@ -1,0 +1,203 @@
+Example 1:
+Raw: 🌟REPOST
+S3 G3 Combined Bio + Chem (2026) #A8703
+🔻Rate: $60-$70/h (2h per lesson, once a week)
+🔻Days and time: tbc
+🔻Location: Bukit Batok, s650526
+🔻Requirements: Full time tutors and above may apply. Female tutor.
+
+🌟Please contact @ttrhometuition to apply
+JSON: {
+  "assignment_code": "A8703",
+  "is_tuition_centre": false,
+  "academic_tags_raw": "S3 G3 Combined Bio + Chem (2026)",
+  "subjects": ["Bio/Chem"],
+  "level": ["Secondary"],
+  "specific_student_level": ["Secondary 3"],
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["Bukit Batok"],
+  "postal_code": ["650526"],
+  "nearest_mrt": null,
+  "frequency": "1 lesson/week",
+  "duration": "2 hours",
+  "start_date": null,
+  "time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "estimated_time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "time_slots_note": "tbc",
+  "hourly_rate": "$60-$70/h",
+  "rate_min": 60,
+  "rate_max": 70,
+  "tutor_gender": "Female",
+  "tutor_type": ["FT"],
+  "slot_details": null,
+  "additional_remarks": "Full time tutors and above may apply."
+}
+
+
+Example 2:
+Raw: 🌟P6 Foundation Science (2026) #A8781
+🔻Rate: $35-$40/h (1.5h per lesson, once a week)
+🔻Days and time: Tuesday to Friday 3pm onwards
+🔻Location: Tiong Bahru, Havelock, s161052
+🔻Requirements: Part time tutors and above may apply. Female tutor. Student has dyslexia.
+
+🌟Please contact @ttrhometuition to apply
+JSON: {
+  "assignment_code": "A8781",
+  "is_tuition_centre": false,
+  "academic_tags_raw": "P6 Foundation Science (2026)",
+  "subjects": ["Science"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 6"],
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["Tiong Bahru, Havelock"],
+  "postal_code": ["161052"],
+  "nearest_mrt": null,
+  "frequency": "1 lesson/week",
+  "duration": "1.5 hours",
+  "start_date": null,
+  "time_slots": null,
+  "estimated_time_slots": {
+    "monday": [],
+    "tuesday": ["15:00-23:00"],
+    "wednesday": ["15:00-23:00"],
+    "thursday": ["15:00-23:00"],
+    "friday": ["15:00-23:00"],
+    "saturday": [],
+    "sunday": []
+  },
+  "time_slots_note": "Tuesday to Friday 3pm onwards",
+  "hourly_rate": "$35-$40/h",
+  "rate_min": 35,
+  "rate_max": 40,
+  "tutor_gender": "Female",
+  "tutor_type": ["PT"],
+  "slot_details": null,
+  "additional_remarks": "Student has dyslexia. Part time tutors and above may apply."
+}
+
+  
+Example 3:
+Raw: 🌟P6 Science (2026) - looking for tutors to teach p6 science at a new tuition centre #A8662
+🔻Rate: $pls quote/h (1.5h per lesson, once a week)
+🔻Days and time: Friday 4pm-7pm
+🔻Location: Ang Mo Kio Hub
+🔻Requirements: No gender preference for tutor.
+
+🌟Please contact @ttrhometuition to apply!
+JSON: {
+  "assignment_code": "A8662",
+  "is_tuition_centre": true,
+  "academic_tags_raw": "P6 Science (2026)",
+  "subjects": ["Science"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 6"],
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["Ang Mo Kio Hub"],
+  "postal_code": null,
+  "nearest_mrt": null,
+  "frequency": "1 lesson/week",
+  "duration": "1.5 hours",
+  "start_date": null,
+  "time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": ["16:00-19:00"],
+    "saturday": [],
+    "sunday": []
+  },
+  "estimated_time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "time_slots_note": "Friday 4pm-7pm",
+  "hourly_rate": "$pls quote/h",
+  "rate_min": null,
+  "rate_max": null,
+  "tutor_gender": null,
+  "tutor_type": null,
+  "slot_details": null,
+  "additional_remarks": "Looking for tutors to teach Primary 6 Science at a new tuition centre. No gender preference for tutor."
+}
+
+   
+Example 4:
+Raw: 🌟P2 Math (2026) #A8652
+🔻Rate: $40-$50/h (1.5h per lesson, once a week)
+🔻Days and time: Wednesday, Thursday or Friday between 2.30-5.30pm
+🔻Location: West Coast, s127466
+🔻Requirements: Full time tutors may apply. Female tutor.
+
+🌟Please contact @ttrhometuition to apply!
+JSON: {
+  "assignment_code": "A8652",
+  "is_tuition_centre": false,
+  "academic_tags_raw": "P2 Math (2026)",
+  "subjects": ["Maths"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 2"],
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": ["Face-to-Face"],
+  "address": ["West Coast"],
+  "postal_code": ["127466"],
+  "nearest_mrt": null,
+  "frequency": "1 lesson/week",
+  "duration": "1.5 hours",
+  "start_date": null,
+  "time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": ["14:30-17:30"],
+    "thursday": ["14:30-17:30"],
+    "friday": ["14:30-17:30"],
+    "saturday": [],
+    "sunday": []
+  },
+  "estimated_time_slots": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "time_slots_note": "Wednesday, Thursday or Friday between 2.30-5.30pm",
+  "hourly_rate": "$40-$50/h",
+  "rate_min": 40,
+  "rate_max": 50,
+  "tutor_gender": "Female",
+  "tutor_type": ["FT"],
+  "slot_details": null,
+  "additional_remarks": "Full time tutors may apply."
+}

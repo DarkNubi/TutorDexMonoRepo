@@ -1,0 +1,8 @@
+.github/prompts
+.apm
+.firebase
+firebase-debug.log
+firebase-debug.*.log
+node_modules
+dist
+.env
