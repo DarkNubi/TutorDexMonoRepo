@@ -44,7 +44,8 @@ def is_compilation(text: str) -> Tuple[bool, List[str]]:
     thresh = load_compilation_thresholds()
     code_hits = len(CODE_RE.findall(text))
     label_hits = len(LABEL_RE.findall(text))
-    postal_hits = len(POSTAL_RE.findall(text))
+    postal_codes = {c.strip() for c in POSTAL_RE.findall(text) if str(c).strip()}
+    postal_hits = len(postal_codes)
     url_hits = len(URL_RE.findall(text))
     blocks = [b for b in re.split(r"\n{2,}", text) if b.strip()]
     block_count = len(blocks)
@@ -55,11 +56,12 @@ def is_compilation(text: str) -> Tuple[bool, List[str]]:
     if label_hits >= thresh["label_hits"] and block_count >= 2:
         triggered.append(f"Multiple labeled sections ({label_hits} labels found, threshold: {thresh['label_hits']}, {block_count} blocks)")
     if postal_hits >= thresh["postal_hits"]:
-        triggered.append(f"Multiple postal codes detected ({postal_hits} postal codes found, threshold: {thresh['postal_hits']})")
+        triggered.append(
+            f"Multiple unique postal codes detected ({postal_hits} unique postal codes found, threshold: {thresh['postal_hits']})"
+        )
     if url_hits >= thresh["url_hits"]:
         triggered.append(f"Multiple URLs detected ({url_hits} URLs found, threshold: {thresh['url_hits']})")
     if block_count >= thresh["block_count"] and label_hits >= 1:
         triggered.append(f"Multiple content blocks ({block_count} blocks found, threshold: {thresh['block_count']}, with {label_hits} labels)")
 
     return (len(triggered) > 0), triggered
-

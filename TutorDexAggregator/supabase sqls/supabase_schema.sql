@@ -18,6 +18,8 @@ create table if not exists public.assignments (
   type text,
   address text,
   postal_code text,
+  postal_lat double precision,
+  postal_lon double precision,
   nearest_mrt text,
   learning_mode text,
   student_gender text,

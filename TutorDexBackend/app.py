@@ -13,6 +13,7 @@ from TutorDexBackend.matching import match_from_payload
 from TutorDexBackend.supabase_store import SupabaseStore
 from TutorDexBackend.firebase_auth import verify_bearer_token
 from TutorDexBackend.logging_setup import setup_logging
+from TutorDexBackend.geocoding import geocode_sg_postal_code, normalize_sg_postal_code
 
 
 setup_logging()
@@ -95,6 +96,7 @@ async def access_log_middleware(request: Request, call_next):
 
 class TutorUpsert(BaseModel):
     chat_id: Optional[str] = Field(None, description="Telegram chat id to DM (required to receive DMs)")
+    postal_code: Optional[str] = None
     subjects: Optional[List[str]] = None
     levels: Optional[List[str]] = None
     subject_pairs: Optional[List[Dict[str, str]]] = None
@@ -279,6 +281,9 @@ def me_get_tutor(request: Request) -> Dict[str, Any]:
                 tutor = dict(tutor)
                 tutor.update(
                     {
+                        "postal_code": prefs.get("postal_code") if prefs.get("postal_code") is not None else tutor.get("postal_code") or "",
+                        "postal_lat": prefs.get("postal_lat") if prefs.get("postal_lat") is not None else tutor.get("postal_lat"),
+                        "postal_lon": prefs.get("postal_lon") if prefs.get("postal_lon") is not None else tutor.get("postal_lon"),
                         "subjects": prefs.get("subjects") or tutor.get("subjects") or [],
                         "levels": prefs.get("levels") or tutor.get("levels") or [],
                         "subject_pairs": prefs.get("subject_pairs") or tutor.get("subject_pairs") or [],
@@ -296,9 +301,24 @@ def me_get_tutor(request: Request) -> Dict[str, Any]:
 def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
     uid = _require_uid(request)
 
+    postal_code: Optional[str] = None
+    postal_lat: Optional[float] = None
+    postal_lon: Optional[float] = None
+    if "postal_code" in getattr(req, "model_fields_set", set()):
+        postal_code = normalize_sg_postal_code(req.postal_code)
+        if postal_code is None:
+            raise HTTPException(status_code=400, detail="invalid_postal_code")
+        if postal_code:
+            coords = geocode_sg_postal_code(postal_code)
+            if coords:
+                postal_lat, postal_lon = coords
+
     store.upsert_tutor(
         uid,
         chat_id=req.chat_id,
+        postal_code=postal_code,
+        postal_lat=postal_lat,
+        postal_lon=postal_lon,
         subjects=req.subjects,
         levels=req.levels,
         subject_pairs=req.subject_pairs,
@@ -314,20 +334,25 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
     if sb.enabled():
         user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
         if user_id:
+            prefs: Dict[str, Any] = {
+                "subjects": req.subjects,
+                "levels": req.levels,
+                "subject_pairs": req.subject_pairs,
+                "assignment_types": req.assignment_types,
+                "tutor_kinds": req.tutor_kinds,
+                "learning_modes": req.learning_modes,
+                "teaching_locations": req.teaching_locations,
+                "contact_phone": req.contact_phone,
+                "contact_telegram_handle": req.contact_telegram_handle,
+                "preferred_contact_modes": req.preferred_contact_modes,
+            }
+            if "postal_code" in getattr(req, "model_fields_set", set()):
+                prefs["postal_code"] = postal_code
+                prefs["postal_lat"] = postal_lat
+                prefs["postal_lon"] = postal_lon
             sb.upsert_preferences(
                 user_id=user_id,
-                prefs={
-                    "subjects": req.subjects,
-                    "levels": req.levels,
-                    "subject_pairs": req.subject_pairs,
-                    "assignment_types": req.assignment_types,
-                    "tutor_kinds": req.tutor_kinds,
-                    "learning_modes": req.learning_modes,
-                    "teaching_locations": req.teaching_locations,
-                    "contact_phone": req.contact_phone,
-                    "contact_telegram_handle": req.contact_telegram_handle,
-                    "preferred_contact_modes": req.preferred_contact_modes,
-                },
+                prefs=prefs,
             )
 
     return {"ok": True, "tutor_id": uid}

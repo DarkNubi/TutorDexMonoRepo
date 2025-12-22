@@ -1,0 +1,98 @@
+TutorDex Progress Report (Public Beta / V1.0 Readiness)
+Generated: 2025-12-22
+Repo location: D:\TutorDex
+
+================================================================================
+1) Product Direction (from TutorDex background info.txt)
+================================================================================
+TutorDex exists to:
+- Aggregate tuition assignments across fragmented Telegram agencies (one market surface).
+- Reduce noise/duplicates/compilations and improve “open/closed” clarity.
+- Deliver personalised “sniper” DMs (speed/edge) so tutors stop scanning channels manually.
+
+Business guardrails:
+- Free tier should feel powerful; paid is for amplification/precision, not basic access.
+- Long-term monetisation is primarily agency-driven (commissions/subscriptions + intelligence).
+- Censorship/anti-scrape comes later once competitors emerge; full details increasingly move to DMs/website.
+
+Milestones (from the doc):
+1) Aggregation Accuracy
+2) Soft Monetisation (Not Forced)
+3) Tutor Behaviour Shift
+4) Dependence via Personalisation
+5) Intelligence Accumulation
+6) Application Flow Centralisation
+7) First Agency Dependence
+8) Scalable Agency Monetisation (Endgame)
+
+================================================================================
+2) What Changed Since 2025-12-16 (today’s work)
+================================================================================
+Focus: enable distance/location intelligence by storing tutor + assignment postal code and geocoded coordinates.
+
+A) Website (TutorDexWebsite)
+- Added a “Postal Code (Optional)” field on the Profile page.
+- Profile save/load now includes `postal_code` (validated as SG 6 digits).
+
+B) Backend (TutorDexBackend)
+- Tutor preferences now support:
+  - `postal_code`, `postal_lat`, `postal_lon`
+- On profile update, backend:
+  - normalises postal code
+  - best-effort geocodes via OpenStreetMap Nominatim (cached)
+  - stores in Redis and (optionally) Supabase `user_preferences`
+- Backward-compatible behaviour:
+  - If the DB schema isn’t migrated, Supabase writes/read fall back without the new columns.
+
+C) Aggregator (TutorDexAggregator)
+- Assignment persistence now best-effort geocodes `postal_code` into:
+  - `postal_lat`, `postal_lon`
+- Backward-compatible behaviour:
+  - If the DB schema isn’t migrated, it retries inserts/updates without the new columns.
+
+D) Supabase schema/migration
+- Added a migration SQL for existing DBs:
+  - `TutorDexAggregator/supabase sqls/2025-12-22_add_postal_latlon.sql`
+- Updated schema templates so fresh installs include the new columns.
+
+E) Self-host Supabase Studio reliability (ops)
+- Resolved `ERR_EMPTY_RESPONSE` from Studio on Windows by changing Studio to bind IPv4
+  (was IPv6-only), then restarting Studio via docker compose.
+
+================================================================================
+3) Current State vs Milestones
+================================================================================
+Milestone 1 (Aggregation Accuracy): In progress
+- Core ingestion/extraction/broadcast/persist path exists.
+- Ongoing: compilation filtering + dedupe + status inference tuning.
+
+Milestone 3 (Tutor Behaviour Shift): Not yet proven
+- Needs a working end-to-end loop for real tutors: preferences → matching → DMs → applications.
+
+Milestone 4 (Dependence via Personalisation): Unblocked by today’s work
+- Postal + lat/lon creates the foundation for distance-based matching and ranking.
+
+Milestone 5+ (Intelligence Accumulation onward): Not started
+- Today’s change is a prerequisite for future distance + travel-time features and analytics.
+
+================================================================================
+4) What You Must Do Manually (to activate this feature)
+================================================================================
+1) Run the Supabase migration once (existing DB):
+   - `TutorDexAggregator/supabase sqls/2025-12-22_add_postal_latlon.sql`
+2) Ensure Nominatim is allowed:
+   - If you want geocoding: do NOT set `DISABLE_NOMINATIM=1`
+   - If you want to disable external calls: set `DISABLE_NOMINATIM=1`
+
+================================================================================
+5) Next Actions (recommended)
+================================================================================
+1) Confirm profile round-trip:
+   - Save a tutor postal code → reload profile → verify `postal_code` persists.
+2) Confirm assignment persist:
+   - Ingest a message with postal code → verify assignment row has `postal_lat/postal_lon`.
+3) Add matching logic that actually uses lat/lon:
+   - Distance-based scoring/filters for assignments vs tutor postal location.
+4) Backfill lat/lon for historical assignments (optional):
+   - Script/query to geocode old rows that have postal_code but missing coords.
+

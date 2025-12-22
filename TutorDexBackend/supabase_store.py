@@ -143,6 +143,24 @@ class SupabaseStore:
             logger.warning("Supabase prefs upsert failed user_id=%s error=%s", user_id, e)
             return False
         if resp.status_code >= 400:
+            # Backward-compatible retry when DB schema hasn't been migrated yet.
+            if resp.status_code == 400 and ("PGRST204" in resp.text or "schema cache" in resp.text):
+                retry_body = dict(body)
+                for k in ("postal_code", "postal_lat", "postal_lon"):
+                    retry_body.pop(k, None)
+                if retry_body != body:
+                    try:
+                        resp2 = self.client.post(
+                            "user_preferences?on_conflict=user_id",
+                            [retry_body],
+                            timeout=20,
+                            prefer="resolution=merge-duplicates,return=representation",
+                        )
+                        if resp2.status_code < 400:
+                            return True
+                        logger.warning("Supabase prefs upsert retry status=%s body=%s", resp2.status_code, resp2.text[:500])
+                    except Exception as e:
+                        logger.warning("Supabase prefs upsert retry failed user_id=%s error=%s", user_id, e)
             logger.warning("Supabase prefs upsert status=%s body=%s", resp.status_code, resp.text[:500])
             return False
         return True
@@ -150,8 +168,12 @@ class SupabaseStore:
     def get_preferences(self, *, user_id: int) -> Optional[Dict[str, Any]]:
         if not self.client:
             return None
-        q = f"user_preferences?select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,updated_at&user_id=eq.{int(user_id)}&limit=1"
-        r = self.client.get(q, timeout=15)
+        base = f"user_preferences?user_id=eq.{int(user_id)}&limit=1"
+        q1 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,postal_code,postal_lat,postal_lon,updated_at"
+        r = self.client.get(q1, timeout=15)
+        if r.status_code == 400 and ("PGRST204" in r.text or "schema cache" in r.text):
+            q2 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,updated_at"
+            r = self.client.get(q2, timeout=15)
         if r.status_code >= 400:
             return None
         rows = _coerce_rows(r)

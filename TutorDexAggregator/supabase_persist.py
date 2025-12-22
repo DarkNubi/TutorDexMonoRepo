@@ -2,7 +2,9 @@ import os
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any, Dict, Optional, Tuple, List
+import re
 
 import requests
 
@@ -15,6 +17,7 @@ from taxonomy.canonicalize_subjects import (
 
 setup_logging()
 logger = logging.getLogger("supabase_persist")
+_SG_POSTAL_RE = re.compile(r"\b(\d{6})\b")
 
 
 def _truthy(value: Optional[str]) -> bool:
@@ -25,6 +28,57 @@ def _truthy(value: Optional[str]) -> bool:
 
 def _freshness_enabled() -> bool:
     return _truthy(os.environ.get("FRESHNESS_TIER_ENABLED"))
+
+
+def _nominatim_disabled() -> bool:
+    return str(os.environ.get("DISABLE_NOMINATIM", "")).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _normalize_sg_postal_code(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    digits = re.sub(r"\D+", "", s)
+    m = _SG_POSTAL_RE.search(digits)
+    return m.group(1) if m else None
+
+
+@lru_cache(maxsize=2048)
+def _geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[float, float]]:
+    if _nominatim_disabled():
+        return None
+    pc = _normalize_sg_postal_code(postal_code)
+    if not pc:
+        return None
+
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
+    headers = {"User-Agent": os.environ.get("NOMINATIM_USER_AGENT") or "TutorDexAggregator/1.0"}
+
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+    except Exception:
+        logger.debug("postal_geocode_failed", exc_info=True)
+        return None
+
+    if resp.status_code >= 400:
+        return None
+
+    try:
+        data = resp.json()
+    except Exception:
+        return None
+    if not isinstance(data, list) or not data or not isinstance(data[0], dict):
+        return None
+
+    try:
+        lat = float(data[0].get("lat"))
+        lon = float(data[0].get("lon"))
+        return (lat, lon)
+    except Exception:
+        return None
 
 
 def _utc_now_iso() -> str:
@@ -224,6 +278,14 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     subjects = parsed.get("subjects")
     subject = _first_text(subjects)
 
+    postal_code = _first_text(parsed.get("postal_code")) or _first_text(parsed.get("postal_code_estimated"))
+    postal_lat = None
+    postal_lon = None
+    if postal_code:
+        coords = _geocode_sg_postal(postal_code)
+        if coords:
+            postal_lat, postal_lon = coords
+
     row: Dict[str, Any] = {
         "external_id": _derive_external_id(payload),
         "agency_id": None,
@@ -239,7 +301,9 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "specific_student_level": _first_text(parsed.get("specific_student_level")),
         "type": _first_text(parsed.get("type")),
         "address": _first_text(parsed.get("address")),
-        "postal_code": _first_text(parsed.get("postal_code")) or _first_text(parsed.get("postal_code_estimated")),
+        "postal_code": postal_code,
+        "postal_lat": postal_lat,
+        "postal_lon": postal_lon,
         "nearest_mrt": _first_text(parsed.get("nearest_mrt")),
         "learning_mode": _first_text(parsed.get("learning_mode")),
         "student_gender": _first_text(parsed.get("student_gender")),
@@ -508,6 +572,22 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 return {"ok": False, "error": str(e)}
 
             ok = patch_resp.status_code < 400
+            if not ok and patch_resp.status_code == 400 and ("PGRST204" in patch_resp.text or "schema cache" in patch_resp.text):
+                patch_body.pop("postal_lat", None)
+                patch_body.pop("postal_lon", None)
+                try:
+                    t0 = timed()
+                    patch_resp = client.patch(
+                        f"{cfg.assignments_table}?id=eq.{existing.get('id')}",
+                        patch_body,
+                        timeout=20,
+                        prefer="return=representation",
+                    )
+                    patch_ms = round((timed() - t0) * 1000.0, 2)
+                    ok = patch_resp.status_code < 400
+                except Exception as e:
+                    log_event(logger, logging.ERROR, "supabase_patch_failed", row_id=existing.get("id"), error=str(e))
+                    return {"ok": False, "error": str(e)}
             if not ok:
                 log_event(logger, logging.WARNING, "supabase_patch_status", status_code=patch_resp.status_code, body=patch_resp.text[:500])
             res = {"ok": ok, "action": "updated", "status_code": patch_resp.status_code, "get_ms": get_ms, "patch_ms": patch_ms}
@@ -534,6 +614,22 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             return {"ok": False, "error": str(e)}
 
         ok = insert_resp.status_code < 400
+        if not ok and insert_resp.status_code == 400 and ("PGRST204" in insert_resp.text or "schema cache" in insert_resp.text):
+            row_to_insert.pop("postal_lat", None)
+            row_to_insert.pop("postal_lon", None)
+            try:
+                t0 = timed()
+                insert_resp = client.post(
+                    cfg.assignments_table,
+                    [row_to_insert],
+                    timeout=20,
+                    prefer="return=representation",
+                )
+                insert_ms = round((timed() - t0) * 1000.0, 2)
+                ok = insert_resp.status_code < 400
+            except Exception as e:
+                log_event(logger, logging.ERROR, "supabase_insert_failed", external_id=str(external_id), agency_name=str(agency_name), error=str(e))
+                return {"ok": False, "error": str(e)}
         if not ok:
             log_event(logger, logging.WARNING, "supabase_insert_status", status_code=insert_resp.status_code, body=insert_resp.text[:500])
         res = {"ok": ok, "action": "inserted", "status_code": insert_resp.status_code, "get_ms": get_ms, "insert_ms": insert_ms}

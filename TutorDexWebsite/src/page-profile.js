@@ -256,6 +256,14 @@ function setStatus(message, kind = "info") {
   else el.className += " text-gray-600";
 }
 
+function normalizeSgPostalCode(value) {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length !== 6) return null;
+  return digits;
+}
+
 async function saveProfile() {
   if (!isBackendEnabled()) {
     setStatus("Backend not configured (VITE_BACKEND_URL missing). Profile not saved.", "error");
@@ -279,6 +287,13 @@ async function saveProfile() {
   const contactTelegramHandle = String(document.getElementById("contact-telegram-handle")?.value || "").trim();
   const preferredContactModes = uniq(getPreferredContactModes());
 
+  const postalInput = document.getElementById("tutor-postal-code");
+  const postalNormalized = normalizeSgPostalCode(postalInput?.value);
+  if (postalNormalized === null) {
+    setStatus("Postal code must be 6 digits (or leave it blank).", "error");
+    return;
+  }
+
   setStatus("Saving profile...", "info");
   await upsertTutor(uid, {
     subjects,
@@ -288,6 +303,7 @@ async function saveProfile() {
     tutor_kinds: tutorKinds,
     learning_modes: learningModes,
     teaching_locations: teachingLocations,
+    postal_code: postalNormalized,
     contact_phone: contactPhone || null,
     contact_telegram_handle: contactTelegramHandle || null,
     preferred_contact_modes: preferredContactModes,
@@ -362,6 +378,11 @@ async function loadProfile() {
 
   if (Array.isArray(profile.preferred_contact_modes)) {
     setPreferredContactModes(profile.preferred_contact_modes);
+  }
+
+  const postalEl = document.getElementById("tutor-postal-code");
+  if (postalEl && typeof profile.postal_code === "string") {
+    postalEl.value = profile.postal_code;
   }
 
   if (Array.isArray(profile.subject_pairs) && profile.subject_pairs.length) {

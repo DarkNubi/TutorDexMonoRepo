@@ -35,6 +35,18 @@ def _json_loads(value: Optional[str]) -> Any:
         return s
 
 
+def _safe_float(value: Optional[str]) -> Optional[float]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+
 def _as_text_list(value: Any) -> List[str]:
     if value is None:
         return []
@@ -91,6 +103,9 @@ class TutorStore:
         tutor_id: str,
         *,
         chat_id: Optional[str] = None,
+        postal_code: Optional[str] = None,
+        postal_lat: Optional[float] = None,
+        postal_lon: Optional[float] = None,
         subjects: Any = None,
         levels: Any = None,
         subject_pairs: Any = None,
@@ -107,9 +122,24 @@ class TutorStore:
         # This prevents the website "Save Profile" from accidentally clearing `chat_id` (Telegram linking)
         # or other preferences by sending a partial payload.
         doc: Dict[str, Any] = {"tutor_id": tutor_id, "updated_at": _utc_now_iso()}
+        clear_postal_coords = False
 
         if chat_id is not None:
             doc["chat_id"] = str(chat_id).strip()
+
+        if postal_code is not None:
+            normalized = str(postal_code).strip()
+            if not normalized:
+                doc["postal_code"] = ""
+                clear_postal_coords = True
+            else:
+                doc["postal_code"] = normalized
+                if postal_lat is not None and postal_lon is not None:
+                    doc["postal_lat"] = str(float(postal_lat))
+                    doc["postal_lon"] = str(float(postal_lon))
+                else:
+                    clear_postal_coords = True
+
         if subjects is not None:
             doc["subjects"] = _json_dumps(_as_text_list(subjects))
         if levels is not None:
@@ -131,8 +161,14 @@ class TutorStore:
         if preferred_contact_modes is not None:
             doc["preferred_contact_modes"] = _json_dumps(_as_text_list(preferred_contact_modes))
 
-        self.r.hset(key, mapping=doc)
-        self.r.sadd(self._tutors_set_key(), tutor_id)
+        pipe = self.r.pipeline()
+        pipe.hset(key, mapping=doc)
+        if clear_postal_coords:
+            pipe.hdel(key, "postal_lat", "postal_lon")
+            if postal_code is not None and not str(postal_code).strip():
+                pipe.hdel(key, "postal_code")
+        pipe.sadd(self._tutors_set_key(), tutor_id)
+        pipe.execute()
         return {"ok": True, "tutor_id": tutor_id}
 
     def set_chat_id(self, tutor_id: str, chat_id: str) -> Dict[str, Any]:
@@ -169,6 +205,9 @@ class TutorStore:
         return {
             "tutor_id": raw.get("tutor_id") or tutor_id,
             "chat_id": raw.get("chat_id"),
+            "postal_code": raw.get("postal_code") or "",
+            "postal_lat": _safe_float(raw.get("postal_lat")),
+            "postal_lon": _safe_float(raw.get("postal_lon")),
             "subjects": _json_loads(raw.get("subjects")) or [],
             "levels": _json_loads(raw.get("levels")) or [],
             "subject_pairs": _json_loads(raw.get("subject_pairs")) or [],
