@@ -551,6 +551,17 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             if last_seen:
                 elapsed = (datetime.now(timezone.utc) - last_seen.astimezone(timezone.utc)).total_seconds()
                 should_bump = elapsed >= cfg.bump_min_seconds
+                if not should_bump:
+                    log_event(
+                        logger,
+                        logging.DEBUG,
+                        "supabase_bump_suppressed",
+                        external_id=str(external_id),
+                        agency=str(agency_name),
+                        last_seen=existing.get("last_seen"),
+                        elapsed_s=round(elapsed, 2),
+                        min_seconds=cfg.bump_min_seconds,
+                    )
 
             patch_body: Dict[str, Any] = {"last_seen": now_iso}
             if should_bump:
@@ -635,4 +646,67 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         res = {"ok": ok, "action": "inserted", "status_code": insert_resp.status_code, "get_ms": get_ms, "insert_ms": insert_ms}
         res["total_ms"] = round((timed() - t_all) * 1000.0, 2)
         log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_persist_result", **res)
+        return res
+
+
+def mark_assignment_closed(payload: Dict[str, Any], *, cfg: Optional[SupabaseConfig] = None) -> Dict[str, Any]:
+    """
+    Best-effort close of an assignment when we observe a Telegram delete.
+    Uses the same external_id derivation as normal persistence to avoid schema drift.
+    """
+    cfg = cfg or load_config_from_env()
+    if not cfg.enabled:
+        return {"ok": False, "skipped": True, "reason": "supabase_disabled"}
+
+    cid = payload.get("cid") or "<no-cid>"
+    msg_id = payload.get("message_id")
+    channel = payload.get("channel_link") or payload.get("channel_username")
+
+    with bind_log_context(cid=str(cid), message_id=msg_id, channel=str(channel) if channel else None, step="supabase.close"):
+        client = SupabaseRestClient(cfg)
+        row = _build_assignment_row(payload)
+        external_id = row.get("external_id")
+        agency_name = row.get("agency_name")
+        agency_link = row.get("agency_link")
+        if not external_id or not agency_name:
+            res = {
+                "ok": False,
+                "skipped": True,
+                "reason": "missing_external_id_or_agency_name",
+                "external_id": external_id,
+                "agency_name": agency_name,
+            }
+            log_event(logger, logging.DEBUG, "supabase_close_skipped", **res)
+            return res
+
+        query = f"{cfg.assignments_table}?select=id,status,last_seen&external_id=eq.{requests.utils.quote(str(external_id), safe='')}"
+        if row.get("agency_id") is not None:
+            query += f"&agency_id=eq.{int(row['agency_id'])}"
+        else:
+            query += f"&agency_name=eq.{requests.utils.quote(str(agency_name), safe='')}"
+        query += "&limit=1"
+
+        try:
+            existing_resp = client.get(query, timeout=10)
+            existing_rows = _coerce_rows(existing_resp) if existing_resp.status_code < 400 else []
+        except Exception as e:
+            log_event(logger, logging.WARNING, "supabase_close_lookup_failed", error=str(e))
+            return {"ok": False, "error": str(e), "action": "lookup_failed"}
+
+        if not existing_rows:
+            log_event(logger, logging.INFO, "supabase_close_not_found", external_id=external_id, agency_name=agency_name)
+            return {"ok": False, "skipped": True, "reason": "not_found"}
+
+        row_id = existing_rows[0].get("id")
+        patch_body = {"status": "closed", "last_seen": _utc_now_iso()}
+
+        try:
+            patch_resp = client.patch(f"{cfg.assignments_table}?id=eq.{row_id}", patch_body, timeout=10, prefer="return=representation")
+            ok = patch_resp.status_code < 400
+        except Exception as e:
+            log_event(logger, logging.WARNING, "supabase_close_failed", row_id=row_id, error=str(e))
+            return {"ok": False, "error": str(e), "action": "close_failed"}
+
+        res = {"ok": ok, "action": "closed" if ok else "close_failed", "status_code": patch_resp.status_code if 'patch_resp' in locals() else None}
+        log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_close_result", **res)
         return res

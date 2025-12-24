@@ -4,12 +4,14 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app/TutorDexBackend:/app
 
-COPY TutorDexBackend/requirements.txt /app/TutorDexBackend/requirements.txt
-RUN pip install --no-cache-dir -r /app/TutorDexBackend/requirements.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY TutorDexBackend /app/TutorDexBackend
+COPY . /app/TutorDexBackend
+
+WORKDIR /app/TutorDexBackend
 
 EXPOSE 8000
 

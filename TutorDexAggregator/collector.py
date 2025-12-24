@@ -130,6 +130,54 @@ def _normalize_channel_ref(ch: str) -> str:
     return "t.me/" + s
 
 
+def _enqueue_enabled() -> bool:
+    # Default to enabled; allow explicit opt-out via env.
+    v = os.environ.get("EXTRACTION_QUEUE_ENABLED")
+    return _truthy(v) if v is not None else True
+
+
+def _pipeline_version() -> str:
+    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "singlecall_v1").strip() or "singlecall_v1"
+
+
+def _enqueue_extraction_jobs(store: SupabaseRawStore, *, channel_link: str, message_ids: List[str], force: bool = False) -> None:
+    """
+    Best-effort enqueue into `telegram_extractions` via RPC.
+
+    Requires applying `supabase sqls/2025-12-22_extraction_queue_rpc.sql` first.
+    """
+    if not store.client or not message_ids or not _enqueue_enabled():
+        return
+
+    ids = [str(x).strip() for x in message_ids if str(x).strip()]
+    if not ids:
+        return
+    try:
+        resp = store.client.post(
+            "rpc/enqueue_telegram_extractions",
+            {
+                "p_pipeline_version": _pipeline_version(),
+                "p_channel_link": channel_link,
+                "p_message_ids": ids,
+                "p_force": bool(force),
+            },
+            timeout=20,
+        )
+        if resp.status_code >= 400:
+            log_event(logger, logging.WARNING, "enqueue_rpc_status", status_code=resp.status_code, body=resp.text[:200], channel=channel_link, message_count=len(ids))
+            return
+
+        # RPC returns an integer count (rows inserted/updated).
+        count = None
+        try:
+            count = resp.json()
+        except Exception:
+            count = None
+        log_event(logger, logging.INFO, "enqueue_rpc_ok", channel=channel_link, message_count=len(ids), enqueued=count, force=bool(force), pipeline_version=_pipeline_version())
+    except Exception as e:
+        log_event(logger, logging.WARNING, "enqueue_rpc_failed", error=str(e), channel=channel_link, message_count=len(ids))
+
+
 def _parse_channels_arg(channels_arg: Optional[str]) -> List[str]:
     if not channels_arg:
         return []
@@ -256,19 +304,28 @@ async def backfill_channel(
     rows: List[Dict[str, Any]] = []
     t0 = timed()
 
-    async for msg in client.iter_messages(entity, reverse=True, offset_date=since):
+    # Iterate newest -> oldest so we can stop early once we reach `since`.
+    # Telethon's `offset_date` semantics vary with `reverse`, so keep the logic explicit here.
+    async for msg in client.iter_messages(entity, reverse=False, offset_date=until):
         if msg is None:
             continue
         dt = getattr(msg, "date", None)
         if dt is None:
             continue
 
-        if until is not None:
-            try:
-                if dt.replace(tzinfo=timezone.utc) > until:
-                    break
-            except Exception:
-                pass
+        try:
+            dt_utc = dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+            dt_utc = dt_utc.astimezone(timezone.utc)
+        except Exception:
+            dt_utc = None
+
+        if until is not None and dt_utc is not None and dt_utc > until:
+            # When iterating newest->oldest, we may see a few messages after `until`; skip them.
+            continue
+
+        if since is not None and dt_utc is not None and dt_utc < since:
+            # Once we crossed the start boundary, everything else will be older.
+            break
 
         counters.scanned += 1
         row = build_raw_row(channel_link=channel_link, channel_id=channel_id, msg=msg)
@@ -281,10 +338,13 @@ async def backfill_channel(
         if len(rows) >= int(batch_size):
             attempted, ok_rows = store.upsert_messages_batch(rows=rows)
             counters.written += ok_rows
+            if ok_rows:
+                msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
+                _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=False)
             rows = []
 
         counters.last_message_id = str(getattr(msg, "id", "") or "") or counters.last_message_id
-        counters.last_message_date_iso = _iso(dt) if isinstance(dt, datetime) else counters.last_message_date_iso
+        counters.last_message_date_iso = _iso(dt_utc) if isinstance(dt_utc, datetime) else counters.last_message_date_iso
 
         if counters.scanned % 200 == 0:
             _write_heartbeat(
@@ -307,6 +367,9 @@ async def backfill_channel(
     if rows:
         attempted, ok_rows = store.upsert_messages_batch(rows=rows)
         counters.written += ok_rows
+        if ok_rows:
+            msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
+            _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=False)
 
     store.upsert_progress(
         run_id=run_id,
@@ -340,7 +403,16 @@ async def run_backfill(args: argparse.Namespace) -> int:
         or (os.environ.get("RAW_HEARTBEAT_FILE") or "").strip()
         or (HERE / "monitoring" / "heartbeat_raw_collector.json")
     )
-    base_meta = {"since": args.since, "until": args.until, "batch_size": batch_size, "max_messages": max_messages, "supabase_enabled": store.enabled()}
+    base_meta = {
+        "since": args.since,
+        "until": args.until,
+        "batch_size": batch_size,
+        "max_messages": max_messages,
+        "supabase_enabled": store.enabled(),
+        "extraction_queue_enabled": _enqueue_enabled(),
+        "pipeline_version": _pipeline_version(),
+        "queue_rpc_sql": "supabase sqls/2025-12-22_extraction_queue_rpc.sql",
+    }
     run_id = store.create_run(run_type="backfill", channels=channels, meta=base_meta)
 
     t0 = timed()
@@ -464,6 +536,8 @@ async def run_tail(args: argparse.Namespace) -> int:
                 if row:
                     _, ok_rows = store.upsert_messages_batch(rows=[row])
                     counter.written += ok_rows
+                    if ok_rows:
+                        _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=[str(getattr(msg, "id", ""))], force=False)
                     dt = getattr(msg, "date", None)
                     if isinstance(dt, datetime):
                         counter.last_message_date_iso = _iso(dt)
@@ -497,6 +571,9 @@ async def run_tail(args: argparse.Namespace) -> int:
                 if row:
                     _, ok_rows = store.upsert_messages_batch(rows=[row])
                     counter.written += ok_rows
+                    if ok_rows:
+                        # Edits can change extraction output; request reprocess for this message.
+                        _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=[str(getattr(msg, "id", ""))], force=True)
                 log_event(logger, logging.DEBUG, "raw_tail_edit_ok")
             except Exception as e:
                 counter.errors += 1
@@ -533,7 +610,17 @@ async def run_tail(args: argparse.Namespace) -> int:
                 pass
             await asyncio.sleep(max(10, int(args.heartbeat_seconds or 60)))
 
-    log_event(logger, logging.INFO, "raw_tail_start", run_id=run_id, channels=channels, supabase_enabled=store.enabled())
+    log_event(
+        logger,
+        logging.INFO,
+        "raw_tail_start",
+        run_id=run_id,
+        channels=channels,
+        supabase_enabled=store.enabled(),
+        extraction_queue_enabled=_enqueue_enabled(),
+        pipeline_version=_pipeline_version(),
+        queue_rpc_sql="supabase sqls/2025-12-22_extraction_queue_rpc.sql",
+    )
     hb_task = asyncio.create_task(_heartbeat_loop())
     try:
         await client.run_until_disconnected()

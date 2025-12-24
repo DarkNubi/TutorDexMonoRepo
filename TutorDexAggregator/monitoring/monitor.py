@@ -205,6 +205,10 @@ def _should_alert_event(level: Optional[str], event: Optional[str], raw: str) ->
             return e
         if e in {"broadcast_send_failed", "dm_send_failed"}:
             return e
+        if e in {"schema_validation_failed", "validation_failed"}:
+            return "validation_failed"
+        if e in {"supabase_bump_suppressed"}:
+            return "bump_suppressed"
         if e in {"dm_rate_limited"}:
             return "telegram_rate_limited"
         if e in {"pipeline_summary"} and level in {"ERROR", "CRITICAL"}:
@@ -224,11 +228,21 @@ def _should_alert_event(level: Optional[str], event: Optional[str], raw: str) ->
         "supabase_get_failed": "supabase_get_failed",
         "supabase_insert_failed": "supabase_insert_failed",
         "supabase_patch_failed": "supabase_patch_failed",
+        "validation_failed": "validation_failed",
+        "schema_validation_failed": "validation_failed",
+        "supabase_bump_suppressed": "bump_suppressed",
     }
     for k, key in keywords.items():
         if k in hay:
             return key
     return None
+
+
+def _read_queue_heartbeat() -> Optional[Dict[str, Any]]:
+    hb_rel = _env("EXTRACTION_QUEUE_HEARTBEAT_FILE", "monitoring/heartbeat_queue_worker.json")
+    agg_dir = Path(__file__).resolve().parent.parent
+    hb_path = (agg_dir / hb_rel).resolve()
+    return _load_json(hb_path)
 
 
 def _send_telegram(cfg: MonitorConfig, text: str) -> bool:
@@ -303,6 +317,7 @@ def _summarize_last_24h(cfg: MonitorConfig) -> List[str]:
     cutoff = _now_local() - timedelta(hours=24)
     counts: Dict[str, int] = {}
     latency: List[float] = []
+    qhb = _read_queue_heartbeat()
 
     if cfg.log_path.exists():
         try:
@@ -353,9 +368,13 @@ def _summarize_last_24h(cfg: MonitorConfig) -> List[str]:
         hb_seen = m.get("seen")
         hb_ok = m.get("ok")
         hb_err = m.get("error")
+    qhb_counts = qhb.get("counts") if isinstance(qhb, dict) else None
+    qhb_oldest = qhb.get("oldest_pending_age_s") if isinstance(qhb, dict) else None
 
     lines = []
     lines.append(f"Heartbeat: status={hb_status} ts={hb_ts} seen={hb_seen} ok={hb_ok} error={hb_err}")
+    if qhb_counts is not None:
+        lines.append(f"Queue: counts={qhb_counts} oldest_pending_age_s={qhb_oldest}")
     lines.append(f"Log path: {cfg.log_path.name} exists={cfg.log_path.exists()}")
     lines.append(f"Events (last 24h): pipeline_summary={counts.get('pipeline_summary',0)} skipped={counts.get('message_skipped',0)}")
     lines.append(
@@ -366,6 +385,8 @@ def _summarize_last_24h(cfg: MonitorConfig) -> List[str]:
         f"supabase_patch_failed={counts.get('supabase_patch_failed',0)} "
         f"broadcast_send_failed={counts.get('broadcast_send_failed',0)} "
         f"dm_send_failed={counts.get('dm_send_failed',0)} "
+        f"validation_failed={counts.get('validation_failed',0)} "
+        f"bump_suppressed={counts.get('bump_suppressed',0)} "
         f"telegram_rate_limited={counts.get('telegram_rate_limited',0)}"
     )
     if latency:
@@ -386,7 +407,7 @@ def main() -> None:
     while True:
         now = int(time.time())
 
-        # 1) Liveness checks: heartbeat + log staleness
+        # 1) Liveness checks: heartbeat + log staleness + queue heartbeat
         hb = _load_json(cfg.heartbeat_path) if cfg.heartbeat_path.exists() else None
         hb_ts = int(hb.get("ts") or 0) if isinstance(hb, dict) else 0
         hb_age = now - hb_ts if hb_ts else None
@@ -413,6 +434,36 @@ def main() -> None:
                     msg = _format_alert(cfg.alert_prefix, "Aggregator log not updating", [f"log_age_s={log_age}", f"log_path={cfg.log_path}"])
                     _send_telegram(cfg, msg)
                     _mark_alert(state, key)
+
+        qhb = _read_queue_heartbeat()
+        qhb_ts = int(qhb.get("ts") or 0) if isinstance(qhb, dict) else 0
+        qhb_age = now - qhb_ts if qhb_ts else None
+        # Only alert when we have a timestamp and it's stale; skip malformed/missing ts to avoid noise.
+        if qhb_ts and qhb_age is not None and qhb_age > max(cfg.heartbeat_stale_s, int(cfg.check_interval_s * 2)):
+            key = "queue_heartbeat_stale"
+            if _cooldown_ok(state, key, cfg.cooldown_s):
+                msg = _format_alert(
+                    cfg.alert_prefix,
+                    "Queue worker heartbeat stale",
+                    [
+                        f"heartbeat_age_s={qhb_age}",
+                        f"file={_env('EXTRACTION_QUEUE_HEARTBEAT_FILE','monitoring/heartbeat_queue_worker.json')}",
+                        f"last_counts={(qhb or {}).get('counts') if isinstance(qhb, dict) else None}",
+                    ],
+                )
+                _send_telegram(cfg, msg)
+                _mark_alert(state, key)
+        elif qhb_ts:
+            try:
+                oldest_age = qhb.get("oldest_pending_age_s") if isinstance(qhb, dict) else None
+                if oldest_age and int(oldest_age) > max(cfg.heartbeat_stale_s, 900):
+                    key = "queue_lag"
+                    if _cooldown_ok(state, key, cfg.cooldown_s):
+                        msg = _format_alert(cfg.alert_prefix, "Queue lag high", [f"oldest_pending_age_s={oldest_age}", f"counts={qhb.get('counts') if isinstance(qhb, dict) else None}"])
+                        _send_telegram(cfg, msg)
+                        _mark_alert(state, key)
+            except Exception:
+                pass
 
         # 2) Backend/Redis/Supabase health (via backend endpoint)
         ok, detail = _backend_health(cfg)
@@ -461,4 +512,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

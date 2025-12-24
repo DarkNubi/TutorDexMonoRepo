@@ -95,12 +95,14 @@ From `TutorDexAggregator/`:
 - Start the Telegram reader:
   - `python runner.py start`
 - Quick extract test (no send):
-  - `python runner.py test --text "..." `
+- `python runner.py test --text "..." `
 - Quick extract test (send via broadcaster):
   - `python runner.py test --text "..." --send`
 - Process a saved payload JSON:
-  - `python runner.py process-file path\\to\\payload.json`
+- `python runner.py process-file path\\to\\payload.json`
   - `python runner.py process-file path\\to\\payload.json --send`
+- Raw delete handling:
+  - If a Telegram message is deleted and the raw collector has recorded it, the queue worker will mark the corresponding assignment row as `closed` in Supabase (best-effort).
 
 ## Raw history collection (recommended)
 
@@ -119,7 +121,7 @@ To build a reprocessable data moat, use the raw collector to persist a lossless 
    - Optional cap for smoke runs: `python collector.py backfill --max-messages 200`
 
 4) Tail new messages/edits/deletes:
-   - `python collector.py tail`
+  - `python collector.py tail`
 
 Heartbeat:
 - Default file: `TutorDexAggregator/monitoring/heartbeat_raw_collector.json` (override with `--heartbeat-file`)
@@ -128,6 +130,29 @@ Progress:
 - Check the latest backfill/tail run progress:
   - `python collector.py status --run-type backfill`
   - `python collector.py status --run-type tail`
+
+## Extraction queue + workers
+
+- Requires applying the RPC helper: `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql`
+- The raw collector can enqueue extraction jobs into `telegram_extractions` (see `collector.py`)
+- Workers (`workers/extract_worker.py`) claim jobs, run extraction/enrichment/persistence, and optionally broadcast/DM
+- Worker heartbeat writes to `TutorDexAggregator/monitoring/heartbeat_queue_worker.json` (config via `EXTRACTION_QUEUE_HEARTBEAT_FILE`)
+- Monitor alerts on stale worker heartbeat or high pending age; configure via `.env` (`ALERT_*`, `EXTRACTION_QUEUE_HEARTBEAT_*`)
+
+### Docker split roles (ingest + worker + monitor)
+
+- Recommended (root-level): `docker compose up --build` from repo root.
+  - Services: `aggregator-ingest` (`runner.py start`), `aggregator-worker` (`workers/extract_worker.py`), `aggregator-monitor` (`monitoring/monitor.py`), `backend` (FastAPI).
+  - Supabase (self-host) is expected to be running on the external Docker network `supabase_default` with Kong at `supabase-kong:8000` (HTTP). In `.env`, set `SUPABASE_URL=http://supabase-kong:8000`.
+  - Host llama server: keep `LLM_API_URL=http://host.docker.internal:1234`.
+  - DM/backend matching uses the internal service `backend:8000` (already set in `.env`).
+  - Mounts `./logs` and `./monitoring` for persistence.
+- Legacy per-folder compose (optional): `docker compose -f docker-compose.roles.yml up --build`
+  - Same services as above; use only if you need to run the aggregator stack separately.
+- Helpful env knobs:
+  - `EXTRACTION_QUEUE_HEARTBEAT_FILE` to move the queue heartbeat path
+  - `EXTRACTION_STALE_PROCESSING_SECONDS` / `EXTRACTION_MAX_ATTEMPTS` / backoff vars to tune worker retries
+  - `ALERT_*` to target the alert bot/chat/thread
 
 ## Extraction
 
@@ -156,7 +181,9 @@ By default it writes to `TutorDexAggregator/monitoring/telegram_message_edits.sq
   - Enable writes from aggregator: set `FRESHNESS_TIER_ENABLED=true` in `TutorDexAggregator/.env`
   - Tier update (7d -> red, no close): `python update_freshness_tiers.py --expire-action none --red-hours 168`
   - Auto-close after 14d: `python update_freshness_tiers.py --expire-action closed --red-hours 336`
-  - Windows Task Scheduler helper: `TutorDexAggregator/setup_service/install_task_scheduler_freshness_tiers.ps1`
+  - Docker sidecar (profile `tiers`): `docker compose --profile tiers up -d freshness-tiers`
+    - Interval env: `FRESHNESS_TIERS_INTERVAL_SECONDS` (default 3600)
+    - Args env: `FRESHNESS_TIERS_ARGS` (default `--expire-action closed --red-hours 336`)
 
 
 
@@ -172,6 +199,12 @@ You can run a simple Telegram alerting loop that:
 1) Configure (in `TutorDexAggregator/.env`):
 - `ALERT_BOT_TOKEN`, `ALERT_CHAT_ID`, optional `ALERT_THREAD_ID`
 - `MONITOR_BACKEND_HEALTH_URL` (recommended: backend `/health/full`)
+- Recommended defaults (override in `.env`):
+  - `ALERT_HEARTBEAT_STALE_SECONDS=900` (15 minutes)
+  - `ALERT_LOG_STALE_SECONDS=900`
+  - `ALERT_ERROR_BURST_LIMIT=6`
+  - `HEARTBEAT_FILE=monitoring/heartbeat.json`
+  - `EXTRACTION_QUEUE_HEARTBEAT_FILE=monitoring/heartbeat_queue_worker.json`
 
 2) Run the monitor (from `TutorDexAggregator/`):
 - `python monitoring/monitor.py`

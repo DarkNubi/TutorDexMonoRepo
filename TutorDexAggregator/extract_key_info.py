@@ -2,6 +2,7 @@ import json
 import os
 import re
 import requests
+import time
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
@@ -14,11 +15,15 @@ from agency_registry import get_agency_examples_key
 setup_logging()
 logger = logging.getLogger("extract_key_info")
 
+# Reuse HTTP sessions for better throughput (keep-alive) when doing large backfills.
+_LLM_SESSION = requests.Session()
+_NOMINATIM_SESSION = requests.Session()
+
 # No local model fallback: require a local LLM HTTP API (LM Studio / Mixtral).
 # Configure the endpoint via the LLM_API_URL environment variable (e.g. http://127.0.0.1:7860/api/generate)
 
 # Default to the Mixtral instruct model you installed in LM Studio
-MODEL_NAME = "unsloth/lfm2-8b-a1b"
+MODEL_NAME = "lfm2-8b-a1b"
 
 # SYSTEM PROMPT
 # When updating this system prompt, make sure to update message_examples/templates/verify extraction.txt too if necessary.
@@ -446,10 +451,10 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
         temp: Temperature for generation
     """
     import os
-    import requests
 
     llm_api = os.environ.get("LLM_API_URL", "http://localhost:1234")
     model_name_env = os.environ.get("LLM_MODEL_NAME", model_name)
+    timeout_s = int(os.environ.get("LLM_TIMEOUT_SECONDS") or "200")
 
     prompt_with_examples = build_prompt(message, chat=chat)
 
@@ -481,12 +486,13 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
             "model": model_name_env,
             "messages": messages,
             "temperature": float(temp),
+            "max_tokens": int(max_tokens),
         }
 
         url = f"{llm_api.rstrip('/')}/v1/chat/completions"
         try:
             t0 = timed()
-            r = requests.post(url, json=payload, timeout=200)
+            r = _LLM_SESSION.post(url, json=payload, timeout=timeout_s)
             r.raise_for_status()
             data = r.json()
             log_event(
@@ -534,6 +540,83 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
         return parsed
 
 
+def _nominatim_user_agent() -> str:
+    return os.environ.get("NOMINATIM_USER_AGENT") or "TutorDex/1.0"
+
+
+@lru_cache(maxsize=20000)
+def _estimate_postal_from_cleaned_address(cleaned_address: str, timeout: float = 30.0) -> Optional[str]:
+    if not cleaned_address:
+        return None
+
+    params = {
+        "q": cleaned_address + ", Singapore",
+        "format": "json",
+        "countrycodes": "sg",
+        "addressdetails": 1,
+        "limit": 5,
+    }
+    url = "https://nominatim.openstreetmap.org/search"
+    headers = {"User-Agent": _nominatim_user_agent()}
+    q = params.get("q") or ""
+
+    # Nominatim is rate-limited; retry gently on 429/503 with backoff.
+    last_err: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            log_event(logger, logging.INFO, "nominatim_lookup_start", q_chars=len(q), attempt=attempt + 1)
+            start_ts = timed()
+            resp = _NOMINATIM_SESSION.get(url, params=params, headers=headers, timeout=timeout)
+
+            if resp.status_code in {429, 503}:
+                retry_after = resp.headers.get("Retry-After")
+                sleep_s = 2.0 * (attempt + 1)
+                if retry_after:
+                    try:
+                        sleep_s = max(sleep_s, float(retry_after))
+                    except Exception:
+                        pass
+                log_event(logger, logging.WARNING, "nominatim_throttled", status_code=resp.status_code, sleep_s=sleep_s)
+                time.sleep(min(20.0, sleep_s))
+                continue
+
+            resp.raise_for_status()
+            results = resp.json()
+            log_event(
+                logger,
+                logging.INFO,
+                "nominatim_lookup_ok",
+                status_code=getattr(resp, "status_code", None),
+                elapsed_ms=round((timed() - start_ts) * 1000.0, 2),
+                results=len(results) if isinstance(results, list) else None,
+            )
+
+            for idx, r in enumerate(results if isinstance(results, list) else []):
+                address_details = r.get("address", {}) if isinstance(r, dict) else {}
+                postal = address_details.get("postcode") if isinstance(address_details, dict) else None
+                log_event(logger, logging.DEBUG, "nominatim_result", idx=idx, has_postcode=bool(postal))
+                if postal:
+                    m = re.search(r"(\d{6})", str(postal))
+                    if m:
+                        return m.group(1)
+
+                display_name = r.get("display_name", "") if isinstance(r, dict) else ""
+                m = re.search(r"(\d{6})", str(display_name))
+                if m:
+                    return m.group(1)
+
+            log_event(logger, logging.INFO, "nominatim_lookup_no_postcode", q_chars=len(q))
+            return None
+        except Exception as e:
+            last_err = e
+            log_event(logger, logging.WARNING, "nominatim_lookup_failed", q_chars=len(cleaned_address), error=str(e), attempt=attempt + 1)
+            time.sleep(min(10.0, 1.0 * (attempt + 1)))
+
+    if last_err:
+        return None
+    return None
+
+
 def estimate_postal_from_address(address: object, timeout: float = 30.0) -> Optional[str]:
     """
     Use OpenStreetMap Nominatim API to estimate a postal code for a given address string.
@@ -575,58 +658,7 @@ def estimate_postal_from_address(address: object, timeout: float = 30.0) -> Opti
     cleaned_address = re.sub(r'[\[\(].*?[\]\)]', '', cleaned_address).strip()
 
     # If no postal code found in text, try Nominatim API
-    try:
-        params = {
-            'q': cleaned_address + ', Singapore',  # Add Singapore to improve results
-            'format': 'json',
-            'countrycodes': 'sg',  # limit to Singapore
-            'addressdetails': 1,
-            'limit': 5
-        }
-        url = 'https://nominatim.openstreetmap.org/search'
-        headers = {
-            'User-Agent': 'TutorDex/1.0'  # Nominatim requires a User-Agent
-        }
-        q = params.get("q") or ""
-        log_event(logger, logging.INFO, "nominatim_lookup_start", q_chars=len(q))
-        start_ts = timed()
-        resp = requests.get(url, params=params, headers=headers, timeout=timeout)
-        resp.raise_for_status()
-        results = resp.json()
-        log_event(
-            logger,
-            logging.INFO,
-            "nominatim_lookup_ok",
-            status_code=getattr(resp, "status_code", None),
-            elapsed_ms=round((timed() - start_ts) * 1000.0, 2),
-            results=len(results) if isinstance(results, list) else None,
-        )
-
-        # Iterate results and look for postal code
-        # Example result: {"display_name": "..., Singapore, 649846, Singapore", "address": {"postcode": "649846"}}
-        for idx, r in enumerate(results if isinstance(results, list) else []):
-            # First check address_details for postcode field
-            address_details = r.get('address', {})
-            postal = address_details.get('postcode')
-            log_event(logger, logging.DEBUG, "nominatim_result", idx=idx, has_postcode=bool(postal))
-            if postal:
-                # normalize to digits only (Singapore postal codes are 6 digits)
-                m = re.search(r"(\d{6})", postal)
-                if m:
-                    return m.group(1)
-
-            # Fallback: extract 6-digit postal code from display_name
-            # In Singapore addresses, postal code typically appears near the end
-            display_name = r.get('display_name', '')
-            m = re.search(r"(\d{6})", display_name)
-            if m:
-                return m.group(1)
-
-        log_event(logger, logging.INFO, "nominatim_lookup_no_postcode", q_chars=len(q))
-    except Exception as e:
-        log_event(logger, logging.WARNING, "nominatim_lookup_failed", q_chars=len(cleaned_address), error=str(e))
-        return None
-    return None
+    return _estimate_postal_from_cleaned_address(cleaned_address, timeout=timeout)
 
 
 def process_parsed_payload(payload: dict, do_send: bool = False) -> dict:

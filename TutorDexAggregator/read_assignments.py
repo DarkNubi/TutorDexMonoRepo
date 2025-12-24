@@ -26,6 +26,7 @@ from logging_setup import (
     setup_logging,
     timed,
 )
+from schema_validation import validate_parsed_assignment
 
 # Optional: Supabase persistence (best-effort)
 _optional_import_errors: list[str] = []
@@ -755,6 +756,9 @@ async def process_message(client, msg, entity, processed):
             except Exception:
                 logger.debug("Forwarded detection failed; continuing", exc_info=True)
 
+        # capture date early for downstream use (e.g., compilation bump)
+            date_obj = getattr(msg, 'date', None)
+
         # detect compilations (multi-assignment posts)
             set_step("filter.compilation")
             try:
@@ -859,8 +863,6 @@ async def process_message(client, msg, entity, processed):
                 return
 
         # enrich with metadata
-            date_obj = getattr(msg, 'date', None)
-
             payload = {
                 'cid': cid,
                 'channel_id': getattr(entity, 'id', None),
@@ -885,6 +887,39 @@ async def process_message(client, msg, entity, processed):
                 step_ok["enrich_ok"] = False
                 step_ms["enrich_ms"] = round((timed() - t0) * 1000.0, 2) if "t0" in locals() else 0.0
                 logger.exception('Enrichment failed error=%s', e)
+
+        # Contract validation before persistence/broadcast
+            set_step("validate.schema")
+            ok_schema, schema_errors = await run_in_thread(validate_parsed_assignment, payload.get("parsed") or {})
+            if not ok_schema:
+                log_event(logger, logging.INFO, "message_skipped", reason="schema_validation_failed", errors=schema_errors)
+                _write_heartbeat(
+                    status="skipped",
+                    cid=cid,
+                    channel_link=channel_link,
+                    message_id=msg_id,
+                    reason="schema_validation_failed",
+                    details={"errors": schema_errors},
+                )
+                try:
+                    details = [f"Schema error: {err.replace('_', ' ')}" for err in schema_errors]
+                    await forward_skipped_message(client, msg, entity, reason='validation_failed', details=details)
+                except Exception:
+                    logger.exception('Failed to forward skipped schema validation failure message')
+
+                step_ok["skipped"] = "schema_validation_failed"
+                step_ok["schema_errors"] = schema_errors
+                step_ms["total_ms"] = round((timed() - overall_start) * 1000.0, 2)
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "pipeline_summary",
+                    ok=False,
+                    skipped="schema_validation_failed",
+                    errors=schema_errors,
+                    ms=step_ms,
+                )
+                return
 
         # Best-effort persistence to Supabase (optional)
             set_step("supabase")

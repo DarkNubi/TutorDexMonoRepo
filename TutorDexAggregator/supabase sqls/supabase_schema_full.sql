@@ -200,22 +200,16 @@ create table if not exists public.telegram_extractions (
   id bigserial primary key,
   raw_id bigint not null references public.telegram_messages_raw(id) on delete cascade,
   pipeline_version text not null,
-  model_a text,
-  model_b text,
+  llm_model text,
   status text not null,
   channel_link text,
   message_id text,
   message_date timestamptz,
-  stage_a_json jsonb,
-  stage_a_errors jsonb,
   canonical_json jsonb,
-  stage_b_errors jsonb,
-  compilation_assignment_ids text[],
+  error_json jsonb,
   meta jsonb,
   created_at timestamptz not null default now(),
-  bump_applied_at timestamptz,
-  bump_applied_count int not null default 0,
-  bump_applied_errors int not null default 0
+  updated_at timestamptz not null default now()
 );
 
 create unique index if not exists telegram_extractions_raw_version_uq
@@ -230,8 +224,8 @@ create index if not exists telegram_extractions_pipeline_version_idx
 create index if not exists telegram_extractions_channel_date_idx
   on public.telegram_extractions (channel_link, message_date desc);
 
-create index if not exists telegram_extractions_bump_applied_at_idx
-  on public.telegram_extractions (bump_applied_at);
+create index if not exists telegram_extractions_created_at_idx
+  on public.telegram_extractions (created_at desc);
 
 create table if not exists public.ingestion_runs (
   id bigserial primary key,

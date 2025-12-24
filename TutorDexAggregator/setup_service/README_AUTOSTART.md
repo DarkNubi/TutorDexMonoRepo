@@ -1,10 +1,16 @@
 # TutorDex Auto-Start Setup Guide
 
-This guide explains how to set up TutorDex to run automatically 24/7 and start when your PC boots.
+This guide explains how to keep TutorDex running automatically on Windows. Container-first is recommended; Task Scheduler remains available if you want to run the Python app directly.
+
+## Docker-first (recommended)
+- From repo root: `docker compose up -d --build`
+- Supabase: join the `supabase_default` network (the compose file already does this) and point `SUPABASE_URL` to `http://supabase-kong:8000`.
+- Llama: keep `llama-server` on the Windows host; containers use `LLM_API_URL=http://host.docker.internal:1234`.
+- Freshness tiers: enable the sidecar with `docker compose --profile tiers up -d freshness-tiers` (uses `.env` defaults or `FRESHNESS_TIERS_*` overrides).
 
 ## Quick Setup (Recommended)
 
-### 1. Install as Windows Task Scheduler Job
+### 1. Install as Windows Task Scheduler Job (non-docker)
 
 **Run as Administrator:**
 
@@ -58,22 +64,37 @@ cd d:\TutorDex\TutorDexAggregator\setup_service
 start_monitor_loop.bat
 ```
 
-### Freshness tiers (hourly scheduled job)
-If you use `freshness_tier`, schedule it hourly so the website stays up to date.
+---
 
-1) Apply DB migration in Supabase:
-- `TutorDexAggregator/migrations/2025-12-17_add_freshness_tier.sql`
+## Queue pipeline + llama-server (recommended for full-history backfill)
 
-2) Enable in env:
-- Set `FRESHNESS_TIER_ENABLED=true` in `TutorDexAggregator/.env`
+This mode runs the raw collector + extraction workers against your Supabase queue, using `llama-server` as the local OpenAI-compatible LLM endpoint.
 
-3) Install the hourly scheduled task (run as Administrator):
-```powershell
-cd d:\TutorDex\TutorDexAggregator\setup_service
-powershell -ExecutionPolicy Bypass -File install_task_scheduler_freshness_tiers.ps1
+1) Configure `llama-server` paths (edit):
+- `TutorDexAggregator/setup_service/start_llama_server_loop.bat`
+  - `LLAMA_SERVER_EXE=...`
+  - `LLAMA_MODEL_PATH=...`
+
+2) Ensure Supabase queue RPC is applied:
+- `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql`
+- (Recommended) Simplify extractions table (single-stage):
+  - `TutorDexAggregator/supabase sqls/2025-12-23_simplify_telegram_extractions.sql`
+
+3) Start queue pipeline (one command, one console):
+```cmd
+cd d:\TutorDex\TutorDexAggregator
+python runner.py queue --days 30 --workers 4 --start-llama
 ```
 
-This runs `run_freshness_tiers.bat` once per hour.
+Notes:
+- This does a one-shot backfill for the last `--days` and then starts `collector.py tail` + N extraction workers.
+- Broadcast + DMs are disabled by default by the queue launcher; Nominatim stays enabled.
+
+### Freshness tiers (use Docker sidecar)
+- Apply DB migration: `TutorDexAggregator/migrations/2025-12-17_add_freshness_tier.sql`
+- Enable in env: `FRESHNESS_TIER_ENABLED=true` (and optionally tune `FRESHNESS_TIERS_INTERVAL_SECONDS`, `FRESHNESS_TIERS_ARGS`)
+- Start the sidecar: `docker compose --profile tiers up -d freshness-tiers`
+- Legacy Task Scheduler scripts for freshness tiers were removed; if you installed an old `TutorDex-FreshnessTiers` task, remove it via Task Scheduler or `Unregister-ScheduledTask -TaskName "TutorDex-FreshnessTiers" -Confirm:$false`.
 
 ### Stop the Scheduled Task
 ```powershell
