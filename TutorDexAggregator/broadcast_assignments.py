@@ -170,6 +170,7 @@ def _truncate_middle(text: str, max_len: int) -> str:
 
 def build_message_text(payload: Dict[str, Any]) -> str:
     parsed = payload.get('parsed') or {}
+    academic_raw = _escape(_join_text(parsed.get("academic_tags_raw")))
     subjects = _escape(_join_text(parsed.get('subjects')))
     # Prefer specific level; fall back to level. Do not show both.
     specific_or_level = _escape(_join_text(parsed.get('specific_student_level')) or _join_text(parsed.get('level')))
@@ -201,10 +202,13 @@ def build_message_text(payload: Dict[str, Any]) -> str:
     agency = get_agency_display_name(payload.get('channel_link') or payload.get('channel_username') or "")
     # Header
     header = f'⭐️<b>{agency}</b>⭐️'
-    if subjects:
-        header += f"\n<b>{subjects}</b>"
-    if specific_or_level:
-        header += f" | {specific_or_level}"
+    if academic_raw:
+        header += f"\n<b>{academic_raw}</b>"
+    else:
+        if subjects:
+            header += f"\n<b>{subjects}</b>"
+        if specific_or_level:
+            header += f" | {specific_or_level}"
     lines.append(header)
 
     # Assignment metadata

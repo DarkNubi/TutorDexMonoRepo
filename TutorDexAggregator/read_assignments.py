@@ -686,13 +686,13 @@ async def forward_skipped_message(client, msg, from_entity, reason: str = '', de
                 reason_map = {
                     'forwarded': '⚠️ **Skipped: Forwarded Message**\nThis message was skipped because it is a forwarded message from another channel.',
                     'compilation_detected': '⚠️ **Skipped: Compilation Detected**\nThis message appears to contain multiple assignments (compilation post) and was not processed individually.',
-                    'validation_failed': '⚠️ **Skipped: Validation Failed**\nThis message failed validation because it is missing required fields (subjects and/or address).',
+                    'validation_failed': '⚠️ **Skipped: Validation Failed**\nThis message failed validation because required fields were missing or malformed (see details).',
                 }
                 explanation = reason_map.get(reason, f'⚠️ **Skipped: {reason}**\nThis message was skipped during processing.')
 
-                # Add detailed compilation checks if provided
+                # Add detailed compilation/validation checks if provided
                 if details and len(details) > 0:
-                    explanation += '\n\n**Triggered Checks:**'
+                    explanation += '\n\n**Triggered Checks / Context:**'
                     for detail in details:
                         explanation += f'\n• {detail}'
 
@@ -891,35 +891,42 @@ async def process_message(client, msg, entity, processed):
         # Contract validation before persistence/broadcast
             set_step("validate.schema")
             ok_schema, schema_errors = await run_in_thread(validate_parsed_assignment, payload.get("parsed") or {})
-            if not ok_schema:
-                log_event(logger, logging.INFO, "message_skipped", reason="schema_validation_failed", errors=schema_errors)
-                _write_heartbeat(
-                    status="skipped",
-                    cid=cid,
-                    channel_link=channel_link,
-                    message_id=msg_id,
-                    reason="schema_validation_failed",
-                    details={"errors": schema_errors},
-                )
+        if not ok_schema:
+            log_event(logger, logging.INFO, "message_skipped", reason="schema_validation_failed", errors=schema_errors)
+            _write_heartbeat(
+                status="skipped",
+                cid=cid,
+                channel_link=channel_link,
+                message_id=msg_id,
+                reason="schema_validation_failed",
+                details={"errors": schema_errors},
+            )
+            try:
+                details = [f"Schema error: {err.replace('_', ' ')}" for err in schema_errors]
                 try:
-                    details = [f"Schema error: {err.replace('_', ' ')}" for err in schema_errors]
-                    await forward_skipped_message(client, msg, entity, reason='validation_failed', details=details)
+                    parsed_json = json.dumps(payload.get("parsed") or {}, ensure_ascii=False, indent=2)
+                    if len(parsed_json) > 1800:
+                        parsed_json = parsed_json[:1800] + "... (truncated)"
+                    details.append(f"LLM parsed JSON:\n```json\n{parsed_json}\n```")
                 except Exception:
-                    logger.exception('Failed to forward skipped schema validation failure message')
+                    details.append("LLM parsed JSON: <unserializable>")
+                await forward_skipped_message(client, msg, entity, reason='validation_failed', details=details)
+            except Exception:
+                logger.exception('Failed to forward skipped schema validation failure message')
 
-                step_ok["skipped"] = "schema_validation_failed"
-                step_ok["schema_errors"] = schema_errors
-                step_ms["total_ms"] = round((timed() - overall_start) * 1000.0, 2)
-                log_event(
-                    logger,
-                    logging.INFO,
-                    "pipeline_summary",
-                    ok=False,
-                    skipped="schema_validation_failed",
-                    errors=schema_errors,
-                    ms=step_ms,
-                )
-                return
+            step_ok["skipped"] = "schema_validation_failed"
+            step_ok["schema_errors"] = schema_errors
+            step_ms["total_ms"] = round((timed() - overall_start) * 1000.0, 2)
+            log_event(
+                logger,
+                logging.INFO,
+                "pipeline_summary",
+                ok=False,
+                skipped="schema_validation_failed",
+                errors=schema_errors,
+                ms=step_ms,
+            )
+            return
 
         # Best-effort persistence to Supabase (optional)
             set_step("supabase")
