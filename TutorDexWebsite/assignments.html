@@ -168,10 +168,19 @@
                     </button>
                 </div>
             </div>
+            <p id="facet-hint" class="hidden mt-3 text-xs font-medium text-gray-500">
+                Tip: Counts in dropdowns reflect all open assignments under your current filters (Level/Location/Rate), so you can switch subjects easily.
+            </p>
         </div>
 
         <div id="assignments-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             </div>
+
+        <div class="flex justify-center mt-8">
+            <button id="load-more" type="button" class="hidden bg-black text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition">
+                Load More
+            </button>
+        </div>
 
         <div id="load-error" class="hidden text-center py-20">
             <h2 class="text-3xl text-gray-300">Assignments Unavailable</h2>

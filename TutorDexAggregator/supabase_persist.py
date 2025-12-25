@@ -254,6 +254,15 @@ def _derive_external_id(payload: Dict[str, Any]) -> str:
     parsed = payload.get("parsed") or {}
     assignment_code = _safe_str(parsed.get("assignment_code"))
     if assignment_code:
+        # TutorCity API can return multiple rows with the same assignment_code but different subject sets.
+        # Use a composite external_id to avoid collisions.
+        if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api":
+            subs = parsed.get("subjects") or []
+            if isinstance(subs, (list, tuple)) and subs:
+                parts = [str(s).strip() for s in subs if str(s).strip()]
+                if parts:
+                    suffix = "+".join(sorted(set(parts)))
+                    return f"{assignment_code}:{suffix}"
         return assignment_code
 
     channel_id = payload.get("channel_id")

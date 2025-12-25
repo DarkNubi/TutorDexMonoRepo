@@ -1,7 +1,7 @@
 import "../subjectsData.js";
 import { isSupabaseEnabled, listOpenAssignments } from "./supabase.js";
 import { getCurrentUid, waitForAuth } from "../auth.js";
-import { getTutor, isBackendEnabled, trackEvent } from "./backend.js";
+import { getOpenAssignmentFacets, getTutor, isBackendEnabled, listOpenAssignmentsPaged, trackEvent } from "./backend.js";
 import { debugLog, isDebugEnabled } from "./debug.js";
 import { getSupabaseConfigSummary } from "./supabase.js";
 
@@ -23,7 +23,14 @@ const resultsSummary = document.getElementById("results-summary");
 const loadError = document.getElementById("load-error");
 const loadErrorMessage = document.getElementById("load-error-message");
 const retryLoadBtn = document.getElementById("retry-load-assignments");
+const loadMoreBtn = document.getElementById("load-more");
+const facetHint = document.getElementById("facet-hint");
 let allAssignments = [];
+let totalAssignments = 0;
+let nextCursorLastSeen = null;
+let nextCursorId = null;
+let lastFacets = null;
+let activeLoadToken = 0;
 
 function getOrCreateStatusEl() {
   const host = document.querySelector(".max-w-6xl") || document.body;
@@ -70,6 +77,63 @@ function setResultsSummary(showing, total) {
   resultsSummary.textContent = `Showing ${s} of ${t}`;
 }
 
+function parseRate(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+  const m = value.match(/(\d{1,3})/);
+  if (!m) return null;
+  const n = Number.parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function pickFirst(value) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const v = pickFirst(item);
+      if (v) return v;
+    }
+    return "";
+  }
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function mapAssignmentRow(row) {
+  const subject = (row?.subject || "").trim() || pickFirst(row?.subjects) || "Unknown";
+
+  const learningMode = (row?.learning_mode || "").trim();
+  const hasPhysicalLocation = Boolean(
+    (row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim()
+  );
+  const lm = learningMode.toLowerCase();
+  const isOnlineOnly = Boolean(learningMode) && lm.includes("online") && !lm.includes("hybrid") && !lm.includes("face");
+
+  const location = isOnlineOnly && !hasPhysicalLocation
+    ? "Online"
+    : (row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim() || "Unknown";
+
+  const rate = row?.rate_min ?? parseRate(row?.hourly_rate);
+
+  const freqBits = [];
+  if (row?.frequency) freqBits.push(String(row.frequency).trim());
+  if (row?.duration) freqBits.push(String(row.duration).trim());
+
+  return {
+    id: (row?.external_id || `DB-${row?.id || ""}`).trim(),
+    messageLink: (row?.message_link || "").trim(),
+    level: (row?.level || "").trim(),
+    specificLevel: (row?.specific_student_level || "").trim(),
+    subject,
+    location,
+    rate: typeof rate === "number" && Number.isFinite(rate) ? rate : null,
+    gender: (row?.tutor_gender || row?.student_gender || "Any").trim(),
+    freshnessTier: (row?.freshness_tier || "").trim() || "green",
+    freq: freqBits.join(" / "),
+    agencyName: (row?.agency_name || "").trim(),
+    learningMode,
+    updatedAt: (row?.last_seen || row?.created_at || "").trim(),
+  };
+}
+
 function formatRelativeTime(isoString) {
   const t = Date.parse(String(isoString || ""));
   if (!Number.isFinite(t)) return "";
@@ -89,6 +153,8 @@ function renderSkeleton(count = 6) {
   noResults.classList.add("hidden");
   countLabel.innerText = "...";
   setResultsSummary(0, 0);
+  if (loadMoreBtn) loadMoreBtn.classList.add("hidden");
+  if (facetHint) facetHint.classList.add("hidden");
 
   for (let i = 0; i < count; i++) {
     const card = document.createElement("div");
@@ -120,13 +186,14 @@ function renderCards(data) {
   if (data.length === 0) {
     noResults.classList.remove("hidden");
     countLabel.innerText = "0";
-    setResultsSummary(0, allAssignments.length);
+    setResultsSummary(0, totalAssignments);
+    if (loadMoreBtn) loadMoreBtn.classList.add("hidden");
     return;
   }
 
   noResults.classList.add("hidden");
   countLabel.innerText = String(data.length);
-  setResultsSummary(data.length, allAssignments.length);
+  setResultsSummary(data.length, totalAssignments);
 
   data.forEach((job) => {
     const levelDisplay = job.specificLevel ? `${job.level} > ${job.specificLevel}` : job.level;
@@ -248,6 +315,8 @@ function renderLoadError(message) {
   if (loadError) loadError.classList.remove("hidden");
   countLabel.innerText = "0";
   setResultsSummary(0, 0);
+  if (loadMoreBtn) loadMoreBtn.classList.add("hidden");
+  if (facetHint) facetHint.classList.add("hidden");
 }
 
 function hideLoadError() {
@@ -262,15 +331,26 @@ function updateFilterSpecificLevels() {
 
   specificSelect.innerHTML = '<option value="">All Specific Levels</option>';
 
-  if (!level || options.length === 0) {
+  if (!level) {
     specificSelect.disabled = true;
     return;
   }
 
-  options.forEach((name) => {
+  // Prefer server facets when available (accurate), fallback to static list.
+  const facetOptions = Array.isArray(lastFacets?.specific_levels) ? lastFacets.specific_levels : null;
+  const items = facetOptions && facetOptions.length ? facetOptions : options.map((value) => ({ value, count: null }));
+
+  if (!items.length) {
+    specificSelect.disabled = true;
+    return;
+  }
+
+  items.forEach((item) => {
+    const name = String(item?.value || "").trim();
+    if (!name) return;
     const option = document.createElement("option");
     option.value = name;
-    option.text = name;
+    option.text = item?.count ? `${name} (${item.count})` : name;
     specificSelect.appendChild(option);
   });
 
@@ -284,6 +364,20 @@ function updateFilterSubjects() {
 
   subjectSelect.innerHTML = '<option value="">All Subjects</option>';
 
+  // Prefer server facets when available (accurate), fallback to static list.
+  const facetOptions = Array.isArray(lastFacets?.subjects) ? lastFacets.subjects : null;
+  if (facetOptions && facetOptions.length) {
+    facetOptions.forEach((item) => {
+      const name = String(item?.value || "").trim();
+      if (!name) return;
+      const option = document.createElement("option");
+      option.value = name;
+      option.text = item?.count ? `${name} (${item.count})` : name;
+      subjectSelect.appendChild(option);
+    });
+    return;
+  }
+
   if (subjectsData[subjectsKey]) {
     subjectsData[subjectsKey].forEach((sub) => {
       const option = document.createElement("option");
@@ -294,28 +388,44 @@ function updateFilterSubjects() {
   }
 }
 
-function applyFilters() {
-  const level = document.getElementById("filter-level").value;
-  const specificLevel = document.getElementById("filter-specific-level").value;
-  const subject = document.getElementById("filter-subject").value;
-  const location = document.getElementById("filter-location").value;
-  const minRate = document.getElementById("filter-rate").value;
+function collectFiltersFromUI() {
+  return {
+    level: (document.getElementById("filter-level")?.value || "").trim() || null,
+    specificStudentLevel: (document.getElementById("filter-specific-level")?.value || "").trim() || null,
+    subject: (document.getElementById("filter-subject")?.value || "").trim() || null,
+    location: (document.getElementById("filter-location")?.value || "").trim() || null,
+    minRate: (document.getElementById("filter-rate")?.value || "").trim() || null,
+  };
+}
 
-  const filtered = allAssignments.filter((job) => {
-    if (level && job.level !== level) return false;
-    if (specificLevel && job.specificLevel !== specificLevel) return false;
-    if (subject && job.subject !== subject) return false;
-    if (location) {
-      const haystack = String(job.location || "").toLowerCase();
-      const needle = String(location).toLowerCase();
-      if (!haystack.includes(needle)) return false;
-    }
-    if (minRate && typeof job.rate === "number" && job.rate < parseInt(minRate, 10)) return false;
-    if (minRate && typeof job.rate !== "number") return false;
-    return true;
-  });
+async function applyFilters() {
+  if (!isBackendEnabled()) {
+    // Legacy fallback: filter only the currently loaded in-memory list.
+    const level = document.getElementById("filter-level").value;
+    const specificLevel = document.getElementById("filter-specific-level").value;
+    const subject = document.getElementById("filter-subject").value;
+    const location = document.getElementById("filter-location").value;
+    const minRate = document.getElementById("filter-rate").value;
 
-  renderCards(filtered);
+    const filtered = allAssignments.filter((job) => {
+      if (level && job.level !== level) return false;
+      if (specificLevel && job.specificLevel !== specificLevel) return false;
+      if (subject && job.subject !== subject) return false;
+      if (location) {
+        const haystack = String(job.location || "").toLowerCase();
+        const needle = String(location).toLowerCase();
+        if (!haystack.includes(needle)) return false;
+      }
+      if (minRate && typeof job.rate === "number" && job.rate < parseInt(minRate, 10)) return false;
+      if (minRate && typeof job.rate !== "number") return false;
+      return true;
+    });
+
+    renderCards(filtered);
+    return;
+  }
+
+  await loadAssignments({ reset: true });
 }
 
 function clearFilters() {
@@ -326,7 +436,11 @@ function clearFilters() {
   document.getElementById("filter-subject").innerHTML = '<option value="">All Subjects</option>';
   document.getElementById("filter-location").value = "";
   document.getElementById("filter-rate").value = "";
-  renderCards(allAssignments);
+  if (!isBackendEnabled()) {
+    renderCards(allAssignments);
+    return;
+  }
+  void loadAssignments({ reset: true });
 }
 
 window.updateFilterSpecificLevels = updateFilterSpecificLevels;
@@ -334,7 +448,18 @@ window.updateFilterSubjects = updateFilterSubjects;
 window.applyFilters = applyFilters;
 window.clearFilters = clearFilters;
 
-async function loadAssignments() {
+function setLoadMoreVisible(canLoadMore) {
+  if (!loadMoreBtn) return;
+  loadMoreBtn.classList.toggle("hidden", !canLoadMore);
+}
+
+function setFacetHintVisible(show) {
+  if (!facetHint) return;
+  facetHint.classList.toggle("hidden", !show);
+}
+
+async function loadAssignments({ reset = false, append = false } = {}) {
+  const loadToken = ++activeLoadToken;
   if (isDebugEnabled()) {
     debugLog("Assignments page boot", {
       buildTime: BUILD_TIME,
@@ -343,7 +468,7 @@ async function loadAssignments() {
     });
   }
 
-  if (!isSupabaseEnabled()) {
+  if (!isBackendEnabled() && !isSupabaseEnabled()) {
     const cfg = getSupabaseConfigSummary();
     if (isDebugEnabled()) debugLog("Supabase disabled (config)", cfg);
 
@@ -359,25 +484,99 @@ async function loadAssignments() {
       { showRetry: true }
     );
     allAssignments = [];
+    totalAssignments = 0;
+    nextCursorLastSeen = null;
+    nextCursorId = null;
     renderLoadError("Assignments are temporarily unavailable. Please try again.");
     return;
   }
 
-  setStatus("Loading assignments from Supabase...", "info");
-  renderSkeleton(6);
+  if (reset) {
+    allAssignments = [];
+    totalAssignments = 0;
+    nextCursorLastSeen = null;
+    nextCursorId = null;
+  }
+
+  const isInitial = !append && allAssignments.length === 0;
+  if (isInitial) {
+    setStatus(isBackendEnabled() ? "Loading assignments from backend..." : "Loading assignments from Supabase...", "info");
+    renderSkeleton(6);
+  }
   try {
-    const items = await listOpenAssignments({ limit: 200 });
-    allAssignments = items.length ? items : [];
+    if (isBackendEnabled()) {
+      const filters = collectFiltersFromUI();
+      const minRate = filters.minRate ? Number.parseInt(filters.minRate, 10) : null;
+
+      if (!append) {
+        try {
+          // Fetch facets without self-filtering subject/specific level, so dropdowns remain useful.
+          const facetsResp = await getOpenAssignmentFacets({
+            level: filters.level,
+            location: filters.location,
+            minRate: Number.isFinite(minRate) ? minRate : null,
+          });
+          if (loadToken === activeLoadToken) {
+            lastFacets = facetsResp?.facets || null;
+            // Rebuild dropdown options based on new facets.
+            updateFilterSpecificLevels();
+            updateFilterSubjects();
+            setFacetHintVisible(Boolean(lastFacets));
+          }
+        } catch (e) {
+          if (loadToken === activeLoadToken) {
+            lastFacets = null;
+            setFacetHintVisible(false);
+          }
+        }
+      }
+
+      const page = await listOpenAssignmentsPaged({
+        limit: 50,
+        cursorLastSeen: append ? nextCursorLastSeen : null,
+        cursorId: append ? nextCursorId : null,
+        level: filters.level,
+        specificStudentLevel: filters.specificStudentLevel,
+        subject: filters.subject,
+        location: filters.location,
+        minRate: Number.isFinite(minRate) ? minRate : null,
+      });
+
+      if (loadToken !== activeLoadToken) return;
+
+      const rows = Array.isArray(page?.items) ? page.items : [];
+      const mapped = rows.map(mapAssignmentRow);
+      allAssignments = append ? [...allAssignments, ...mapped] : mapped;
+      totalAssignments = Number.isFinite(page?.total) ? page.total : allAssignments.length;
+      nextCursorLastSeen = page?.next_cursor_last_seen || null;
+      nextCursorId = page?.next_cursor_id ?? null;
+      setLoadMoreVisible(Boolean(nextCursorLastSeen && nextCursorId));
+    } else {
+      const items = await listOpenAssignments({ limit: 200 });
+      allAssignments = items.length ? items : [];
+      totalAssignments = allAssignments.length;
+      setLoadMoreVisible(false);
+      setFacetHintVisible(false);
+    }
+
     hideLoadError();
     renderCards(allAssignments);
     try {
       await trackEvent({ eventType: "assignments_view" });
     } catch {}
-    setStatus(`Loaded ${allAssignments.length} assignments from Supabase.`, "success");
+    setStatus(
+      isBackendEnabled()
+        ? `Loaded ${allAssignments.length} of ${totalAssignments} assignments.`
+        : `Loaded ${allAssignments.length} assignments from Supabase.`,
+      "success"
+    );
   } catch (err) {
     console.error("Failed to load assignments from Supabase.", err);
     setStatus(`Assignments unavailable (${err?.message || err}).`, "error", { showRetry: true });
     allAssignments = [];
+    totalAssignments = 0;
+    nextCursorLastSeen = null;
+    nextCursorId = null;
     renderLoadError("We couldn’t load assignments right now. Please try again.");
   }
 }
@@ -406,10 +605,10 @@ async function prepopulateFiltersFromProfile() {
       document.getElementById("filter-subject").value = subject;
     }
 
-    if (level || subject) applyFilters();
-  } catch (err) {
-    console.error("Failed to prepopulate filters from profile.", err);
-  }
+  if (level || subject) applyFilters();
+} catch (err) {
+  console.error("Failed to prepopulate filters from profile.", err);
+}
 }
 
 function mountDebugPanel() {
@@ -442,7 +641,8 @@ function mountDebugPanel() {
 }
 
 window.addEventListener("load", () => {
-  if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments());
+  if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments({ reset: true }));
+  if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => loadAssignments({ append: true }));
   mountDebugPanel();
-  loadAssignments().then(() => prepopulateFiltersFromProfile());
+  loadAssignments({ reset: true }).then(() => prepopulateFiltersFromProfile());
 });

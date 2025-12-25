@@ -12,6 +12,7 @@ import html
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_display_name
+from click_tracking import build_tracked_url
 
 try:
     from dotenv import load_dotenv
@@ -168,7 +169,31 @@ def _truncate_middle(text: str, max_len: int) -> str:
     return text[:head] + '...' + text[-tail:]
 
 
-def build_message_text(payload: Dict[str, Any]) -> str:
+def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
+    parsed = payload.get("parsed") or {}
+    assignment_code = _join_text(parsed.get("assignment_code"))
+    if assignment_code:
+        if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api":
+            subs = parsed.get("subjects") or []
+            if isinstance(subs, (list, tuple)) and subs:
+                parts = sorted({str(s).strip() for s in subs if str(s).strip()})
+                if parts:
+                    return f"{assignment_code}:{'+'.join(parts)}"
+        return assignment_code
+    channel_id = payload.get("channel_id")
+    message_id = payload.get("message_id")
+    if channel_id is not None and message_id is not None:
+        return f"tg:{channel_id}:{message_id}"
+    message_link = payload.get("message_link")
+    if message_link:
+        return str(message_link)
+    cid = payload.get("cid")
+    if cid:
+        return str(cid)
+    return "unknown"
+
+
+def build_message_text(payload: Dict[str, Any], *, include_clicks: bool = True, clicks: int = 0) -> str:
     parsed = payload.get('parsed') or {}
     academic_raw = _escape(_join_text(parsed.get("academic_tags_raw")))
     subjects = _escape(_join_text(parsed.get('subjects')))
@@ -199,7 +224,11 @@ def build_message_text(payload: Dict[str, Any]) -> str:
 
     lines = []
 
-    agency = get_agency_display_name(payload.get('channel_link') or payload.get('channel_username') or "")
+    # Prefer a curated display name by channel ref; fall back to channel_title for non-Telegram sources.
+    chat_ref = payload.get("channel_link") or payload.get("channel_username") or ""
+    agency = get_agency_display_name(chat_ref, default="")
+    if not agency:
+        agency = str(payload.get("channel_title") or "").strip() or "Agency"
     # Header
     header = f'⭐️<b>{agency}</b>⭐️'
     if academic_raw:
@@ -250,11 +279,21 @@ def build_message_text(payload: Dict[str, Any]) -> str:
 
     # Do not include raw text excerpt or message id in the broadcast
 
-    # Original post link moved to the bottom for less prominence
-    footer = ''
-    if payload.get('message_link'):
-        link = payload['message_link']
-        footer = f"🔗 <a href=\"{html.escape(link)}\">Original post</a>"
+    # Links + click count
+    footer_lines: list[str] = []
+    original_url = str(payload.get("message_link") or "").strip()
+    if original_url:
+        external_id = _derive_external_id_for_tracking(payload)
+        tracked = build_tracked_url(external_id=external_id, original_url=original_url)
+        if tracked:
+            footer_lines.append(f"🔗 <a href=\"{html.escape(tracked)}\">Open original</a>")
+        else:
+            footer_lines.append(f"🔗 <a href=\"{html.escape(original_url)}\">Original post</a>")
+        if include_clicks:
+            footer_lines.append("")  # extra newline between link and click count
+            footer_lines.append(f"Clicks: {int(clicks)}")
+
+    footer = "\n".join(footer_lines).strip()
 
     max_len = int(os.environ.get('BROADCAST_MAX_MESSAGE_LEN', '3900'))
 
@@ -298,7 +337,7 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     with bind_log_context(cid=cid, message_id=msg_id, channel=str(channel_link) if channel_link else None, step="broadcast"):
         t_build = timed()
-        text = build_message_text(payload)
+        text = build_message_text(payload, include_clicks=True, clicks=0)
         build_ms = round((timed() - t_build) * 1000.0, 2)
 
         try:
@@ -354,6 +393,16 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                     )
                 else:
                     log_event(logger, logging.INFO, "broadcast_sent", status_code=resp.status_code, send_ms=send_ms)
+                    # Best-effort: store broadcast message mapping for click tracking edits.
+                    try:
+                        if isinstance(j, dict) and isinstance(j.get("result"), dict):
+                            sent_message_id = j["result"].get("message_id")
+                            sent_chat_id = (j["result"].get("chat") or {}).get("id") if isinstance(j["result"].get("chat"), dict) else None
+                            if sent_chat_id is not None and sent_message_id is not None:
+                                from click_tracking_store import upsert_broadcast_message  # local import
+                                upsert_broadcast_message(payload=payload, sent_chat_id=int(sent_chat_id), sent_message_id=int(sent_message_id), message_html=text)
+                    except Exception:
+                        logger.debug("click_tracking_upsert_failed", exc_info=True)
                 return {'ok': resp.status_code < 400, 'response': j}
             except Exception as e:
                 logger.exception('Broadcast send error error=%s', e)

@@ -60,4 +60,3 @@ def get_agency_examples_key(chat: str) -> Optional[str]:
 def get_agency_display_name(chat: str, default: str = "Agency") -> str:
     info = get_agency_info(chat)
     return info.display_name if info else default
-

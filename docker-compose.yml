@@ -33,6 +33,22 @@ services:
       - default
       - supabase_net
 
+  collector-tail:
+    build: ./TutorDexAggregator
+    env_file:
+      - ./TutorDexAggregator/.env
+    command: ["python", "collector.py", "tail"]
+    restart: unless-stopped
+    volumes:
+      - ./TutorDexAggregator:/app
+      - ./TutorDexAggregator/logs:/app/logs
+      - ./TutorDexAggregator/monitoring:/app/monitoring
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - supabase_net
+
   aggregator-monitor:
     build: ./TutorDexAggregator
     env_file:
@@ -78,6 +94,30 @@ services:
           sleep ${FRESHNESS_TIERS_INTERVAL_SECONDS:-3600}
         done
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - supabase_net
+
+  tutorcity-fetch:
+    build: ./TutorDexAggregator
+    env_file:
+      - ./TutorDexAggregator/.env
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          python utilities/tutorcity_fetch.py --limit ${TUTORCITY_LIMIT:-200} || true
+          sleep ${TUTORCITY_FETCH_INTERVAL_SECONDS:-300}
+        done
+    restart: unless-stopped
+    depends_on:
+      - aggregator-ingest
+    volumes:
+      - ./TutorDexAggregator:/app
+      - ./TutorDexAggregator/logs:/app/logs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

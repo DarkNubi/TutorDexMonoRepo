@@ -147,6 +147,7 @@ Progress:
   - Host llama server: keep `LLM_API_URL=http://host.docker.internal:1234`.
   - DM/backend matching uses the internal service `backend:8000` (already set in `.env`).
   - Mounts `./logs` and `./monitoring` for persistence.
+  - TutorCity API fetcher (no LLM): `tutorcity-fetch` polls `TUTORCITY_API_URL` on an interval and persists/broadcasts/DMs directly (source label is always `TutorCity`).
 - Legacy per-folder compose (optional): `docker compose -f docker-compose.roles.yml up --build`
   - Same services as above; use only if you need to run the aggregator stack separately.
 - Helpful env knobs:

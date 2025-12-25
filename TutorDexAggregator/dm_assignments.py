@@ -99,7 +99,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
     channel_link = payload.get("channel_link") or payload.get("channel_username")
 
     with bind_log_context(cid=cid, message_id=msg_id, channel=str(channel_link) if channel_link else None, step="dm"):
-        text = build_message_text(payload)
+        text = build_message_text(payload, include_clicks=False, clicks=0)
 
         try:
             chat_ids = fetch_matching_chat_ids(payload)

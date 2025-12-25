@@ -215,3 +215,227 @@ class SupabaseStore:
             return rows[0].get("id")
         return None
 
+    def increment_assignment_clicks(self, *, external_id: str, original_url: str, delta: int = 1) -> Optional[int]:
+        """
+        Atomic increment via RPC `increment_assignment_clicks` (must be installed in DB).
+        Returns the new click count on success.
+        """
+        if not self.client:
+            return None
+        ext = str(external_id).strip()
+        url = str(original_url).strip()
+        if not ext or not url:
+            return None
+
+        body = {"p_external_id": ext, "p_original_url": url, "p_delta": int(delta)}
+        try:
+            resp = self.client.post("rpc/increment_assignment_clicks", body, timeout=20)  # type: ignore[arg-type]
+        except Exception as e:
+            logger.warning("Supabase increment clicks rpc failed external_id=%s error=%s", ext, e)
+            return None
+        if resp.status_code >= 400:
+            logger.warning("Supabase increment clicks rpc status=%s body=%s", resp.status_code, resp.text[:500])
+            return None
+
+        try:
+            data = resp.json()
+        except Exception:
+            return None
+
+        # PostgREST may return a scalar or a list depending on config.
+        if isinstance(data, (int, float)):
+            return int(data)
+        if isinstance(data, list) and data and isinstance(data[0], (int, float)):
+            return int(data[0])
+        if isinstance(data, dict) and "clicks" in data:
+            try:
+                return int(data["clicks"])
+            except Exception:
+                return None
+        return None
+
+    def list_open_assignments(
+        self,
+        *,
+        limit: int = 50,
+        cursor_last_seen: Optional[str] = None,
+        cursor_id: Optional[int] = None,
+        level: Optional[str] = None,
+        specific_student_level: Optional[str] = None,
+        subject: Optional[str] = None,
+        agency_name: Optional[str] = None,
+        learning_mode: Optional[str] = None,
+        location_query: Optional[str] = None,
+        min_rate: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        RPC wrapper for `public.list_open_assignments` (must be installed in DB).
+        Returns: { "items": [...], "total": int }
+        """
+        if not self.client:
+            return None
+
+        payload: Dict[str, Any] = {
+            "p_limit": int(limit),
+            "p_cursor_last_seen": cursor_last_seen,
+            "p_cursor_id": int(cursor_id) if cursor_id is not None else None,
+            "p_level": level,
+            "p_specific_student_level": specific_student_level,
+            "p_subject": subject,
+            "p_agency_name": agency_name,
+            "p_learning_mode": learning_mode,
+            "p_location_query": location_query,
+            "p_min_rate": int(min_rate) if min_rate is not None else None,
+        }
+        # PostgREST treats missing keys as defaults; remove null keys to keep payload tidy.
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        try:
+            resp = self.client.post("rpc/list_open_assignments", payload, timeout=25)  # type: ignore[arg-type]
+        except Exception as e:
+            logger.warning("Supabase list_open_assignments rpc failed error=%s", e)
+            return None
+        if resp.status_code >= 400:
+            logger.warning("Supabase list_open_assignments rpc status=%s body=%s", resp.status_code, resp.text[:500])
+            return None
+
+        rows = _coerce_rows(resp)
+        total = 0
+        if rows:
+            try:
+                total = int(rows[0].get("total_count") or 0)
+            except Exception:
+                total = 0
+        for r in rows:
+            r.pop("total_count", None)
+
+        return {"items": rows, "total": total}
+
+    def open_assignment_facets(
+        self,
+        *,
+        level: Optional[str] = None,
+        specific_student_level: Optional[str] = None,
+        subject: Optional[str] = None,
+        agency_name: Optional[str] = None,
+        learning_mode: Optional[str] = None,
+        location_query: Optional[str] = None,
+        min_rate: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        RPC wrapper for `public.open_assignment_facets` (must be installed in DB).
+        Returns a JSON object with keys like: total, levels, subjects, agencies, learning_modes.
+        """
+        if not self.client:
+            return None
+
+        payload: Dict[str, Any] = {
+            "p_level": level,
+            "p_specific_student_level": specific_student_level,
+            "p_subject": subject,
+            "p_agency_name": agency_name,
+            "p_learning_mode": learning_mode,
+            "p_location_query": location_query,
+            "p_min_rate": int(min_rate) if min_rate is not None else None,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        try:
+            resp = self.client.post("rpc/open_assignment_facets", payload, timeout=25)  # type: ignore[arg-type]
+        except Exception as e:
+            logger.warning("Supabase open_assignment_facets rpc failed error=%s", e)
+            return None
+        if resp.status_code >= 400:
+            logger.warning("Supabase open_assignment_facets rpc status=%s body=%s", resp.status_code, resp.text[:500])
+            return None
+
+        try:
+            data = resp.json()
+        except Exception:
+            return None
+
+        # PostgREST may return a JSON object or a list containing it.
+        if isinstance(data, dict):
+            return data
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            return data[0]
+        return None
+
+    def upsert_broadcast_message(
+        self,
+        *,
+        external_id: str,
+        original_url: str,
+        sent_chat_id: int,
+        sent_message_id: int,
+        message_html: str,
+    ) -> bool:
+        if not self.client:
+            return False
+        ext = str(external_id).strip()
+        url = str(original_url).strip()
+        if not ext or not url:
+            return False
+        row = {
+            "external_id": ext,
+            "original_url": url,
+            "sent_chat_id": int(sent_chat_id),
+            "sent_message_id": int(sent_message_id),
+            "message_html": str(message_html),
+            "updated_at": _utc_now_iso(),
+        }
+        try:
+            resp = self.client.post(
+                "broadcast_messages?on_conflict=external_id",
+                [row],
+                timeout=20,
+                prefer="resolution=merge-duplicates,return=representation",
+            )
+        except Exception as e:
+            logger.warning("Supabase broadcast_messages upsert failed external_id=%s error=%s", ext, e)
+            return False
+        if resp.status_code >= 400:
+            logger.warning("Supabase broadcast_messages upsert status=%s body=%s", resp.status_code, resp.text[:500])
+            return False
+        return True
+
+    def get_broadcast_message(self, *, external_id: str) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            return None
+        ext = str(external_id).strip()
+        if not ext:
+            return None
+        q = f"broadcast_messages?select=external_id,original_url,sent_chat_id,sent_message_id,message_html,last_rendered_clicks,last_edited_at&external_id=eq.{requests.utils.quote(ext, safe='')}&limit=1"
+        try:
+            resp = self.client.get(q, timeout=15)
+        except Exception:
+            return None
+        if resp.status_code >= 400:
+            return None
+        rows = _coerce_rows(resp)
+        return rows[0] if rows else None
+
+    def mark_broadcast_edited(self, *, external_id: str, clicks: int, message_html: str) -> bool:
+        if not self.client:
+            return False
+        ext = str(external_id).strip()
+        if not ext:
+            return False
+        body = {
+            "last_rendered_clicks": int(clicks),
+            "last_edited_at": _utc_now_iso(),
+            "message_html": str(message_html),
+            "updated_at": _utc_now_iso(),
+        }
+        try:
+            resp = self.client.patch(
+                f"broadcast_messages?external_id=eq.{requests.utils.quote(ext, safe='')}",
+                body,
+                timeout=20,
+                prefer="return=representation",
+            )
+        except Exception as e:
+            logger.warning("Supabase broadcast_messages patch failed external_id=%s error=%s", ext, e)
+            return False
+        return resp.status_code < 400
+

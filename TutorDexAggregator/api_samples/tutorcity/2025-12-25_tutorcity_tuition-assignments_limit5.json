@@ -1,0 +1,90 @@
+{
+  "source": {
+    "agency": "TutorCity",
+    "endpoint": "https://tutorcity.sg/api/tuition-assignments/",
+    "requested_at_utc": "2025-12-25T00:00:00Z",
+    "params": {
+      "limit": 5
+    }
+  },
+  "payload": {
+    "all_assignments_data": [
+      {
+        "assignment_code": "33952",
+        "assignment_url": "https://tutorcity.sg/tuition-assignments?assignment_code=33952",
+        "subjects": [
+          "12",
+          "13"
+        ],
+        "level": "2",
+        "year": "4",
+        "address": "Near Tan Kah Kee MRT: House along Wattern Estate Road",
+        "postal_code": "269748",
+        "availability": "",
+        "hourly_rate": "50-80 p/h",
+        "tutor_gender": null,
+        "additional_remarks": "girl in RGPS \u00a0 Apply via whatsapp or telegram with the Request ID,\u00a0 hourly rate and timings.\u00a0 First-time users, please register online before applying.\u00a0 Get instant alerts via telegram. Join now!\u00a0 Coordinator: Benson"
+      },
+      {
+        "assignment_code": "33954",
+        "assignment_url": "https://tutorcity.sg/tuition-assignments?assignment_code=33954",
+        "subjects": [
+          "13"
+        ],
+        "level": "2",
+        "year": "4",
+        "address": "Blk 287B Compassvale Crescent",
+        "postal_code": "542287",
+        "availability": "",
+        "hourly_rate": "30-60 p/h",
+        "tutor_gender": null,
+        "additional_remarks": "Apply via whatsapp or telegram with the Request ID,\u00a0 hourly rate and timings.\u00a0 First-time users, please register online before applying.\u00a0 Get instant alerts via telegram. Join now!\u00a0 Coordinator: Benson"
+      },
+      {
+        "assignment_code": "D2388",
+        "assignment_url": "https://tutorcity.sg/tuition-assignments?assignment_code=D2388",
+        "subjects": [
+          "12"
+        ],
+        "level": "2",
+        "year": "6",
+        "address": "Blk 658C Punggol East",
+        "postal_code": "823658",
+        "availability": "",
+        "hourly_rate": "$30/h",
+        "tutor_gender": null,
+        "additional_remarks": "1.5h/week \u00a0 Reply with your timings and assignment request ID. 1)\u00a0Whatsapp me 2) SMS 88900585 3) Email\u00a0admin@tutorcity.sg Coordinator: Davis"
+      },
+      {
+        "assignment_code": "D2388",
+        "assignment_url": "https://tutorcity.sg/tuition-assignments?assignment_code=D2388",
+        "subjects": [
+          "8"
+        ],
+        "level": "2",
+        "year": "6",
+        "address": "Blk 658C Punggol East",
+        "postal_code": "823658",
+        "availability": "Mon 4pm",
+        "hourly_rate": "$45/h",
+        "tutor_gender": null,
+        "additional_remarks": "1.5h/week Looking for FT tutors \u00a0 Reply with your\u00a0timings and assignment request ID. 1)\u00a0Whatsapp me 2) SMS 88900585 3) Email\u00a0admin@tutorcity.sg Coordinator: Davis"
+      },
+      {
+        "assignment_code": "33503",
+        "assignment_url": "https://tutorcity.sg/tuition-assignments?assignment_code=33503",
+        "subjects": [
+          "20"
+        ],
+        "level": "3",
+        "year": "3",
+        "address": "Blk 428 Pasir Ris Drive 6 Singapore",
+        "postal_code": "510428",
+        "availability": "Every Sat morning for 1.5hrs. Other days can be considered",
+        "hourly_rate": "60-75 p/h",
+        "tutor_gender": null,
+        "additional_remarks": "boy in Victoria School \u00a0 Apply via whatsapp or telegram with the Request ID,\u00a0 hourly rate and timings.\u00a0 First-time users, please register online before applying.\u00a0 Get instant alerts via telegram. Join now!\u00a0 Coordinator: Benson"
+      }
+    ]
+  }
+}

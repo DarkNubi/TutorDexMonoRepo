@@ -77,3 +77,55 @@ export async function trackEvent({ eventType, assignmentExternalId, agencyName, 
     },
   });
 }
+
+export async function listOpenAssignmentsPaged({
+  limit = 50,
+  cursorLastSeen = null,
+  cursorId = null,
+  level = null,
+  specificStudentLevel = null,
+  subject = null,
+  agencyName = null,
+  learningMode = null,
+  location = null,
+  minRate = null,
+} = {}) {
+  if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
+
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  if (cursorLastSeen) params.set("cursor_last_seen", String(cursorLastSeen));
+  if (cursorId !== null && cursorId !== undefined) params.set("cursor_id", String(cursorId));
+  if (level) params.set("level", String(level));
+  if (specificStudentLevel) params.set("specific_student_level", String(specificStudentLevel));
+  if (subject) params.set("subject", String(subject));
+  if (agencyName) params.set("agency_name", String(agencyName));
+  if (learningMode) params.set("learning_mode", String(learningMode));
+  if (location) params.set("location", String(location));
+  if (minRate !== null && minRate !== undefined && String(minRate).trim() !== "") params.set("min_rate", String(minRate));
+
+  return backendFetch(`/assignments?${params.toString()}`);
+}
+
+export async function getOpenAssignmentFacets({
+  level = null,
+  specificStudentLevel = null,
+  subject = null,
+  agencyName = null,
+  learningMode = null,
+  location = null,
+  minRate = null,
+} = {}) {
+  if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
+
+  const params = new URLSearchParams();
+  if (level) params.set("level", String(level));
+  if (specificStudentLevel) params.set("specific_student_level", String(specificStudentLevel));
+  if (subject) params.set("subject", String(subject));
+  if (agencyName) params.set("agency_name", String(agencyName));
+  if (learningMode) params.set("learning_mode", String(learningMode));
+  if (location) params.set("location", String(location));
+  if (minRate !== null && minRate !== undefined && String(minRate).trim() !== "") params.set("min_rate", String(minRate));
+
+  return backendFetch(`/assignments/facets?${params.toString()}`);
+}

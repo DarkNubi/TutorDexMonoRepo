@@ -2,10 +2,16 @@ import os
 import time
 import uuid
 import logging
+import asyncio
+import base64
+import hashlib
+import hmac
+import json
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from TutorDexBackend.redis_store import TutorStore
@@ -34,7 +40,7 @@ app.add_middleware(
 )
 
 @app.on_event("startup")
-def _startup_log() -> None:
+async def _startup_log() -> None:
     logger.info(
         "startup",
         extra={
@@ -43,6 +49,202 @@ def _startup_log() -> None:
             "redis_prefix": getattr(getattr(store, "cfg", None), "prefix", None),
         },
     )
+    _start_click_edit_worker()
+
+
+def _env_int(name: str, default: int) -> int:
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    try:
+        return int(str(v).strip())
+    except Exception:
+        return default
+
+
+def _tracking_secret() -> str:
+    return (os.environ.get("CLICK_TRACKING_SECRET") or os.environ.get("TRACKING_SIGNING_SECRET") or "").strip()
+
+
+def _bot_token_for_edits() -> str:
+    return (os.environ.get("TRACKING_EDIT_BOT_TOKEN") or os.environ.get("GROUP_BOT_TOKEN") or "").strip()
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
+
+
+def _b64url_decode(s: str) -> bytes:
+    pad = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode((s + pad).encode("utf-8"))
+
+
+def _verify_and_decode_token(token: str) -> Dict[str, Any]:
+    secret = _tracking_secret()
+    if not secret:
+        raise HTTPException(status_code=500, detail="click_tracking_secret_missing")
+
+    parts = str(token or "").split(".", 1)
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="bad_token")
+    payload_b64, sig_b64 = parts
+    expected = hmac.new(secret.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).digest()
+    try:
+        got = _b64url_decode(sig_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="bad_signature")
+    if not hmac.compare_digest(expected, got):
+        raise HTTPException(status_code=400, detail="bad_signature")
+    try:
+        payload = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="bad_payload")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="bad_payload")
+    return payload
+
+
+async def _telegram_edit_message(*, chat_id: int, message_id: int, text: str) -> None:
+    token = _bot_token_for_edits()
+    if not token:
+        return
+    import requests  # local import to avoid startup cost
+
+    url = f"https://api.telegram.org/bot{token}/editMessageText"
+    body = {
+        "chat_id": int(chat_id),
+        "message_id": int(message_id),
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+
+    def _post() -> requests.Response:
+        return requests.post(url, json=body, timeout=15)
+
+    resp = await asyncio.to_thread(_post)
+    if resp.status_code == 429:
+        try:
+            data = resp.json()
+            retry_after = int((data.get("parameters") or {}).get("retry_after") or 0)
+        except Exception:
+            retry_after = 2
+        await asyncio.sleep(max(1, min(60, retry_after)))
+        resp = await asyncio.to_thread(_post)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"telegram_edit_failed status={resp.status_code} body={resp.text[:200]}")
+
+
+def _update_clicks_line(message_html: str, clicks: int) -> str:
+    # Replace an existing "Clicks: N" line, or append it at the end.
+    lines = (message_html or "").splitlines()
+    out: List[str] = []
+    replaced = False
+    for ln in lines:
+        if ln.strip().lower().startswith("clicks:"):
+            out.append(f"Clicks: {int(clicks)}")
+            replaced = True
+        else:
+            out.append(ln)
+    if not replaced:
+        out.append(f"Clicks: {int(clicks)}")
+    return "\n".join(out).strip()
+
+
+class _ClickEditQueue:
+    def __init__(self) -> None:
+        self._pending: Dict[str, int] = {}
+        self._last_edit_ts: Dict[str, float] = {}
+        self._lock = asyncio.Lock()
+        self._task: Optional[asyncio.Task] = None
+
+    def start(self) -> None:
+        if self._task is not None:
+            return
+        self._task = asyncio.create_task(self._run())
+
+    async def enqueue(self, external_id: str, clicks: int) -> None:
+        ext = str(external_id).strip()
+        if not ext:
+            return
+        async with self._lock:
+            self._pending[ext] = int(clicks)
+
+    async def _run(self) -> None:
+        min_interval = max(5, _env_int("CLICK_EDIT_MIN_INTERVAL_SECONDS", 20))
+        while True:
+            try:
+                await asyncio.sleep(1.0)
+                to_process: List[tuple[str, int]] = []
+                now = time.time()
+                async with self._lock:
+                    for ext, clicks in list(self._pending.items()):
+                        last = float(self._last_edit_ts.get(ext) or 0.0)
+                        if (now - last) < float(min_interval):
+                            continue
+                        to_process.append((ext, int(clicks)))
+                        del self._pending[ext]
+                        self._last_edit_ts[ext] = now
+
+                for ext, clicks in to_process:
+                    await self._process_one(ext, clicks)
+            except Exception:
+                logger.exception("click_edit_worker_loop_failed")
+
+    async def _process_one(self, external_id: str, clicks: int) -> None:
+        if not sb.enabled():
+            return
+        bm = sb.get_broadcast_message(external_id=external_id)
+        if not bm:
+            return
+        try:
+            chat_id = int(bm.get("sent_chat_id"))
+            msg_id = int(bm.get("sent_message_id"))
+        except Exception:
+            return
+        message_html = str(bm.get("message_html") or "").strip()
+        if not message_html:
+            return
+
+        updated = _update_clicks_line(message_html, clicks)
+        try:
+            await _telegram_edit_message(chat_id=chat_id, message_id=msg_id, text=updated)
+        except Exception as e:
+            # Re-enqueue on transient failures; Telegram may be rate-limiting.
+            logger.warning("click_edit_failed external_id=%s error=%s", external_id, e)
+            async with self._lock:
+                self._pending[external_id] = clicks
+            return
+
+        try:
+            sb.mark_broadcast_edited(external_id=external_id, clicks=clicks, message_html=updated)
+        except Exception:
+            pass
+
+
+_CLICK_EDIT_QUEUE = _ClickEditQueue()
+
+
+def _start_click_edit_worker() -> None:
+    try:
+        _CLICK_EDIT_QUEUE.start()
+    except Exception:
+        logger.exception("click_edit_worker_start_failed")
+
+
+@app.get("/r/a/{token}")
+async def tracked_redirect(token: str, request: Request):
+    payload = _verify_and_decode_token(token)
+    external_id = str(payload.get("external_id") or "").strip()
+    original_url = str(payload.get("original_url") or "").strip()
+    if not external_id or not original_url:
+        raise HTTPException(status_code=400, detail="bad_payload")
+
+    clicks = sb.increment_assignment_clicks(external_id=external_id, original_url=original_url, delta=1) if sb.enabled() else None
+    if clicks is not None:
+        await _CLICK_EDIT_QUEUE.enqueue(external_id, int(clicks))
+
+    return RedirectResponse(url=original_url, status_code=302)
 
 def _truthy(value: Optional[str]) -> bool:
     if value is None:
@@ -130,6 +332,19 @@ class AnalyticsEventRequest(BaseModel):
     meta: Optional[Dict[str, Any]] = None
 
 
+class AssignmentListResponse(BaseModel):
+    ok: bool = True
+    total: int = 0
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+    next_cursor_last_seen: Optional[str] = None
+    next_cursor_id: Optional[int] = None
+
+
+class AssignmentFacetsResponse(BaseModel):
+    ok: bool = True
+    facets: Dict[str, Any] = Field(default_factory=dict)
+
+
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {"ok": True}
@@ -168,6 +383,114 @@ def health_full() -> Dict[str, Any]:
     supabase_h = health_supabase()
     ok = bool(base.get("ok")) and bool(redis_h.get("ok")) and (bool(supabase_h.get("ok")) or bool(supabase_h.get("skipped")))
     return {"ok": ok, "base": base, "redis": redis_h, "supabase": supabase_h}
+
+
+def _clean_opt_str(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    v = str(value).strip()
+    return v or None
+
+
+@app.get("/assignments", response_model=AssignmentListResponse)
+def list_assignments(
+    request: Request,
+    limit: int = 50,
+    cursor_last_seen: Optional[str] = None,
+    cursor_id: Optional[int] = None,
+    level: Optional[str] = None,
+    specific_student_level: Optional[str] = None,
+    subject: Optional[str] = None,
+    agency_name: Optional[str] = None,
+    learning_mode: Optional[str] = None,
+    location: Optional[str] = None,
+    min_rate: Optional[int] = None,
+) -> AssignmentListResponse:
+    """
+    Public listing endpoint for the website.
+    Requires DB RPC `public.list_open_assignments` (see TutorDexAggregator/supabase sqls).
+    """
+    _ = request
+    if not sb.enabled():
+        raise HTTPException(status_code=503, detail="supabase_disabled")
+
+    lim = int(limit)
+    if lim < 1:
+        lim = 1
+    if lim > 200:
+        lim = 200
+
+    cursor_last_seen_s = _clean_opt_str(cursor_last_seen)
+    if cursor_last_seen_s and cursor_id is None:
+        raise HTTPException(status_code=400, detail="cursor_id_required")
+
+    result = sb.list_open_assignments(
+        limit=lim,
+        cursor_last_seen=cursor_last_seen_s,
+        cursor_id=cursor_id,
+        level=_clean_opt_str(level),
+        specific_student_level=_clean_opt_str(specific_student_level),
+        subject=_clean_opt_str(subject),
+        agency_name=_clean_opt_str(agency_name),
+        learning_mode=_clean_opt_str(learning_mode),
+        location_query=_clean_opt_str(location),
+        min_rate=int(min_rate) if min_rate is not None else None,
+    )
+    if not result:
+        raise HTTPException(status_code=500, detail="list_assignments_failed")
+
+    items = result.get("items") or []
+    total = int(result.get("total") or 0)
+    next_cursor_last_seen_out: Optional[str] = None
+    next_cursor_id_out: Optional[int] = None
+    if items and len(items) >= lim:
+        last = items[-1] or {}
+        next_cursor_last_seen_out = _clean_opt_str(last.get("last_seen"))
+        try:
+            next_cursor_id_out = int(last.get("id")) if last.get("id") is not None else None
+        except Exception:
+            next_cursor_id_out = None
+
+    return AssignmentListResponse(
+        ok=True,
+        total=total,
+        items=items,
+        next_cursor_last_seen=next_cursor_last_seen_out,
+        next_cursor_id=next_cursor_id_out,
+    )
+
+
+@app.get("/assignments/facets", response_model=AssignmentFacetsResponse)
+def assignment_facets(
+    request: Request,
+    level: Optional[str] = None,
+    specific_student_level: Optional[str] = None,
+    subject: Optional[str] = None,
+    agency_name: Optional[str] = None,
+    learning_mode: Optional[str] = None,
+    location: Optional[str] = None,
+    min_rate: Optional[int] = None,
+) -> AssignmentFacetsResponse:
+    """
+    Public facets endpoint for the website.
+    Requires DB RPC `public.open_assignment_facets` (see TutorDexAggregator/supabase sqls).
+    """
+    _ = request
+    if not sb.enabled():
+        raise HTTPException(status_code=503, detail="supabase_disabled")
+
+    facets = sb.open_assignment_facets(
+        level=_clean_opt_str(level),
+        specific_student_level=_clean_opt_str(specific_student_level),
+        subject=_clean_opt_str(subject),
+        agency_name=_clean_opt_str(agency_name),
+        learning_mode=_clean_opt_str(learning_mode),
+        location_query=_clean_opt_str(location),
+        min_rate=int(min_rate) if min_rate is not None else None,
+    )
+    if facets is None:
+        raise HTTPException(status_code=500, detail="facets_failed")
+    return AssignmentFacetsResponse(ok=True, facets=facets)
 
 
 def _auth_required() -> bool:

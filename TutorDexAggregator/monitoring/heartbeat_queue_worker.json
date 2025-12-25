@@ -1,1 +1,1 @@
-{"ts": 1766580333, "iso": "2025-12-24T12:45:33.351786+00:00", "counts": {"pending": 0, "processing": 0, "ok": 1249, "failed": 152}, "oldest_pending_age_s": null, "pid": 1, "pipeline_version": "singlecall_v1"}
+{"ts": 1766669427, "iso": "2025-12-25T13:30:27.630532+00:00", "counts": {"pending": 0, "processing": 0, "ok": 1254, "failed": 156}, "oldest_pending_age_s": null, "pid": 1, "pipeline_version": "singlecall_v1"}

@@ -11,7 +11,7 @@ REM set "LLAMA_SERVER_EXE=C:\llama-bin\llama-server.exe"
 REM set "LLAMA_MODEL_PATH=D:\models\liquidai-lfm2-8b-a1b.Q4_K_M.gguf"
 REM
 REM Optional overrides:
-REM set "LLAMA_SERVER_HOST=127.0.0.1"
+REM set "LLAMA_SERVER_HOST=0.0.0.0"
 REM set "LLAMA_SERVER_PORT=1234"
 REM set "LLAMA_CTX=8192"
 REM set "LLAMA_THREADS=6"
@@ -46,6 +46,9 @@ if "%LLAMA_CTX%"=="" set "LLAMA_CTX=8192"
 if "%LLAMA_THREADS%"=="" set "LLAMA_THREADS=6"
 if "%LLAMA_BATCH%"=="" set "LLAMA_BATCH=512"
 if "%LLAMA_NGL%"=="" set "LLAMA_NGL=999"
+REM Default: force single slot and KV offload unless explicitly overridden.
+if "%LLAMA_SERVER_ARGS%"=="" set "LLAMA_SERVER_ARGS=-np 1"
+
 
 :loop
 echo ========================================

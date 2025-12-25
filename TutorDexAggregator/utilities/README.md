@@ -23,3 +23,5 @@ Guidelines:
   - Runs `compilation_detection.is_compilation` against sample messages (defaults to `compilations.jsonl` if not provided).
 - `python utilities/smoke_extract.py --text "..."` (or `--file sample.txt`)
   - Calls LLM extract → enrichment → schema validation (no broadcast, no Supabase).
+- `python utilities/tutorcity_fetch.py --limit 50`
+  - Fetches TutorCity API (no LLM) and persists/broadcasts/DMs directly. Uses `TUTORCITY_API_URL`, `TUTORCITY_LIMIT` envs (source label is always `TutorCity`).
