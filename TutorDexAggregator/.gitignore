@@ -13,6 +13,7 @@ monitoring/telegram_message_edits.sqlite-wal
 monitoring/telegram_message_edits.sqlite-shm
 monitoring/telegram_message_edits_events.jsonl
 monitoring/heartbeat.json
+monitoring/heartbeat_queue_worker.json
 monitoring/heartbeat_raw_collector.json
 raw_messages_fallback.jsonl
 monitoring/backfill_pipeline_state.json
