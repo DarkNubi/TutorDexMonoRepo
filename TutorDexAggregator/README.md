@@ -142,7 +142,13 @@ Progress:
 ### Docker split roles (ingest + worker + monitor)
 
 - Recommended (root-level): `docker compose up --build` from repo root.
-  - Services: `aggregator-ingest` (`runner.py start`), `aggregator-worker` (`workers/extract_worker.py`), `aggregator-monitor` (`monitoring/monitor.py`), `backend` (FastAPI).
+  - Default services use the **raw collector + queue** pipeline:
+    - `collector-tail` (`collector.py tail`) -> writes raw messages + enqueues extraction jobs
+    - `aggregator-worker` (`workers/extract_worker.py`) -> drains the queue (LLM extract + persist + broadcast/DM)
+    - `aggregator-monitor` (`monitoring/monitor.py`) -> alerts + health checks
+    - `backend` (FastAPI)
+  - Legacy single-process Telethon reader (`runner.py start`) is behind a compose profile:
+    - `docker compose --profile legacy up --build aggregator-ingest`
   - Supabase (self-host) is expected to be running on the external Docker network `supabase_default` with Kong at `supabase-kong:8000` (HTTP). In `.env`, set `SUPABASE_URL=http://supabase-kong:8000`.
   - Host llama server: keep `LLM_API_URL=http://host.docker.internal:1234`.
   - DM/backend matching uses the internal service `backend:8000` (already set in `.env`).

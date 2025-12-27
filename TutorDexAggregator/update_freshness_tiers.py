@@ -23,7 +23,8 @@ if load_dotenv and ENV_PATH.exists():
 
 
 def _iso(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).isoformat()
+    # PostgREST filter values are embedded in the URL; avoid "+" by using "Z".
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _utc_now() -> datetime:
@@ -63,12 +64,23 @@ def update_tiers(
             return {"ok": True, "dry_run": True, "where": where_qs, "body": body}
         resp = client.patch(where_qs, body, timeout=30, prefer="return=representation")
         ok = resp.status_code < 400
-        n = None
-        try:
-            n = len(resp.json())
-        except Exception:
-            n = None
-        return {"ok": ok, "status_code": resp.status_code, "updated": n}
+        updated = None
+        if ok:
+            try:
+                updated = len(_coerce_rows(resp))
+            except Exception:
+                updated = None
+        else:
+            log_event(
+                logger,
+                logging.WARNING,
+                "freshness_patch_failed",
+                status_code=resp.status_code,
+                where=where_qs,
+                body=body,
+                resp_body=(resp.text or "")[:500],
+            )
+        return {"ok": ok, "status_code": resp.status_code, "updated": updated}
 
     # Green: last_seen >= yellow_cutoff
     green_q = f"{cfg.assignments_table}?status=eq.open&last_seen=gte.{_iso(yellow_cutoff)}"

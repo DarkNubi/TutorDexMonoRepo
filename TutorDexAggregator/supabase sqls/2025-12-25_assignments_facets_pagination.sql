@@ -62,6 +62,10 @@ as $$
 with base as (
   select
     a.*,
+    case
+      when a.level = 'International Baccalaureate' then 'IB'
+      else a.level
+    end as _level_norm,
     coalesce(
       nullif(a.subjects_general, '{}'::text[]),
       nullif(a.subjects_canonical, '{}'::text[]),
@@ -78,7 +82,7 @@ with base as (
 filtered as (
   select *
   from base
-  where (p_level is null or level = p_level)
+  where (p_level is null or _level_norm = (case when p_level = 'International Baccalaureate' then 'IB' else p_level end))
     and (p_specific_student_level is null or specific_student_level = p_specific_student_level)
     and (p_subject is null or p_subject = any(_subject_list))
     and (p_agency_name is null or agency_name = p_agency_name)
@@ -102,7 +106,7 @@ select
   learning_mode,
   subject,
   subjects,
-  level,
+  _level_norm as level,
   specific_student_level,
   address,
   postal_code,
@@ -140,6 +144,10 @@ as $$
 with base as (
   select
     a.*,
+    case
+      when a.level = 'International Baccalaureate' then 'IB'
+      else a.level
+    end as _level_norm,
     coalesce(
       nullif(a.subjects_general, '{}'::text[]),
       nullif(a.subjects_canonical, '{}'::text[]),
@@ -156,7 +164,7 @@ with base as (
 filtered as (
   select *
   from base
-  where (p_level is null or level = p_level)
+  where (p_level is null or _level_norm = (case when p_level = 'International Baccalaureate' then 'IB' else p_level end))
     and (p_specific_student_level is null or specific_student_level = p_specific_student_level)
     and (p_subject is null or p_subject = any(_subject_list))
     and (p_agency_name is null or agency_name = p_agency_name)
@@ -176,10 +184,10 @@ select jsonb_build_object(
       '[]'::jsonb
     )
     from (
-      select level, count(*) as c
+      select _level_norm as level, count(*) as c
       from filtered
-      where level is not null and btrim(level) <> ''
-      group by level
+      where _level_norm is not null and btrim(_level_norm) <> ''
+      group by _level_norm
     ) s
   ),
   'specific_levels', (
@@ -235,4 +243,3 @@ select jsonb_build_object(
   )
 );
 $$;
-

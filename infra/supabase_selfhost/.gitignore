@@ -1,5 +1,0 @@
-.env
-volumes/
-backups/
-*.dump
-*.sql.bak

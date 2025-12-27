@@ -32,13 +32,17 @@ From `TutorDexWebsite/`:
 
 ### GitHub Actions (optional)
 
-This repo includes `TutorDexWebsite/.github/workflows/firebase-hosting.yml` to deploy on pushes to `main` and create preview deploys for pull requests.
+This repo includes `.github/workflows/firebase-hosting.yml` to deploy on pushes to `main` and create preview deploys for pull requests (works for both monorepo `TutorDexWebsite/` and a standalone website repo).
 
 Required GitHub repo secrets:
-- `FIREBASE_PROJECT_ID`: your Firebase project id
 - `FIREBASE_SERVICE_ACCOUNT`: JSON for a Firebase service account with Hosting deploy permissions
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPABASE_ASSIGNMENTS_TABLE` (optional)
+- `VITE_BACKEND_URL` (optional)
 
-This workflow assumes the website is at the repo root (not a monorepo).
+Required GitHub repo variable:
+- `FIREBASE_PROJECT_ID`: your Firebase project id (set as a repo variable; does not need to be secret)
+
+Note: The `VITE_*` values are embedded into the static website at build time. If you treat your Supabase anon key / backend URL as public (typical), you can store them as repo variables instead of secrets.
 
 Workflow behavior:
 - `push` to `main`: deploys to the `live` channel

@@ -16,7 +16,8 @@ def _utc_now() -> datetime:
 
 
 def _iso(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).isoformat()
+    # PostgREST filter values are embedded in the URL; avoid "+" by using "Z".
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _get_exact_count(client: SupabaseRestClient, table: str, *, cutoff_iso: str) -> Optional[int]:

@@ -79,7 +79,7 @@ def _resolve_level_key(level: Optional[str], mapping: Dict[str, Any]) -> Optiona
         return None
     if lvl in mapping:
         return lvl
-    if lvl in {"IGCSE", "International Baccalaureate"} and "IB/IGCSE" in mapping:
+    if lvl in {"IGCSE", "IB"} and "IB/IGCSE" in mapping:
         return "IB/IGCSE"
     return None
 
@@ -183,4 +183,3 @@ def canonicalize_subjects_for_assignment_row(row: Dict[str, Any]) -> Tuple[List[
     if not res.get("ok"):
         dbg = {**dbg, "ok": False, "error": _safe_str(res.get("error"))}
     return canon, general, ver, dbg
-

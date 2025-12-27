@@ -138,7 +138,7 @@ JSON: {
   "is_tuition_centre": false,
   "academic_tags_raw": "IB Year 12 (2026) HL Chemistry",
   "subjects": ["Chemistry"],
-  "level": ["International Baccalaureate"],
+  "level": ["IB"],
   "specific_student_level": ["IB DP Year 2"],
   "student_gender": null,
   "student_count": null,

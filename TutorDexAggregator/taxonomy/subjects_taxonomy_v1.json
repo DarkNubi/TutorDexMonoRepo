@@ -195,7 +195,7 @@
         "Chemistry": ["SCIENCE.CHEMISTRY"],
         "Biology": ["SCIENCE.BIOLOGY"]
       },
-      "International Baccalaureate": {
+      "IB": {
         "Maths": ["MATH.IBIGCSE_MATH"],
         "English": ["ENGLISH.GENERAL"],
         "Physics": ["SCIENCE.PHYSICS"],

@@ -408,10 +408,16 @@ def main() -> None:
         now = int(time.time())
 
         # 1) Liveness checks: heartbeat + log staleness + queue heartbeat
+        qhb = _read_queue_heartbeat()
+        qhb_ts = int(qhb.get("ts") or 0) if isinstance(qhb, dict) else 0
+        qhb_age = now - qhb_ts if qhb_ts else None
+        queue_healthy = bool(qhb_ts and qhb_age is not None and qhb_age <= max(cfg.heartbeat_stale_s, int(cfg.check_interval_s * 2)))
+
         hb = _load_json(cfg.heartbeat_path) if cfg.heartbeat_path.exists() else None
         hb_ts = int(hb.get("ts") or 0) if isinstance(hb, dict) else 0
         hb_age = now - hb_ts if hb_ts else None
-        if hb_age is None or hb_age > cfg.heartbeat_stale_s:
+        # If the legacy aggregator heartbeat is missing but the queue pipeline is healthy, skip this alert.
+        if not (queue_healthy and hb_ts == 0) and (hb_age is None or hb_age > cfg.heartbeat_stale_s):
             key = "aggregator_stale"
             if _cooldown_ok(state, key, cfg.cooldown_s):
                 msg = _format_alert(
@@ -435,9 +441,6 @@ def main() -> None:
                     _send_telegram(cfg, msg)
                     _mark_alert(state, key)
 
-        qhb = _read_queue_heartbeat()
-        qhb_ts = int(qhb.get("ts") or 0) if isinstance(qhb, dict) else 0
-        qhb_age = now - qhb_ts if qhb_ts else None
         # Only alert when we have a timestamp and it's stale; skip malformed/missing ts to avoid noise.
         if qhb_ts and qhb_age is not None and qhb_age > max(cfg.heartbeat_stale_s, int(cfg.check_interval_s * 2)):
             key = "queue_heartbeat_stale"

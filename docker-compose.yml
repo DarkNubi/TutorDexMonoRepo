@@ -1,6 +1,7 @@
 services:
   aggregator-ingest:
     build: ./TutorDexAggregator
+    profiles: ["legacy"]
     env_file:
       - ./TutorDexAggregator/.env
     command: ["python", "runner.py", "start"]
@@ -22,7 +23,7 @@ services:
     command: ["python", "workers/extract_worker.py"]
     restart: unless-stopped
     depends_on:
-      - aggregator-ingest
+      - collector-tail
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
@@ -56,7 +57,7 @@ services:
     command: ["python", "monitoring/monitor.py"]
     restart: unless-stopped
     depends_on:
-      - aggregator-ingest
+      - backend
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
@@ -74,7 +75,27 @@ services:
     # Use the default CMD from TutorDexBackend/Dockerfile (uvicorn app:app)
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - supabase_net
+
+  telegram-link-bot:
+    build: ./TutorDexBackend
+    env_file:
+      - ./TutorDexBackend/.env
+    environment:
+      BACKEND_URL: http://backend:8000
+    command: ["python", "TutorDexBackend/telegram_link_bot.py", "--poll-seconds", "2"]
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -109,12 +130,10 @@ services:
       - -c
       - |
         while true; do
-          python utilities/tutorcity_fetch.py --limit ${TUTORCITY_LIMIT:-200} || true
+          python utilities/tutorcity_fetch.py --limit ${TUTORCITY_LIMIT:-50} || true
           sleep ${TUTORCITY_FETCH_INTERVAL_SECONDS:-300}
         done
     restart: unless-stopped
-    depends_on:
-      - aggregator-ingest
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs

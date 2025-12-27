@@ -3,7 +3,7 @@ import json
 import time
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -55,7 +55,60 @@ def _coerce_chat_ids(value: Any) -> List[str]:
     return [s] if s else []
 
 
-def fetch_matching_chat_ids(payload: Dict[str, Any]) -> List[str]:
+def _safe_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def _learning_mode_is_online_only(payload: Dict[str, Any]) -> bool:
+    parsed = payload.get("parsed") or {}
+    lm = str(parsed.get("learning_mode") or "").strip().lower()
+    return lm == "online"
+
+
+def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+    parsed = payload.get("parsed") or {}
+    if not isinstance(parsed, dict):
+        return None, None
+
+    lat = _safe_float(parsed.get("postal_lat"))
+    lon = _safe_float(parsed.get("postal_lon"))
+    if lat is not None and lon is not None:
+        return lat, lon
+
+    if _learning_mode_is_online_only(payload):
+        return None, None
+
+    try:
+        from supabase_persist import _geocode_sg_postal  # best-effort + cached
+    except Exception:
+        _geocode_sg_postal = None
+
+    if not _geocode_sg_postal:
+        return None, None
+
+    postal_code = parsed.get("postal_code") or parsed.get("postal_code_estimated")
+    if isinstance(postal_code, list) and postal_code:
+        postal_code = postal_code[0]
+    if not postal_code:
+        return None, None
+
+    coords = _geocode_sg_postal(str(postal_code))
+    if not coords:
+        return None, None
+
+    lat, lon = coords
+    parsed["postal_lat"] = float(lat)
+    parsed["postal_lon"] = float(lon)
+    payload["parsed"] = parsed
+    return float(lat), float(lon)
+
+
+def fetch_matching_results(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     headers = {"x-api-key": BACKEND_API_KEY} if BACKEND_API_KEY else None
     t0 = timed()
     resp = requests.post(TUTOR_MATCH_URL, json={"payload": payload}, headers=headers, timeout=10)
@@ -63,9 +116,23 @@ def fetch_matching_chat_ids(payload: Dict[str, Any]) -> List[str]:
     if resp.status_code >= 400:
         raise RuntimeError(f"match_api_error status={resp.status_code} body={resp.text[:300]}")
     data = resp.json()
+    matches = data.get("matches")
+    if isinstance(matches, list) and matches:
+        out: List[Dict[str, Any]] = []
+        for m in matches:
+            if not isinstance(m, dict):
+                continue
+            chat_id = str(m.get("chat_id") or "").strip()
+            if not chat_id:
+                continue
+            out.append({"chat_id": chat_id, "distance_km": m.get("distance_km")})
+        log_event(logger, logging.DEBUG, "dm_match_ok", matched=len(out), match_ms=match_ms)
+        return out
+
     chat_ids = _coerce_chat_ids(data.get("chat_ids"))
-    log_event(logger, logging.DEBUG, "dm_match_ok", matched=len(chat_ids), match_ms=match_ms)
-    return chat_ids
+    out = [{"chat_id": cid, "distance_km": None} for cid in chat_ids]
+    log_event(logger, logging.DEBUG, "dm_match_ok", matched=len(out), match_ms=match_ms)
+    return out
 
 
 def _telegram_send_message(chat_id: str, text: str) -> Dict[str, Any]:
@@ -99,22 +166,28 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
     channel_link = payload.get("channel_link") or payload.get("channel_username")
 
     with bind_log_context(cid=cid, message_id=msg_id, channel=str(channel_link) if channel_link else None, step="dm"):
-        text = build_message_text(payload, include_clicks=False, clicks=0)
+        _get_or_geocode_assignment_coords(payload)
 
         try:
-            chat_ids = fetch_matching_chat_ids(payload)
+            matches = fetch_matching_results(payload)
         except Exception as e:
             logger.warning("DM match failed error=%s", e, exc_info=True)
             return {"ok": False, "error": str(e)}
 
-        chat_ids = chat_ids[:DM_MAX_RECIPIENTS]
-        if not chat_ids:
+        matches = matches[:DM_MAX_RECIPIENTS]
+        if not matches:
             log_event(logger, logging.INFO, "dm_no_matches")
             return {"ok": True, "sent": 0, "matched": 0}
 
         sent = 0
         failures = 0
-        for chat_id in chat_ids:
+        for match in matches:
+            chat_id = str(match.get("chat_id") or "").strip()
+            if not chat_id:
+                continue
+
+            distance_km = match.get("distance_km")
+            text = build_message_text(payload, include_clicks=False, clicks=0, distance_km=_safe_float(distance_km))
             log_event(logger, logging.DEBUG, "dm_send_attempt", chat_id=chat_id)
             res = _telegram_send_message(chat_id, text)
             status = res.get("status_code") or 0
@@ -143,11 +216,25 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
         if failures:
             try:
                 with open(DM_FALLBACK_FILE, "a", encoding="utf-8") as fh:
-                    fh.write(json.dumps({"payload": payload, "text": text, "matched_chat_ids": chat_ids}, ensure_ascii=False) + "\n")
+                    fh.write(
+                        json.dumps(
+                            {"payload": payload, "matched": matches},
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
                 fallback_written = True
                 log_event(logger, logging.INFO, "dm_fallback_written", path=str(DM_FALLBACK_FILE))
             except Exception:
                 logger.exception("Failed to write DM fallback file path=%s", DM_FALLBACK_FILE)
 
-        log_event(logger, logging.INFO, "dm_summary", matched=len(chat_ids), sent=sent, failures=failures, fallback_written=fallback_written)
-        return {"ok": failures == 0, "matched": len(chat_ids), "sent": sent, "failures": failures}
+        log_event(
+            logger,
+            logging.INFO,
+            "dm_summary",
+            matched=len(matches),
+            sent=sent,
+            failures=failures,
+            fallback_written=fallback_written,
+        )
+        return {"ok": failures == 0, "matched": len(matches), "sent": sent, "failures": failures}

@@ -11,7 +11,7 @@ const subjectsData = window.tutorDexSubjects || window.subjectsData || {};
 const specificLevelsData = window.tutorDexSpecificLevels || {};
 
 function getSubjectsKey(level) {
-  if (level === "IGCSE" || level === "International Baccalaureate") return "IB/IGCSE";
+  if (level === "IGCSE" || level === "IB") return "IB/IGCSE";
   return level;
 }
 
@@ -101,15 +101,14 @@ function mapAssignmentRow(row) {
   const subject = (row?.subject || "").trim() || pickFirst(row?.subjects) || "Unknown";
 
   const learningMode = (row?.learning_mode || "").trim();
-  const hasPhysicalLocation = Boolean(
-    (row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim()
-  );
+  const hasPhysicalLocation = Boolean((row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim());
   const lm = learningMode.toLowerCase();
   const isOnlineOnly = Boolean(learningMode) && lm.includes("online") && !lm.includes("hybrid") && !lm.includes("face");
 
-  const location = isOnlineOnly && !hasPhysicalLocation
-    ? "Online"
-    : (row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim() || "Unknown";
+  const location =
+    isOnlineOnly && !hasPhysicalLocation
+      ? "Online"
+      : (row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim() || "Unknown";
 
   const rate = row?.rate_min ?? parseRate(row?.hourly_rate);
 
@@ -210,7 +209,9 @@ function renderCards(data) {
     badge.className = "badge bg-black text-white";
     badge.textContent = job.id;
 
-    const tier = String(job?.freshnessTier || "green").trim().toLowerCase();
+    const tier = String(job?.freshnessTier || "green")
+      .trim()
+      .toLowerCase();
     const tierPill = document.createElement("span");
     tierPill.className = "badge";
     tierPill.textContent = tier === "yellow" ? "Yellow" : tier === "orange" ? "Orange" : tier === "red" ? "Red" : "Green";
@@ -278,8 +279,7 @@ function renderCards(data) {
     const messageLink = rawMessageLink.startsWith("t.me/") ? `https://${rawMessageLink}` : rawMessageLink;
 
     const applyBtn = document.createElement(messageLink ? "a" : "button");
-    applyBtn.className =
-      "w-full py-4 border-2 border-black rounded-lg font-bold uppercase tracking-wide transition text-center";
+    applyBtn.className = "w-full py-4 border-2 border-black rounded-lg font-bold uppercase tracking-wide transition text-center";
     applyBtn.textContent = messageLink ? "Apply Now" : "Link Unavailable";
     if (messageLink) {
       applyBtn.href = messageLink;
@@ -458,6 +458,31 @@ function setFacetHintVisible(show) {
   facetHint.classList.toggle("hidden", !show);
 }
 
+function formatAssignmentsLoadError(err) {
+  const msg = String(err?.message || err || "").trim();
+  if (!msg) return "Assignments are temporarily unavailable. Please try again.";
+
+  if (msg.includes("VITE_BACKEND_URL missing")) {
+    return "Assignments unavailable: website backend is not configured (VITE_BACKEND_URL missing at build time).";
+  }
+
+  // Common when the reverse proxy points at the wrong service, or backend container wasn't rebuilt.
+  if (msg.includes("Backend GET /assignments") && msg.includes("(404)") && msg.includes("Not Found")) {
+    return "Assignments unavailable: backend route not found (404). If you updated the backend, rebuild/redeploy it and verify your reverse proxy points to the TutorDex backend.";
+  }
+
+  // Backend exists but can't serve because DB functions weren't applied.
+  if (msg.includes("list_assignments_failed") || msg.includes("facets_failed")) {
+    return "Assignments unavailable: backend is up, but the Supabase RPC functions for pagination/facets are missing or failing. Apply the SQL in `TutorDexAggregator/supabase sqls/2025-12-25_assignments_facets_pagination.sql` and try again.";
+  }
+
+  if (msg.includes("supabase_disabled")) {
+    return "Assignments unavailable: backend Supabase integration is disabled/misconfigured (check SUPABASE_ENABLED, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).";
+  }
+
+  return `Assignments unavailable (${msg}).`;
+}
+
 async function loadAssignments({ reset = false, append = false } = {}) {
   const loadToken = ++activeLoadToken;
   if (isDebugEnabled()) {
@@ -477,9 +502,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     if (!cfg.anonKeyPresent) missing.push("VITE_SUPABASE_ANON_KEY");
 
     setStatus(
-      missing.length
-        ? `Assignments unavailable (missing ${missing.join(", ")}).`
-        : "Assignments unavailable (Supabase not configured).",
+      missing.length ? `Assignments unavailable (missing ${missing.join(", ")}).` : "Assignments unavailable (Supabase not configured).",
       "error",
       { showRetry: true }
     );
@@ -572,12 +595,13 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     );
   } catch (err) {
     console.error("Failed to load assignments from Supabase.", err);
-    setStatus(`Assignments unavailable (${err?.message || err}).`, "error", { showRetry: true });
+    const friendly = formatAssignmentsLoadError(err);
+    setStatus(friendly, "error", { showRetry: true });
     allAssignments = [];
     totalAssignments = 0;
     nextCursorLastSeen = null;
     nextCursorId = null;
-    renderLoadError("We couldn’t load assignments right now. Please try again.");
+    renderLoadError(friendly);
   }
 }
 
@@ -605,10 +629,10 @@ async function prepopulateFiltersFromProfile() {
       document.getElementById("filter-subject").value = subject;
     }
 
-  if (level || subject) applyFilters();
-} catch (err) {
-  console.error("Failed to prepopulate filters from profile.", err);
-}
+    if (level || subject) applyFilters();
+  } catch (err) {
+    console.error("Failed to prepopulate filters from profile.", err);
+  }
 }
 
 function mountDebugPanel() {

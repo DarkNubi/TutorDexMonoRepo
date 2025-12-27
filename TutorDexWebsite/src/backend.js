@@ -2,12 +2,12 @@ import { debugError, debugLog } from "./debug.js";
 
 const BACKEND_URL = (import.meta.env?.VITE_BACKEND_URL ?? "").trim().replace(/\/$/, "");
 
-async function buildAuthHeaders() {
+async function buildAuthHeaders({ forceRefresh = false } = {}) {
   try {
     const mod = await import("../auth.js");
-    const token = await mod.getIdToken?.();
+    const token = await mod.getIdToken?.(forceRefresh);
     if (!token) return {};
-    return { authorization: `Bearer ${token}` };
+    return { Authorization: `Bearer ${token}` };
   } catch {
     return {};
   }
@@ -20,15 +20,24 @@ export function isBackendEnabled() {
 async function backendFetch(path, { method = "GET", body, signal } = {}) {
   const url = `${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   debugLog("Backend request", { method, url });
-  const authHeaders = await buildAuthHeaders();
-  const headers = { ...authHeaders };
-  if (body) headers["content-type"] = "application/json";
-  const resp = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    signal,
-  });
+
+  async function doFetch({ forceRefresh = false } = {}) {
+    const authHeaders = await buildAuthHeaders({ forceRefresh });
+    const headers = { ...authHeaders };
+    if (body) headers["content-type"] = "application/json";
+    return fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  }
+
+  let resp = await doFetch();
+  if (resp.status === 401) {
+    // Token can be stale; retry once with a refreshed Firebase ID token.
+    resp = await doFetch({ forceRefresh: true });
+  }
   debugLog("Backend response", { method, url, status: resp.status, ok: resp.ok });
 
   if (!resp.ok) {

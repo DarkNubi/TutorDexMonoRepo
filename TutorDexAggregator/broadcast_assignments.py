@@ -4,6 +4,8 @@
 import os
 import json
 import logging
+import random
+import time
 from typing import Any, Dict, Optional
 from pathlib import Path
 
@@ -193,7 +195,13 @@ def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     return "unknown"
 
 
-def build_message_text(payload: Dict[str, Any], *, include_clicks: bool = True, clicks: int = 0) -> str:
+def build_message_text(
+    payload: Dict[str, Any],
+    *,
+    include_clicks: bool = True,
+    clicks: int = 0,
+    distance_km: Optional[float] = None,
+) -> str:
     parsed = payload.get('parsed') or {}
     academic_raw = _escape(_join_text(parsed.get("academic_tags_raw")))
     subjects = _escape(_join_text(parsed.get('subjects')))
@@ -253,6 +261,15 @@ def build_message_text(payload: Dict[str, Any], *, include_clicks: bool = True, 
         lines.append(f"🚇 {nearest_mrt}")
     if postal:
         lines.append(f"Postal: {postal}")
+
+    if distance_km is not None:
+        try:
+            km = float(distance_km)
+        except Exception:
+            km = None
+        learning_mode = str(parsed.get("learning_mode") or "").strip().lower()
+        if km is not None and km >= 0 and learning_mode != "online":
+            lines.append(f"📏 Distance: ~{km:.1f} km")
 
     # Rates
     if rate:
@@ -372,13 +389,63 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                 'disable_notification': False,
             }
             try:
-                t_send = timed()
-                resp = requests.post(BOT_API_URL, json=body, timeout=15)
-                send_ms = round((timed() - t_send) * 1000.0, 2)
-                try:
-                    j = resp.json()
-                except Exception:
-                    j = {'status_code': resp.status_code, 'text': resp.text[:500]}
+                max_attempts = max(1, int(os.environ.get("BROADCAST_MAX_ATTEMPTS", "4") or 4))
+                base_sleep_s = float(os.environ.get("BROADCAST_RETRY_BASE_SECONDS", "2.0") or 2.0)
+                max_sleep_s = float(os.environ.get("BROADCAST_RETRY_MAX_SLEEP_SECONDS", "60.0") or 60.0)
+
+                def _sleep(s: float) -> None:
+                    s = max(0.0, float(s))
+                    jitter = random.uniform(0.0, min(1.0, s * 0.1))
+                    time.sleep(min(max_sleep_s, s + jitter))
+
+                resp = None
+                j: Any = None
+                send_ms = None
+
+                for attempt in range(1, max_attempts + 1):
+                    t_send = timed()
+                    try:
+                        resp = requests.post(BOT_API_URL, json=body, timeout=15)
+                        send_ms = round((timed() - t_send) * 1000.0, 2)
+                    except requests.RequestException as e:
+                        if attempt >= max_attempts:
+                            raise
+                        wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
+                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt, wait_s=wait_s, reason="request_exception", error=str(e))
+                        _sleep(wait_s)
+                        continue
+
+                    try:
+                        j = resp.json()
+                    except Exception:
+                        j = {'status_code': resp.status_code, 'text': resp.text[:500]}
+
+                    if resp.status_code == 429:
+                        # Telegram rate limit. If we can, retry after the requested delay.
+                        retry_after = 0
+                        if isinstance(j, dict):
+                            try:
+                                retry_after = int((j.get("parameters") or {}).get("retry_after") or 0)
+                            except Exception:
+                                retry_after = 0
+                        retry_after = max(1, min(int(max_sleep_s), retry_after or 2))
+                        log_event(logger, logging.WARNING, "broadcast_rate_limited", attempt=attempt, retry_after_s=retry_after)
+                        if attempt >= max_attempts:
+                            break
+                        _sleep(float(retry_after))
+                        continue
+
+                    if resp.status_code >= 500:
+                        # Transient Telegram / network issues; retry with exponential backoff.
+                        if attempt >= max_attempts:
+                            break
+                        wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
+                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt, wait_s=wait_s, reason="server_error", status_code=resp.status_code)
+                        _sleep(wait_s)
+                        continue
+
+                    # Success or non-retryable 4xx.
+                    break
 
                 if resp.status_code >= 400:
                     log_event(

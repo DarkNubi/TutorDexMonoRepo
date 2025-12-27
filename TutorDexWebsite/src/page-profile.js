@@ -6,7 +6,7 @@ const subjectsData = window.tutorDexSubjects || window.subjectsData || {};
 const specificLevelsData = window.tutorDexSpecificLevels || {};
 
 function getSubjectsKey(level) {
-  if (level === "IGCSE" || level === "International Baccalaureate") return "IB/IGCSE";
+  if (level === "IGCSE" || level === "IB") return "IB/IGCSE";
   return level;
 }
 
@@ -184,7 +184,9 @@ function getActiveButtonLabels(containerId) {
 }
 
 function mapTutorKind(label) {
-  const v = String(label || "").trim().toLowerCase();
+  const v = String(label || "")
+    .trim()
+    .toLowerCase();
   if (!v) return "";
   if (v.startsWith("part-time")) return "PT";
   if (v.startsWith("full-time")) return "FT";
@@ -194,7 +196,9 @@ function mapTutorKind(label) {
 }
 
 function reverseTutorKind(kind) {
-  const k = String(kind || "").trim().toUpperCase();
+  const k = String(kind || "")
+    .trim()
+    .toUpperCase();
   if (k === "PT") return "Part-Time";
   if (k === "FT") return "Full-Time";
   if (k === "MOE") return "MOE- trained Tutors";

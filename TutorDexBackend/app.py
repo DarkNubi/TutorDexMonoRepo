@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from TutorDexBackend.redis_store import TutorStore
 from TutorDexBackend.matching import match_from_payload
 from TutorDexBackend.supabase_store import SupabaseStore
-from TutorDexBackend.firebase_auth import verify_bearer_token
+from TutorDexBackend.firebase_auth import firebase_admin_status, verify_bearer_token
 from TutorDexBackend.logging_setup import setup_logging
 from TutorDexBackend.geocoding import geocode_sg_postal_code, normalize_sg_postal_code
 
@@ -28,6 +28,15 @@ logger = logging.getLogger("tutordex_backend")
 app = FastAPI(title="TutorDex Backend", version="0.1.0")
 store = TutorStore()
 sb = SupabaseStore()
+
+
+def _app_env() -> str:
+    return (os.environ.get("APP_ENV") or os.environ.get("ENV") or "dev").strip().lower()
+
+
+def _is_prod() -> bool:
+    return _app_env() in {"prod", "production"}
+
 
 _cors_origins = (os.environ.get("CORS_ALLOW_ORIGINS") or "*").strip()
 origins = ["*"] if _cors_origins == "*" else [o.strip() for o in _cors_origins.split(",") if o.strip()]
@@ -41,10 +50,15 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def _startup_log() -> None:
+    # Fail fast on dangerous misconfig in production.
+    if _is_prod() and not (os.environ.get("ADMIN_API_KEY") or "").strip():
+        raise RuntimeError("ADMIN_API_KEY is required when APP_ENV=prod")
+
     logger.info(
         "startup",
         extra={
             "auth_required": _auth_required(),
+            "app_env": _app_env(),
             "supabase_enabled": sb.enabled(),
             "redis_prefix": getattr(getattr(store, "cfg", None), "prefix", None),
         },
@@ -232,6 +246,53 @@ def _start_click_edit_worker() -> None:
         logger.exception("click_edit_worker_start_failed")
 
 
+def _client_ip(request: Request) -> str:
+    xff = (request.headers.get("x-forwarded-for") or request.headers.get("X-Forwarded-For") or "").strip()
+    if xff:
+        first = xff.split(",", 1)[0].strip()
+        return first or "unknown"
+    return getattr(getattr(request, "client", None), "host", None) or "unknown"
+
+
+def _hash_ip(ip: str) -> str:
+    try:
+        return hashlib.sha256(str(ip).encode("utf-8")).hexdigest()[:16]
+    except Exception:
+        return "unknown"
+
+
+_CLICK_COOLDOWN_LOCAL: Dict[str, float] = {}
+_CLICK_COOLDOWN_LOCK = asyncio.Lock()
+
+
+async def _should_increment_click(request: Request, *, external_id: str) -> bool:
+    cooldown_s = max(0, _env_int("CLICK_TRACKING_IP_COOLDOWN_SECONDS", 10))
+    if cooldown_s <= 0:
+        return True
+
+    ip_hash = _hash_ip(_client_ip(request))
+    prefix = getattr(getattr(store, "cfg", None), "prefix", None) or "tutordex"
+    key = f"{prefix}:click_cd:{external_id}:{ip_hash}"
+
+    try:
+        ok = store.r.set(key, "1", nx=True, ex=int(cooldown_s))
+        return bool(ok)
+    except Exception:
+        pass
+
+    now = time.time()
+    async with _CLICK_COOLDOWN_LOCK:
+        expires_at = float(_CLICK_COOLDOWN_LOCAL.get(key) or 0.0)
+        if expires_at > now:
+            return False
+        _CLICK_COOLDOWN_LOCAL[key] = now + float(cooldown_s)
+        if len(_CLICK_COOLDOWN_LOCAL) > 5000:
+            for k, exp in list(_CLICK_COOLDOWN_LOCAL.items())[:1000]:
+                if float(exp) <= now:
+                    _CLICK_COOLDOWN_LOCAL.pop(k, None)
+    return True
+
+
 @app.get("/r/a/{token}")
 async def tracked_redirect(token: str, request: Request):
     payload = _verify_and_decode_token(token)
@@ -240,9 +301,11 @@ async def tracked_redirect(token: str, request: Request):
     if not external_id or not original_url:
         raise HTTPException(status_code=400, detail="bad_payload")
 
-    clicks = sb.increment_assignment_clicks(external_id=external_id, original_url=original_url, delta=1) if sb.enabled() else None
-    if clicks is not None:
-        await _CLICK_EDIT_QUEUE.enqueue(external_id, int(clicks))
+    should_inc = await _should_increment_click(request, external_id=external_id)
+    if should_inc and sb.enabled():
+        clicks = sb.increment_assignment_clicks(external_id=external_id, original_url=original_url, delta=1)
+        if clicks is not None:
+            await _CLICK_EDIT_QUEUE.enqueue(external_id, int(clicks))
 
     return RedirectResponse(url=original_url, status_code=302)
 
@@ -504,7 +567,10 @@ def _admin_key() -> str:
 def _require_admin(request: Request) -> None:
     key = _admin_key()
     if not key:
-        return
+        # In dev, allow missing key for easier local iteration.
+        if not _is_prod():
+            return
+        raise HTTPException(status_code=500, detail="admin_api_key_missing")
     provided = (request.headers.get("x-api-key") or request.headers.get("X-Api-Key") or "").strip()
     if provided != key:
         raise HTTPException(status_code=401, detail="admin_unauthorized")
@@ -524,15 +590,35 @@ def _get_uid_from_request(request: Request) -> Optional[str]:
 
 
 def _require_uid(request: Request) -> str:
-    uid = _get_uid_from_request(request)
+    header = request.headers.get("authorization") or request.headers.get("Authorization") or ""
+    if not header:
+        if _auth_required():
+            raise HTTPException(status_code=401, detail="missing_bearer_token")
+        raise HTTPException(status_code=401, detail="unauthorized_or_auth_disabled")
+
+    parts = header.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        if _auth_required():
+            raise HTTPException(status_code=401, detail="invalid_authorization_header")
+        raise HTTPException(status_code=401, detail="unauthorized_or_auth_disabled")
+
+    decoded = verify_bearer_token(parts[1])
+    uid = decoded.get("uid") if decoded else None
     if uid:
         try:
             request.state.uid = uid
         except Exception:
             pass
         return uid
+
     if _auth_required():
-        raise HTTPException(status_code=401, detail="unauthorized")
+        st = firebase_admin_status()
+        if not st.get("enabled"):
+            raise HTTPException(status_code=500, detail="auth_required_but_firebase_admin_disabled")
+        if not st.get("ready"):
+            raise HTTPException(status_code=503, detail="firebase_admin_init_failed")
+        raise HTTPException(status_code=401, detail="invalid_bearer_token")
+
     raise HTTPException(status_code=401, detail="unauthorized_or_auth_disabled")
 
 
@@ -579,7 +665,14 @@ def match_payload(request: Request, req: MatchPayloadRequest) -> Dict[str, Any]:
         "ok": True,
         "count": len(results),
         "matches": [
-            {"tutor_id": r.tutor_id, "chat_id": r.chat_id, "score": r.score, "reasons": r.reasons} for r in results
+            {
+                "tutor_id": r.tutor_id,
+                "chat_id": r.chat_id,
+                "score": r.score,
+                "reasons": r.reasons,
+                "distance_km": r.distance_km,
+            }
+            for r in results
         ],
         "chat_ids": [r.chat_id for r in results],
     }

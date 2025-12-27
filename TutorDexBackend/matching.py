@@ -1,4 +1,5 @@
 import os
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -58,12 +59,50 @@ def _payload_to_query(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _safe_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def _learning_mode_is_online_only(payload: Dict[str, Any]) -> bool:
+    parsed = payload.get("parsed") or {}
+    lm = _norm_text(parsed.get("learning_mode"))
+    return lm == "online"
+
+
+def _extract_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+    parsed = payload.get("parsed") or {}
+    lat = _safe_float(parsed.get("postal_lat") if isinstance(parsed, dict) else None)
+    lon = _safe_float(parsed.get("postal_lon") if isinstance(parsed, dict) else None)
+    if lat is None:
+        lat = _safe_float(payload.get("assignment_postal_lat"))
+    if lon is None:
+        lon = _safe_float(payload.get("assignment_postal_lon"))
+    return lat, lon
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 6371.0
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return r * c
+
+
 @dataclass(frozen=True)
 class MatchResult:
     tutor_id: str
     chat_id: str
     score: int
     reasons: List[str]
+    distance_km: Optional[float] = None
 
 
 def score_tutor(tutor: Dict[str, Any], query: Dict[str, Any]) -> Tuple[int, List[str]]:
@@ -109,6 +148,13 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
     query = _payload_to_query(payload)
     min_score = _env_int("MATCH_MIN_SCORE", 3)
 
+    assignment_lat, assignment_lon = _extract_assignment_coords(payload)
+    include_distance = (
+        not _learning_mode_is_online_only(payload)
+        and assignment_lat is not None
+        and assignment_lon is not None
+    )
+
     results: List[MatchResult] = []
     for tutor_id in store.list_tutor_ids():
         tutor = store.get_tutor(tutor_id)
@@ -119,7 +165,25 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
             continue
         score, reasons = score_tutor(tutor, query)
         if score >= min_score:
-            results.append(MatchResult(tutor_id=tutor_id, chat_id=str(chat_id), score=score, reasons=reasons))
+            distance_km: Optional[float] = None
+            if include_distance:
+                tutor_lat = _safe_float(tutor.get("postal_lat"))
+                tutor_lon = _safe_float(tutor.get("postal_lon"))
+                if tutor_lat is not None and tutor_lon is not None:
+                    try:
+                        distance_km = _haversine_km(tutor_lat, tutor_lon, float(assignment_lat), float(assignment_lon))
+                    except Exception:
+                        distance_km = None
+
+            results.append(
+                MatchResult(
+                    tutor_id=tutor_id,
+                    chat_id=str(chat_id),
+                    score=score,
+                    reasons=reasons,
+                    distance_km=distance_km,
+                )
+            )
 
     results.sort(key=lambda r: (r.score, r.tutor_id), reverse=True)
     return results

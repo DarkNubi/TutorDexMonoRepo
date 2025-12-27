@@ -81,6 +81,19 @@ function getParam(name) {
   }
 }
 
+function sanitizeNext(next) {
+  const raw = String(next || "").trim();
+  if (!raw) return null;
+
+  // Prevent open redirects. Only allow same-site static pages.
+  if (raw.includes("://") || raw.startsWith("//") || raw.includes("\\") || raw.includes("/") || raw.includes("..")) {
+    return null;
+  }
+
+  const allow = new Set(["assignments.html", "profile.html", "index.html"]);
+  return allow.has(raw) ? raw : null;
+}
+
 function setText(el, text) {
   if (!el) return;
   el.textContent = text || "";
@@ -166,7 +179,7 @@ function initAuth() {
   }
 
   function redirectAfterAuth() {
-    const next = getParam("next");
+    const next = sanitizeNext(getParam("next"));
     if (next && next !== "index.html") {
       window.location.replace(next);
       return;
@@ -248,7 +261,7 @@ function initAuth() {
       setBusy(loginForm, true);
       try {
         await auth.signInWithEmailAndPassword(loginEmail.value.trim(), loginPassword.value);
-        const next = getParam("next");
+        const next = sanitizeNext(getParam("next"));
         if (next) window.location.assign(next);
         else window.location.assign("assignments.html");
       } catch (err) {
@@ -291,7 +304,7 @@ function initAuth() {
         if (displayName && cred?.user?.updateProfile) {
           await cred.user.updateProfile({ displayName });
         }
-        const next = getParam("next");
+        const next = sanitizeNext(getParam("next"));
         if (next) window.location.assign(next);
         else window.location.assign("profile.html");
       } catch (err) {
