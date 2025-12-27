@@ -371,7 +371,6 @@ class TutorUpsert(BaseModel):
     teaching_locations: Optional[List[str]] = None
     contact_phone: Optional[str] = None
     contact_telegram_handle: Optional[str] = None
-    preferred_contact_modes: Optional[List[str]] = None
 
 
 class MatchPayloadRequest(BaseModel):
@@ -637,7 +636,6 @@ def upsert_tutor(request: Request, tutor_id: str, req: TutorUpsert) -> Dict[str,
         teaching_locations=req.teaching_locations,
         contact_phone=req.contact_phone,
         contact_telegram_handle=req.contact_telegram_handle,
-        preferred_contact_modes=req.preferred_contact_modes,
     )
 
 
@@ -744,7 +742,6 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
         teaching_locations=req.teaching_locations,
         contact_phone=req.contact_phone,
         contact_telegram_handle=req.contact_telegram_handle,
-        preferred_contact_modes=req.preferred_contact_modes,
     )
 
     if sb.enabled():
@@ -757,10 +754,6 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
                 "assignment_types": req.assignment_types,
                 "tutor_kinds": req.tutor_kinds,
                 "learning_modes": req.learning_modes,
-                "teaching_locations": req.teaching_locations,
-                "contact_phone": req.contact_phone,
-                "contact_telegram_handle": req.contact_telegram_handle,
-                "preferred_contact_modes": req.preferred_contact_modes,
             }
             if "postal_code" in getattr(req, "model_fields_set", set()):
                 prefs["postal_code"] = postal_code

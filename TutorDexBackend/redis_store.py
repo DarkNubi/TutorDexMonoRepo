@@ -115,7 +115,6 @@ class TutorStore:
         teaching_locations: Any = None,
         contact_phone: Optional[str] = None,
         contact_telegram_handle: Optional[str] = None,
-        preferred_contact_modes: Any = None,
     ) -> Dict[str, Any]:
         key = self._tutor_key(tutor_id)
         # Important: Do not overwrite existing fields when the caller omits them.
@@ -158,8 +157,6 @@ class TutorStore:
             doc["contact_phone"] = str(contact_phone).strip()
         if contact_telegram_handle is not None:
             doc["contact_telegram_handle"] = str(contact_telegram_handle).strip()
-        if preferred_contact_modes is not None:
-            doc["preferred_contact_modes"] = _json_dumps(_as_text_list(preferred_contact_modes))
 
         pipe = self.r.pipeline()
         pipe.hset(key, mapping=doc)
@@ -217,7 +214,6 @@ class TutorStore:
             "teaching_locations": _json_loads(raw.get("teaching_locations")) or [],
             "contact_phone": raw.get("contact_phone") or "",
             "contact_telegram_handle": raw.get("contact_telegram_handle") or "",
-            "preferred_contact_modes": _json_loads(raw.get("preferred_contact_modes")) or [],
             "updated_at": raw.get("updated_at"),
         }
 

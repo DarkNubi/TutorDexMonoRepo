@@ -161,8 +161,8 @@
           </div>
 
           <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <select id="level-select" class="nike-input bg-white rounded-lg" onchange="updateSpecificLevels(); updateSubjects();">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <select id="level-select" class="nike-input bg-white rounded-lg">
                 <option value="" disabled selected>Select Level</option>
                 <option value="Pre-School">Pre-School</option>
                 <option value="Primary">Primary</option>
@@ -183,19 +183,63 @@
                 <option value="" selected>Select Specific Level (Optional)</option>
               </select>
 
-              <select id="subject-select" class="nike-input bg-white rounded-lg">
-                <option value="" disabled selected>Select Subject</option>
-              </select>
+              <div class="flex gap-3">
+                <input
+                  id="subject-search"
+                  type="text"
+                  placeholder="Search subjects..."
+                  class="nike-input bg-white rounded-lg"
+                  autocomplete="off"
+                />
+                <button
+                  id="clear-subject-search"
+                  type="button"
+                  class="px-4 py-2 border-2 border-gray-300 rounded-lg font-bold uppercase text-xs tracking-wide hover:border-black transition"
+                  title="Clear subject search"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
 
+            <div class="mb-2 flex items-center justify-between">
+              <p class="text-xs text-gray-500">Select a level once, then click subjects to add combinations quickly.</p>
               <button
+                id="clear-level-selection"
                 type="button"
-                onclick="addToTray()"
-                class="bg-black text-white brand-font text-lg tracking-wide rounded-lg hover:opacity-80 transition"
+                class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full hover:bg-gray-100"
+                title="Clear the level dropdown (does not remove added combinations)"
               >
-                ADD +
+                Clear level
               </button>
             </div>
-            <p class="text-xs text-gray-500">Select a level (and specific level if needed), then a subject, and click Add.</p>
+
+            <div
+              id="subject-buttons"
+              class="w-full bg-white border border-gray-200 rounded-xl p-3 flex flex-wrap gap-2 max-h-[220px] overflow-y-auto"
+            >
+              <span class="text-gray-400 text-sm italic w-full text-center">Pick a level to see subjects…</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Added combinations</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                id="clear-this-level"
+                type="button"
+                class="px-3 py-2 border-2 border-gray-300 rounded-lg font-bold uppercase text-xs tracking-wide hover:border-black transition"
+              >
+                Clear This Level
+              </button>
+              <button
+                id="clear-tray"
+                type="button"
+                class="px-3 py-2 border-2 border-black rounded-lg font-bold uppercase text-xs tracking-wide hover:bg-black hover:text-white transition"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
 
           <div id="subjects-tray" class="min-h-[80px] w-full border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-wrap gap-2 items-center">
@@ -334,41 +378,6 @@
             </p>
           </div>
 
-          <div class="bg-black text-white p-6 rounded-xl">
-            <h3 class="text-lg mb-4">Preferred Contact Mode</h3>
-            <div id="preferred-contact-modes" class="flex flex-wrap gap-4">
-              <label class="flex items-center space-x-3 cursor-pointer group">
-                <div class="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
-                  <input
-                    type="checkbox"
-                    data-contact-mode="WhatsApp"
-                    class="appearance-none w-3 h-3 bg-white rounded-full opacity-0 checked:opacity-100 transition"
-                  />
-                </div>
-                <span class="font-bold uppercase text-sm group-hover:text-gray-300 transition">WhatsApp</span>
-              </label>
-              <label class="flex items-center space-x-3 cursor-pointer group">
-                <div class="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
-                  <input
-                    type="checkbox"
-                    data-contact-mode="Telegram"
-                    class="appearance-none w-3 h-3 bg-white rounded-full opacity-0 checked:opacity-100 transition"
-                  />
-                </div>
-                <span class="font-bold uppercase text-sm group-hover:text-gray-300 transition">Telegram</span>
-              </label>
-              <label class="flex items-center space-x-3 cursor-pointer group">
-                <div class="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
-                  <input
-                    type="checkbox"
-                    data-contact-mode="Email"
-                    class="appearance-none w-3 h-3 bg-white rounded-full opacity-0 checked:opacity-100 transition"
-                  />
-                </div>
-                <span class="font-bold uppercase text-sm group-hover:text-gray-300 transition">Email</span>
-              </label>
-            </div>
-          </div>
         </section>
 
         <p id="profile-save-status" class="text-sm font-medium text-gray-600 mb-4"></p>

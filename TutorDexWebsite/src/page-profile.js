@@ -48,64 +48,61 @@ function updateSpecificLevels() {
 
 function updateSubjects() {
   const level = document.getElementById("level-select").value;
-  const subjectSelect = document.getElementById("subject-select");
+  const root = document.getElementById("subject-buttons");
+  const searchEl = document.getElementById("subject-search");
   const subjectsKey = getSubjectsKey(level);
 
-  subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
+  if (!root) return;
 
-  if (subjectsData[subjectsKey]) {
-    subjectsData[subjectsKey].forEach((sub) => {
-      const option = document.createElement("option");
-      option.value = sub;
-      option.text = sub;
-      subjectSelect.appendChild(option);
+  const q = String(searchEl?.value || "")
+    .trim()
+    .toLowerCase();
+
+  const all = Array.isArray(subjectsData[subjectsKey]) ? subjectsData[subjectsKey] : [];
+  const filtered = q ? all.filter((s) => String(s || "").toLowerCase().includes(q)) : all;
+
+  root.innerHTML = "";
+
+  if (!level) {
+    const msg = document.createElement("span");
+    msg.className = "text-gray-400 text-sm italic w-full text-center";
+    msg.textContent = "Pick a level to see subjects…";
+    root.appendChild(msg);
+    return;
+  }
+
+  if (!filtered.length) {
+    const msg = document.createElement("span");
+    msg.className = "text-gray-400 text-sm italic w-full text-center";
+    msg.textContent = q ? "No matching subjects." : "No subjects available for this level.";
+    root.appendChild(msg);
+    return;
+  }
+
+  for (const sub of filtered) {
+    const label = String(sub || "").trim();
+    if (!label) continue;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "select-btn rounded-full px-4 py-2 font-bold uppercase text-xs tracking-wide";
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      const lvl = String(document.getElementById("level-select")?.value || "").trim();
+      if (!lvl) return;
+      const spec = String(document.getElementById("specific-level-select")?.value || "").trim();
+      addChipToTray({ level: lvl, specificLevel: spec, subject: label });
     });
+    root.appendChild(btn);
   }
 }
 
-function addToTray() {
-  const level = document.getElementById("level-select").value;
-  const specificLevel = document.getElementById("specific-level-select").value;
-  const subject = document.getElementById("subject-select").value;
+function _updateEmptyTrayState() {
   const tray = document.getElementById("subjects-tray");
   const emptyMsg = document.getElementById("empty-tray-msg");
-
-  if (!(level && subject)) return;
-
-  if (emptyMsg) emptyMsg.style.display = "none";
-
-  const chipId = `${level}-${specificLevel || "any"}-${subject}`.replace(/\s+/g, "");
-  if (document.getElementById(chipId)) return;
-
-  const chip = document.createElement("div");
-  chip.className = "tray-item";
-  chip.id = chipId;
-  chip.dataset.level = level;
-  chip.dataset.specificLevel = specificLevel || "";
-  chip.dataset.subject = subject;
-
-  const label = document.createElement("span");
-
-  const levelTag = document.createElement("span");
-  levelTag.className = "text-gray-400 font-normal mr-1";
-  levelTag.textContent = level;
-
-  label.appendChild(levelTag);
-  label.appendChild(document.createTextNode(specificLevel ? ` ${specificLevel} - ${subject}` : ` ${subject}`));
-
-  const removeBtn = document.createElement("button");
-  removeBtn.type = "button";
-  removeBtn.className = "hover:text-red-400 transition ml-1";
-  removeBtn.setAttribute("aria-label", `Remove ${level}${specificLevel ? ` ${specificLevel}` : ""} ${subject}`);
-  removeBtn.addEventListener("click", () => chip.remove());
-
-  const removeIcon = document.createElement("i");
-  removeIcon.className = "fa-solid fa-times";
-  removeBtn.appendChild(removeIcon);
-
-  chip.appendChild(label);
-  chip.appendChild(removeBtn);
-  tray.appendChild(chip);
+  if (!tray || !emptyMsg) return;
+  const hasChips = Boolean(tray.querySelector(".tray-item"));
+  emptyMsg.style.display = hasChips ? "none" : "block";
 }
 
 function addChipToTray({ level, specificLevel, subject }) {
@@ -141,7 +138,10 @@ function addChipToTray({ level, specificLevel, subject }) {
   removeBtn.type = "button";
   removeBtn.className = "hover:text-red-400 transition ml-1";
   removeBtn.setAttribute("aria-label", `Remove ${lvl}${spec ? ` ${spec}` : ""} ${subj}`);
-  removeBtn.addEventListener("click", () => chip.remove());
+  removeBtn.addEventListener("click", () => {
+    chip.remove();
+    _updateEmptyTrayState();
+  });
 
   const removeIcon = document.createElement("i");
   removeIcon.className = "fa-solid fa-times";
@@ -150,6 +150,7 @@ function addChipToTray({ level, specificLevel, subject }) {
   chip.appendChild(label);
   chip.appendChild(removeBtn);
   tray.appendChild(chip);
+  if (emptyMsg) emptyMsg.style.display = "none";
 }
 
 function toggleInfo(id) {
@@ -162,7 +163,6 @@ window.selectSingle = selectSingle;
 window.toggleBtn = toggleBtn;
 window.updateSpecificLevels = updateSpecificLevels;
 window.updateSubjects = updateSubjects;
-window.addToTray = addToTray;
 window.toggleInfo = toggleInfo;
 
 function uniq(list) {
@@ -215,25 +215,6 @@ function getLearningModesFromLocations() {
   if (hasOnline) return ["Online"];
   if (hasPhysical) return ["Face-to-Face"];
   return [];
-}
-
-function getPreferredContactModes() {
-  const root = document.getElementById("preferred-contact-modes");
-  if (!root) return [];
-  return Array.from(root.querySelectorAll("input[type='checkbox'][data-contact-mode]"))
-    .filter((el) => Boolean(el.checked))
-    .map((el) => String(el.getAttribute("data-contact-mode") || "").trim())
-    .filter(Boolean);
-}
-
-function setPreferredContactModes(modes) {
-  const root = document.getElementById("preferred-contact-modes");
-  if (!root) return;
-  const want = new Set((modes || []).map((s) => String(s).trim()).filter(Boolean));
-  Array.from(root.querySelectorAll("input[type='checkbox'][data-contact-mode]")).forEach((el) => {
-    const key = String(el.getAttribute("data-contact-mode") || "").trim();
-    el.checked = want.has(key);
-  });
 }
 
 function parseTrayPreferences() {
@@ -289,7 +270,6 @@ async function saveProfile() {
   const { subjects, levels, subjectPairs } = parseTrayPreferences();
   const contactPhone = String(document.getElementById("contact-phone")?.value || "").trim();
   const contactTelegramHandle = String(document.getElementById("contact-telegram-handle")?.value || "").trim();
-  const preferredContactModes = uniq(getPreferredContactModes());
 
   const postalInput = document.getElementById("tutor-postal-code");
   const postalNormalized = normalizeSgPostalCode(postalInput?.value);
@@ -310,7 +290,6 @@ async function saveProfile() {
     postal_code: postalNormalized,
     contact_phone: contactPhone || null,
     contact_telegram_handle: contactTelegramHandle || null,
-    preferred_contact_modes: preferredContactModes,
   });
   try {
     await trackEvent({ eventType: "profile_save" });
@@ -380,10 +359,6 @@ async function loadProfile() {
     tgHandleEl.value = profile.contact_telegram_handle;
   }
 
-  if (Array.isArray(profile.preferred_contact_modes)) {
-    setPreferredContactModes(profile.preferred_contact_modes);
-  }
-
   const postalEl = document.getElementById("tutor-postal-code");
   if (postalEl && typeof profile.postal_code === "string") {
     postalEl.value = profile.postal_code;
@@ -393,8 +368,6 @@ async function loadProfile() {
     const tray = document.getElementById("subjects-tray");
     if (tray) {
       tray.querySelectorAll(".tray-item").forEach((el) => el.remove());
-      const emptyMsg = document.getElementById("empty-tray-msg");
-      if (emptyMsg) emptyMsg.style.display = "none";
       for (const pair of profile.subject_pairs) {
         addChipToTray({
           level: pair?.level,
@@ -402,6 +375,7 @@ async function loadProfile() {
           subject: pair?.subject,
         });
       }
+      _updateEmptyTrayState();
     }
   }
 }
@@ -475,7 +449,72 @@ async function initProfilePage() {
     await waitForAuth();
     const user = await getCurrentUser();
     if (emailEl && user?.email) emailEl.value = user.email;
+
+    const levelSelect = document.getElementById("level-select");
+    if (levelSelect) {
+      levelSelect.addEventListener("change", () => {
+        const searchEl = document.getElementById("subject-search");
+        if (searchEl) searchEl.value = "";
+        updateSpecificLevels();
+        updateSubjects();
+      });
+    }
+
+    const subjectSearch = document.getElementById("subject-search");
+    if (subjectSearch) {
+      subjectSearch.addEventListener("input", () => updateSubjects());
+    }
+
+    const clearSearchBtn = document.getElementById("clear-subject-search");
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener("click", () => {
+        const searchEl = document.getElementById("subject-search");
+        if (searchEl) searchEl.value = "";
+        updateSubjects();
+      });
+    }
+
+    const clearLevelSelBtn = document.getElementById("clear-level-selection");
+    if (clearLevelSelBtn) {
+      clearLevelSelBtn.addEventListener("click", () => {
+        const levelEl = document.getElementById("level-select");
+        const specEl = document.getElementById("specific-level-select");
+        if (levelEl) levelEl.value = "";
+        if (specEl) {
+          specEl.innerHTML = '<option value="" selected>Select Specific Level (Optional)</option>';
+          specEl.disabled = true;
+        }
+        const searchEl = document.getElementById("subject-search");
+        if (searchEl) searchEl.value = "";
+        updateSubjects();
+      });
+    }
+
+    const clearAllBtn = document.getElementById("clear-tray");
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener("click", () => {
+        const tray = document.getElementById("subjects-tray");
+        if (tray) tray.querySelectorAll(".tray-item").forEach((el) => el.remove());
+        _updateEmptyTrayState();
+      });
+    }
+
+    const clearThisLevelBtn = document.getElementById("clear-this-level");
+    if (clearThisLevelBtn) {
+      clearThisLevelBtn.addEventListener("click", () => {
+        const level = String(document.getElementById("level-select")?.value || "").trim();
+        if (!level) return;
+        const tray = document.getElementById("subjects-tray");
+        if (!tray) return;
+        tray.querySelectorAll(".tray-item").forEach((el) => {
+          if (String(el.dataset.level || "").trim() === level) el.remove();
+        });
+        _updateEmptyTrayState();
+      });
+    }
+
     await loadProfile();
+    _updateEmptyTrayState();
   } catch (err) {
     console.error(err);
   }
