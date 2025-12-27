@@ -134,7 +134,12 @@ def main() -> None:
 
                 try:
                     headers = {"x-api-key": api_key} if api_key else None
-                    claim_resp = requests.post(claim_url, json={"code": code, "chat_id": str(chat_id)}, headers=headers, timeout=10)
+                    claim_resp = requests.post(
+                        claim_url,
+                        json={"code": code, "chat_id": str(chat_id), "telegram_username": username},
+                        headers=headers,
+                        timeout=10,
+                    )
                     if claim_resp.status_code < 400:
                         _send_message(token, str(chat_id), "Linked. You can now receive TutorDex DMs.")
                     elif claim_resp.status_code in (401, 403):

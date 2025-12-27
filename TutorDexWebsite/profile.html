@@ -328,10 +328,17 @@
                 </button>
               </div>
 
-              <input id="contact-telegram-handle" type="text" placeholder="@username" class="nike-input rounded-lg" />
+              <input
+                id="contact-telegram-handle"
+                type="text"
+                placeholder="@username"
+                class="nike-input rounded-lg bg-gray-50"
+                readonly
+                aria-readonly="true"
+              />
 
               <p id="telegram-info" class="mt-1 text-xs text-gray-500 hidden">
-                Telegram handle is required if you want to receive filtered assignments directly from us.
+                Auto-filled after you link Telegram DMs. If your Telegram account has no username, this will stay blank.
               </p>
             </div>
           </div>

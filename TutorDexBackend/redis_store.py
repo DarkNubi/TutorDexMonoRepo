@@ -168,9 +168,13 @@ class TutorStore:
         pipe.execute()
         return {"ok": True, "tutor_id": tutor_id}
 
-    def set_chat_id(self, tutor_id: str, chat_id: str) -> Dict[str, Any]:
+    def set_chat_id(self, tutor_id: str, chat_id: str, telegram_username: Optional[str] = None) -> Dict[str, Any]:
         key = self._tutor_key(tutor_id)
-        self.r.hset(key, mapping={"chat_id": str(chat_id).strip(), "updated_at": _utc_now_iso()})
+        mapping: Dict[str, Any] = {"chat_id": str(chat_id).strip(), "updated_at": _utc_now_iso()}
+        if telegram_username is not None:
+            u = str(telegram_username).strip().lstrip("@")
+            mapping["contact_telegram_handle"] = f"@{u}" if u else ""
+        self.r.hset(key, mapping=mapping)
         self.r.sadd(self._tutors_set_key(), tutor_id)
         return {"ok": True, "tutor_id": tutor_id}
 

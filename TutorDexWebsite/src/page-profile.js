@@ -48,11 +48,41 @@ function updateSpecificLevels() {
 
 function updateSubjects() {
   const level = document.getElementById("level-select").value;
+  const specificLevel = String(document.getElementById("specific-level-select")?.value || "").trim();
   const root = document.getElementById("subject-buttons");
   const searchEl = document.getElementById("subject-search");
   const subjectsKey = getSubjectsKey(level);
 
   if (!root) return;
+
+  function hasChip(lvl, spec, subj) {
+    const tray = document.getElementById("subjects-tray");
+    if (!tray) return false;
+    return Array.from(tray.querySelectorAll(".tray-item")).some((el) => {
+      const elLvl = String(el.dataset.level || "").trim();
+      const elSpec = String(el.dataset.specificLevel || "").trim();
+      const elSubj = String(el.dataset.subject || "").trim();
+      return elLvl === lvl && elSpec === spec && elSubj === subj;
+    });
+  }
+
+  function removeChip(lvl, spec, subj) {
+    const tray = document.getElementById("subjects-tray");
+    if (!tray) return false;
+    const chips = Array.from(tray.querySelectorAll(".tray-item"));
+    let removed = false;
+    for (const el of chips) {
+      const elLvl = String(el.dataset.level || "").trim();
+      const elSpec = String(el.dataset.specificLevel || "").trim();
+      const elSubj = String(el.dataset.subject || "").trim();
+      if (elLvl === lvl && elSpec === spec && elSubj === subj) {
+        el.remove();
+        removed = true;
+      }
+    }
+    if (removed) _updateEmptyTrayState();
+    return removed;
+  }
 
   const q = String(searchEl?.value || "")
     .trim()
@@ -87,11 +117,22 @@ function updateSubjects() {
     btn.type = "button";
     btn.className = "select-btn rounded-full px-4 py-2 font-bold uppercase text-xs tracking-wide";
     btn.textContent = label;
+
+    const isSelected = hasChip(level, specificLevel, label);
+    btn.classList.toggle("active", isSelected);
+
     btn.addEventListener("click", () => {
       const lvl = String(document.getElementById("level-select")?.value || "").trim();
       if (!lvl) return;
       const spec = String(document.getElementById("specific-level-select")?.value || "").trim();
+      const already = hasChip(lvl, spec, label);
+      if (already) {
+        removeChip(lvl, spec, label);
+        btn.classList.remove("active");
+        return;
+      }
       addChipToTray({ level: lvl, specificLevel: spec, subject: label });
+      btn.classList.add("active");
     });
     root.appendChild(btn);
   }
@@ -141,6 +182,7 @@ function addChipToTray({ level, specificLevel, subject }) {
   removeBtn.addEventListener("click", () => {
     chip.remove();
     _updateEmptyTrayState();
+    updateSubjects();
   });
 
   const removeIcon = document.createElement("i");
@@ -151,6 +193,7 @@ function addChipToTray({ level, specificLevel, subject }) {
   chip.appendChild(removeBtn);
   tray.appendChild(chip);
   if (emptyMsg) emptyMsg.style.display = "none";
+  updateSubjects();
 }
 
 function toggleInfo(id) {
@@ -269,7 +312,6 @@ async function saveProfile() {
   const learningModes = getLearningModesFromLocations();
   const { subjects, levels, subjectPairs } = parseTrayPreferences();
   const contactPhone = String(document.getElementById("contact-phone")?.value || "").trim();
-  const contactTelegramHandle = String(document.getElementById("contact-telegram-handle")?.value || "").trim();
 
   const postalInput = document.getElementById("tutor-postal-code");
   const postalNormalized = normalizeSgPostalCode(postalInput?.value);
@@ -289,7 +331,6 @@ async function saveProfile() {
     teaching_locations: teachingLocations,
     postal_code: postalNormalized,
     contact_phone: contactPhone || null,
-    contact_telegram_handle: contactTelegramHandle || null,
   });
   try {
     await trackEvent({ eventType: "profile_save" });
@@ -458,6 +499,11 @@ async function initProfilePage() {
         updateSpecificLevels();
         updateSubjects();
       });
+    }
+
+    const specificSelect = document.getElementById("specific-level-select");
+    if (specificSelect) {
+      specificSelect.addEventListener("change", () => updateSubjects());
     }
 
     const subjectSearch = document.getElementById("subject-search");

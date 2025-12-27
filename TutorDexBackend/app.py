@@ -385,6 +385,7 @@ class TelegramLinkCodeRequest(BaseModel):
 class TelegramClaimRequest(BaseModel):
     code: str
     chat_id: str
+    telegram_username: Optional[str] = None
 
 
 class AnalyticsEventRequest(BaseModel):
@@ -810,4 +811,6 @@ def telegram_claim(request: Request, req: TelegramClaimRequest) -> Dict[str, Any
     tutor_id = store.consume_telegram_link_code(code)
     if not tutor_id:
         raise HTTPException(status_code=404, detail="invalid_or_expired_code")
-    return store.set_chat_id(tutor_id, req.chat_id)
+
+    username = (req.telegram_username or "").strip() or None
+    return store.set_chat_id(tutor_id, req.chat_id, telegram_username=username)
