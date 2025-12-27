@@ -12,7 +12,13 @@ from TutorDexBackend.logging_setup import setup_logging
 
 
 HERE = Path(__file__).resolve().parent
-OFFSET_FILE = HERE / "telegram_link_bot_offset.json"
+
+
+def _offset_file_path() -> Path:
+    override = _env("LINK_BOT_OFFSET_FILE") or ""
+    if override.strip():
+        return Path(override.strip())
+    return HERE / "telegram_link_bot_offset.json"
 
 
 def _env(name: str, default: str = "") -> str:
@@ -24,14 +30,17 @@ def _env(name: str, default: str = "") -> str:
 
 def _load_offset() -> int:
     try:
-        data = json.loads(OFFSET_FILE.read_text(encoding="utf-8"))
+        offset_file = _offset_file_path()
+        data = json.loads(offset_file.read_text(encoding="utf-8"))
         return int(data.get("offset") or 0)
     except Exception:
         return 0
 
 
 def _save_offset(offset: int) -> None:
-    OFFSET_FILE.write_text(json.dumps({"offset": int(offset)}, indent=2), encoding="utf-8")
+    offset_file = _offset_file_path()
+    offset_file.parent.mkdir(parents=True, exist_ok=True)
+    offset_file.write_text(json.dumps({"offset": int(offset)}, indent=2), encoding="utf-8")
 
 
 def _bot_base(token: str) -> str:

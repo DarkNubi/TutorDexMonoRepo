@@ -90,12 +90,14 @@ services:
       - ./TutorDexBackend/.env
     environment:
       BACKEND_URL: http://backend:8000
+      LINK_BOT_OFFSET_FILE: /state/telegram_link_bot_offset.json
     command: ["python", "TutorDexBackend/telegram_link_bot.py", "--poll-seconds", "2"]
     restart: unless-stopped
     depends_on:
       - backend
     volumes:
       - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+      - telegram_link_bot_state:/state
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -147,3 +149,6 @@ networks:
   supabase_net:
     external: true
     name: supabase_default
+
+volumes:
+  telegram_link_bot_state:
