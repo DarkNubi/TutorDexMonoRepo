@@ -787,47 +787,84 @@ def process_parsed_payload(payload: dict, do_send: bool = False) -> dict:
     # If postal_code is falsy, attempt estimation
     if not parsed.get('postal_code'):
         raw_text = payload.get("raw_text") if isinstance(payload, dict) else ""
-        address_value = parsed.get("address")
-        address_list = _coerce_text_list(address_value)
-        if not address_list:
-            raw_addr = _extract_address_from_raw_text(raw_text) or ""
-            address_list = [raw_addr.strip()] if raw_addr.strip() else []
 
-        if not address_list:
-            parsed['postal_code_estimated'] = None
-            log_event(logger, logging.INFO, "postal_estimate_skipped", cid=cid, chat=chat, message_id=message_id, reason="missing_address")
+        # Step between: try regex fill from raw text first (6-digit SG postal-like tokens).
+        try:
+            raw_postals = re.findall(r"\b(\d{6})\b", str(raw_text or ""))
+        except Exception:
+            raw_postals = []
+
+        # de-dup while preserving order
+        seen = set()
+        raw_postals = [c for c in raw_postals if c and not (c in seen or seen.add(c))]
+
+        if raw_postals:
+            parsed["postal_code"] = raw_postals if len(raw_postals) > 1 else raw_postals[0]
+            parsed["postal_code_estimated"] = None
+            log_event(
+                logger,
+                logging.INFO,
+                "postal_regex_fill_ok",
+                cid=cid,
+                chat=chat,
+                message_id=message_id,
+                count=len(raw_postals),
+            )
         else:
-            estimated_codes: list[str] = []
-            for idx, addr in enumerate(address_list, start=1):
-                try:
-                    log_event(
-                        logger,
-                        logging.DEBUG,
-                        "postal_estimate_start",
-                        cid=cid,
-                        chat=chat,
-                        message_id=message_id,
-                        addr_idx=idx,
-                        addr_total=len(address_list),
-                        address_chars=len(addr or ""),
-                    )
-                    code = estimate_postal_from_address(addr)
-                except Exception:
-                    logger.debug("Postal estimate attempt failed", exc_info=True)
-                    code = None
-                if code:
-                    estimated_codes.append(code)
+            log_event(
+                logger,
+                logging.DEBUG,
+                "postal_regex_fill_none",
+                cid=cid,
+                chat=chat,
+                message_id=message_id,
+            )
 
-            # de-dup estimates while preserving order
-            seen = set()
-            estimated_codes = [c for c in estimated_codes if not (c in seen or seen.add(c))]
+        # If regex fill succeeded, skip Nominatim estimation.
+        if parsed.get("postal_code"):
+            log_event(logger, logging.DEBUG, "postal_estimate_skipped", cid=cid, chat=chat, message_id=message_id, reason="postal_regex_filled")
+        else:
+            address_value = parsed.get("address")
+            address_list = _coerce_text_list(address_value)
+            if not address_list:
+                raw_addr = _extract_address_from_raw_text(raw_text) or ""
+                address_list = [raw_addr.strip()] if raw_addr.strip() else []
 
-            if estimated_codes:
-                parsed['postal_code_estimated'] = estimated_codes if len(address_list) > 1 else estimated_codes[0]
-                log_event(logger, logging.INFO, "postal_estimate_ok", cid=cid, chat=chat, message_id=message_id, count=len(estimated_codes))
-            else:
+            if not address_list:
                 parsed['postal_code_estimated'] = None
-                log_event(logger, logging.INFO, "postal_estimate_none", cid=cid, chat=chat, message_id=message_id)
+                log_event(logger, logging.INFO, "postal_estimate_skipped", cid=cid, chat=chat, message_id=message_id, reason="missing_address")
+            else:
+                estimated_codes: list[str] = []
+                for idx, addr in enumerate(address_list, start=1):
+                    try:
+                        log_event(
+                            logger,
+                            logging.DEBUG,
+                            "postal_estimate_start",
+                            cid=cid,
+                            chat=chat,
+                            message_id=message_id,
+                            addr_idx=idx,
+                            addr_total=len(address_list),
+                            address_chars=len(addr or ""),
+                        )
+                        code = estimate_postal_from_address(addr)
+                    except Exception:
+                        logger.debug("Postal estimate attempt failed", exc_info=True)
+                        code = None
+                    if code:
+                        estimated_codes.append(code)
+
+                # de-dup estimates while preserving order
+                seen = set()
+                estimated_codes = [c for c in estimated_codes if not (c in seen or seen.add(c))]
+
+                if estimated_codes:
+                    parsed['postal_code_estimated'] = estimated_codes if len(address_list) > 1 else estimated_codes[0]
+                    log_event(logger, logging.INFO, "postal_estimate_ok", cid=cid, chat=chat, message_id=message_id, count=len(estimated_codes))
+                else:
+                    parsed['postal_code_estimated'] = None
+                    log_event(logger, logging.INFO, "postal_estimate_none", cid=cid, chat=chat, message_id=message_id)
     else:
         log_event(logger, logging.DEBUG, "postal_estimate_skipped", cid=cid, chat=chat, message_id=message_id, reason="postal_present")
 

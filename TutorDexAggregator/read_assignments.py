@@ -955,6 +955,28 @@ async def process_message(client, msg, entity, processed):
                         details={"checks": len(comp_details)},
                     )
                     log_compilation(entity, msg, raw, reason='compilation_detected')
+
+                    codes = _extract_assignment_codes_from_compilation(raw or "")
+                    forward_details = list(comp_details or [])
+                    if codes:
+                        # Do not cap: include all codes, but chunk into multiple lines to avoid overly long messages.
+                        forward_details.append(f"Detected assignment codes ({len(codes)}):")
+                        chunk: list[str] = []
+                        chunk_len = 0
+                        for code in codes:
+                            s = str(code)
+                            add_len = len(s) + (2 if chunk else 0)  # ", " separator
+                            if chunk and (chunk_len + add_len) > 800:
+                                forward_details.append(", ".join(chunk))
+                                chunk = []
+                                chunk_len = 0
+                            chunk.append(s)
+                            chunk_len += add_len
+                        if chunk:
+                            forward_details.append(", ".join(chunk))
+                    else:
+                        forward_details.append("Detected assignment codes: <none found>")
+
                     # Best-effort: use compilation post to bump assignments.last_seen/bump_count in Supabase.
                     try:
                         bump_res = _bump_assignments_from_compilation(
@@ -967,7 +989,7 @@ async def process_message(client, msg, entity, processed):
                     except Exception:
                         logger.debug("Compilation bump failed (non-fatal)", exc_info=True)
                     try:
-                        await forward_skipped_message(client, msg, entity, reason='compilation_detected', details=comp_details)
+                        await forward_skipped_message(client, msg, entity, reason='compilation_detected', details=forward_details)
                     except Exception:
                         logger.exception('Failed to forward skipped compilation message')
                     step_ok["skipped"] = "compilation_detected"
