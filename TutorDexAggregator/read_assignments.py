@@ -373,6 +373,7 @@ URL_RE = re.compile(r'https?://|t\.me/|www\.')
 
 COMPILATION_STORE = HERE / os.environ.get('COMPILATION_FILE', 'compilations.jsonl')
 COMPILATION_BUMP_ENABLED = str(os.environ.get("COMPILATION_BUMP_ENABLED", "true")).strip().lower() in {"1", "true", "yes", "y", "on"}
+FORWARDED_BUMP_ENABLED = str(os.environ.get("FORWARDED_BUMP_ENABLED", "true")).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 _COMP_CODE_HINT_RE = re.compile(
     r"(?i)\b(?:code\s*id|assignment\s*code|assignment|job|code|id)\s*[:#]\s*([A-Za-z0-9][A-Za-z0-9_-]{2,24})"
@@ -506,6 +507,130 @@ def _bump_assignments_from_compilation(
         log_event(logger, logging.INFO, "compilation_bump_summary", codes=len(codes), bumped=bumped, not_found=not_found, errors=errors)
 
     return {"ok": errors == 0, "bumped": bumped, "codes": len(codes), "not_found": not_found, "errors": errors}
+
+
+def _bump_assignments_by_external_id(
+    *,
+    external_id: str,
+    last_seen_iso: Optional[str],
+    cid: str,
+    agency_link: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Best-effort bump for a single assignment external_id (e.g. assignment_code).
+
+    For forwarded messages, the posting channel may not match the assignment's original agency.
+
+    If `agency_link` is provided (e.g. derived from Telegram forward metadata), the bump will be
+    constrained to that agency/source. Otherwise, it bumps by `external_id` across all agencies.
+    """
+    if not FORWARDED_BUMP_ENABLED:
+        return {"ok": False, "skipped": True, "reason": "disabled"}
+
+    cfg = _load_supabase_bump_config()
+    if not cfg.get("enabled"):
+        return {"ok": False, "skipped": True, "reason": "supabase_disabled"}
+
+    ext = str(external_id or "").strip()
+    if not ext:
+        return {"ok": True, "bumped": 0, "skipped": True, "reason": "missing_external_id"}
+
+    base = f"{cfg['url']}/rest/v1"
+    headers = _supabase_headers(str(cfg["key"]))
+    table = str(cfg["assignments_table"])
+
+    last_seen_iso = last_seen_iso or datetime.now(timezone.utc).isoformat()
+
+    bumped = 0
+    not_found = 0
+    errors = 0
+
+    with bind_log_context(cid=cid, step="forwarded_bump"):
+        try:
+            q = (
+                f"{base}/{table}?select=id,bump_count"
+                + (f"&agency_link=eq.{requests.utils.quote(str(agency_link), safe='')}" if agency_link else "")
+                + f"&external_id=eq.{requests.utils.quote(ext, safe='')}&limit=25"
+            )
+            r = requests.get(q, headers=headers, timeout=20)
+            if r.status_code >= 400:
+                return {"ok": False, "bumped": 0, "errors": 1, "status_code": r.status_code}
+            data = r.json()
+            if not isinstance(data, list) or not data:
+                not_found = 1
+                return {"ok": True, "bumped": 0, "not_found": not_found}
+
+            for row in data:
+                try:
+                    aid = row.get("id")
+                    old = row.get("bump_count")
+                    try:
+                        old_i = int(old) if old is not None else 0
+                    except Exception:
+                        old_i = 0
+                    new_i = old_i + 1
+
+                    patch_url = f"{base}/{table}?id=eq.{requests.utils.quote(str(aid), safe='')}"
+                    pr = requests.patch(
+                        patch_url,
+                        headers={**headers, "prefer": "return=minimal"},
+                        json={"bump_count": new_i, "last_seen": last_seen_iso},
+                        timeout=20,
+                    )
+                    if pr.status_code < 400:
+                        bumped += 1
+                    else:
+                        errors += 1
+                        log_event(
+                            logger,
+                            logging.DEBUG,
+                            "forwarded_bump_patch_failed",
+                            status_code=pr.status_code,
+                            external_id=ext,
+                            assignment_id=aid,
+                        )
+                except Exception as e:
+                    errors += 1
+                    log_event(logger, logging.DEBUG, "forwarded_bump_patch_exception", external_id=ext, error=str(e))
+        except Exception as e:
+            errors += 1
+            log_event(logger, logging.DEBUG, "forwarded_bump_exception", external_id=ext, error=str(e))
+
+        log_event(logger, logging.INFO, "forwarded_bump_summary", external_id=ext, bumped=bumped, not_found=not_found, errors=errors)
+
+    return {"ok": errors == 0, "bumped": bumped, "not_found": not_found, "errors": errors}
+
+
+async def _try_get_forwarded_source_channel_link(client, msg) -> Optional[str]:
+    """
+    Best-effort: derive a `t.me/<username>` from Telethon forward metadata.
+
+    Returns None when we can't determine a public username.
+    """
+    fwd = getattr(msg, "fwd_from", None) or getattr(msg, "forward", None)
+    if not fwd:
+        return None
+
+    candidates: list[Any] = []
+    for attr in ("from_id", "saved_from_peer", "saved_from_id"):
+        peer = getattr(fwd, attr, None)
+        if peer is not None:
+            candidates.append(peer)
+
+    channel_id = getattr(fwd, "channel_id", None)
+    if channel_id is not None:
+        candidates.append(channel_id)
+
+    for peer in candidates:
+        try:
+            ent = await retry_with_backoff(client.get_entity, peer)
+            uname = getattr(ent, "username", None)
+            if uname:
+                return f"t.me/{str(uname).strip()}"
+        except Exception:
+            continue
+
+    return None
 
 
 def is_compilation(text: str) -> tuple[bool, list[str]]:
@@ -742,16 +867,71 @@ async def process_message(client, msg, entity, processed):
                 if getattr(msg, 'fwd_from', None) or getattr(msg, 'forward', None) or (
                     hasattr(msg, 'forwarded_from') and getattr(msg, 'forwarded_from', None)
                 ):
-                    set_step("skip.forwarded")
-                    log_event(logger, logging.INFO, "message_skipped", reason="forwarded")
-                    _write_heartbeat(status="skipped", cid=cid, channel_link=channel_link, message_id=msg_id, reason="forwarded")
+                    set_step("forwarded.extract_for_bump")
+                    date_obj = getattr(msg, 'date', None)
+                    last_seen_iso = date_obj.isoformat() if date_obj else None
+
+                    assignment_code = None
+                    forwarded_source_link = None
+                    try:
+                        t0 = timed()
+                        parsed = await run_in_thread(extract_assignment_with_model, raw, channel_link, cid=cid)
+                        step_ms["extract_ms"] = round((timed() - t0) * 1000.0, 2)
+                        assignment_code = (parsed or {}).get("assignment_code") if isinstance(parsed, dict) else None
+                        try:
+                            forwarded_source_link = await _try_get_forwarded_source_channel_link(client, msg)
+                        except Exception:
+                            forwarded_source_link = None
+                    except Exception as e:
+                        step_ms["extract_ms"] = round((timed() - t0) * 1000.0, 2) if "t0" in locals() else 0.0
+                        logger.debug("Forwarded extract failed (non-fatal)", exc_info=True)
+                        assignment_code = None
+
+                    bump_res = None
+                    if assignment_code:
+                        try:
+                            set_step("forwarded.bump")
+                            bump_res = _bump_assignments_by_external_id(
+                                external_id=str(assignment_code),
+                                last_seen_iso=last_seen_iso,
+                                cid=cid,
+                                agency_link=forwarded_source_link,
+                            )
+                        except Exception:
+                            logger.debug("Forwarded bump failed (non-fatal)", exc_info=True)
+                            bump_res = {"ok": False, "error": "exception"}
+
+                    log_event(
+                        logger,
+                        logging.INFO,
+                        "message_skipped",
+                        reason="forwarded_bumped",
+                        assignment_code=assignment_code,
+                        forwarded_source=forwarded_source_link,
+                        bump=bump_res,
+                    )
+                    _write_heartbeat(
+                        status="skipped",
+                        cid=cid,
+                        channel_link=channel_link,
+                        message_id=msg_id,
+                        reason="forwarded_bumped",
+                        details={"assignment_code": assignment_code, "forwarded_source": forwarded_source_link, "bump": bump_res},
+                    )
                     try:
                         await forward_skipped_message(client, msg, entity, reason='forwarded')
                     except Exception:
-                        logger.exception('Failed to forward skipped forwarded message')
-                    step_ok["skipped"] = "forwarded"
+                        logger.exception('Failed to forward forwarded message to moderation chat')
+
+                    processed.add(cid)
+                    if len(processed) % 50 == 0:
+                        save_processed(list(processed))
+
+                    step_ok["skipped"] = "forwarded_bumped"
+                    step_ok["assignment_code"] = assignment_code
+                    step_ok["bump"] = bump_res
                     step_ms["total_ms"] = round((timed() - overall_start) * 1000.0, 2)
-                    log_event(logger, logging.INFO, "pipeline_summary", ok=False, skipped="forwarded", ms=step_ms)
+                    log_event(logger, logging.INFO, "pipeline_summary", ok=False, skipped="forwarded_bumped", ms=step_ms)
                     return
             except Exception:
                 logger.debug("Forwarded detection failed; continuing", exc_info=True)

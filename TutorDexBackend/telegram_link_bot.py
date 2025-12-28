@@ -14,18 +14,18 @@ from TutorDexBackend.logging_setup import setup_logging
 HERE = Path(__file__).resolve().parent
 
 
-def _offset_file_path() -> Path:
-    override = _env("LINK_BOT_OFFSET_FILE") or ""
-    if override.strip():
-        return Path(override.strip())
-    return HERE / "telegram_link_bot_offset.json"
-
-
 def _env(name: str, default: str = "") -> str:
     v = os.environ.get(name)
     if v is None:
         return default
     return str(v).strip()
+
+
+def _offset_file_path() -> Path:
+    override = _env("LINK_BOT_OFFSET_FILE") or ""
+    if override.strip():
+        return Path(override.strip())
+    return HERE / "telegram_link_bot_offset.json"
 
 
 def _load_offset() -> int:
