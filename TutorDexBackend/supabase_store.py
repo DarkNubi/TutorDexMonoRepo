@@ -311,6 +311,70 @@ class SupabaseStore:
 
         return {"items": rows, "total": total}
 
+    def list_open_assignments_v2(
+        self,
+        *,
+        limit: int = 50,
+        sort: str = "newest",  # newest|distance
+        tutor_lat: Optional[float] = None,
+        tutor_lon: Optional[float] = None,
+        cursor_last_seen: Optional[str] = None,
+        cursor_id: Optional[int] = None,
+        cursor_distance_km: Optional[float] = None,
+        level: Optional[str] = None,
+        specific_student_level: Optional[str] = None,
+        subject: Optional[str] = None,
+        agency_name: Optional[str] = None,
+        learning_mode: Optional[str] = None,
+        location_query: Optional[str] = None,
+        min_rate: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        RPC wrapper for `public.list_open_assignments_v2` (must be installed in DB).
+        Returns: { "items": [...], "total": int }
+        """
+        if not self.client:
+            return None
+
+        payload: Dict[str, Any] = {
+            "p_limit": int(limit),
+            "p_sort": str(sort or "newest").strip().lower(),
+            "p_tutor_lat": float(tutor_lat) if tutor_lat is not None else None,
+            "p_tutor_lon": float(tutor_lon) if tutor_lon is not None else None,
+            "p_cursor_last_seen": cursor_last_seen,
+            "p_cursor_id": int(cursor_id) if cursor_id is not None else None,
+            "p_cursor_distance_km": float(cursor_distance_km) if cursor_distance_km is not None else None,
+            "p_level": level,
+            "p_specific_student_level": specific_student_level,
+            "p_subject": subject,
+            "p_agency_name": agency_name,
+            "p_learning_mode": learning_mode,
+            "p_location_query": location_query,
+            "p_min_rate": int(min_rate) if min_rate is not None else None,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        try:
+            resp = self.client.post("rpc/list_open_assignments_v2", payload, timeout=25)  # type: ignore[arg-type]
+        except Exception as e:
+            logger.warning("Supabase list_open_assignments_v2 rpc failed error=%s", e)
+            return None
+        if resp.status_code >= 400:
+            logger.warning("Supabase list_open_assignments_v2 rpc status=%s body=%s", resp.status_code, resp.text[:500])
+            return None
+
+        rows = _coerce_rows(resp)
+        total = 0
+        if rows:
+            try:
+                total = int(rows[0].get("total_count") or 0)
+            except Exception:
+                total = 0
+        for r in rows:
+            r.pop("total_count", None)
+
+        return {"items": rows, "total": total}
+
     def open_assignment_facets(
         self,
         *,

@@ -36,8 +36,10 @@ let allAssignments = [];
 let totalAssignments = 0;
 let nextCursorLastSeen = null;
 let nextCursorId = null;
+let nextCursorDistanceKm = null;
 let lastFacets = null;
 let activeLoadToken = 0;
+let hasPostalCoords = null;
 
 function getOrCreateStatusEl() {
   const host = document.querySelector(".max-w-6xl") || document.body;
@@ -119,6 +121,14 @@ function mapAssignmentRow(row) {
 
   const rate = row?.rate_min ?? parseRate(row?.hourly_rate);
 
+  let distanceKm = null;
+  const dk = row?.distance_km;
+  if (typeof dk === "number" && Number.isFinite(dk)) distanceKm = dk;
+  else if (typeof dk === "string") {
+    const parsed = Number.parseFloat(dk.trim());
+    if (Number.isFinite(parsed)) distanceKm = parsed;
+  }
+
   const freqBits = [];
   if (row?.frequency) freqBits.push(String(row.frequency).trim());
   if (row?.duration) freqBits.push(String(row.duration).trim());
@@ -130,6 +140,7 @@ function mapAssignmentRow(row) {
     specificLevel: (row?.specific_student_level || "").trim(),
     subject,
     location,
+    distanceKm,
     rate: typeof rate === "number" && Number.isFinite(rate) ? rate : null,
     gender: (row?.tutor_gender || row?.student_gender || "Any").trim(),
     freshnessTier: (row?.freshness_tier || "").trim() || "green",
@@ -152,6 +163,13 @@ function formatRelativeTime(isoString) {
   if (hours < 48) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function formatDistanceKm(km) {
+  const n = typeof km === "number" ? km : Number.parseFloat(String(km || ""));
+  if (!Number.isFinite(n)) return "";
+  if (n < 10) return `~${n.toFixed(1)} km`;
+  return `~${Math.round(n)} km`;
 }
 
 function renderSkeleton(count = 6) {
@@ -268,6 +286,9 @@ function renderCards(data) {
     }
 
     addDetail("fa-solid fa-location-dot", job.location);
+    if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
+      addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
+    }
     addDetail("fa-solid fa-clock", job.freq);
     addDetail("fa-solid fa-user", `Pref: ${job.gender}`);
     if (job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
@@ -413,6 +434,7 @@ function collectFiltersFromUI() {
     specificStudentLevel: (document.getElementById("filter-specific-level")?.value || "").trim() || null,
     subject: (document.getElementById("filter-subject")?.value || "").trim() || null,
     location: (document.getElementById("filter-location")?.value || "").trim() || null,
+    sort: (document.getElementById("filter-sort")?.value || "").trim() || "newest",
     minRate: (document.getElementById("filter-rate")?.value || "").trim() || null,
   };
 }
@@ -454,6 +476,8 @@ function clearFilters() {
   document.getElementById("filter-specific-level").disabled = true;
   document.getElementById("filter-subject").innerHTML = '<option value="">All Subjects</option>';
   document.getElementById("filter-location").value = "";
+  const sortEl = document.getElementById("filter-sort");
+  if (sortEl) sortEl.value = "newest";
   document.getElementById("filter-rate").value = "";
   if (!isBackendEnabled()) {
     renderCards(allAssignments);
@@ -477,6 +501,18 @@ function setFacetHintVisible(show) {
   facetHint.classList.toggle("hidden", !show);
 }
 
+function applySortAvailability() {
+  const select = document.getElementById("filter-sort");
+  if (!select) return;
+  const option = Array.from(select.options).find((o) => o.value === "distance");
+  const canSortByDistance = hasPostalCoords === true;
+  if (option) option.disabled = !canSortByDistance;
+  select.title = canSortByDistance ? "" : "Set your postal code in Profile to enable Nearest sorting.";
+  if (!canSortByDistance && select.value === "distance") {
+    select.value = "newest";
+  }
+}
+
 function formatAssignmentsLoadError(err) {
   const msg = String(err?.message || err || "").trim();
   if (!msg) return "Assignments are temporarily unavailable. Please try again.";
@@ -497,6 +533,10 @@ function formatAssignmentsLoadError(err) {
 
   if (msg.includes("supabase_disabled")) {
     return "Assignments unavailable: backend Supabase integration is disabled/misconfigured (check SUPABASE_ENABLED, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).";
+  }
+
+  if (msg.includes("postal_required_for_distance")) {
+    return "Nearest sort requires your postal code. Set it in Profile, then try again.";
   }
 
   return `Assignments unavailable (${msg}).`;
@@ -538,6 +578,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     totalAssignments = 0;
     nextCursorLastSeen = null;
     nextCursorId = null;
+    nextCursorDistanceKm = null;
   }
 
   const isInitial = !append && allAssignments.length === 0;
@@ -549,6 +590,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     if (isBackendEnabled()) {
       const filters = collectFiltersFromUI();
       const minRate = filters.minRate ? Number.parseInt(filters.minRate, 10) : null;
+      const sort = (filters.sort || "newest").trim().toLowerCase();
 
       if (!append) {
         try {
@@ -575,8 +617,10 @@ async function loadAssignments({ reset = false, append = false } = {}) {
 
       const page = await listOpenAssignmentsPaged({
         limit: 50,
+        sort,
         cursorLastSeen: append ? nextCursorLastSeen : null,
         cursorId: append ? nextCursorId : null,
+        cursorDistanceKm: append && sort === "distance" ? nextCursorDistanceKm : null,
         level: filters.level,
         specificStudentLevel: filters.specificStudentLevel,
         subject: filters.subject,
@@ -592,7 +636,12 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       totalAssignments = Number.isFinite(page?.total) ? page.total : allAssignments.length;
       nextCursorLastSeen = page?.next_cursor_last_seen || null;
       nextCursorId = page?.next_cursor_id ?? null;
-      setLoadMoreVisible(Boolean(nextCursorLastSeen && nextCursorId));
+      nextCursorDistanceKm = page?.next_cursor_distance_km ?? null;
+      const canLoadMore =
+        sort === "distance"
+          ? Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined && nextCursorDistanceKm !== null && nextCursorDistanceKm !== undefined)
+          : Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined);
+      setLoadMoreVisible(canLoadMore);
     } else {
       const items = await listOpenAssignments({ limit: 200 });
       allAssignments = items.length ? items : [];
@@ -613,6 +662,16 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       "success"
     );
   } catch (err) {
+    const msg = String(err?.message || err || "");
+    if (msg.includes("postal_required_for_distance")) {
+      const select = document.getElementById("filter-sort");
+      if (select) select.value = "newest";
+      setStatus("Nearest sort needs your postal code. Switched back to Newest.", "warning");
+      applySortAvailability();
+      void loadAssignments({ reset: true });
+      return;
+    }
+
     console.error("Failed to load assignments from Supabase.", err);
     const friendly = formatAssignmentsLoadError(err);
     setStatus(friendly, "error", { showRetry: true });
@@ -620,6 +679,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     totalAssignments = 0;
     nextCursorLastSeen = null;
     nextCursorId = null;
+    nextCursorDistanceKm = null;
     renderLoadError(friendly);
   }
 }
@@ -637,6 +697,10 @@ async function prepopulateFiltersFromProfile() {
 
     const level = Array.isArray(profile.levels) ? profile.levels[0] : "";
     const subject = Array.isArray(profile.subjects) ? profile.subjects[0] : "";
+    const lat = profile?.postal_lat;
+    const lon = profile?.postal_lon;
+    hasPostalCoords = typeof lat === "number" && Number.isFinite(lat) && typeof lon === "number" && Number.isFinite(lon);
+    applySortAvailability();
 
     if (level) {
       document.getElementById("filter-level").value = level;
@@ -686,6 +750,8 @@ function mountDebugPanel() {
 window.addEventListener("load", () => {
   if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments({ reset: true }));
   if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => loadAssignments({ append: true }));
+  const sortEl = document.getElementById("filter-sort");
+  if (sortEl) sortEl.addEventListener("change", () => loadAssignments({ reset: true }));
   mountDebugPanel();
   loadAssignments({ reset: true }).then(() => prepopulateFiltersFromProfile());
 });

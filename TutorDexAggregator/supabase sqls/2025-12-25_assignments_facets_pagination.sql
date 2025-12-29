@@ -58,6 +58,7 @@ returns table(
 )
 language sql
 stable
+set search_path = public, pg_temp
 as $$
 with base as (
   select
@@ -140,6 +141,7 @@ create or replace function public.open_assignment_facets(
 returns jsonb
 language sql
 stable
+set search_path = public, pg_temp
 as $$
 with base as (
   select

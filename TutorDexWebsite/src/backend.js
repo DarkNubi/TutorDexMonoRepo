@@ -135,6 +135,8 @@ export async function listOpenAssignmentsPaged({
   limit = 50,
   cursorLastSeen = null,
   cursorId = null,
+  cursorDistanceKm = null,
+  sort = null,
   level = null,
   specificStudentLevel = null,
   subject = null,
@@ -147,8 +149,10 @@ export async function listOpenAssignmentsPaged({
 
   const params = new URLSearchParams();
   params.set("limit", String(limit));
+  if (sort) params.set("sort", String(sort));
   if (cursorLastSeen) params.set("cursor_last_seen", String(cursorLastSeen));
   if (cursorId !== null && cursorId !== undefined) params.set("cursor_id", String(cursorId));
+  if (cursorDistanceKm !== null && cursorDistanceKm !== undefined) params.set("cursor_distance_km", String(cursorDistanceKm));
   if (level) params.set("level", String(level));
   if (specificStudentLevel) params.set("specific_student_level", String(specificStudentLevel));
   if (subject) params.set("subject", String(subject));

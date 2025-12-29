@@ -30,6 +30,7 @@ create or replace function public.increment_assignment_clicks(
 )
 returns integer
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   v_clicks integer;

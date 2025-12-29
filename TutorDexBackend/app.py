@@ -265,6 +265,7 @@ class AssignmentListResponse(BaseModel):
     items: List[Dict[str, Any]] = Field(default_factory=list)
     next_cursor_last_seen: Optional[str] = None
     next_cursor_id: Optional[int] = None
+    next_cursor_distance_km: Optional[float] = None
 
 
 class AssignmentFacetsResponse(BaseModel):
@@ -323,8 +324,10 @@ def _clean_opt_str(value: Optional[str]) -> Optional[str]:
 def list_assignments(
     request: Request,
     limit: int = 50,
+    sort: Optional[str] = None,
     cursor_last_seen: Optional[str] = None,
     cursor_id: Optional[int] = None,
+    cursor_distance_km: Optional[float] = None,
     level: Optional[str] = None,
     specific_student_level: Optional[str] = None,
     subject: Optional[str] = None,
@@ -348,13 +351,42 @@ def list_assignments(
         lim = 200
 
     cursor_last_seen_s = _clean_opt_str(cursor_last_seen)
+    sort_s = (sort or "newest").strip().lower()
+    if sort_s not in {"newest", "distance"}:
+        raise HTTPException(status_code=400, detail="invalid_sort")
+
     if cursor_last_seen_s and cursor_id is None:
         raise HTTPException(status_code=400, detail="cursor_id_required")
 
-    result = sb.list_open_assignments(
+    if sort_s == "distance":
+        if cursor_last_seen_s and cursor_distance_km is None:
+            raise HTTPException(status_code=400, detail="cursor_distance_km_required")
+
+    tutor_lat: Optional[float] = None
+    tutor_lon: Optional[float] = None
+    if sort_s == "distance":
+        uid = _require_uid(request)
+        t = store.get_tutor(uid) or {}
+        tutor_lat = t.get("postal_lat")
+        tutor_lon = t.get("postal_lon")
+        if (tutor_lat is None or tutor_lon is None) and sb.enabled():
+            user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
+            if user_id:
+                prefs = sb.get_preferences(user_id=user_id)
+                if prefs:
+                    tutor_lat = prefs.get("postal_lat") if prefs.get("postal_lat") is not None else tutor_lat
+                    tutor_lon = prefs.get("postal_lon") if prefs.get("postal_lon") is not None else tutor_lon
+        if tutor_lat is None or tutor_lon is None:
+            raise HTTPException(status_code=400, detail="postal_required_for_distance")
+
+    result = sb.list_open_assignments_v2(
         limit=lim,
+        sort=sort_s,
+        tutor_lat=float(tutor_lat) if tutor_lat is not None else None,
+        tutor_lon=float(tutor_lon) if tutor_lon is not None else None,
         cursor_last_seen=cursor_last_seen_s,
         cursor_id=cursor_id,
+        cursor_distance_km=float(cursor_distance_km) if cursor_distance_km is not None else None,
         level=_clean_opt_str(level),
         specific_student_level=_clean_opt_str(specific_student_level),
         subject=_clean_opt_str(subject),
@@ -370,6 +402,7 @@ def list_assignments(
     total = int(result.get("total") or 0)
     next_cursor_last_seen_out: Optional[str] = None
     next_cursor_id_out: Optional[int] = None
+    next_cursor_distance_km_out: Optional[float] = None
     if items and len(items) >= lim:
         last = items[-1] or {}
         next_cursor_last_seen_out = _clean_opt_str(last.get("last_seen"))
@@ -378,12 +411,23 @@ def list_assignments(
         except Exception:
             next_cursor_id_out = None
 
+        if sort_s == "distance":
+            try:
+                # This matches DB `distance_sort_key = coalesce(distance_km, 1e9)`
+                dk = last.get("distance_sort_key")
+                if dk is None:
+                    dk = last.get("distance_km")
+                next_cursor_distance_km_out = float(dk) if dk is not None else 1e9
+            except Exception:
+                next_cursor_distance_km_out = 1e9
+
     return AssignmentListResponse(
         ok=True,
         total=total,
         items=items,
         next_cursor_last_seen=next_cursor_last_seen_out,
         next_cursor_id=next_cursor_id_out,
+        next_cursor_distance_km=next_cursor_distance_km_out,
     )
 
 
