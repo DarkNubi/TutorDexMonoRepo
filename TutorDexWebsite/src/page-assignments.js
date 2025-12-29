@@ -1,7 +1,14 @@
 import "../subjectsData.js";
 import { isSupabaseEnabled, listOpenAssignments } from "./supabase.js";
 import { getCurrentUid, waitForAuth } from "../auth.js";
-import { getOpenAssignmentFacets, getTutor, isBackendEnabled, listOpenAssignmentsPaged, trackEvent } from "./backend.js";
+import {
+  getOpenAssignmentFacets,
+  getTutor,
+  isBackendEnabled,
+  listOpenAssignmentsPaged,
+  sendClickBeacon,
+  trackEvent,
+} from "./backend.js";
 import { debugLog, isDebugEnabled } from "./debug.js";
 import { getSupabaseConfigSummary } from "./supabase.js";
 
@@ -286,18 +293,30 @@ function renderCards(data) {
       applyBtn.target = "_blank";
       applyBtn.rel = "noopener noreferrer";
       applyBtn.className += " hover:bg-black hover:text-white";
-      applyBtn.addEventListener("click", async () => {
+      applyBtn.addEventListener("click", () => {
         try {
-          await trackEvent({ eventType: "apply_click", assignmentExternalId: job.id, hasMessageLink: true });
+          sendClickBeacon({
+            eventType: "apply_click",
+            assignmentExternalId: job.id,
+            destinationType: "telegram_message",
+            destinationUrl: messageLink,
+            meta: { hasMessageLink: true },
+          });
         } catch {}
       });
     } else {
       applyBtn.type = "button";
       applyBtn.disabled = true;
       applyBtn.className += " opacity-40 cursor-not-allowed";
-      applyBtn.addEventListener("click", async () => {
+      applyBtn.addEventListener("click", () => {
         try {
-          await trackEvent({ eventType: "apply_click", assignmentExternalId: job.id, hasMessageLink: false });
+          sendClickBeacon({
+            eventType: "apply_click",
+            assignmentExternalId: job.id,
+            destinationType: "telegram_message",
+            destinationUrl: "",
+            meta: { hasMessageLink: false },
+          });
         } catch {}
       });
     }

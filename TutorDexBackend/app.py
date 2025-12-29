@@ -3,15 +3,12 @@ import time
 import uuid
 import logging
 import asyncio
-import base64
 import hashlib
-import hmac
 import json
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from TutorDexBackend.redis_store import TutorStore
@@ -63,7 +60,6 @@ async def _startup_log() -> None:
             "redis_prefix": getattr(getattr(store, "cfg", None), "prefix", None),
         },
     )
-    _start_click_edit_worker()
 
 
 def _env_int(name: str, default: int) -> int:
@@ -76,174 +72,8 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
-def _tracking_secret() -> str:
-    return (os.environ.get("CLICK_TRACKING_SECRET") or os.environ.get("TRACKING_SIGNING_SECRET") or "").strip()
-
-
 def _bot_token_for_edits() -> str:
     return (os.environ.get("TRACKING_EDIT_BOT_TOKEN") or os.environ.get("GROUP_BOT_TOKEN") or "").strip()
-
-
-def _b64url(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
-
-
-def _b64url_decode(s: str) -> bytes:
-    pad = "=" * (-len(s) % 4)
-    return base64.urlsafe_b64decode((s + pad).encode("utf-8"))
-
-
-def _verify_and_decode_token(token: str) -> Dict[str, Any]:
-    secret = _tracking_secret()
-    if not secret:
-        raise HTTPException(status_code=500, detail="click_tracking_secret_missing")
-
-    parts = str(token or "").split(".", 1)
-    if len(parts) != 2:
-        raise HTTPException(status_code=400, detail="bad_token")
-    payload_b64, sig_b64 = parts
-    expected = hmac.new(secret.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).digest()
-    try:
-        got = _b64url_decode(sig_b64)
-    except Exception:
-        raise HTTPException(status_code=400, detail="bad_signature")
-    if not hmac.compare_digest(expected, got):
-        raise HTTPException(status_code=400, detail="bad_signature")
-    try:
-        payload = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=400, detail="bad_payload")
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="bad_payload")
-    return payload
-
-
-async def _telegram_edit_message(*, chat_id: int, message_id: int, text: str) -> None:
-    token = _bot_token_for_edits()
-    if not token:
-        return
-    import requests  # local import to avoid startup cost
-
-    url = f"https://api.telegram.org/bot{token}/editMessageText"
-    body = {
-        "chat_id": int(chat_id),
-        "message_id": int(message_id),
-        "text": text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }
-
-    def _post() -> requests.Response:
-        return requests.post(url, json=body, timeout=15)
-
-    resp = await asyncio.to_thread(_post)
-    if resp.status_code == 429:
-        try:
-            data = resp.json()
-            retry_after = int((data.get("parameters") or {}).get("retry_after") or 0)
-        except Exception:
-            retry_after = 2
-        await asyncio.sleep(max(1, min(60, retry_after)))
-        resp = await asyncio.to_thread(_post)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"telegram_edit_failed status={resp.status_code} body={resp.text[:200]}")
-
-
-def _update_clicks_line(message_html: str, clicks: int) -> str:
-    # Replace an existing "Clicks: N" line, or append it at the end.
-    lines = (message_html or "").splitlines()
-    out: List[str] = []
-    replaced = False
-    for ln in lines:
-        if ln.strip().lower().startswith("clicks:"):
-            out.append(f"Clicks: {int(clicks)}")
-            replaced = True
-        else:
-            out.append(ln)
-    if not replaced:
-        out.append(f"Clicks: {int(clicks)}")
-    return "\n".join(out).strip()
-
-
-class _ClickEditQueue:
-    def __init__(self) -> None:
-        self._pending: Dict[str, int] = {}
-        self._last_edit_ts: Dict[str, float] = {}
-        self._lock = asyncio.Lock()
-        self._task: Optional[asyncio.Task] = None
-
-    def start(self) -> None:
-        if self._task is not None:
-            return
-        self._task = asyncio.create_task(self._run())
-
-    async def enqueue(self, external_id: str, clicks: int) -> None:
-        ext = str(external_id).strip()
-        if not ext:
-            return
-        async with self._lock:
-            self._pending[ext] = int(clicks)
-
-    async def _run(self) -> None:
-        min_interval = max(5, _env_int("CLICK_EDIT_MIN_INTERVAL_SECONDS", 20))
-        while True:
-            try:
-                await asyncio.sleep(1.0)
-                to_process: List[tuple[str, int]] = []
-                now = time.time()
-                async with self._lock:
-                    for ext, clicks in list(self._pending.items()):
-                        last = float(self._last_edit_ts.get(ext) or 0.0)
-                        if (now - last) < float(min_interval):
-                            continue
-                        to_process.append((ext, int(clicks)))
-                        del self._pending[ext]
-                        self._last_edit_ts[ext] = now
-
-                for ext, clicks in to_process:
-                    await self._process_one(ext, clicks)
-            except Exception:
-                logger.exception("click_edit_worker_loop_failed")
-
-    async def _process_one(self, external_id: str, clicks: int) -> None:
-        if not sb.enabled():
-            return
-        bm = sb.get_broadcast_message(external_id=external_id)
-        if not bm:
-            return
-        try:
-            chat_id = int(bm.get("sent_chat_id"))
-            msg_id = int(bm.get("sent_message_id"))
-        except Exception:
-            return
-        message_html = str(bm.get("message_html") or "").strip()
-        if not message_html:
-            return
-
-        updated = _update_clicks_line(message_html, clicks)
-        try:
-            await _telegram_edit_message(chat_id=chat_id, message_id=msg_id, text=updated)
-        except Exception as e:
-            # Re-enqueue on transient failures; Telegram may be rate-limiting.
-            logger.warning("click_edit_failed external_id=%s error=%s", external_id, e)
-            async with self._lock:
-                self._pending[external_id] = clicks
-            return
-
-        try:
-            sb.mark_broadcast_edited(external_id=external_id, clicks=clicks, message_html=updated)
-        except Exception:
-            pass
-
-
-_CLICK_EDIT_QUEUE = _ClickEditQueue()
-
-
-def _start_click_edit_worker() -> None:
-    try:
-        _CLICK_EDIT_QUEUE.start()
-    except Exception:
-        logger.exception("click_edit_worker_start_failed")
 
 
 def _client_ip(request: Request) -> str:
@@ -293,21 +123,46 @@ async def _should_increment_click(request: Request, *, external_id: str) -> bool
     return True
 
 
-@app.get("/r/a/{token}")
-async def tracked_redirect(token: str, request: Request):
-    payload = _verify_and_decode_token(token)
-    external_id = str(payload.get("external_id") or "").strip()
-    original_url = str(payload.get("original_url") or "").strip()
-    if not external_id or not original_url:
-        raise HTTPException(status_code=400, detail="bad_payload")
+async def _resolve_original_url(*, external_id: Optional[str], destination_url: Optional[str]) -> Optional[str]:
+    if destination_url:
+        url = destination_url.strip()
+        if url:
+            return url
 
-    should_inc = await _should_increment_click(request, external_id=external_id)
-    if should_inc and sb.enabled():
-        clicks = sb.increment_assignment_clicks(external_id=external_id, original_url=original_url, delta=1)
-        if clicks is not None:
-            await _CLICK_EDIT_QUEUE.enqueue(external_id, int(clicks))
+    ext = (external_id or "").strip()
+    if not ext or not sb.enabled():
+        return None
 
-    return RedirectResponse(url=original_url, status_code=302)
+    try:
+        bm = sb.get_broadcast_message(external_id=ext)
+    except Exception:
+        bm = None
+    if bm:
+        url = str(bm.get("original_url") or "").strip()
+        if url:
+            return url
+    return None
+
+
+async def _telegram_answer_callback_query(*, callback_query_id: str, url: Optional[str]) -> None:
+    token = _bot_token_for_edits()
+    if not token or not callback_query_id:
+        return
+
+    import requests  # local import to avoid startup cost
+
+    body: Dict[str, Any] = {"callback_query_id": callback_query_id}
+    if url:
+        body["url"] = url
+
+    try:
+        await asyncio.to_thread(
+            lambda: requests.post(
+                f"https://api.telegram.org/bot{token}/answerCallbackQuery", json=body, timeout=10
+            )
+        )
+    except Exception:
+        logger.exception("telegram_answer_callback_failed", extra={"callback_query_id": callback_query_id})
 
 def _truthy(value: Optional[str]) -> bool:
     if value is None:
@@ -392,6 +247,15 @@ class AnalyticsEventRequest(BaseModel):
     event_type: str
     assignment_external_id: Optional[str] = None
     agency_name: Optional[str] = None
+    meta: Optional[Dict[str, Any]] = None
+
+
+class ClickTrackRequest(BaseModel):
+    event_type: str
+    assignment_external_id: Optional[str] = None
+    destination_type: Optional[str] = None
+    destination_url: Optional[str] = None
+    timestamp_ms: Optional[int] = None
     meta: Optional[Dict[str, Any]] = None
 
 
@@ -774,6 +638,34 @@ def me_telegram_link_code(request: Request) -> Dict[str, Any]:
     return store.create_telegram_link_code(uid, ttl_seconds=600)
 
 
+@app.post("/track")
+async def track_click(request: Request, req: ClickTrackRequest) -> Dict[str, Any]:
+    external_id = (req.assignment_external_id or "").strip()
+    destination_url = await _resolve_original_url(
+        external_id=external_id, destination_url=req.destination_url
+    )
+
+    tracked = False
+    clicks: Optional[int] = None
+    if external_id and destination_url and sb.enabled():
+        try:
+            should_inc = await _should_increment_click(request, external_id=external_id)
+        except Exception:
+            should_inc = True
+        if should_inc:
+            clicks = sb.increment_assignment_clicks(
+                external_id=external_id, original_url=destination_url, delta=1
+            )
+            tracked = True
+
+    return {
+        "ok": True,
+        "tracked": tracked,
+        "clicks": int(clicks) if clicks is not None else None,
+        "external_id": external_id or None,
+    }
+
+
 @app.post("/analytics/event")
 def analytics_event(request: Request, req: AnalyticsEventRequest) -> Dict[str, Any]:
     uid = _require_uid(request)
@@ -814,3 +706,35 @@ def telegram_claim(request: Request, req: TelegramClaimRequest) -> Dict[str, Any
 
     username = (req.telegram_username or "").strip() or None
     return store.set_chat_id(tutor_id, req.chat_id, telegram_username=username)
+
+
+@app.post("/telegram/callback")
+async def telegram_callback(request: Request) -> Dict[str, Any]:
+    try:
+        update = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid_payload")
+
+    cq = (update or {}).get("callback_query") or {}
+    data = str(cq.get("data") or "").strip()
+    if not data:
+        return {"ok": False, "reason": "no_callback"}
+
+    if not data.startswith("open:"):
+        return {"ok": False, "reason": "unsupported_callback"}
+
+    external_id = data.split(":", 1)[1].strip() if ":" in data else ""
+    original_url = await _resolve_original_url(external_id=external_id, destination_url=None)
+
+    if external_id and original_url and sb.enabled():
+        try:
+            if await _should_increment_click(request, external_id=external_id):
+                sb.increment_assignment_clicks(
+                    external_id=external_id, original_url=original_url, delta=1
+                )
+        except Exception:
+            logger.exception("telegram_callback_increment_failed", extra={"external_id": external_id})
+
+    await _telegram_answer_callback_query(callback_query_id=str(cq.get("id") or ""), url=original_url)
+
+    return {"ok": True, "external_id": external_id or None, "has_url": bool(original_url)}

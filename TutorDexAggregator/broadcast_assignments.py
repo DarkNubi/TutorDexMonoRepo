@@ -14,7 +14,6 @@ import html
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_display_name
-from click_tracking import build_tracked_url
 
 try:
     from dotenv import load_dotenv
@@ -296,19 +295,11 @@ def build_message_text(
 
     # Do not include raw text excerpt or message id in the broadcast
 
-    # Links + click count
+    # Links + CTA hint
     footer_lines: list[str] = []
     original_url = str(payload.get("message_link") or "").strip()
     if original_url:
-        external_id = _derive_external_id_for_tracking(payload)
-        tracked = build_tracked_url(external_id=external_id, original_url=original_url)
-        if tracked:
-            footer_lines.append(f"🔗 <a href=\"{html.escape(tracked)}\">Open original</a>")
-        else:
-            footer_lines.append(f"🔗 <a href=\"{html.escape(original_url)}\">Original post</a>")
-        if include_clicks:
-            footer_lines.append("")  # extra newline between link and click count
-            footer_lines.append(f"Clicks: {int(clicks)}")
+        footer_lines.append("🔗 Use the button below to open the original post")
 
     footer = "\n".join(footer_lines).strip()
 
@@ -388,6 +379,21 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                 'disable_web_page_preview': True,
                 'disable_notification': False,
             }
+            try:
+                external_id = _derive_external_id_for_tracking(payload)
+                if external_id:
+                    body['reply_markup'] = {
+                        'inline_keyboard': [
+                            [
+                                {
+                                    'text': 'Open original',
+                                    'callback_data': f'open:{external_id}',
+                                }
+                            ]
+                        ]
+                    }
+            except Exception:
+                logger.exception('callback_reply_markup_error')
             try:
                 max_attempts = max(1, int(os.environ.get("BROADCAST_MAX_ATTEMPTS", "4") or 4))
                 base_sleep_s = float(os.environ.get("BROADCAST_RETRY_BASE_SECONDS", "2.0") or 2.0)
