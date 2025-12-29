@@ -24,4 +24,5 @@ Guidelines:
 - `python utilities/smoke_extract.py --text "..."` (or `--file sample.txt`)
   - Calls LLM extract → enrichment → schema validation (no broadcast, no Supabase).
 - `python utilities/tutorcity_fetch.py --limit 50`
+- `python utilities/backfill_assignment_latlon.py --limit 500` (fill `postal_lat/postal_lon` for existing rows with `postal_code`)
   - Fetches TutorCity API (no LLM) and persists/broadcasts/DMs directly. Uses `TUTORCITY_API_URL`, `TUTORCITY_LIMIT` envs (source label is always `TutorCity`).

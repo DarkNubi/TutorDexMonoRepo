@@ -290,10 +290,23 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     postal_code = _first_text(parsed.get("postal_code")) or _first_text(parsed.get("postal_code_estimated"))
     postal_lat = None
     postal_lon = None
+
+    # Prefer explicit coords in the payload when present (e.g., API sources).
+    try:
+        lat_raw = parsed.get("postal_lat")
+        lon_raw = parsed.get("postal_lon")
+        if lat_raw is not None and lon_raw is not None:
+            postal_lat = float(lat_raw)
+            postal_lon = float(lon_raw)
+    except Exception:
+        postal_lat = None
+        postal_lon = None
+
     if postal_code:
-        coords = _geocode_sg_postal(postal_code)
-        if coords:
-            postal_lat, postal_lon = coords
+        if postal_lat is None or postal_lon is None:
+            coords = _geocode_sg_postal(postal_code)
+            if coords:
+                postal_lat, postal_lon = coords
 
     row: Dict[str, Any] = {
         "external_id": _derive_external_id(payload),
