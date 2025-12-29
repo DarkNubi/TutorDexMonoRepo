@@ -364,8 +364,20 @@ def list_assignments(
 
     tutor_lat: Optional[float] = None
     tutor_lon: Optional[float] = None
+    # If we have a logged-in tutor (bearer token present), we compute `distance_km` even for `sort=newest`
+    # so the UI can show distance badges without forcing distance ordering.
+    uid: Optional[str] = None
     if sort_s == "distance":
         uid = _require_uid(request)
+    else:
+        uid = _get_uid_from_request(request)
+        if uid:
+            try:
+                request.state.uid = uid
+            except Exception:
+                pass
+
+    if uid:
         t = store.get_tutor(uid) or {}
         tutor_lat = t.get("postal_lat")
         tutor_lon = t.get("postal_lon")
@@ -376,8 +388,9 @@ def list_assignments(
                 if prefs:
                     tutor_lat = prefs.get("postal_lat") if prefs.get("postal_lat") is not None else tutor_lat
                     tutor_lon = prefs.get("postal_lon") if prefs.get("postal_lon") is not None else tutor_lon
-        if tutor_lat is None or tutor_lon is None:
-            raise HTTPException(status_code=400, detail="postal_required_for_distance")
+
+    if sort_s == "distance" and (tutor_lat is None or tutor_lon is None):
+        raise HTTPException(status_code=400, detail="postal_required_for_distance")
 
     result = sb.list_open_assignments_v2(
         limit=lim,
