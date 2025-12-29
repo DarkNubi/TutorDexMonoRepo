@@ -828,11 +828,34 @@ async def forward_skipped_message(client, msg, from_entity, reason: str = '', de
                     if msg_link:
                         explanation += f'\n\n🔗 Original message: {msg_link}'
 
-                await retry_with_backoff(
-                    client.send_message,
-                    resolved_target,
-                    explanation
-                )
+                # Telegram messages have size limits; large compilation details can exceed it.
+                # Send in chunks to preserve all details without failing the send.
+                max_len = 3500
+                if len(explanation) <= max_len:
+                    await retry_with_backoff(client.send_message, resolved_target, explanation)
+                else:
+                    lines = explanation.splitlines()
+                    buf = ""
+                    part = 0
+                    for ln in lines:
+                        candidate = (buf + "\n" + ln) if buf else ln
+                        if len(candidate) > max_len and buf:
+                            part += 1
+                            await retry_with_backoff(
+                                client.send_message,
+                                resolved_target,
+                                (buf if part == 1 else f"(cont.)\n{buf}"),
+                            )
+                            buf = ln
+                        else:
+                            buf = candidate
+                    if buf:
+                        part += 1
+                        await retry_with_backoff(
+                            client.send_message,
+                            resolved_target,
+                            (buf if part == 1 else f"(cont.)\n{buf}"),
+                        )
                 logger.info('Sent skip reason explanation for message %s', getattr(msg, 'id', '<no-id>'))
             except Exception:
                 logger.exception('Failed to send skip reason explanation')
