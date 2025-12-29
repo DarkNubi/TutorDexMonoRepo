@@ -28,5 +28,5 @@ services:
       BACKEND_URL: http://tutordex-backend-api:8000
     volumes:
       - ./secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
-    command: ["python", "TutorDexBackend/telegram_link_bot.py", "--poll-seconds", "2"]
+    command: ["python", "telegram_link_bot.py", "--poll-seconds", "2"]
     restart: unless-stopped

@@ -91,7 +91,7 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
       LINK_BOT_OFFSET_FILE: /state/telegram_link_bot_offset.json
-    command: ["python", "TutorDexBackend/telegram_link_bot.py", "--poll-seconds", "2"]
+    command: ["python", "telegram_link_bot.py", "--poll-seconds", "2"]
     restart: unless-stopped
     depends_on:
       - backend
