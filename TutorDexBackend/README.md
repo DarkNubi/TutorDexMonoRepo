@@ -17,8 +17,7 @@ Minimal FastAPI service that stores tutor preferences in Redis and returns match
 3. (Optional, if using Firebase token verification) Download the Firebase Admin service account JSON to:
    - `TutorDexBackend/secrets/firebase-admin-service-account.json`
 4. From repo root:
-   - Preferred: `docker compose up --build` (uses root `docker-compose.yml` to run backend + aggregator). Supabase self-host must be on the external network `supabase_default`; set `SUPABASE_URL=http://supabase-kong:8000` in `.env`.
-   - Legacy (backend only): `docker compose -f TutorDexBackend/docker-compose.backend.yml up -d --build`
+   - `docker compose up -d --build` (uses root `docker-compose.yml` to run backend + aggregator). Supabase self-host must be on the external network `supabase_default`; set `SUPABASE_URL=http://supabase-kong:8000` in `.env`.
 
 ## Environment variables
 

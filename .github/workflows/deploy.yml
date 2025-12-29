@@ -27,5 +27,12 @@ jobs:
             cd "${{ secrets.SERVER_PATH }}"
             git pull --ff-only
             git rev-parse --short HEAD
-            docker compose up -d --build --force-recreate --remove-orphans
-            docker compose ps
+
+            # Migrate to the root compose stack (single stack). Stop legacy backend-only stack if present.
+            if [ -f "TutorDexBackend/docker-compose.backend.yml" ]; then
+              docker compose -f "TutorDexBackend/docker-compose.backend.yml" down --remove-orphans || true
+            fi
+            docker rm -f tutordex-backend-api tutordex-backend-telegram-link-bot 2>/dev/null || true
+
+            docker compose -f docker-compose.yml up -d --build --force-recreate --remove-orphans
+            docker compose -f docker-compose.yml ps
