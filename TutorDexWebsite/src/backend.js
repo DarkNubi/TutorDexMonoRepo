@@ -87,6 +87,50 @@ export async function trackEvent({ eventType, assignmentExternalId, agencyName, 
   });
 }
 
+export function sendClickBeacon({
+  eventType = "click",
+  assignmentExternalId = null,
+  destinationType = null,
+  destinationUrl = null,
+  meta = null,
+} = {}) {
+  if (!isBackendEnabled()) return false;
+
+  const payload = {
+    event_type: eventType,
+    assignment_external_id: assignmentExternalId,
+    destination_type: destinationType,
+    destination_url: destinationUrl,
+    timestamp_ms: Date.now(),
+    meta,
+  };
+
+  const url = `${BACKEND_URL}/track`;
+  const body = JSON.stringify(payload);
+
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([body], { type: "application/json" });
+      return navigator.sendBeacon(url, blob);
+    }
+  } catch (e) {
+    debugError("sendBeacon failed", e);
+  }
+
+  try {
+    void fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+      keepalive: true,
+    });
+    return true;
+  } catch (e) {
+    debugError("click beacon fetch failed", e);
+    return false;
+  }
+}
+
 export async function listOpenAssignmentsPaged({
   limit = 50,
   cursorLastSeen = null,
