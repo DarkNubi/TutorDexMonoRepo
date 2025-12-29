@@ -25,5 +25,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd "${{ secrets.SERVER_PATH }}"
-            git pull
-            docker compose up -d --build
+            git pull --ff-only
+            git rev-parse --short HEAD
+            docker compose up -d --build --force-recreate --remove-orphans
+            docker compose ps
