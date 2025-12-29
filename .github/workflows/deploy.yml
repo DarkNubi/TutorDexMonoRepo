@@ -23,16 +23,21 @@ jobs:
           host: ${{ secrets.SERVER_TS_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          script_stop: true
           script: |
+            $ErrorActionPreference = "Stop"
+            Set-StrictMode -Version Latest
+
             cd "${{ secrets.SERVER_PATH }}"
             git pull --ff-only
             git rev-parse --short HEAD
 
             # Migrate to the root compose stack (single stack). Stop legacy backend-only stack if present.
-            if [ -f "TutorDexBackend/docker-compose.backend.yml" ]; then
-              docker compose -f "TutorDexBackend/docker-compose.backend.yml" down --remove-orphans || true
-            fi
-            docker rm -f tutordex-backend-api tutordex-backend-telegram-link-bot 2>/dev/null || true
+            if (Test-Path "TutorDexBackend/docker-compose.backend.yml") {
+              try { docker compose -f "TutorDexBackend/docker-compose.backend.yml" down --remove-orphans } catch { }
+            }
+            try { docker rm -f tutordex-backend-api tutordex-backend-telegram-link-bot 2>$null } catch { }
 
+            docker compose -f docker-compose.yml version
             docker compose -f docker-compose.yml up -d --build --force-recreate --remove-orphans
             docker compose -f docker-compose.yml ps
