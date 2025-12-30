@@ -25,4 +25,4 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true
           script: |
-            cmd /Q /C "cd /d \"D:/TutorDex\" && docker compose up -d --build"
+            cmd /Q /C "cd /d D:\TutorDex && docker compose up -d --build"
