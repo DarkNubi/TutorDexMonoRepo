@@ -25,4 +25,4 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true
           script: |
-            powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; Set-StrictMode -Version Latest; Set-Location -LiteralPath '${{ secrets.SERVER_PATH }}'; git pull --ff-only; git rev-parse --short HEAD; if (Test-Path 'TutorDexBackend/docker-compose.backend.yml') { try { docker compose -f 'TutorDexBackend/docker-compose.backend.yml' down --remove-orphans } catch { } }; try { docker rm -f tutordex-backend-api tutordex-backend-telegram-link-bot 2>$null } catch { }; docker compose -f docker-compose.yml version; docker compose -f docker-compose.yml up -d --build --force-recreate --remove-orphans; docker compose -f docker-compose.yml ps"
+            cmd /Q /C "cd /d \"${{ secrets.SERVER_PATH }}\" && docker compose up -d --build"
