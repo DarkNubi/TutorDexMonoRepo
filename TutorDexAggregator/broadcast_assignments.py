@@ -194,6 +194,30 @@ def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     return "unknown"
 
 
+def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Build a simple inline keyboard to surface the source message."""
+    try:
+        message_link = str(payload.get("message_link") or "").strip()
+    except Exception:
+        message_link = ""
+
+    try:
+        external_id = _derive_external_id_for_tracking(payload)
+    except Exception:
+        external_id = ""
+
+    button: Dict[str, Any] = {}
+    if message_link:
+        button = {"text": "Open original", "url": message_link}
+    elif external_id:
+        button = {"text": "Open original", "callback_data": f"open:{external_id}"}
+
+    if not button:
+        return None
+
+    return {"inline_keyboard": [[button]]}
+
+
 def build_message_text(
     payload: Dict[str, Any],
     *,
@@ -380,18 +404,9 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                 'disable_notification': False,
             }
             try:
-                external_id = _derive_external_id_for_tracking(payload)
-                if external_id:
-                    body['reply_markup'] = {
-                        'inline_keyboard': [
-                            [
-                                {
-                                    'text': 'Open original',
-                                    'callback_data': f'open:{external_id}',
-                                }
-                            ]
-                        ]
-                    }
+                reply_markup = build_inline_keyboard(payload)
+                if reply_markup:
+                    body['reply_markup'] = reply_markup
             except Exception:
                 logger.exception('callback_reply_markup_error')
             try:
