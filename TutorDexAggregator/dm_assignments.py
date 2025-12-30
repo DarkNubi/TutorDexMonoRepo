@@ -135,7 +135,7 @@ def fetch_matching_results(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     return out
 
 
-def _telegram_send_message(chat_id: str, text: str) -> Dict[str, Any]:
+def _telegram_send_message(chat_id: str, text: str, reply_markup: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     body = {
         "chat_id": chat_id,
         "text": text,
@@ -143,6 +143,8 @@ def _telegram_send_message(chat_id: str, text: str) -> Dict[str, Any]:
         "disable_web_page_preview": True,
         "disable_notification": False,
     }
+    if reply_markup:
+        body["reply_markup"] = reply_markup
     resp = requests.post(DM_BOT_API_URL, json=body, timeout=15)
     try:
         data = resp.json()
@@ -157,7 +159,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
         return {"ok": False, "skipped": True, "reason": "dm_disabled"}
 
     try:
-        from broadcast_assignments import build_message_text
+        from broadcast_assignments import build_inline_keyboard, build_message_text
     except Exception as e:
         return {"ok": False, "error": f"missing_broadcast_assignments_build_message_text: {e}"}
 
@@ -179,6 +181,12 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             log_event(logger, logging.INFO, "dm_no_matches")
             return {"ok": True, "sent": 0, "matched": 0}
 
+        reply_markup = None
+        try:
+            reply_markup = build_inline_keyboard(payload)
+        except Exception:
+            logger.exception("dm_inline_keyboard_error")
+
         sent = 0
         failures = 0
         for match in matches:
@@ -189,7 +197,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             distance_km = match.get("distance_km")
             text = build_message_text(payload, include_clicks=False, clicks=0, distance_km=_safe_float(distance_km))
             log_event(logger, logging.DEBUG, "dm_send_attempt", chat_id=chat_id)
-            res = _telegram_send_message(chat_id, text)
+            res = _telegram_send_message(chat_id, text, reply_markup=reply_markup)
             status = res.get("status_code") or 0
 
             if status == 429:
@@ -201,7 +209,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 sleep_s = max(1, min(30, retry_after or 2))
                 log_event(logger, logging.WARNING, "dm_rate_limited", chat_id=chat_id, sleep_s=sleep_s)
                 time.sleep(sleep_s)
-                res = _telegram_send_message(chat_id, text)
+                res = _telegram_send_message(chat_id, text, reply_markup=reply_markup)
                 status = res.get("status_code") or 0
 
             if status >= 400:

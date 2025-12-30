@@ -194,6 +194,79 @@ def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     return "unknown"
 
 
+def _build_message_link_from_payload(payload: Dict[str, Any]) -> str:
+    """Best-effort reconstruction of a Telegram message link.
+
+    Many payloads already include message_link; for those that do not, try to
+    derive a usable URL from channel identifiers and message_id.
+    """
+
+    try:
+        message_link = str(payload.get("message_link") or "").strip()
+    except Exception:
+        message_link = ""
+    if message_link:
+        return message_link
+
+    try:
+        msg_id = int(payload.get("message_id"))
+    except Exception:
+        msg_id = None
+
+    try:
+        channel_link = str(payload.get("channel_link") or "").strip()
+    except Exception:
+        channel_link = ""
+
+    if channel_link:
+        link = channel_link.rstrip('/')
+        lower = link.lower()
+        if lower.startswith("http://") or lower.startswith("https://"):
+            return f"{link}/{msg_id}" if msg_id is not None else link
+        if lower.startswith("t.me/"):
+            base = link.split('t.me/', 1)[-1].lstrip('/')
+            if base:
+                return f"https://t.me/{base}/{msg_id}" if msg_id is not None else f"https://t.me/{base}"
+        if channel_link.startswith("@"):
+            uname = channel_link.lstrip("@")
+            return f"https://t.me/{uname}/{msg_id}" if msg_id is not None else f"https://t.me/{uname}"
+        # If it's a bare username, treat it as such.
+        return f"https://t.me/{channel_link}/{msg_id}" if msg_id is not None else f"https://t.me/{channel_link}"
+
+    try:
+        channel_username = str(payload.get("channel_username") or "").strip()
+    except Exception:
+        channel_username = ""
+    if channel_username:
+        uname = channel_username
+        if uname.startswith("http://") or uname.startswith("https://"):
+            uname = uname.rstrip('/').split('/')[-1]
+        if uname.startswith("t.me/"):
+            uname = uname.split('/')[-1]
+        uname = uname.lstrip("@")
+        if uname:
+            return f"https://t.me/{uname}/{msg_id}" if msg_id is not None else f"https://t.me/{uname}"
+
+    try:
+        channel_id = int(payload.get("channel_id"))
+    except Exception:
+        channel_id = None
+    if channel_id is not None and msg_id is not None:
+        return f"https://t.me/c/{abs(channel_id)}/{msg_id}"
+
+    return ""
+
+
+def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Build a simple inline keyboard to surface the source message."""
+    message_link = _build_message_link_from_payload(payload)
+    if not message_link:
+        return None
+
+    button: Dict[str, Any] = {"text": "Open original post", "url": message_link}
+    return {"inline_keyboard": [[button]]}
+
+
 def build_message_text(
     payload: Dict[str, Any],
     *,
@@ -291,16 +364,14 @@ def build_message_text(
     # Metadata
     channel = _escape(payload.get('channel_title') or payload.get('channel_username') or payload.get('channel_id'))
     if channel:
+        if remarks:
+            lines.append("")
         lines.append(f"🏷️ Source: {channel}")
 
     # Do not include raw text excerpt or message id in the broadcast
 
     # Links + CTA hint
     footer_lines: list[str] = []
-    original_url = str(payload.get("message_link") or "").strip()
-    if original_url:
-        footer_lines.append("🔗 Use the button below to open the original post")
-
     footer = "\n".join(footer_lines).strip()
 
     max_len = int(os.environ.get('BROADCAST_MAX_MESSAGE_LEN', '3900'))
@@ -380,18 +451,9 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                 'disable_notification': False,
             }
             try:
-                external_id = _derive_external_id_for_tracking(payload)
-                if external_id:
-                    body['reply_markup'] = {
-                        'inline_keyboard': [
-                            [
-                                {
-                                    'text': 'Open original',
-                                    'callback_data': f'open:{external_id}',
-                                }
-                            ]
-                        ]
-                    }
+                reply_markup = build_inline_keyboard(payload)
+                if reply_markup:
+                    body['reply_markup'] = reply_markup
             except Exception:
                 logger.exception('callback_reply_markup_error')
             try:
