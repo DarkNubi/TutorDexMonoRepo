@@ -218,24 +218,26 @@ def _build_message_link_from_payload(payload: Dict[str, Any]) -> str:
     except Exception:
         channel_link = ""
 
-    if channel_link and msg_id is not None:
+    if channel_link:
         link = channel_link.rstrip('/')
         lower = link.lower()
         if lower.startswith("http://") or lower.startswith("https://"):
-            return f"{link}/{msg_id}"
+            return f"{link}/{msg_id}" if msg_id is not None else link
         if lower.startswith("t.me/"):
-            return f"https://t.me/{link.split('t.me/', 1)[-1].lstrip('/')}/{msg_id}"
+            base = link.split('t.me/', 1)[-1].lstrip('/')
+            if base:
+                return f"https://t.me/{base}/{msg_id}" if msg_id is not None else f"https://t.me/{base}"
         if channel_link.startswith("@"):
             uname = channel_link.lstrip("@")
-            return f"https://t.me/{uname}/{msg_id}"
+            return f"https://t.me/{uname}/{msg_id}" if msg_id is not None else f"https://t.me/{uname}"
         # If it's a bare username, treat it as such.
-        return f"https://t.me/{channel_link}/{msg_id}"
+        return f"https://t.me/{channel_link}/{msg_id}" if msg_id is not None else f"https://t.me/{channel_link}"
 
     try:
         channel_username = str(payload.get("channel_username") or "").strip()
     except Exception:
         channel_username = ""
-    if channel_username and msg_id is not None:
+    if channel_username:
         uname = channel_username
         if uname.startswith("http://") or uname.startswith("https://"):
             uname = uname.rstrip('/').split('/')[-1]
@@ -243,7 +245,7 @@ def _build_message_link_from_payload(payload: Dict[str, Any]) -> str:
             uname = uname.split('/')[-1]
         uname = uname.lstrip("@")
         if uname:
-            return f"https://t.me/{uname}/{msg_id}"
+            return f"https://t.me/{uname}/{msg_id}" if msg_id is not None else f"https://t.me/{uname}"
 
     try:
         channel_id = int(payload.get("channel_id"))
