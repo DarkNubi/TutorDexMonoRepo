@@ -57,13 +57,40 @@ def _geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple
     params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
     headers = {"User-Agent": os.environ.get("NOMINATIM_USER_AGENT") or "TutorDexAggregator/1.0"}
 
-    try:
-        resp = requests.get(url, params=params, headers=headers, timeout=timeout)
-    except Exception:
-        logger.debug("postal_geocode_failed", exc_info=True)
-        return None
+    max_attempts = int(os.environ.get("NOMINATIM_RETRIES") or "3")
+    backoff_s = float(os.environ.get("NOMINATIM_BACKOFF_SECONDS") or "1.0")
 
-    if resp.status_code >= 400:
+    resp = None
+    for attempt in range(max(1, min(max_attempts, 6))):
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+        except Exception:
+            logger.debug("postal_geocode_failed", exc_info=True)
+            resp = None
+
+        if resp is None:
+            # transient network issue
+            if attempt < max_attempts - 1:
+                try:
+                    import time
+                    time.sleep(min(10.0, backoff_s * (2**attempt)))
+                except Exception:
+                    pass
+            continue
+
+        if resp.status_code in {429, 503} and attempt < max_attempts - 1:
+            try:
+                import time
+                time.sleep(min(10.0, backoff_s * (2**attempt)))
+            except Exception:
+                pass
+            continue
+
+        if resp.status_code >= 400:
+            return None
+        break
+
+    if resp is None:
         return None
 
     try:
