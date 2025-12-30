@@ -194,27 +194,74 @@ def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     return "unknown"
 
 
-def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Build a simple inline keyboard to surface the source message."""
+def _build_message_link_from_payload(payload: Dict[str, Any]) -> str:
+    """Best-effort reconstruction of a Telegram message link.
+
+    Many payloads already include message_link; for those that do not, try to
+    derive a usable URL from channel identifiers and message_id.
+    """
+
     try:
         message_link = str(payload.get("message_link") or "").strip()
     except Exception:
         message_link = ""
+    if message_link:
+        return message_link
 
     try:
-        external_id = _derive_external_id_for_tracking(payload)
+        msg_id = int(payload.get("message_id"))
     except Exception:
-        external_id = ""
+        msg_id = None
 
-    button: Dict[str, Any] = {}
-    if message_link:
-        button = {"text": "Open original", "url": message_link}
-    elif external_id:
-        button = {"text": "Open original", "callback_data": f"open:{external_id}"}
+    try:
+        channel_link = str(payload.get("channel_link") or "").strip()
+    except Exception:
+        channel_link = ""
 
-    if not button:
+    if channel_link and msg_id is not None:
+        link = channel_link.rstrip('/')
+        lower = link.lower()
+        if lower.startswith("http://") or lower.startswith("https://"):
+            return f"{link}/{msg_id}"
+        if lower.startswith("t.me/"):
+            return f"https://t.me/{link.split('t.me/', 1)[-1].lstrip('/')}/{msg_id}"
+        if channel_link.startswith("@"):
+            uname = channel_link.lstrip("@")
+            return f"https://t.me/{uname}/{msg_id}"
+        # If it's a bare username, treat it as such.
+        return f"https://t.me/{channel_link}/{msg_id}"
+
+    try:
+        channel_username = str(payload.get("channel_username") or "").strip()
+    except Exception:
+        channel_username = ""
+    if channel_username and msg_id is not None:
+        uname = channel_username
+        if uname.startswith("http://") or uname.startswith("https://"):
+            uname = uname.rstrip('/').split('/')[-1]
+        if uname.startswith("t.me/"):
+            uname = uname.split('/')[-1]
+        uname = uname.lstrip("@")
+        if uname:
+            return f"https://t.me/{uname}/{msg_id}"
+
+    try:
+        channel_id = int(payload.get("channel_id"))
+    except Exception:
+        channel_id = None
+    if channel_id is not None and msg_id is not None:
+        return f"https://t.me/c/{abs(channel_id)}/{msg_id}"
+
+    return ""
+
+
+def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Build a simple inline keyboard to surface the source message."""
+    message_link = _build_message_link_from_payload(payload)
+    if not message_link:
         return None
 
+    button: Dict[str, Any] = {"text": "Open original post", "url": message_link}
     return {"inline_keyboard": [[button]]}
 
 
@@ -315,16 +362,14 @@ def build_message_text(
     # Metadata
     channel = _escape(payload.get('channel_title') or payload.get('channel_username') or payload.get('channel_id'))
     if channel:
+        if remarks:
+            lines.append("")
         lines.append(f"🏷️ Source: {channel}")
 
     # Do not include raw text excerpt or message id in the broadcast
 
     # Links + CTA hint
     footer_lines: list[str] = []
-    original_url = str(payload.get("message_link") or "").strip()
-    if original_url:
-        footer_lines.append("🔗 Use the button below to open the original post")
-
     footer = "\n".join(footer_lines).strip()
 
     max_len = int(os.environ.get('BROADCAST_MAX_MESSAGE_LEN', '3900'))
