@@ -66,7 +66,11 @@ def _safe_float(value: Any) -> Optional[float]:
 
 def _learning_mode_is_online_only(payload: Dict[str, Any]) -> bool:
     parsed = payload.get("parsed") or {}
-    lm = str(parsed.get("learning_mode") or "").strip().lower()
+    lm_val = parsed.get("learning_mode")
+    if isinstance(lm_val, dict):
+        lm = str(lm_val.get("mode") or lm_val.get("raw_text") or "").strip().lower()
+    else:
+        lm = str(lm_val or "").strip().lower()
     return lm == "online"
 
 

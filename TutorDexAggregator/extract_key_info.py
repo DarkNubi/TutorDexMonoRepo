@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import re
 import requests
@@ -11,6 +12,11 @@ import logging
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_examples_key
+
+try:
+    from validator import validate as validate_extraction  # type: ignore
+except Exception:
+    validate_extraction = None  # type: ignore
 
 setup_logging()
 logger = logging.getLogger("extract_key_info")
@@ -359,11 +365,163 @@ Additional instructions:
 - Respond in a **single JSON object**.
 """
 
+# -----------------------------
+# System prompt overrides (A/B)
+# -----------------------------
+
+PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
+
+
+def _prompt_sha256(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+@lru_cache(maxsize=64)
+def get_system_prompt_text() -> str:
+    """
+    Return the system prompt text used for extraction.
+
+    Overrides (highest priority first):
+    - `LLM_SYSTEM_PROMPT_TEXT` (inline)
+    - `LLM_SYSTEM_PROMPT_FILE` (path to a prompt file; relative paths are relative to `TutorDexAggregator/`)
+    - `LLM_SYSTEM_PROMPT_VARIANT` (loads `prompts/system_prompt_<variant>.txt` if it exists)
+
+    Falls back to the hardcoded `SYSTEM_PROMPT`.
+    """
+    inline = (os.environ.get("LLM_SYSTEM_PROMPT_TEXT") or "").strip()
+    if inline:
+        return inline
+
+    file_path = (os.environ.get("LLM_SYSTEM_PROMPT_FILE") or "").strip()
+    if file_path:
+        p = Path(file_path).expanduser()
+        if not p.is_absolute():
+            p = (Path(__file__).resolve().parent / p).resolve()
+        return p.read_text(encoding="utf-8").strip()
+
+    variant = (os.environ.get("LLM_SYSTEM_PROMPT_VARIANT") or "").strip()
+    if variant:
+        p = PROMPTS_DIR / f"system_prompt_{variant}.txt"
+        if p.exists():
+            return p.read_text(encoding="utf-8").strip()
+
+    return SYSTEM_PROMPT.strip()
+
+
+def get_system_prompt_meta() -> dict:
+    """
+    Metadata describing the current system prompt configuration.
+    Intended to be persisted (e.g., in `telegram_extractions.meta`) for A/B comparisons.
+    """
+    inline = (os.environ.get("LLM_SYSTEM_PROMPT_TEXT") or "").strip()
+    file_path = (os.environ.get("LLM_SYSTEM_PROMPT_FILE") or "").strip()
+    variant = (os.environ.get("LLM_SYSTEM_PROMPT_VARIANT") or "").strip()
+
+    prompt_text = get_system_prompt_text()
+    meta = {
+        "sha256": _prompt_sha256(prompt_text),
+        "chars": len(prompt_text),
+    }
+    if inline:
+        meta["source"] = "env:LLM_SYSTEM_PROMPT_TEXT"
+    elif file_path:
+        meta["source"] = "env:LLM_SYSTEM_PROMPT_FILE"
+        meta["file"] = file_path
+        try:
+            p = Path(file_path).expanduser()
+            if not p.is_absolute():
+                p = (Path(__file__).resolve().parent / p).resolve()
+            meta["resolved_file"] = str(p)
+            meta["missing"] = not p.exists()
+        except Exception:
+            pass
+    elif variant:
+        meta["source"] = "env:LLM_SYSTEM_PROMPT_VARIANT"
+        meta["variant"] = variant
+        try:
+            p = PROMPTS_DIR / f"system_prompt_{variant}.txt"
+            meta["resolved_file"] = str(p)
+            meta["missing"] = not p.exists()
+        except Exception:
+            pass
+    else:
+        meta["source"] = "code:SYSTEM_PROMPT"
+    return meta
+
+
+def _truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _text_sha256(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def get_examples_dir() -> Path:
+    """
+    Determine which examples directory to use.
+
+    - `LLM_EXAMPLES_DIR`: absolute or relative path (relative to `TutorDexAggregator/`)
+    - `LLM_EXAMPLES_VARIANT`: uses `message_examples_variants/<variant>/` if it exists
+    - default: `message_examples/`
+    """
+    base_dir = Path(__file__).resolve().parent
+
+    override = (os.environ.get("LLM_EXAMPLES_DIR") or "").strip()
+    if override:
+        p = Path(override).expanduser()
+        if not p.is_absolute():
+            p = (base_dir / p).resolve()
+        return p
+
+    variant = (os.environ.get("LLM_EXAMPLES_VARIANT") or "").strip()
+    if variant:
+        p = base_dir / "message_examples_variants" / variant
+        if p.exists():
+            return p
+
+    return base_dir / "message_examples"
+
+
+def get_examples_meta(chat: str) -> dict:
+    """
+    Metadata describing the examples context used for this chat (if enabled).
+    """
+    include = _truthy(os.environ.get("LLM_INCLUDE_EXAMPLES")) if os.environ.get("LLM_INCLUDE_EXAMPLES") is not None else False
+    meta = {"enabled": bool(include)}
+    if not include:
+        return meta
+
+    examples_dir = get_examples_dir()
+    agency_key = get_agency_examples_key(chat) or None
+    chosen = (examples_dir / f"{agency_key}.txt") if agency_key else (examples_dir / "general.txt")
+    if not chosen.exists():
+        chosen = examples_dir / "general.txt"
+
+    try:
+        text = chosen.read_text(encoding="utf-8")
+    except Exception:
+        text = ""
+
+    meta.update(
+        {
+            "dir": str(examples_dir),
+            "variant": (os.environ.get("LLM_EXAMPLES_VARIANT") or "").strip() or None,
+            "file": str(chosen),
+            "sha256": _text_sha256(text),
+            "chars": len(text),
+            "agency_key": agency_key,
+        }
+    )
+    return meta
+
+
 # Message examples are stored as plain text files for easy editing.
-# Folder layout: TutorDexAggregator/message_examples/{agency}.txt
-# - general.txt is the default fallback
-EXAMPLES_DIR = Path(__file__).resolve().parent / "message_examples"
-DEFAULT_EXAMPLES_FILE = EXAMPLES_DIR / "general.txt"
+# Default folder layout: TutorDexAggregator/message_examples/{agency}.txt
+# Optional A/B layout: TutorDexAggregator/message_examples_variants/<variant>/{agency}.txt
+DEFAULT_EXAMPLES_FILE = Path(__file__).resolve().parent / "message_examples" / "general.txt"
 
 
 @lru_cache(maxsize=None)
@@ -379,18 +537,17 @@ def get_examples_text(agency: Optional[str]) -> str:
     - Falls back to `general.txt`
     - Files are cached in-process via `lru_cache`
     """
+    examples_dir = get_examples_dir()
     candidates = []
     if agency:
-        candidates.append(EXAMPLES_DIR / f"{agency}.txt")
-    else:
-        logger.warning(f"agency {agency} not found")
-        candidates.append(DEFAULT_EXAMPLES_FILE)
+        candidates.append(examples_dir / f"{agency}.txt")
+    candidates.append(examples_dir / "general.txt")
 
     for candidate in candidates:
         try:
             return _read_examples_file(candidate)
         except FileNotFoundError:
-            logger.warning(f"file {candidate} not found")
+            logger.warning(f"examples_file_missing path={candidate}")
             continue
 
     raise FileNotFoundError(
@@ -398,7 +555,43 @@ def get_examples_text(agency: Optional[str]) -> str:
     )
 
 
-PROMPT_FOOTER = "\n\nNow extract JSON from the following message. Return JSON only.\n\nMessage:\n\"\"\"\n{message}\n\"\"\"\n\nJSON:"
+PROMPT_FOOTER = (
+    "\n\n"
+    "====================\n"
+    "BEGIN TARGET MESSAGE\n"
+    "====================\n"
+    "You MUST extract facts ONLY from the TARGET MESSAGE below.\n"
+    "The examples above are ONLY formatting guidance and MUST NOT be used as a source of facts.\n"
+    "Do NOT copy values from examples.\n"
+    "If a value is not explicitly present in the TARGET MESSAGE, output null/[] as required by the schema.\n"
+    "\n"
+    "TARGET MESSAGE:\n"
+    "\"\"\"\n"
+    "{message}\n"
+    "\"\"\"\n"
+    "\n"
+    "OUTPUT JSON ONLY:\n"
+    "====================\n"
+    "END TARGET MESSAGE\n"
+    "====================\n"
+    "\n"
+    "JSON:"
+)
+
+EXAMPLES_WRAPPER_HEADER = (
+    "====================\n"
+    "BEGIN EXAMPLES (FORMAT ONLY)\n"
+    "====================\n"
+    "The following are examples of (Raw -> JSON) for formatting reference ONLY.\n"
+    "They are NOT the target message.\n"
+)
+
+EXAMPLES_WRAPPER_FOOTER = (
+    "\n"
+    "====================\n"
+    "END EXAMPLES\n"
+    "====================\n"
+)
 
 
 def build_prompt(message: str, chat: str) -> str:
@@ -407,8 +600,13 @@ def build_prompt(message: str, chat: str) -> str:
 
     `chat` is expected to look like `t.me/<ChannelUsername>` (as produced by `read_assignments.py`).
     """
-    # The examples files contain JSON in a different schema than the current single-call extractor.
-    # Keep the live pipeline stable by using only the raw message.
+    include_examples = _truthy(os.environ.get("LLM_INCLUDE_EXAMPLES")) if os.environ.get("LLM_INCLUDE_EXAMPLES") is not None else False
+    if include_examples:
+        examples_key = get_agency_examples_key(chat) or None
+        examples_text = get_examples_text(examples_key)
+        wrapped_examples = (EXAMPLES_WRAPPER_HEADER + "\n" + examples_text.strip() + EXAMPLES_WRAPPER_FOOTER).strip()
+        return (wrapped_examples + "\n\n" + PROMPT_FOOTER.format(message=message)).strip()
+
     return PROMPT_FOOTER.format(message=message)
 
 
@@ -456,6 +654,7 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
     model_name_env = os.environ.get("LLM_MODEL_NAME", model_name)
     timeout_s = int(os.environ.get("LLM_TIMEOUT_SECONDS") or "200")
 
+    system_prompt = get_system_prompt_text().strip()
     prompt_with_examples = build_prompt(message, chat=chat)
 
     with bind_log_context(cid=str(cid) if cid else None, channel=chat or None, step="llm_extract"):
@@ -472,7 +671,7 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
             {
                 "role": "system",
                 "content": (
-                    SYSTEM_PROMPT.strip() +
+                    system_prompt +
                     "\n\nFollow the schema exactly. Output JSON only.\n"
                 )
             },
@@ -536,6 +735,13 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
         except Exception as e:
             log_event(logger, logging.WARNING, "llm_json_parse_failed", candidate_chars=len(candidate or ""))
             raise RuntimeError("Failed to parse JSON from model output") from e
+
+        if validate_extraction and isinstance(parsed, dict):
+            try:
+                parsed = validate_extraction(parsed)
+            except Exception as e:
+                # Do not fail the pipeline due to validator bugs; continue with raw extraction.
+                log_event(logger, logging.WARNING, "validator_failed", error=str(e))
 
         return parsed
 
@@ -916,23 +1122,25 @@ if __name__ == "__main__":
     except Exception:
         logger.debug("stdout reconfigure failed", exc_info=True)
     sample = """
-Code ID: 1412tn
-(Female Part/Full-Time Tutor or Ex/Current MOE Teacher)
-Subject: PBS Yr 1 Business Administration
-Address: 21 Marina Way Marina One Residences, (S)018978
-Frequency: 1.5 Hr, 1x A Week
-Rate: $40-65/Hr (PT), $60-95/Hr (FT), $100-130/Hr (MOE)
+🔥 NEW Tuition Job! 🔥
 
-- Available on: Mon-Sun aftn
-- Start: Mid Jan 2026
-- Face-to-Face Lessons
-- Tutor to be bilingual in English & Chinese
-- Student will be taking a 1 year Business Administration course at PSB
-- Modules will be revealed once school commences
-- Long-term assignment
-------------------------------------
-To apply: https://www.singaporetuitionteachers.com/adm/tutor/
-Any bugs/questions, WhatsApp 9695 3522
+▪️ Job Code: 253112W12
+▪️ Job Details:
+Info: P6 Science @ 30, Jalan Tanjong (nearest MRT station: Tanah Merah) on Wednesday 7.30pm-9.30pm ONLY [1 lesson/week, 2 hrs./lesson]
+
+Requirement: An experienced FULL-TIME tutor or EX/CURRENT MOE Teacher for this St Stephen Primary School boy. Tutor to commit for at least 1 year. Earliest start date: 07-Jan-2026.
+
+Rate: FULL-TIME $40-$55/hr.; EX/CURRENT MOE $75-$90/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+Agency fee: FIRST 2 REGULAR LESSONS' WORTH
+▪️ Tutor Types: Full-Time Tutor (Poly Grad), Ex-MOE, Full-Time Tutor (Uni Grad), Current MOE
+▪️ Hashtags: #Primary_Science
+
+💹 DOUBLE your chances of being selected by applying through the Website!
+
+❤️ Forward this to your friends who might be interested in this assignment!
+
+💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
 """
 
     chat = "t.me/FTassignments"

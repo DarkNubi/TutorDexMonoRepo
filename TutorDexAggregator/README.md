@@ -196,10 +196,12 @@ By default it writes to `TutorDexAggregator/monitoring/telegram_message_edits.sq
 
 ## Monitoring & alerting (recommended)
 
-The aggregator writes a lightweight heartbeat file (default `TutorDexAggregator/monitoring/heartbeat.json`) and logs all pipeline events to `TutorDexAggregator/logs/tutordex_aggregator.log`.
+The pipeline writes lightweight heartbeat files and logs pipeline events to `TutorDexAggregator/logs/tutordex_aggregator.log`:
+- Raw collector heartbeat: `TutorDexAggregator/monitoring/heartbeat_raw_collector.json`
+- Queue worker heartbeat: `TutorDexAggregator/monitoring/heartbeat_queue_worker.json`
 
 You can run a simple Telegram alerting loop that:
-- Alerts when the aggregator heartbeat/log stops updating (process stalled/down)
+- Alerts when the raw collector or queue worker heartbeat stops updating (process stalled/down)
 - Alerts on error spikes (Telegram rate limits, LLM failures, Supabase failures, DM/broadcast failures)
 - Sends a daily “pipeline health summary” to an admin chat/thread
 
@@ -210,8 +212,9 @@ You can run a simple Telegram alerting loop that:
   - `ALERT_HEARTBEAT_STALE_SECONDS=900` (15 minutes)
   - `ALERT_LOG_STALE_SECONDS=900`
   - `ALERT_ERROR_BURST_LIMIT=6`
-  - `HEARTBEAT_FILE=monitoring/heartbeat.json`
+  - `RAW_HEARTBEAT_FILE=monitoring/heartbeat_raw_collector.json`
   - `EXTRACTION_QUEUE_HEARTBEAT_FILE=monitoring/heartbeat_queue_worker.json`
+  - Legacy only: `HEARTBEAT_FILE=monitoring/heartbeat.json` (old ingester; monitor ignores this now)
 
 2) Run the monitor (from `TutorDexAggregator/`):
 - `python monitoring/monitor.py`

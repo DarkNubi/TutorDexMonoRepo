@@ -8,11 +8,13 @@ they catch clearly incomplete outputs that will break downstream consumers.
 from typing import Any, Dict, List, Tuple
 
 
-REQUIRED_FIELDS = ("subjects", "level")
+REQUIRED_FIELDS_V1 = ("subjects", "level")
+REQUIRED_FIELDS_V2 = ("subjects",)
 # Note: Address fields are optional for online-only lessons (learning_mode == "online").
 ADDRESS_FIELDS = ("address", "postal_code", "postal_code_estimated")
 # At least one of these should be present to avoid empty schedules.
 SCHEDULE_FIELDS = ("frequency", "duration", "time_slots", "estimated_time_slots")
+V2_SCHEDULE_FIELDS = ("lesson_schedule", "time_availability")
 
 
 def _has_value(value: Any) -> bool:
@@ -29,6 +31,8 @@ def _is_online_only(learning_mode: Any) -> bool:
     """Return True when learning_mode indicates an online-only lesson."""
 
     mode: Any = learning_mode
+    if isinstance(learning_mode, dict):
+        mode = learning_mode.get("mode") or learning_mode.get("raw_text")
     if isinstance(learning_mode, (list, tuple, set)):
         # Prefer the first non-empty string entry
         mode = None
@@ -45,11 +49,31 @@ def _is_online_only(learning_mode: Any) -> bool:
         return False
 
 
+def _v2_has_schedule_info(data: Dict[str, Any]) -> bool:
+    lesson = data.get("lesson_schedule")
+    if isinstance(lesson, dict):
+        for k in ("raw_text", "lessons_per_week", "hours_per_lesson", "total_hours_per_week", "subject_breakdown"):
+            if _has_value(lesson.get(k)):
+                return True
+
+    ta = data.get("time_availability")
+    if isinstance(ta, dict):
+        for k in ("note", "explicit", "estimated"):
+            if _has_value(ta.get(k)):
+                return True
+
+    return False
+
+
 def validate_parsed_assignment(parsed: Dict[str, Any]) -> Tuple[bool, List[str]]:
     errors: List[str] = []
     data = parsed or {}
 
-    for field in REQUIRED_FIELDS:
+    # V2 schema (prompt B / system_prompt_live.txt) allows `level` to be null.
+    is_v2 = isinstance(data.get("lesson_schedule"), dict) or isinstance(data.get("rate"), dict) or ("academic_display_text" in data)
+    required = REQUIRED_FIELDS_V2 if is_v2 else REQUIRED_FIELDS_V1
+
+    for field in required:
         if not _has_value(data.get(field)):
             errors.append(f"missing_{field}")
 
@@ -58,7 +82,7 @@ def validate_parsed_assignment(parsed: Dict[str, Any]) -> Tuple[bool, List[str]]
     ):
         errors.append("missing_address_or_postal")
 
-    if not any(_has_value(data.get(f)) for f in SCHEDULE_FIELDS):
+    if not any(_has_value(data.get(f)) for f in SCHEDULE_FIELDS) and not _v2_has_schedule_info(data):
         errors.append("missing_schedule_info")
 
     return len(errors) == 0, errors

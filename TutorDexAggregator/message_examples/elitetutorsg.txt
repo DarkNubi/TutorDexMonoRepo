@@ -16,43 +16,62 @@ Remarks: Tuition to start ASAP. Need an experienced and committed tutor. Student
 JSON: {
   "assignment_code": "K16754",
   "is_tuition_centre": false,
-  "academic_tags_raw": "Primary 5 Malay",
   "subjects": ["Malay"],
   "level": ["Primary"],
   "specific_student_level": ["Primary 5"],
+  "academic_display_text": "Primary 5 Malay",
+  "academic_signals": {
+    "year": null,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": ["Female"],
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Tampines Central 8"],
   "postal_code": null,
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "2 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 2,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "No. of lesson per week: 1\nNo. of hour per lesson: 2 hours"
+  },
   "start_date": "ASAP",
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": ["15:00-23:00"],
+      "wednesday": [],
+      "thursday": ["15:00-23:00"],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Preferably Tuesday or Thursday after 3pm. Tutor to propose all available timings."
   },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": ["15:00-23:00"],
-    "wednesday": [],
-    "thursday": ["15:00-23:00"],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "rate": {
+    "min": 65,
+    "max": 80,
+    "rate_type": "hourly",
+    "raw_text": "$65-$80/hr (Current or ex-teacher)"
   },
-  "time_slots_note": "Preferably Tuesday or Thursday after 3pm. Tutor to propose all available timings.",
-  "hourly_rate": "$65-$80/hr (Current or ex-teacher)",
-  "rate_min": 65,
-  "rate_max": 80,
   "tutor_gender": null,
-  "tutor_type": ["MOE"],
+  "tutor_type": ["Current Teacher", "Ex-Teacher"],
   "slot_details": null,
   "additional_remarks": "Tuition to start ASAP. Need an experienced and committed tutor. Student is studying in Tampines North Primary School and doing alright but inconsistent."
 }
@@ -76,35 +95,62 @@ Remarks: Tuition to start from January 2026 onwards. Need an experienced and com
 JSON: {
   "assignment_code": "K16753",
   "is_tuition_centre": false,
-  "academic_tags_raw": "Primary 5 Science (2026)",
   "subjects": ["Science"],
   "level": ["Primary"],
   "specific_student_level": ["Primary 5"],
+  "academic_display_text": "Primary 5 Science (2026)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": ["Female"],
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Tan Kah Kee"],
   "postal_code": null,
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
-  "start_date": "2026-01-01",
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": ["14:30-16:00"],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "No. of lesson per week: 1\nNo. of hour per lesson: 1.5 hours"
   },
-  "estimated_time_slots": null,
-  "time_slots_note": "Preferably Thursday 2.30-4pm",
-  "hourly_rate": "$40-$60/hr",
-  "rate_min": 40,
-  "rate_max": 60,
+  "start_date": "January 2026",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": ["14:30-16:00"],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Preferably Thursday 2.30-4pm. Tutor to propose all available timings."
+  },
+  "rate": {
+    "min": 40,
+    "max": 60,
+    "rate_type": "hourly",
+    "raw_text": "$40-$60/hr (Graduate tutors)"
+  },
   "tutor_gender": null,
-  "tutor_type": ["Graduate"],
+  "tutor_type": ["Graduate Tutor"],
   "slot_details": null,
   "additional_remarks": "Tuition to start from January 2026 onwards. Need an experienced and committed tutor."
 }
@@ -128,35 +174,62 @@ Remarks: Tuition to start ASAP. Need an experienced and committed tutor. Student
 JSON: {
   "assignment_code": "S10944",
   "is_tuition_centre": false,
-  "academic_tags_raw": "Secondary 4 Express Pure Physics (2026)",
   "subjects": ["Physics"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 4"],
+  "academic_display_text": "Secondary 4 Express Pure Physics (2026)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": "Express",
+    "exam": null
+  },
   "student_gender": ["Male"],
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Punggol Drive"],
   "postal_code": null,
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
-  "start_date": "ASAP",
-  "time_slots": null,
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": ["15:00-23:00"],
-    "sunday": []
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "No. of lesson per week: 1\nNo. of hour per lesson: 1.5 hours"
   },
-  "time_slots_note": "Saturdays, from 3pm",
-  "hourly_rate": "$70-$80/hr (MOE current/ex teachers)",
-  "rate_min": 70,
-  "rate_max": 80,
+  "start_date": "ASAP",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": ["15:00-23:00"],
+      "sunday": []
+    },
+    "note": "Saturdays, from 3pm. Tutor to propose all available timings."
+  },
+  "rate": {
+    "min": 70,
+    "max": 80,
+    "rate_type": "hourly",
+    "raw_text": "$70-$80/hr (MOE current/ex teachers)"
+  },
   "tutor_gender": null,
-  "tutor_type": ["MOE"],
+  "tutor_type": ["MOE Current Teacher", "MOE Ex-Teacher"],
   "slot_details": null,
   "additional_remarks": "Tuition to start ASAP. Need an experienced and committed tutor. Student is studying in SST."
 }
@@ -180,35 +253,62 @@ Remarks: Tuition to start in Jan 2026. Need an experienced and committed tutor. 
 JSON: {
   "assignment_code": "J11633",
   "is_tuition_centre": true,
-  "academic_tags_raw": "Secondary 2 Science and Secondary 4 Express E-Maths (2026)",
-  "subjects": ["Science", "E Maths"],
+  "subjects": ["Science", "E-Maths"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 2", "Secondary 4"],
+  "academic_display_text": "Secondary 2 Science and Secondary 4 Express E-Maths (2026)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": "Express",
+    "exam": null
+  },
   "student_gender": ["Male", "Female"],
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Bedok North Street 2"],
   "postal_code": null,
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "3 hours",
-  "start_date": "2026-01-01",
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": ["11:45-14:45"]
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 3,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "No. of lesson per week: 1\nNo. of hour per lesson: 3 hours"
   },
-  "estimated_time_slots": null,
-  "time_slots_note": "Sundays, from 11.45am",
-  "hourly_rate": "$50-$70/hr (Graduate tutors)",
-  "rate_min": 50,
-  "rate_max": 70,
+  "start_date": "Jan 2026",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": ["11:45-23:00"]
+    },
+    "note": "Sundays, from 11.45am. Tutor to propose all available timings."
+  },
+  "rate": {
+    "min": 50,
+    "max": 70,
+    "rate_type": "hourly",
+    "raw_text": "$50-$70/hr (Graduate tutors)"
+  },
   "tutor_gender": null,
-  "tutor_type": ["Graduate"],
+  "tutor_type": ["Graduate Tutor"],
   "slot_details": null,
   "additional_remarks": "Tuition to start in Jan 2026. Need an experienced and committed tutor. This is a tuition centre assignment."
 }

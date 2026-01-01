@@ -275,7 +275,7 @@ def build_message_text(
     distance_km: Optional[float] = None,
 ) -> str:
     parsed = payload.get('parsed') or {}
-    academic_raw = _escape(_join_text(parsed.get("academic_tags_raw")))
+    academic_raw = _escape(_join_text(parsed.get("academic_display_text") or parsed.get("academic_tags_raw")))
     subjects = _escape(_join_text(parsed.get('subjects')))
     # Prefer specific level; fall back to level. Do not show both.
     specific_or_level = _escape(_join_text(parsed.get('specific_student_level')) or _join_text(parsed.get('level')))
@@ -292,10 +292,43 @@ def build_message_text(
         postal = _escape(_join_text(postal_est)) + ' (estimated)'
     else:
         postal = ''
-    rate = _escape(parsed.get('hourly_rate'))
-    frequency = _escape(parsed.get('frequency'))
-    duration = _escape(parsed.get('duration'))
-    time_slots_note = _escape(_join_text(parsed.get('time_slots_note')))
+    rate_text = parsed.get('hourly_rate')
+    if not rate_text and isinstance(parsed.get("rate"), dict):
+        rate_text = (parsed.get("rate") or {}).get("raw_text")
+    rate = _escape(rate_text)
+
+    frequency_text = parsed.get("frequency")
+    if not frequency_text and isinstance(parsed.get("lesson_schedule"), dict):
+        lpw = (parsed.get("lesson_schedule") or {}).get("lessons_per_week")
+        try:
+            if lpw is not None:
+                lpw_f = float(lpw)
+                if lpw_f.is_integer():
+                    frequency_text = f"{int(lpw_f)}x per week"
+                else:
+                    frequency_text = f"{lpw_f:.2f}".rstrip("0").rstrip(".") + "x per week"
+        except Exception:
+            frequency_text = None
+    frequency = _escape(frequency_text)
+
+    duration_text = parsed.get("duration")
+    if not duration_text and isinstance(parsed.get("lesson_schedule"), dict):
+        hpl = (parsed.get("lesson_schedule") or {}).get("hours_per_lesson")
+        try:
+            if hpl is not None and float(hpl) > 0:
+                h = float(hpl)
+                s = f"{h:.2f}".rstrip("0").rstrip(".")
+                duration_text = f"{s} hour" if abs(h - 1.0) < 1e-9 else f"{s} hours"
+        except Exception:
+            duration_text = None
+    duration = _escape(duration_text)
+
+    ts_note_val = parsed.get('time_slots_note')
+    if not ts_note_val and isinstance(parsed.get("time_availability"), dict):
+        ts_note_val = (parsed.get("time_availability") or {}).get("note")
+    if not ts_note_val and isinstance(parsed.get("lesson_schedule"), dict):
+        ts_note_val = (parsed.get("lesson_schedule") or {}).get("raw_text")
+    time_slots_note = _escape(_join_text(ts_note_val))
     remarks = _escape(parsed.get('additional_remarks'))
 
     max_remarks = int(os.environ.get('BROADCAST_MAX_REMARKS_LEN', '700'))
@@ -339,7 +372,11 @@ def build_message_text(
             km = float(distance_km)
         except Exception:
             km = None
-        learning_mode = str(parsed.get("learning_mode") or "").strip().lower()
+        lm = parsed.get("learning_mode")
+        if isinstance(lm, dict):
+            learning_mode = str(lm.get("mode") or lm.get("raw_text") or "").strip().lower()
+        else:
+            learning_mode = str(lm or "").strip().lower()
         if km is not None and km >= 0 and learning_mode != "online":
             lines.append(f"📏 Distance: ~{km:.1f} km")
 

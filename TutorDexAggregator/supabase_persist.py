@@ -314,6 +314,50 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     subjects = parsed.get("subjects")
     subject = _first_text(subjects)
 
+    def _v2_get(path: str) -> Any:
+        cur: Any = parsed
+        for part in path.split("."):
+            if not isinstance(cur, dict):
+                return None
+            cur = cur.get(part)
+        return cur
+
+    def _learning_mode_text() -> Optional[str]:
+        lm = parsed.get("learning_mode")
+        if isinstance(lm, dict):
+            return _safe_str(lm.get("mode")) or _safe_str(lm.get("raw_text"))
+        return _first_text(lm)
+
+    def _format_lessons_per_week(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        try:
+            n = float(value)
+        except Exception:
+            return None
+        if n <= 0:
+            return None
+        if abs(n - round(n)) < 1e-9:
+            return f"{int(round(n))}x per week"
+        s = f"{n:.2f}".rstrip("0").rstrip(".")
+        return f"{s}x per week"
+
+    def _format_hours(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        try:
+            h = float(value)
+        except Exception:
+            return None
+        if h <= 0:
+            return None
+        s = f"{h:.2f}".rstrip("0").rstrip(".")
+        unit = "hour" if abs(h - 1.0) < 1e-9 else "hours"
+        return f"{s} {unit}"
+
+    def _coerce_dict(value: Any) -> Optional[Dict[str, Any]]:
+        return value if isinstance(value, dict) else None
+
     postal_code = _first_text(parsed.get("postal_code")) or _first_text(parsed.get("postal_code_estimated"))
     postal_lat = None
     postal_lon = None
@@ -354,17 +398,17 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "postal_lat": postal_lat,
         "postal_lon": postal_lon,
         "nearest_mrt": _first_text(parsed.get("nearest_mrt")),
-        "learning_mode": _first_text(parsed.get("learning_mode")),
+        "learning_mode": _learning_mode_text(),
         "student_gender": _first_text(parsed.get("student_gender")),
         "tutor_gender": _first_text(parsed.get("tutor_gender")),
-        "frequency": _safe_str(parsed.get("frequency")),
-        "duration": _safe_str(parsed.get("duration")),
-        "hourly_rate": _safe_str(parsed.get("hourly_rate")),
-        "rate_min": parsed.get("rate_min"),
-        "rate_max": parsed.get("rate_max"),
-        "time_slots": parsed.get("time_slots"),
-        "estimated_time_slots": parsed.get("estimated_time_slots"),
-        "time_slots_note": _safe_str(parsed.get("time_slots_note")),
+        "frequency": _safe_str(parsed.get("frequency")) or _format_lessons_per_week(_v2_get("lesson_schedule.lessons_per_week")),
+        "duration": _safe_str(parsed.get("duration")) or _format_hours(_v2_get("lesson_schedule.hours_per_lesson")),
+        "hourly_rate": _safe_str(parsed.get("hourly_rate")) or _safe_str(_v2_get("rate.raw_text")),
+        "rate_min": parsed.get("rate_min") if parsed.get("rate_min") is not None else _v2_get("rate.min"),
+        "rate_max": parsed.get("rate_max") if parsed.get("rate_max") is not None else _v2_get("rate.max"),
+        "time_slots": parsed.get("time_slots") if parsed.get("time_slots") is not None else _coerce_dict(_v2_get("time_availability.explicit")),
+        "estimated_time_slots": parsed.get("estimated_time_slots") if parsed.get("estimated_time_slots") is not None else _coerce_dict(_v2_get("time_availability.estimated")),
+        "time_slots_note": _safe_str(parsed.get("time_slots_note")) or _safe_str(_v2_get("time_availability.note")) or _safe_str(_v2_get("lesson_schedule.raw_text")),
         "additional_remarks": _safe_str(parsed.get("additional_remarks")),
         "payload_json": payload,
         "parsed_json": parsed,

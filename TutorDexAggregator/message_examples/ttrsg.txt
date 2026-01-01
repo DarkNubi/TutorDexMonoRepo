@@ -10,45 +10,64 @@ S3 G3 Combined Bio + Chem (2026) #A8703
 JSON: {
   "assignment_code": "A8703",
   "is_tuition_centre": false,
-  "academic_tags_raw": "S3 G3 Combined Bio + Chem (2026)",
-  "subjects": ["Bio/Chem"],
+  "subjects": ["Biology", "Chemistry"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 3"],
+  "academic_display_text": "S3 G3 Combined Bio + Chem (2026)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": "G3",
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Bukit Batok"],
   "postal_code": ["650526"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "2 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 2,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "(2h per lesson, once a week)"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Days and time: tbc"
   },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "rate": {
+    "min": 60,
+    "max": 70,
+    "rate_type": "hourly",
+    "raw_text": "$60-$70/h"
   },
-  "time_slots_note": "tbc",
-  "hourly_rate": "$60-$70/h",
-  "rate_min": 60,
-  "rate_max": 70,
   "tutor_gender": "Female",
-  "tutor_type": ["FT"],
+  "tutor_type": ["Full-Time Tutor"],
   "slot_details": null,
-  "additional_remarks": "Full time tutors and above may apply."
+  "additional_remarks": "Full time tutors and above may apply. Female tutor."
 }
 
 
@@ -63,40 +82,67 @@ Raw: 🌟P6 Foundation Science (2026) #A8781
 JSON: {
   "assignment_code": "A8781",
   "is_tuition_centre": false,
-  "academic_tags_raw": "P6 Foundation Science (2026)",
   "subjects": ["Science"],
   "level": ["Primary"],
   "specific_student_level": ["Primary 6"],
+  "academic_display_text": "P6 Foundation Science (2026)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
-  "address": ["Tiong Bahru, Havelock"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
+  "address": ["Tiong Bahru", "Havelock"],
   "postal_code": ["161052"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
-  "start_date": null,
-  "time_slots": null,
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": ["15:00-23:00"],
-    "wednesday": ["15:00-23:00"],
-    "thursday": ["15:00-23:00"],
-    "friday": ["15:00-23:00"],
-    "saturday": [],
-    "sunday": []
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "(1.5h per lesson, once a week)"
   },
-  "time_slots_note": "Tuesday to Friday 3pm onwards",
-  "hourly_rate": "$35-$40/h",
-  "rate_min": 35,
-  "rate_max": 40,
+  "start_date": null,
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": ["15:00-23:00"],
+      "wednesday": ["15:00-23:00"],
+      "thursday": ["15:00-23:00"],
+      "friday": ["15:00-23:00"],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Tuesday to Friday 3pm onwards"
+  },
+  "rate": {
+    "min": 35,
+    "max": 40,
+    "rate_type": "hourly",
+    "raw_text": "$35-$40/h"
+  },
   "tutor_gender": "Female",
-  "tutor_type": ["PT"],
+  "tutor_type": ["Part-Time Tutor"],
   "slot_details": null,
-  "additional_remarks": "Student has dyslexia. Part time tutors and above may apply."
+  "additional_remarks": "Part time tutors and above may apply. Female tutor. Student has dyslexia."
 }
 
-  
+
 Example 3:
 Raw: 🌟P6 Science (2026) - looking for tutors to teach p6 science at a new tuition centre #A8662
 🔻Rate: $pls quote/h (1.5h per lesson, once a week)
@@ -108,45 +154,64 @@ Raw: 🌟P6 Science (2026) - looking for tutors to teach p6 science at a new tui
 JSON: {
   "assignment_code": "A8662",
   "is_tuition_centre": true,
-  "academic_tags_raw": "P6 Science (2026)",
   "subjects": ["Science"],
   "level": ["Primary"],
   "specific_student_level": ["Primary 6"],
+  "academic_display_text": "P6 Science (2026)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Ang Mo Kio Hub"],
   "postal_code": null,
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "(1.5h per lesson, once a week)"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": ["16:00-19:00"],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": ["16:00-19:00"],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Friday 4pm-7pm"
   },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "rate": {
+    "min": null,
+    "max": null,
+    "rate_type": "unknown",
+    "raw_text": "$pls quote/h"
   },
-  "time_slots_note": "Friday 4pm-7pm",
-  "hourly_rate": "$pls quote/h",
-  "rate_min": null,
-  "rate_max": null,
   "tutor_gender": null,
   "tutor_type": null,
   "slot_details": null,
-  "additional_remarks": "Looking for tutors to teach Primary 6 Science at a new tuition centre. No gender preference for tutor."
+  "additional_remarks": "Looking for tutors to teach p6 science at a new tuition centre. No gender preference for tutor."
 }
 
    
@@ -161,43 +226,62 @@ Raw: 🌟P2 Math (2026) #A8652
 JSON: {
   "assignment_code": "A8652",
   "is_tuition_centre": false,
-  "academic_tags_raw": "P2 Math (2026)",
-  "subjects": ["Maths"],
+  "subjects": ["Mathematics"],
   "level": ["Primary"],
   "specific_student_level": ["Primary 2"],
+  "academic_display_text": "P2 Math (2026)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["West Coast"],
   "postal_code": ["127466"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "(1.5h per lesson, once a week)"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": ["14:30-17:30"],
-    "thursday": ["14:30-17:30"],
-    "friday": ["14:30-17:30"],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": ["14:30-17:30"],
+      "thursday": ["14:30-17:30"],
+      "friday": ["14:30-17:30"],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Wednesday, Thursday or Friday between 2.30-5.30pm"
   },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "rate": {
+    "min": 40,
+    "max": 50,
+    "rate_type": "hourly",
+    "raw_text": "$40-$50/h"
   },
-  "time_slots_note": "Wednesday, Thursday or Friday between 2.30-5.30pm",
-  "hourly_rate": "$40-$50/h",
-  "rate_min": 40,
-  "rate_max": 50,
   "tutor_gender": "Female",
-  "tutor_type": ["FT"],
+  "tutor_type": ["Full-Time Tutor"],
   "slot_details": null,
-  "additional_remarks": "Full time tutors may apply."
+  "additional_remarks": "Full time tutors may apply. Female tutor."
 }

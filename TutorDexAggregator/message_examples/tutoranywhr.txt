@@ -14,45 +14,64 @@ Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "8408D12",
   "is_tuition_centre": false,
-  "academic_tags_raw": "Sec 3 G3 Mathematics (Additional & Elementary), Combined Science (Chem/Bio)",
-  "subjects": ["A Maths", "E Maths", "Bio/Chem"],
+  "subjects": ["Mathematics", "Additional Mathematics", "Elementary Mathematics", "Chem/Bio"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 3"],
+  "academic_display_text": "Sec 3 G3 Mathematics (Additional & Elementary), Combined Science (Chem/Bio)",
+  "academic_signals": {
+    "year": null,
+    "stream": "G3",
+    "exam": null
+  },
   "student_gender": null,
-  "student_count": 1,
-  "learning_mode": ["Face-to-Face"],
+  "student_count": null,
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Yishun"],
   "postal_code": ["769299"],
   "nearest_mrt": null,
-  "frequency": "2 lessons/week per subject",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 2,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": true,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 2 x 1.5h per week per subject"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": ["08:00-23:00"],
+      "tuesday": ["08:00-23:00"],
+      "wednesday": ["08:00-23:00"],
+      "thursday": ["08:00-23:00"],
+      "friday": ["08:00-23:00"],
+      "saturday": ["08:00-23:00"],
+      "sunday": ["08:00-23:00"]
+    },
+    "note": "Timeslots: Weekday or Weekend"
   },
-  "estimated_time_slots": {
-    "monday": ["08:00-23:00"],
-    "tuesday": ["08:00-23:00"],
-    "wednesday": ["08:00-23:00"],
-    "thursday": ["08:00-23:00"],
-    "friday": ["08:00-23:00"],
-    "saturday": ["08:00-23:00"],
-    "sunday": ["08:00-23:00"]
+  "rate": {
+    "min": 35,
+    "max": 50,
+    "rate_type": "hourly",
+    "raw_text": "$35 - $50/h"
   },
-  "time_slots_note": "Weekday or Weekend",
-  "hourly_rate": "$35-$50/h",
-  "rate_min": 35,
-  "rate_max": 50,
   "tutor_gender": null,
-  "tutor_type": ["FT", "PT"],
+  "tutor_type": ["Full-Time Tutor", "Part-Time Tutor"],
   "slot_details": null,
-  "additional_remarks": "Fulltime or part time tutor. Quote rate accordingly."
+  "additional_remarks": "Fulltime or part time tutor. Quote rate accordingly"
 }
 
 
@@ -72,45 +91,64 @@ Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "8455D11",
   "is_tuition_centre": false,
-  "academic_tags_raw": "JC 2  H1 General Paper",
   "subjects": ["General Paper"],
-  "level": ["Junior College"],
+  "level": ["JC"],
   "specific_student_level": ["JC 2"],
+  "academic_display_text": "JC 2 H1 General Paper",
+  "academic_signals": {
+    "year": null,
+    "stream": "H1",
+    "exam": null
+  },
   "student_gender": null,
-  "student_count": 1,
-  "learning_mode": ["Face-to-Face"],
+  "student_count": null,
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Sengkang"],
   "postal_code": ["791410"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "2 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 2,
+    "total_hours_per_week": null,
+    "per_subject": true,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1 x 2h per week per subject"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": ["16:00-21:00"],
+      "tuesday": ["16:00-21:00"],
+      "wednesday": [],
+      "thursday": ["16:00-21:00"],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Timeslots: Mon, Tues & Thurs evening"
   },
-  "estimated_time_slots": {
-    "monday": ["16:00-21:00"],
-    "tuesday": ["16:00-21:00"],
-    "wednesday": [],
-    "thursday": ["16:00-21:00"],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "rate": {
+    "min": 60,
+    "max": 75,
+    "rate_type": "hourly",
+    "raw_text": "$60 - $75/h"
   },
-  "time_slots_note": "Mon, Tues & Thurs evening",
-  "hourly_rate": "$60-$75/h",
-  "rate_min": 60,
-  "rate_max": 75,
   "tutor_gender": "Female",
-  "tutor_type": ["FT", "MOE"],
+  "tutor_type": ["Full-Time Tutor", "MOE Trained Tutor"],
   "slot_details": null,
-  "additional_remarks": "Fulltime or MOE trained tutor. Quote rate accordingly."
+  "additional_remarks": "Fulltime or MOE trained tutor. Quote rate accordingly. Prefer female tutor"
 }
 
   
@@ -130,41 +168,60 @@ Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "2661D06",
   "is_tuition_centre": false,
-  "academic_tags_raw": "P6  Chinese",
   "subjects": ["Chinese"],
   "level": ["Primary"],
   "specific_student_level": ["Primary 6"],
+  "academic_display_text": "P6 Chinese",
+  "academic_signals": {
+    "year": null,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": null,
-  "student_count": 1,
-  "learning_mode": ["Face-to-Face"],
-  "address": ["Bukit Panjang / Choa Chu Kang"],
+  "student_count": null,
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
+  "address": ["Bukit Panjang", "Choa Chu Kang"],
   "postal_code": ["680144"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": true,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1 x 1.5h per week per subject"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": ["08:00-23:00"],
+      "sunday": ["08:00-23:00"]
+    },
+    "note": "Timeslots: Weekend preferred"
   },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": ["08:00-23:00"],
-    "sunday": ["08:00-23:00"]
+  "rate": {
+    "min": 30,
+    "max": 35,
+    "rate_type": "hourly",
+    "raw_text": "$30 - $35/h"
   },
-  "time_slots_note": "Weekend preferred",
-  "hourly_rate": "$30-$35/h",
-  "rate_min": 30,
-  "rate_max": 35,
   "tutor_gender": null,
   "tutor_type": null,
   "slot_details": null,
@@ -191,60 +248,62 @@ Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "4335D05",
   "is_tuition_centre": true,
-  "academic_tags_raw": "P3&4  Science",
   "subjects": ["Science"],
   "level": ["Primary"],
   "specific_student_level": ["Primary 3", "Primary 4"],
+  "academic_display_text": "P3&4 Science",
+  "academic_signals": {
+    "year": null,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
-  "address": ["Pandan Gardens Ayer Rajah Community Club"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
+  "address": ["Pandan Gardens"],
   "postal_code": ["609335"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week per subject",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": true,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1 x 1.5h per week per subject"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": ["10:30-12:00", "15:00-17:00"],
-    "sunday": []
-  },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
-  },
-  "time_slots_note": "Saturdays 10.30am-12pm (Primary 3) and 3-5pm (Primary 4)",
-  "hourly_rate": "$45-$70/h",
-  "rate_min": 45,
-  "rate_max": 70,
-  "tutor_gender": null,
-  "tutor_type": ["MOE", "FT"],
-  "slot_details": [
-    {
-      "subject": "Science",
-      "student_level": "Primary 3",
-      "day": "Saturday",
-      "start_time": "10:30",
-      "end_time": "12:00",
-      "location": "Pandan Gardens Ayer Rajah Community Club"
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": ["10:30-12:00", "15:00-17:00"],
+      "sunday": []
     },
-    {
-      "subject": "Science",
-      "student_level": "Primary 4",
-      "day": "Saturday",
-      "start_time": "15:00",
-      "end_time": "17:00",
-      "location": "Pandan Gardens Ayer Rajah Community Club"
-    }
-  ],
-  "additional_remarks": "Current or ex-school teachers or full-time tutors preferred. Commitment till year-end 2025 (can extend till end 2026)."
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Saturdays 10.30am-12pm (Pri 3) and 3-5pm (Pri 4) preferred"
+  },
+  "rate": {
+    "min": 45,
+    "max": 70,
+    "rate_type": "hourly",
+    "raw_text": "$45 - $70/h"
+  },
+  "tutor_gender": null,
+  "tutor_type": ["Current School Teacher", "Ex-School Teacher", "Full-Time Tutor"],
+  "slot_details": null,
+  "additional_remarks": "Tuition centre at Pandan Gardens Ayer Rajah community club. Commitment till year-end 2025 (can extend till end 2026)"
 }

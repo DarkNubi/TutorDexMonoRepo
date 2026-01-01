@@ -51,7 +51,8 @@ class MonitorConfig:
     alert_prefix: str
 
     # Files
-    heartbeat_path: Path
+    raw_heartbeat_path: Path
+    queue_heartbeat_path: Path
     log_path: Path
     state_path: Path
 
@@ -93,8 +94,11 @@ def load_config() -> MonitorConfig:
         except Exception:
             thread_id = None
 
-    heartbeat_rel = _env("HEARTBEAT_FILE", "monitoring/heartbeat.json")
-    heartbeat_path = (agg_dir / heartbeat_rel).resolve()
+    raw_hb_rel = _env("MONITOR_RAW_HEARTBEAT_FILE", _env("RAW_HEARTBEAT_FILE", "monitoring/heartbeat_raw_collector.json"))
+    raw_heartbeat_path = (agg_dir / raw_hb_rel).resolve()
+
+    queue_hb_rel = _env("MONITOR_QUEUE_HEARTBEAT_FILE", _env("EXTRACTION_QUEUE_HEARTBEAT_FILE", "monitoring/heartbeat_queue_worker.json"))
+    queue_heartbeat_path = (agg_dir / queue_hb_rel).resolve()
 
     log_dir = _env("LOG_DIR", str(agg_dir / "logs"))
     log_file = _env("LOG_FILE", "tutordex_aggregator.log")
@@ -109,7 +113,8 @@ def load_config() -> MonitorConfig:
         chat_id=chat_id,
         thread_id=thread_id,
         alert_prefix=_env("ALERT_PREFIX", "[TutorDex Monitor]"),
-        heartbeat_path=heartbeat_path,
+        raw_heartbeat_path=raw_heartbeat_path,
+        queue_heartbeat_path=queue_heartbeat_path,
         log_path=log_path,
         state_path=state_path,
         backend_health_url=backend_health_url,
@@ -239,7 +244,7 @@ def _should_alert_event(level: Optional[str], event: Optional[str], raw: str) ->
 
 
 def _read_queue_heartbeat() -> Optional[Dict[str, Any]]:
-    hb_rel = _env("EXTRACTION_QUEUE_HEARTBEAT_FILE", "monitoring/heartbeat_queue_worker.json")
+    hb_rel = _env("MONITOR_QUEUE_HEARTBEAT_FILE", _env("EXTRACTION_QUEUE_HEARTBEAT_FILE", "monitoring/heartbeat_queue_worker.json"))
     agg_dir = Path(__file__).resolve().parent.parent
     hb_path = (agg_dir / hb_rel).resolve()
     return _load_json(hb_path)
@@ -357,26 +362,44 @@ def _summarize_last_24h(cfg: MonitorConfig) -> List[str]:
         except Exception:
             pass
 
-    hb = _load_json(cfg.heartbeat_path) if cfg.heartbeat_path.exists() else None
-    hb_status = hb.get("status") if hb else None
-    hb_ts = hb.get("ts") if hb else None
-    hb_seen = None
-    hb_ok = None
-    hb_err = None
-    if hb and isinstance(hb.get("metrics"), dict):
-        m = hb["metrics"]
-        hb_seen = m.get("seen")
-        hb_ok = m.get("ok")
-        hb_err = m.get("error")
+    raw_hb = _load_json(cfg.raw_heartbeat_path) if cfg.raw_heartbeat_path.exists() else None
+    raw_status = raw_hb.get("status") if raw_hb else None
+    raw_mode = raw_hb.get("mode") if raw_hb else None
+    raw_ts = int(raw_hb.get("ts") or 0) if isinstance(raw_hb, dict) else 0
+    raw_age = int(time.time()) - raw_ts if raw_ts else None
+    raw_run_id = raw_hb.get("run_id") if raw_hb else None
+    raw_scanned = raw_written = raw_errors = None
+    if raw_hb and isinstance(raw_hb.get("channels"), dict):
+        try:
+            ch = raw_hb["channels"]
+            raw_scanned = sum(int((v or {}).get("scanned") or 0) for v in ch.values())
+            raw_written = sum(int((v or {}).get("written") or 0) for v in ch.values())
+            raw_errors = sum(int((v or {}).get("errors") or 0) for v in ch.values())
+        except Exception:
+            raw_scanned = raw_written = raw_errors = None
     qhb_counts = qhb.get("counts") if isinstance(qhb, dict) else None
     qhb_oldest = qhb.get("oldest_pending_age_s") if isinstance(qhb, dict) else None
+    qhb_ts = int(qhb.get("ts") or 0) if isinstance(qhb, dict) else 0
+    qhb_age = int(time.time()) - qhb_ts if qhb_ts else None
+    qhb_pv = qhb.get("pipeline_version") if isinstance(qhb, dict) else None
 
     lines = []
-    lines.append(f"Heartbeat: status={hb_status} ts={hb_ts} seen={hb_seen} ok={hb_ok} error={hb_err}")
+    lines.append(
+        "Raw collector: "
+        f"status={raw_status} mode={raw_mode} run_id={raw_run_id} heartbeat_age_s={raw_age} "
+        f"scanned={raw_scanned} written={raw_written} errors={raw_errors}"
+    )
     if qhb_counts is not None:
-        lines.append(f"Queue: counts={qhb_counts} oldest_pending_age_s={qhb_oldest}")
+        lines.append(
+            "Queue worker: "
+            f"heartbeat_age_s={qhb_age} pipeline_version={qhb_pv} counts={qhb_counts} oldest_pending_age_s={qhb_oldest}"
+        )
     lines.append(f"Log path: {cfg.log_path.name} exists={cfg.log_path.exists()}")
-    lines.append(f"Events (last 24h): pipeline_summary={counts.get('pipeline_summary',0)} skipped={counts.get('message_skipped',0)}")
+    lines.append(
+        "Events (last 24h): "
+        f"pipeline_summary={counts.get('pipeline_summary',0)} "
+        f"message_skipped={counts.get('message_skipped',0)}"
+    )
     lines.append(
         "Failures (last 24h): "
         f"llm_extract_failed={counts.get('llm_extract_failed',0)} "
@@ -413,20 +436,22 @@ def main() -> None:
         qhb_age = now - qhb_ts if qhb_ts else None
         queue_healthy = bool(qhb_ts and qhb_age is not None and qhb_age <= max(cfg.heartbeat_stale_s, int(cfg.check_interval_s * 2)))
 
-        hb = _load_json(cfg.heartbeat_path) if cfg.heartbeat_path.exists() else None
-        hb_ts = int(hb.get("ts") or 0) if isinstance(hb, dict) else 0
-        hb_age = now - hb_ts if hb_ts else None
-        # If the legacy aggregator heartbeat is missing but the queue pipeline is healthy, skip this alert.
-        if not (queue_healthy and hb_ts == 0) and (hb_age is None or hb_age > cfg.heartbeat_stale_s):
-            key = "aggregator_stale"
+        raw_hb = _load_json(cfg.raw_heartbeat_path) if cfg.raw_heartbeat_path.exists() else None
+        raw_ts = int(raw_hb.get("ts") or 0) if isinstance(raw_hb, dict) else 0
+        raw_age = now - raw_ts if raw_ts else None
+        raw_healthy = bool(raw_ts and raw_age is not None and raw_age <= max(cfg.heartbeat_stale_s, int(cfg.check_interval_s * 2)))
+
+        if raw_age is None or raw_age > cfg.heartbeat_stale_s:
+            key = "raw_collector_heartbeat_stale"
             if _cooldown_ok(state, key, cfg.cooldown_s):
                 msg = _format_alert(
                     cfg.alert_prefix,
-                    "Aggregator appears stalled/down",
+                    "Raw collector heartbeat stale",
                     [
-                        f"heartbeat_age_s={hb_age}",
-                        f"heartbeat_path={cfg.heartbeat_path}",
-                        f"log_path={cfg.log_path}",
+                        f"heartbeat_age_s={raw_age}",
+                        f"file={cfg.raw_heartbeat_path}",
+                        f"last_status={(raw_hb or {}).get('status') if isinstance(raw_hb, dict) else None}",
+                        f"last_mode={(raw_hb or {}).get('mode') if isinstance(raw_hb, dict) else None}",
                     ],
                 )
                 _send_telegram(cfg, msg)
@@ -434,7 +459,9 @@ def main() -> None:
 
         if cfg.log_path.exists():
             log_age = now - int(cfg.log_path.stat().st_mtime)
-            if log_age > cfg.log_stale_s:
+            # If both the raw collector + queue heartbeats are healthy, don't page on log staleness.
+            # Logs may not update if the file isn't mounted into a container or if the pipeline is quiet.
+            if not (raw_healthy and queue_healthy) and log_age > cfg.log_stale_s:
                 key = "log_stale"
                 if _cooldown_ok(state, key, cfg.cooldown_s):
                     msg = _format_alert(cfg.alert_prefix, "Aggregator log not updating", [f"log_age_s={log_age}", f"log_path={cfg.log_path}"])
@@ -450,7 +477,7 @@ def main() -> None:
                     "Queue worker heartbeat stale",
                     [
                         f"heartbeat_age_s={qhb_age}",
-                        f"file={_env('EXTRACTION_QUEUE_HEARTBEAT_FILE','monitoring/heartbeat_queue_worker.json')}",
+                        f"file={cfg.queue_heartbeat_path}",
                         f"last_counts={(qhb or {}).get('counts') if isinstance(qhb, dict) else None}",
                     ],
                 )

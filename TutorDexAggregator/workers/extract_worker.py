@@ -27,7 +27,7 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from compilation_detection import is_compilation  # noqa: E402
-from extract_key_info import extract_assignment_with_model, process_parsed_payload  # noqa: E402
+from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta, process_parsed_payload  # noqa: E402
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
 from supabase_persist import mark_assignment_closed, persist_assignment_to_supabase  # noqa: E402
 from schema_validation import validate_parsed_assignment  # noqa: E402
@@ -367,6 +367,27 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
     cid = f"worker:{channel_link}:{message_id}:{extraction_id}"
     existing_meta = job.get("meta")
     llm_model = (os.environ.get("LLM_MODEL_NAME") or "").strip() or None
+    try:
+        prompt_meta = get_system_prompt_meta()
+        if not isinstance(prompt_meta, dict) or not prompt_meta:
+            prompt_meta = None
+    except Exception:
+        prompt_meta = None
+
+    try:
+        examples_meta = get_examples_meta(channel_link)
+        if not isinstance(examples_meta, dict) or not examples_meta:
+            examples_meta = None
+    except Exception:
+        examples_meta = None
+
+    def _with_prompt(meta_patch: Dict[str, Any]) -> Dict[str, Any]:
+        out = dict(meta_patch)
+        if prompt_meta is not None:
+            out["prompt"] = prompt_meta
+        if examples_meta is not None:
+            out["examples"] = examples_meta
+        return out
     attempt = _job_attempt(job)
     if attempt >= MAX_ATTEMPTS:
         _mark_extraction(
@@ -375,7 +396,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             extraction_id,
             status="failed",
             error={"error": "max_attempts", "attempt": attempt},
-            meta_patch={"reason": "max_attempts", "ts": _utc_now_iso()},
+            meta_patch=_with_prompt({"reason": "max_attempts", "ts": _utc_now_iso()}),
             existing_meta=existing_meta,
             llm_model=llm_model,
         )
@@ -389,7 +410,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
         ch_info = _fetch_channel(url, key, channel_link) or {}
         raw = _fetch_raw(url, key, raw_id)
         if not raw:
-            _mark_extraction(url, key, extraction_id, status="failed", error={"error": "raw_missing"}, meta_patch={"ts": _utc_now_iso()}, existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(url, key, extraction_id, status="failed", error={"error": "raw_missing"}, meta_patch=_with_prompt({"ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             return
 
         if raw.get("deleted_at"):
@@ -412,19 +433,19 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 key,
                 extraction_id,
                 status="skipped",
-                meta_patch={"reason": "deleted", "ts": _utc_now_iso(), "close_res": close_res},
+                meta_patch=_with_prompt({"reason": "deleted", "ts": _utc_now_iso(), "close_res": close_res}),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
             return
 
         if bool(raw.get("is_forward")):
-            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch={"reason": "forward", "ts": _utc_now_iso()}, existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt({"reason": "forward", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             return
 
         raw_text = str(raw.get("raw_text") or "").strip()
         if not raw_text:
-            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch={"reason": "empty_text", "ts": _utc_now_iso()}, existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt({"reason": "empty_text", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             return
 
         is_comp, comp_details = is_compilation(raw_text)
@@ -434,7 +455,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 key,
                 extraction_id,
                 status="skipped",
-                meta_patch={"reason": "compilation", "details": comp_details, "ts": _utc_now_iso()},
+                meta_patch=_with_prompt({"reason": "compilation", "details": comp_details, "ts": _utc_now_iso()}),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
@@ -446,7 +467,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             if not isinstance(parsed, dict):
                 parsed = {}
         except Exception as e:
-            _mark_extraction(url, key, extraction_id, status="failed", error={"error": str(e)}, meta_patch={"stage": "llm", "ts": _utc_now_iso()}, existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(url, key, extraction_id, status="failed", error={"error": str(e)}, meta_patch=_with_prompt({"stage": "llm", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             return
 
         payload: Dict[str, Any] = {
@@ -478,7 +499,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 extraction_id,
                 status="failed",
                 error={"error": "validation_failed", "errors": schema_errors},
-                meta_patch={"stage": "validation", "errors": schema_errors, "ts": _utc_now_iso()},
+                meta_patch=_with_prompt({"stage": "validation", "errors": schema_errors, "ts": _utc_now_iso()}),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
@@ -502,7 +523,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 extraction_id,
                 status="pending",
                 error={"error": "persist_failed", "details": persist_res},
-                meta_patch=meta_patch,
+                meta_patch=_with_prompt(meta_patch),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
@@ -532,7 +553,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
         }
 
         ok = bool(persist_res.get("ok"))
-        _mark_extraction(url, key, extraction_id, status="ok" if ok else "failed", canonical_json=payload.get("parsed"), meta_patch=meta, existing_meta=existing_meta, llm_model=llm_model)
+        _mark_extraction(url, key, extraction_id, status="ok" if ok else "failed", canonical_json=payload.get("parsed"), meta_patch=_with_prompt(meta), existing_meta=existing_meta, llm_model=llm_model)
 
 
 def main() -> None:
@@ -552,6 +573,11 @@ def main() -> None:
     enable_broadcast = str(os.environ.get("EXTRACTION_WORKER_BROADCAST", "1" if DEFAULT_ENABLE_BROADCAST else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
     enable_dms = str(os.environ.get("EXTRACTION_WORKER_DMS", "1" if DEFAULT_ENABLE_DMS else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
 
+    oneshot = str(os.environ.get("EXTRACTION_WORKER_ONESHOT", "")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    max_jobs = int(os.environ.get("EXTRACTION_WORKER_MAX_JOBS") or "0")
+    if max_jobs < 0:
+        max_jobs = 0
+
     log_event(
         logger,
         logging.INFO,
@@ -566,6 +592,8 @@ def main() -> None:
         heartbeat_file=hb_file,
         heartbeat_seconds=hb_seconds,
         stale_processing_s=stale_processing_s,
+        oneshot=oneshot,
+        max_jobs=max_jobs or None,
     )
 
     global ENABLE_BROADCAST, ENABLE_DMS, MAX_ATTEMPTS, BACKOFF_BASE_S, BACKOFF_MAX_S, QUEUE_HEARTBEAT_FILE, QUEUE_HEARTBEAT_SECONDS, STALE_PROCESSING_SECONDS
@@ -581,6 +609,7 @@ def main() -> None:
     hb_path = AGG_DIR / QUEUE_HEARTBEAT_FILE
     last_hb = 0.0
     last_requeue = 0.0
+    processed = 0
 
     while True:
         try:
@@ -614,12 +643,20 @@ def main() -> None:
                     _write_queue_heartbeat(hb_path, hb_payload)
                     last_hb = now
 
+                if oneshot:
+                    log_event(logger, logging.INFO, "worker_oneshot_done", processed=processed, pipeline_version=pipeline_version)
+                    return
+
                 time.sleep(max(0.25, float(idle_sleep_s)))
                 continue
 
             for job in jobs:
                 if isinstance(job, dict):
                     _work_one(url, key, job)
+                    processed += 1
+                    if max_jobs and processed >= max_jobs:
+                        log_event(logger, logging.INFO, "worker_max_jobs_reached", processed=processed, max_jobs=max_jobs, pipeline_version=pipeline_version)
+                        return
         except KeyboardInterrupt:
             log_event(logger, logging.INFO, "worker_interrupted")
             return

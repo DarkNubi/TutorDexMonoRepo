@@ -6,7 +6,8 @@ This folder provides a lightweight monitoring/alert loop for the home server set
 
 `monitor.py` runs continuously and:
 - Sends **alerts** to Telegram when:
-  - aggregator heartbeat stops updating (process stalled/down)
+  - raw collector heartbeat stops updating (collector stalled/down)
+  - queue worker heartbeat stops updating (worker stalled/down)
   - backend health check fails (backend/redis/supabase via `/health/full`)
   - error spikes appear in the aggregator log (Telegram rate limits, LLM failures, Supabase failures, DM/broadcast failures)
 - Sends a **daily “pipeline health summary”** (last 24h) to the same Telegram destination.
@@ -44,5 +45,9 @@ Docker:
 
 ## Notes
 
-- The aggregator writes a heartbeat file at `HEARTBEAT_FILE` (default `monitoring/heartbeat.json`) and emits a periodic tick (`HEARTBEAT_TICK_SECONDS`) so “quiet periods” do not trigger false down alerts.
+- The **raw collector** writes a heartbeat file (default `monitoring/heartbeat_raw_collector.json`).
+  - Override via `RAW_HEARTBEAT_FILE` (or `MONITOR_RAW_HEARTBEAT_FILE` for monitor-only).
+- The **queue worker** writes a heartbeat file (default `monitoring/heartbeat_queue_worker.json`).
+  - Override via `EXTRACTION_QUEUE_HEARTBEAT_FILE` (or `MONITOR_QUEUE_HEARTBEAT_FILE` for monitor-only).
+- Legacy note: older versions used `HEARTBEAT_FILE=monitoring/heartbeat.json` for a single “aggregator heartbeat”. The current monitor ignores that legacy heartbeat.
 - Monitor state (log offset + alert cooldowns) is stored in `monitoring/monitor_state.json`.

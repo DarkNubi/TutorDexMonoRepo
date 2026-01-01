@@ -15,45 +15,64 @@ If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-ass
 JSON: {
   "assignment_code": null,
   "is_tuition_centre": false,
-  "academic_tags_raw": "SEC 4 G3 COMBINED BIOLOGY",
   "subjects": ["Biology"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 4"],
-  "student_gender": "Male",
+  "academic_display_text": "SEC 4 G3 COMBINED BIOLOGY",
+  "academic_signals": {
+    "year": null,
+    "stream": "G3",
+    "exam": null
+  },
+  "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Blk 424 Tampines Street 41"],
   "postal_code": ["520424"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5-2 hours",
-  "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": null,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 OR 2 Hours / Lesson"
   },
-  "estimated_time_slots": {
-    "monday": ["19:30-21:30"],
-    "tuesday": ["19:30-21:30"],
-    "wednesday": ["19:30-21:30"],
-    "thursday": ["19:30-21:30"],
-    "friday": ["19:30-21:30"],
-    "saturday": ["08:00-23:00"],
-    "sunday": ["15:00-23:00"]
+  "start_date": "Start this month",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": ["19:30-19:30"],
+      "tuesday": ["19:30-19:30"],
+      "wednesday": ["19:30-19:30"],
+      "thursday": ["19:30-19:30"],
+      "friday": ["19:30-19:30"],
+      "saturday": ["08:00-23:00"],
+      "sunday": ["15:00-23:00"]
+    },
+    "note": "WEEKDAYS AT 730PM / SATURDAY FLEXIBLE / NO SUNDAY BEFORE 3PM"
   },
-  "time_slots_note": "Weekdays at 7:30PM, Saturday flexible, no Sunday before 3PM",
-  "hourly_rate": "$80/h",
-  "rate_min": 80,
-  "rate_max": 80,
+  "rate": {
+    "min": 80,
+    "max": 80,
+    "rate_type": "hourly",
+    "raw_text": "S$80 (MOE EX or Current Teacher)"
+  },
   "tutor_gender": null,
-  "tutor_type": ["MOE"],
+  "tutor_type": ["MOE Ex-Teacher", "Current MOE Teacher"],
   "slot_details": null,
-  "additional_remarks": "Malay male student from St Patrick Secondary. Parent wants MOE Ex or Current MOE Teacher. Start this month."
+  "additional_remarks": "Malay male student from St Patrick Secondary. Parent wants MOE Ex or Current MOE Teacher."
 }
 
 
@@ -76,43 +95,62 @@ If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-ass
 JSON: {
   "assignment_code": null,
   "is_tuition_centre": false,
-  "academic_tags_raw": "2026 SEC 4 Additional Math and Elementary Math",
-  "subjects": ["A Maths", "E Maths"],
+  "subjects": ["Additional Mathematics", "Elementary Mathematics"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 4"],
+  "academic_display_text": "2026 SEC 4 Additional Math and Elementary Math",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": ["Female"],
-  "student_count": 1,
-  "learning_mode": ["Face-to-Face"],
+  "student_count": null,
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Blk 20 Telok Blangah Crescent"],
   "postal_code": ["090020"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
-  "start_date": "",
-  "time_slots": {
-    "monday": [],
-    "tuesday": ["19:00-20:30"],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"
   },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "start_date": "Start coming week",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": ["19:00-19:00"],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "TUESDAY AT 7PM"
   },
-  "time_slots_note": null,
-  "hourly_rate": "S$50 (part time) 60 (full time)",
-  "rate_min": 50,
-  "rate_max": 60,
+  "rate": {
+    "min": 50,
+    "max": 60,
+    "rate_type": "hourly",
+    "raw_text": "S$50 (part time) 60 (full time)"
+  },
   "tutor_gender": "Female",
-  "tutor_type": ["PT", "FT"],
+  "tutor_type": ["Part-Time Tutor", "Full-Time Tutor"],
   "slot_details": null,
   "additional_remarks": "Student has very mild ADHD. Female student from Catholic Girls. Mum will want to speak to the shortlisted tutor before confirmation."
 }
@@ -136,45 +174,64 @@ If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-ass
 JSON: {
   "assignment_code": null,
   "is_tuition_centre": false,
-  "academic_tags_raw": "IB Year 12 (2026) HL Chemistry",
   "subjects": ["Chemistry"],
-  "level": ["IB"],
-  "specific_student_level": ["IB DP Year 2"],
+  "level": "IB",
+  "specific_student_level": "IB Year 12",
+  "academic_display_text": "IB Year 12(2026) HL Chemistry",
+  "academic_signals": {
+    "year": 2026,
+    "stream": "HL",
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Sky Habitat, Bishan Street 15"],
   "postal_code": ["573908"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": ["17:00-23:00"],
+      "tuesday": ["17:00-23:00"],
+      "wednesday": ["17:00-23:00"],
+      "thursday": ["17:00-23:00"],
+      "friday": ["17:00-23:00"],
+      "saturday": ["08:00-23:00"],
+      "sunday": ["08:00-23:00"]
+    },
+    "note": "Now is Flexible. School Reopen: Weekends Flexible / Weekdays after 5pm"
   },
-  "estimated_time_slots": {
-    "monday": ["17:00-23:00"],
-    "tuesday": ["17:00-23:00"],
-    "wednesday": ["17:00-23:00"],
-    "thursday": ["17:00-23:00"],
-    "friday": ["17:00-23:00"],
-    "saturday": ["08:00-23:00"],
-    "sunday": ["08:00-23:00"]
+  "rate": {
+    "min": null,
+    "max": null,
+    "rate_type": "unknown",
+    "raw_text": "S$mkt rate (not to overquote)"
   },
-  "time_slots_note": "Now flexible. Weekends flexible / weekdays after 5pm when school reopens",
-  "hourly_rate": "Market rate",
-  "rate_min": null,
-  "rate_max": null,
   "tutor_gender": null,
-  "tutor_type": ["FT"],
+  "tutor_type": ["Full-Time Tutor"],
   "slot_details": null,
-  "additional_remarks": "Student from ACSI. Needs experienced IB HL Chemistry tutor to guide on EE and IA. Preferably full-time tutor with strong IB experience. Not to overquote market rate."
+  "additional_remarks": "Student is from ACSI IB Year 11. Needs a Tutor on HL Chemistry to guide on EE and IA. MUST BE AN EXPERIENCED TUTOR IN GUIDING IN STUDENTS ON EE AND IA."
 }
 
 
@@ -195,43 +252,62 @@ If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-ass
 JSON: {
   "assignment_code": null,
   "is_tuition_centre": false,
-  "academic_tags_raw": "2026 SEC 4 ENGLISH",
   "subjects": ["English"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 4"],
+  "academic_display_text": "2026 SEC 4 ENGLISH",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Eight Courtyards, Canberra Drive"],
   "postal_code": ["768097"],
   "nearest_mrt": null,
-  "frequency": "1 lesson/week",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"
+  },
   "start_date": null,
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": ["19:30-21:00"],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": ["16:00-17:30"]
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": ["19:30–23:00"],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": ["16:00–23:00"]
+    },
+    "note": "WED FROM 730PM / SUN FROM 4PM"
   },
-  "estimated_time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "rate": {
+    "min": 40,
+    "max": 40,
+    "rate_type": "hourly",
+    "raw_text": "S$40 max (mum budget for Full Time Tutor)"
   },
-  "time_slots_note": "Wednesday from 7.30pm or Sunday from 4pm",
-  "hourly_rate": "$40/h max",
-  "rate_min": null,
-  "rate_max": 40,
   "tutor_gender": null,
-  "tutor_type": ["FT"],
+  "tutor_type": ["Full-Time Tutor"],
   "slot_details": null,
   "additional_remarks": "Full Time English Tutor. No students."
 }
@@ -254,43 +330,62 @@ If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-ass
 JSON: {
   "assignment_code": null,
   "is_tuition_centre": false,
-  "academic_tags_raw": "2026 SEC 1 G3 MATH + SCIENCE",
-  "subjects": ["Maths", "Science"],
+  "subjects": ["Mathematics", "Science"],
   "level": ["Secondary"],
   "specific_student_level": ["Secondary 1"],
+  "academic_display_text": "2026 SEC 1 G3 MATH + SCIENCE",
+  "academic_signals": {
+    "year": 2026,
+    "stream": "G3",
+    "exam": null
+  },
   "student_gender": null,
   "student_count": null,
-  "learning_mode": ["Face-to-Face"],
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
   "address": ["Blk 238 Hougang Ave 1"],
   "postal_code": ["530238"],
   "nearest_mrt": null,
-  "frequency": "2 lessons/week",
-  "duration": "1.5 hours",
+  "lesson_schedule": {
+    "lessons_per_week": 2,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 2 Lesson(s) Per Week, 1.5 Hours / Lesson"
+  },
   "start_date": "Jan",
-  "time_slots": {
-    "monday": [],
-    "tuesday": [],
-    "wednesday": [],
-    "thursday": [],
-    "friday": [],
-    "saturday": [],
-    "sunday": []
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": ["17:00-23:00"],
+      "tuesday": ["17:00-23:00"],
+      "wednesday": ["17:00-23:00"],
+      "thursday": ["17:00-23:00"],
+      "friday": ["17:00-23:00"],
+      "saturday": ["11:00-23:00"],
+      "sunday": ["11:00-23:00"]
+    },
+    "note": "WEEKDAYS START AT 5PM OR 6PM / WEEKENDS START AT 11AM OR 12PM"
   },
-  "estimated_time_slots": {
-    "monday": ["17:00-23:00"],
-    "tuesday": ["17:00-23:00"],
-    "wednesday": ["17:00-23:00"],
-    "thursday": ["17:00-23:00"],
-    "friday": ["17:00-23:00"],
-    "saturday": ["11:00-23:00"],
-    "sunday": ["11:00-23:00"]
+  "rate": {
+    "min": 45,
+    "max": 60,
+    "rate_type": "hourly",
+    "raw_text": "S$60 (Full Time Tutor) S$45 (Part Time Tutor)"
   },
-  "time_slots_note": "Weekdays start at 5pm or 6pm; weekends start at 11am or 12pm",
-  "hourly_rate": "S$60 (Full Time Tutor) S$45 (Part Time Tutor)",
-  "rate_min": 45,
-  "rate_max": 60,
   "tutor_gender": "Female",
-  "tutor_type": ["FT", "PT"],
+  "tutor_type": ["Full-Time Tutor", "Part-Time Tutor"],
   "slot_details": null,
-  "additional_remarks": "Prefer full-time female tutor with Sec 1 G3 Maths and Science experience. One day Maths and one day Science. There are 2 small dogs at home; tutor must not be afraid of dogs."
+  "additional_remarks": "Mum would prefer Full Time Female Tutors with Sec 1 G3 Math and Science teaching experience. There are 2 SMALL DOGS AT HOME. Tutor must not be scared of dogs. 1 day Math and 1 day Science."
 }

@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import quote
 
 from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError, SlowModeWaitError, FloodError
@@ -291,6 +292,7 @@ async def backfill_channel(
     batch_size: int,
     max_messages: Optional[int],
     heartbeat_path: Path,
+    force_enqueue: bool = False,
 ) -> Counters:
     counters = Counters()
 
@@ -340,7 +342,7 @@ async def backfill_channel(
             counters.written += ok_rows
             if ok_rows:
                 msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
-                _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=False)
+                _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=bool(force_enqueue))
             rows = []
 
         counters.last_message_id = str(getattr(msg, "id", "") or "") or counters.last_message_id
@@ -369,7 +371,7 @@ async def backfill_channel(
         counters.written += ok_rows
         if ok_rows:
             msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
-            _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=False)
+            _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=bool(force_enqueue))
 
     store.upsert_progress(
         run_id=run_id,
@@ -412,6 +414,7 @@ async def run_backfill(args: argparse.Namespace) -> int:
         "extraction_queue_enabled": _enqueue_enabled(),
         "pipeline_version": _pipeline_version(),
         "queue_rpc_sql": "supabase sqls/2025-12-22_extraction_queue_rpc.sql",
+        "force_enqueue": bool(getattr(args, "force_enqueue", False)),
     }
     run_id = store.create_run(run_type="backfill", channels=channels, meta=base_meta)
 
@@ -434,6 +437,7 @@ async def run_backfill(args: argparse.Namespace) -> int:
                     batch_size=batch_size,
                     max_messages=max_messages,
                     heartbeat_path=heartbeat_path,
+                    force_enqueue=bool(getattr(args, "force_enqueue", False)),
                 )
                 log_event(
                     logger,
@@ -633,6 +637,126 @@ async def run_tail(args: argparse.Namespace) -> int:
         await client.disconnect()
 
 
+async def run_enqueue_from_raw(args: argparse.Namespace) -> int:
+    """
+    Enqueue extraction jobs from existing `telegram_messages_raw` rows.
+
+    This is used for:
+    - Reprocessing (new prompt/schema/model): set EXTRACTION_PIPELINE_VERSION and pass --force.
+    - Recovery: enqueue a downtime window without re-reading Telegram.
+    """
+    store = SupabaseRawStore()
+    if not store.enabled() or not store.client:
+        raise SystemExit("Supabase raw store is disabled/misconfigured. Set SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY and SUPABASE_RAW_ENABLED=1.")
+
+    channels = _parse_channels_arg(getattr(args, "channels", None)) or [_normalize_channel_ref(x) for x in _parse_channels_from_env()]
+    channels = [c for c in channels if c]
+    if not channels:
+        raise SystemExit("No channels provided. Set CHANNEL_LIST in .env or pass --channels.")
+
+    since = _parse_iso_dt(getattr(args, "since", None)) if getattr(args, "since", None) else None
+    until = _parse_iso_dt(getattr(args, "until", None)) if getattr(args, "until", None) else None
+    page_size = int(getattr(args, "page_size", 500) or 500)
+    page_size = max(50, min(5000, page_size))
+    max_messages = int(getattr(args, "max_messages", 0) or 0)
+    force = bool(getattr(args, "force", False))
+
+    base_meta = {
+        "since": getattr(args, "since", None),
+        "until": getattr(args, "until", None),
+        "page_size": page_size,
+        "max_messages": max_messages or None,
+        "supabase_enabled": store.enabled(),
+        "pipeline_version": _pipeline_version(),
+        "force": force,
+        "queue_rpc_sql": "supabase sqls/2025-12-22_extraction_queue_rpc.sql",
+        "note": "enqueue_from_raw",
+    }
+    run_id = store.create_run(run_type="enqueue", channels=channels, meta=base_meta)
+
+    t0 = timed()
+    total_scanned = 0
+    total_enqueued = 0
+    table = store.cfg.messages_table
+
+    try:
+        for ch in channels:
+            offset = 0
+            scanned = 0
+            enqueued = 0
+            with bind_log_context(step="raw.enqueue", channel=ch):
+                while True:
+                    if max_messages and scanned >= max_messages:
+                        break
+
+                    select = "message_id,message_date,deleted_at"
+                    parts = [
+                        f"select={select}",
+                        f"channel_link=eq.{quote(_normalize_channel_ref(ch), safe='')}",
+                        "message_id=not.is.null",
+                        "deleted_at=is.null",
+                    ]
+                    if since is not None:
+                        parts.append(f"message_date=gte.{quote(_iso(since), safe='')}")
+                    if until is not None:
+                        parts.append(f"message_date=lt.{quote(_iso(until), safe='')}")
+                    parts.append("order=message_date.asc,message_id.asc")
+                    parts.append(f"limit={int(min(page_size, max_messages - scanned))}" if max_messages else f"limit={int(page_size)}")
+                    parts.append(f"offset={int(offset)}")
+                    q = f"{table}?" + "&".join(parts)
+
+                    resp = store.client.get(q, timeout=30)
+                    if resp.status_code >= 400:
+                        log_event(logger, logging.WARNING, "enqueue_raw_query_failed", status_code=resp.status_code, body=resp.text[:250], channel=ch)
+                        break
+                    try:
+                        rows = resp.json()
+                    except Exception:
+                        rows = []
+                    if not isinstance(rows, list) or not rows:
+                        break
+
+                    ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
+                    scanned += len(ids)
+                    total_scanned += len(ids)
+                    if ids:
+                        _enqueue_extraction_jobs(store, channel_link=_normalize_channel_ref(ch), message_ids=ids, force=force)
+                        enqueued += len(ids)
+                        total_enqueued += len(ids)
+
+                    offset += len(rows)
+                    if len(rows) < page_size:
+                        break
+
+            store.upsert_progress(
+                run_id=run_id,
+                channel_link=_normalize_channel_ref(ch),
+                last_message_id=None,
+                last_message_date_iso=None,
+                scanned=scanned,
+                inserted=0,
+                updated=0,
+                errors=0,
+            )
+
+        final_meta = dict(base_meta)
+        final_meta.update(
+            {
+                "finished_at": _utc_now().isoformat(),
+                "total_scanned": total_scanned,
+                "total_enqueued": total_enqueued,
+                "total_ms": round((timed() - t0) * 1000.0, 2),
+            }
+        )
+        store.finish_run(run_id=run_id, status="ok", meta_patch=final_meta)
+        log_event(logger, logging.INFO, "enqueue_done", run_id=run_id, total_scanned=total_scanned, total_enqueued=total_enqueued)
+        return 0
+    except Exception as e:
+        err_meta = dict(base_meta)
+        err_meta.update({"error": str(e), "finished_at": _utc_now().isoformat()})
+        store.finish_run(run_id=run_id, status="error", meta_patch=err_meta)
+        raise
+
 def run_status(args: argparse.Namespace) -> int:
     store = SupabaseRawStore()
     if not store.enabled():
@@ -688,11 +812,24 @@ def main() -> None:
     p_backfill.add_argument("--batch-size", type=int, default=200, help="Supabase batch size (default 200).")
     p_backfill.add_argument("--max-messages", type=int, help="Optional cap per channel (useful for dry smoke runs).")
     p_backfill.add_argument("--heartbeat-file", help="Path for heartbeat JSON (default: monitoring/heartbeat_raw_collector.json).")
+    p_backfill.add_argument(
+        "--force-enqueue",
+        action="store_true",
+        help="Force enqueue (reparse) even if extraction rows already exist for this pipeline version.",
+    )
 
     p_tail = sub.add_parser("tail", help="Tail new messages/edits/deletes and upsert into telegram_messages_raw.")
     p_tail.add_argument("--channels", help="Comma-separated channels or JSON array; defaults to CHANNEL_LIST env var.")
     p_tail.add_argument("--heartbeat-file", help="Path for heartbeat JSON (default: monitoring/heartbeat_raw_collector.json).")
     p_tail.add_argument("--heartbeat-seconds", type=int, default=60, help="Heartbeat interval (default 60s).")
+
+    p_enqueue = sub.add_parser("enqueue", help="Enqueue extraction jobs from existing telegram_messages_raw (no Telegram calls).")
+    p_enqueue.add_argument("--channels", help="Comma-separated channels or JSON array; defaults to CHANNEL_LIST env var.")
+    p_enqueue.add_argument("--since", help="ISO datetime (inclusive). Example: 2025-01-01T00:00:00+00:00")
+    p_enqueue.add_argument("--until", help="ISO datetime (exclusive-ish). Example: 2025-02-01T00:00:00+00:00")
+    p_enqueue.add_argument("--page-size", type=int, default=500, help="Supabase page size (default 500).")
+    p_enqueue.add_argument("--max-messages", type=int, help="Optional cap total messages enqueued per channel.")
+    p_enqueue.add_argument("--force", action="store_true", help="Force enqueue even if extraction rows already exist.")
 
     p_status = sub.add_parser("status", help="Show latest (or specific) ingestion run progress from Supabase.")
     p_status.add_argument("--run-id", help="Run id to inspect (defaults to latest).")
@@ -705,6 +842,9 @@ def main() -> None:
         return
     if args.cmd == "tail":
         asyncio.run(run_tail(args))
+        return
+    if args.cmd == "enqueue":
+        asyncio.run(run_enqueue_from_raw(args))
         return
     if args.cmd == "status":
         raise SystemExit(run_status(args))

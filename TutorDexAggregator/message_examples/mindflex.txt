@@ -14,39 +14,66 @@ Rate: $30-40/Hr (PT), $40-55/Hr (FT), $60-80/Hr (MOE)
 To apply: https://www.singaporetuitionteachers.com/adm/tutor/
 Any bugs/questions, WhatsApp 9695 3522
 JSON: {
-    "assignment_code": "1412wg",
-    "is_tuition_centre": false,
-    "academic_tags_raw": "2026 P5 Science (Marymount Convent)",
-    "subjects": ["Science"],
-    "level": ["Primary"],
-    "specific_student_level": ["Primary 5"],
-    "student_gender": null,
-    "student_count": null,
-    "learning_mode": ["Face-to-Face"],
-    "address": ["10 Norfolk Road, King's Court"],
-    "postal_code": ["219014"],
-    "nearest_mrt": null,
-    "frequency": "1x per week",
-    "duration": "1.5-2 hours",
-    "start_date": "ASAP",
-    "time_slots": null,
-    "estimated_time_slots": {
-        "monday": ["16:00-23:00"],
-        "tuesday": [],
-        "wednesday": [],
-        "thursday": [],
-        "friday": [],
-        "saturday": [],
-        "sunday": []
+  "assignment_code": "1412wg",
+  "is_tuition_centre": false,
+  "subjects": ["Science"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 5"],
+  "academic_display_text": "2026 P5 Science (Marymount Convent)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": {
+    "mode": "Face-to-Face",
+    "raw_text": "Face-to-Face Lessons"
+  },
+  "address": ["10 Norfolk Road, King's Court"],
+  "postal_code": ["219014"],
+  "nearest_mrt": null,
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": null,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1.5-2 Hr, 1x A Week"
+  },
+  "start_date": "ASAP",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
     },
-    "time_slots_note": "Mon aft 4pm",
-    "hourly_rate": "$30-40/Hr (PT), $40-55/Hr (FT), $60-80/Hr (MOE)",
-    "rate_min": 30,
-    "rate_max": 80,
-    "tutor_gender": null,
-    "tutor_type": ["PT", "FT", "MOE"],
-    "slot_details": null,
-    "additional_remarks": "Tutor must not be afraid of dogs"
+    "estimated": {
+      "monday": ["16:00-23:00"],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Available on: Mon aft 4pm"
+  },
+  "rate": {
+    "min": 30,
+    "max": 80,
+    "rate_type": "hourly",
+    "raw_text": "$30-40/Hr (PT), $40-55/Hr (FT), $60-80/Hr (MOE)"
+  },
+  "tutor_gender": null,
+  "tutor_type": ["Part-Time Tutor", "Full-Time Tutor", "Ex-MOE Teacher", "Current MOE Teacher"],
+  "slot_details": null,
+  "additional_remarks": "Tutor must not be afraid of dogs"
 }
 
 
@@ -68,47 +95,66 @@ Rate: $40-55/Hr (FT), $60-80/Hr (MOE)
 To apply: https://www.singaporetuitionteachers.com/adm/tutor/
 Any bugs/questions, WhatsApp 9695 3522
 JSON: {
-    "assignment_code": "1412sb",
-    "is_tuition_centre": false,
-    "academic_tags_raw": "2026 P6 Chinese (East Spring Pri)",
-    "subjects": ["Chinese"],
-    "level": ["Primary"],
-    "specific_student_level": ["Primary 6"],
-    "student_gender": null,
-    "student_count": null,
-    "learning_mode": ["Face-to-Face"],
-    "address": ["332 Tampines Street 32"],
-    "postal_code": ["520332"],
-    "nearest_mrt": null,
-    "frequency": "1x per week",
-    "duration": "1.5 hours",
-    "start_date": "2026-01-05",
-    "time_slots": {
-        "monday": ["15:00-16:30"],
-        "tuesday": ["15:00-16:30"],
-        "wednesday": [],
-        "thursday": ["15:00-16:30"],
-        "friday": ["15:00-18:00"],
-        "saturday": [],
-        "sunday": []
+  "assignment_code": "1412sb",
+  "is_tuition_centre": false,
+  "subjects": ["Chinese"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 6"],
+  "academic_display_text": "2026 P6 Chinese (East Spring Pri)",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": {
+    "mode": "Face-to-Face",
+    "raw_text": "Face-to-Face Lessons"
+  },
+  "address": ["332 Tampines Street 32"],
+  "postal_code": ["520332"],
+  "nearest_mrt": null,
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 1.5,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1.5 Hr, 1x A Week"
+  },
+  "start_date": "5 Jan 2026",
+  "time_availability": {
+    "explicit": {
+      "monday": ["15:00-15:00"],
+      "tuesday": ["15:00-15:00"],
+      "wednesday": [],
+      "thursday": ["15:00-15:00"],
+      "friday": ["15:00-18:00"],
+      "saturday": [],
+      "sunday": []
     },
-    "estimated_time_slots": {
-        "monday": [],
-        "tuesday": [],
-        "wednesday": [],
-        "thursday": [],
-        "friday": [],
-        "saturday": [],
-        "sunday": []
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
     },
-    "time_slots_note": "Mon, Tue & Thu 3pm/ Fri 3-6pm",
-    "hourly_rate": "$40-55/Hr (FT), $60-80/Hr (MOE)",
-    "rate_min": 40,
-    "rate_max": 80,
-    "tutor_gender": null,
-    "tutor_type": ["FT", "MOE"],
-    "slot_details": null,
-    "additional_remarks": "Tutor must be familiar with MOE syallbus; Student is very weak in the subject (AL7 in EOY exams); Tutor to help student improve his results to AL5 or higher"
+    "note": "Available on: Mon, Tue & Thu 3pm/ Fri 3-6pm"
+  },
+  "rate": {
+    "min": 40,
+    "max": 80,
+    "rate_type": "hourly",
+    "raw_text": "$40-55/Hr (FT), $60-80/Hr (MOE)"
+  },
+  "tutor_gender": null,
+  "tutor_type": ["Full-Time Tutor", "Ex-MOE Teacher", "Current MOE Teacher"],
+  "slot_details": null,
+  "additional_remarks": "Tutor must be familiar with MOE syallbus. Student is very weak in the subject (AL7 in EOY exams). Tutor to help student improve his results to AL5 or higher"
 }
 
   
@@ -131,39 +177,66 @@ Rate: $70/Hr (depending on class size)
 To apply: https://www.singaporetuitionteachers.com/adm/tutor/
 Any bugs/questions, WhatsApp 9695 3522
 JSON: {
-    "assignment_code": "1112E",
-    "is_tuition_centre": true,
-    "academic_tags_raw": "Sec 1 Math",
-    "subjects": ["Maths"],
-    "level": ["Secondary"],
-    "specific_student_level": ["Secondary 1"],
-    "student_gender": null,
-    "student_count": 6,
-    "learning_mode": null,
-    "address": ["Pandan Gardens"],
-    "postal_code": null,
-    "nearest_mrt": null,
-    "frequency": "multiple timeslots",
-    "duration": "2 hours",
-    "start_date": "2026-01-01",
-    "time_slots": null,
-    "estimated_time_slots": {
-        "monday": ["16:00-21:00"],
-        "tuesday": ["16:00-21:00"],
-        "wednesday": ["16:00-21:00"],
-        "thursday": ["16:00-21:00"],
-        "friday": ["16:00-21:00"],
-        "saturday": ["16:00-21:00"],
-        "sunday": ["16:00-21:00"]
+  "assignment_code": "1112E",
+  "is_tuition_centre": true,
+  "subjects": ["Math"],
+  "level": ["Secondary"],
+  "specific_student_level": ["Secondary 1"],
+  "academic_display_text": "Sec 1 Math",
+  "academic_signals": {
+    "year": null,
+    "stream": null,
+    "exam": null
+  },
+  "student_gender": null,
+  "student_count": 6,
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
+  "address": ["Pandan Gardens"],
+  "postal_code": null,
+  "nearest_mrt": null,
+  "lesson_schedule": {
+    "lessons_per_week": null,
+    "hours_per_lesson": 2,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 2Hr, multiple timeslots"
+  },
+  "start_date": "Jan 2026",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
     },
-    "time_slots_note": "Weekday/Weekend evening",
-    "hourly_rate": "$70/Hr (depending on class size)",
-    "rate_min": 70,
-    "rate_max": 70,
-    "tutor_gender": null,
-    "tutor_type": null,
-    "slot_details": null,
-    "additional_remarks": "Tutor to be able to commit until the end of 2026; Tutor to be bilingual in English & Chinese; Tutor to be able to provide lesson materials; Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
+    "estimated": {
+      "monday": ["16:00-21:00"],
+      "tuesday": ["16:00-21:00"],
+      "wednesday": ["16:00-21:00"],
+      "thursday": ["16:00-21:00"],
+      "friday": ["16:00-21:00"],
+      "saturday": ["16:00-21:00"],
+      "sunday": ["16:00-21:00"]
+    },
+    "note": "Working Hours: Weekday/Weekend evening"
+  },
+  "rate": {
+    "min": 70,
+    "max": 70,
+    "rate_type": "hourly",
+    "raw_text": "$70/Hr (depending on class size)"
+  },
+  "tutor_gender": null,
+  "tutor_type": null,
+  "slot_details": null,
+  "additional_remarks": "Group: 6 pax MAX. Tutor to be able to commit until the end of 2026. Tutor to be bilingual in English & Chinese. Tutor to be able to provide lesson materials. Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
 }
 
    
@@ -197,41 +270,165 @@ Slot K: Sec 2 G3 Creative Writing - Sat 11.45am-1.15pm (1.5 hrs @ Tampines)
 To apply: https://www.singaporetuitionteachers.com/adm/tutor/
 Any bugs/questions, WhatsApp 9695 3522
 JSON: {
-    "assignment_code": "1112A",
-    "is_tuition_centre": true,
-    "academic_tags_raw": "Pri Eng/Math/Sci/Chinese, Sec Eng/Creative Writing",
-    "subjects": ["English", "Maths", "Science", "Chinese", "Creative Writing"],
-    "level": ["Primary", "Secondary"],
-    "specific_student_level": ["Primary 2", "Primary 3", "Primary 4", "Primary 6", "Secondary 2", "Secondary 3", "Secondary 4"],
-    "student_gender": null,
-    "student_count": 3,
-    "learning_mode": null,
-    "address": ["Tampines", "East Coast"],
-    "postal_code": null,
-    "nearest_mrt": null,
-    "frequency": "1x per week",
-    "duration": "1.5-2 hours",
-    "start_date": "ASAP",
-    "time_slots": null,
-    "estimated_time_slots": null,
-    "time_slots_note": "Slot A: P4 Math - Mon 3pm-4.30pm (2 hrs @ East Coast); Slot B: P2 Eng - Mon 5pm-6.30pm (1.5 hrs @ Tampines); Slot C: P6 Chi - Mon 5.15pm-6.45pm (1.5 hrs @ East Coast); Slot D: P4 Sci - Wed 4pm-5.30pm (1.5 hrs @ Tampines); Slot E: P2 Math - Thu 3pm-4.30pm (1.5 hrs @ East Coast); Slot F: P4 Chi - Mon 3.45pm-5.15pm (1.5 hrs @ East Coast); Slot G: Sec 4 G1 Eng - Fri 2pm-4pm (2 hrs @ Tampines); Slot H: P3 Math - Fri 3.30pm-5pm (1.5 hrs @ Tampines); Slot i: Sec 3 G3 Eng - Fri 4pm-5.30pm (1.5 hrs @ Tampines); Slot J: Sec 2 G3 Eng - Sat 10am-11.30am (1.5 hrs @ Tampines); Slot K: Sec 2 G3 Creative Writing - Sat 11.45am-1.15pm (1.5 hrs @ Tampines)",
-    "hourly_rate": "$25-40/Hr",
-    "rate_min": 25,
-    "rate_max": 40,
-    "tutor_gender": null,
-    "tutor_type": null,
-    "slot_details": [
-        {"subject": "Maths", "student_level": "Primary 4", "day": "monday", "start_time": "15:00", "end_time": "16:30", "location": "East Coast"},
-        {"subject": "English", "student_level": "Primary 2", "day": "monday", "start_time": "17:00", "end_time": "18:30", "location": "Tampines"},
-        {"subject": "Chinese", "student_level": "Primary 6", "day": "monday", "start_time": "17:15", "end_time": "18:45", "location": "East Coast"},
-        {"subject": "Science", "student_level": "Primary 4", "day": "wednesday", "start_time": "16:00", "end_time": "17:30", "location": "Tampines"},
-        {"subject": "Maths", "student_level": "Primary 2", "day": "thursday", "start_time": "15:00", "end_time": "16:30", "location": "East Coast"},
-        {"subject": "Chinese", "student_level": "Primary 4", "day": "monday", "start_time": "15:45", "end_time": "17:15", "location": "East Coast"},
-        {"subject": "English", "student_level": "Secondary 4", "day": "friday", "start_time": "14:00", "end_time": "16:00", "location": "Tampines"},
-        {"subject": "Maths", "student_level": "Primary 3", "day": "friday", "start_time": "15:30", "end_time": "17:00", "location": "Tampines"},
-        {"subject": "English", "student_level": "Secondary 3", "day": "friday", "start_time": "16:00", "end_time": "17:30", "location": "Tampines"},
-        {"subject": "English", "student_level": "Secondary 2", "day": "saturday", "start_time": "10:00", "end_time": "11:30", "location": "Tampines"},
-        {"subject": "Creative Writing", "student_level": "Secondary 2", "day": "saturday", "start_time": "11:45", "end_time": "13:15", "location": "Tampines"}
-    ],
-    "additional_remarks": "Tutor to have taken the A Level exam; Tutor must be a Singaporean/PR; Tutor to commit until the end of 2026; Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
+  "assignment_code": "1112A",
+  "is_tuition_centre": true,
+  "subjects": ["English", "Mathematics", "Science", "Chinese", "Creative Writing"],
+  "level": ["Primary", "Secondary"],
+  "specific_student_level": null,
+  "academic_display_text": "Pri Eng/Math/Sci/Chinese, Sec Eng/Creative Writing",
+  "academic_signals": {
+    "year": null,
+    "stream": null,
+    "exam": null
+  },
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": {
+    "mode": null,
+    "raw_text": null
+  },
+  "address": ["Tampines", "East Coast"],
+  "postal_code": null,
+  "nearest_mrt": null,
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": null,
+    "total_hours_per_week": null,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 1.5-2 Hrs, 1x A Week"
+  },
+  "start_date": "ASAP",
+  "time_availability": {
+    "explicit": {
+      "monday": [
+        "15:00-16:30",
+        "17:00-18:30",
+        "17:15-18:45",
+        "15:45-17:15"
+      ],
+      "tuesday": [],
+      "wednesday": ["16:00-17:30"],
+      "thursday": ["15:00-16:30"],
+      "friday": [
+        "14:00-16:00",
+        "15:30-17:00",
+        "16:00-17:30"
+      ],
+      "saturday": [
+        "10:00-11:30",
+        "11:45-13:15"
+      ],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Working Hours: Slot A to Slot K as listed"
+  },
+  "rate": {
+    "min": 25,
+    "max": 40,
+    "rate_type": "hourly",
+    "raw_text": "$25-40/Hr"
+  },
+  "tutor_gender": null,
+  "tutor_type": null,
+  "slot_details": [
+    {
+      "subject": "Mathematics",
+      "student_level": "Primary 4",
+      "day": "Monday",
+      "start_time": "15:00",
+      "end_time": "16:30",
+      "location": "East Coast"
+    },
+    {
+      "subject": "English",
+      "student_level": "Primary 2",
+      "day": "Monday",
+      "start_time": "17:00",
+      "end_time": "18:30",
+      "location": "Tampines"
+    },
+    {
+      "subject": "Chinese",
+      "student_level": "Primary 6",
+      "day": "Monday",
+      "start_time": "17:15",
+      "end_time": "18:45",
+      "location": "East Coast"
+    },
+    {
+      "subject": "Science",
+      "student_level": "Primary 4",
+      "day": "Wednesday",
+      "start_time": "16:00",
+      "end_time": "17:30",
+      "location": "Tampines"
+    },
+    {
+      "subject": "Mathematics",
+      "student_level": "Primary 2",
+      "day": "Thursday",
+      "start_time": "15:00",
+      "end_time": "16:30",
+      "location": "East Coast"
+    },
+    {
+      "subject": "Chinese",
+      "student_level": "Primary 4",
+      "day": "Monday",
+      "start_time": "15:45",
+      "end_time": "17:15",
+      "location": "East Coast"
+    },
+    {
+      "subject": "English",
+      "student_level": "Secondary 4",
+      "day": "Friday",
+      "start_time": "14:00",
+      "end_time": "16:00",
+      "location": "Tampines"
+    },
+    {
+      "subject": "Mathematics",
+      "student_level": "Primary 3",
+      "day": "Friday",
+      "start_time": "15:30",
+      "end_time": "17:00",
+      "location": "Tampines"
+    },
+    {
+      "subject": "English",
+      "student_level": "Secondary 3",
+      "day": "Friday",
+      "start_time": "16:00",
+      "end_time": "17:30",
+      "location": "Tampines"
+    },
+    {
+      "subject": "English",
+      "student_level": "Secondary 2",
+      "day": "Saturday",
+      "start_time": "10:00",
+      "end_time": "11:30",
+      "location": "Tampines"
+    },
+    {
+      "subject": "Creative Writing",
+      "student_level": "Secondary 2",
+      "day": "Saturday",
+      "start_time": "11:45",
+      "end_time": "13:15",
+      "location": "Tampines"
+    }
+  ],
+  "additional_remarks": "Group: 1-3 pax max. Tutor to have taken the A Level exam. Tutor must be a Singaporean/PR. Tutor to commit until the end of 2026. Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
 }
