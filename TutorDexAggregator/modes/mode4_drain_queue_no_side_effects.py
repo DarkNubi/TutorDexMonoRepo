@@ -14,7 +14,7 @@ from typing import Optional
 
 
 # Optional: override pipeline version to process.
-PIPELINE_VERSION_OVERRIDE: Optional[str] = None
+PIPELINE_VERSION_OVERRIDE: Optional[str] = "2026-01-01_prompt_v2"
 
 # Stop once the queue is empty (recommended for manual runs).
 ONESHOT: bool = True
@@ -52,4 +52,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

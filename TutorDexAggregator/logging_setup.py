@@ -190,14 +190,19 @@ def setup_logging(
         max_bytes = int(_env_str("LOG_MAX_BYTES", "5000000"))
         backup_count = int(_env_str("LOG_BACKUP_COUNT", "5"))
 
-        _add_handler(
-            RotatingFileHandler(
-                path,
-                maxBytes=max_bytes,
-                backupCount=backup_count,
-                encoding="utf-8",
+        try:
+            _add_handler(
+                RotatingFileHandler(
+                    path,
+                    maxBytes=max_bytes,
+                    backupCount=backup_count,
+                    encoding="utf-8",
+                )
             )
-        )
+        except (PermissionError, OSError):
+            # Common when containers create the logs directory/file as root.
+            # Degrade safely to console-only logging instead of crashing imports.
+            logging.getLogger("logging_setup").warning("Failed to enable file logging for %s; continuing with console only.", path, exc_info=True)
 
     root._tutordex_configured = True
     try:

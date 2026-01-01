@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -15,8 +14,28 @@ logger = logging.getLogger("llm_client")
 
 
 def _safe_parse_json(json_string: str) -> Any:
-    fixed = re.sub(r",\s*([}\]])", r"\1", json_string)
-    return json.loads(fixed)
+    raw = json_string or ""
+
+    try:
+        from json_repair import repair_json  # type: ignore
+    except Exception as e:
+        raise RuntimeError("json-repair is required but not installed; run `pip install -r TutorDexAggregator/requirements.txt`") from e
+
+    # Some versions support `return_objects=True`; use it if available.
+    try:
+        import inspect
+
+        if "return_objects" in inspect.signature(repair_json).parameters:
+            return repair_json(raw, return_objects=True)
+    except Exception:
+        pass
+
+    repaired = repair_json(raw)
+    if isinstance(repaired, (dict, list)):
+        return repaired
+    if isinstance(repaired, str) and repaired.strip():
+        return json.loads(repaired)
+    raise RuntimeError("json-repair produced empty output")
 
 
 def extract_json_object(text: str) -> Dict[str, Any]:
@@ -86,4 +105,3 @@ def chat_completion(
         out = str(text)
         log_event(logger, logging.INFO, "llm_call_ok", elapsed_ms=elapsed_ms, out_chars=len(out))
         return out
-

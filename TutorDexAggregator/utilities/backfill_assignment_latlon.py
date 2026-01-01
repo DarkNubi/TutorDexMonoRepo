@@ -13,7 +13,8 @@ Usage:
 
 Env (same as supabase_persist):
   SUPABASE_ENABLED=1
-  SUPABASE_URL=...
+  SUPABASE_URL_HOST=... (host Python) and/or SUPABASE_URL_DOCKER=... (Docker)
+  SUPABASE_URL=... (fallback)
   SUPABASE_SERVICE_ROLE_KEY=...
   SUPABASE_ASSIGNMENTS_TABLE=assignments (optional)
   DISABLE_NOMINATIM=1 (optional; if set, geocoding is skipped unless --force-nominatim is used)
@@ -125,7 +126,9 @@ def main() -> None:
         bump_min_seconds=base_cfg.bump_min_seconds,
     )
     if not cfg.enabled:
-        raise SystemExit("SUPABASE is disabled/misconfigured (set SUPABASE_ENABLED, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).")
+        raise SystemExit(
+            "SUPABASE is disabled/misconfigured (set SUPABASE_ENABLED, SUPABASE_SERVICE_ROLE_KEY, and one of SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL)."
+        )
 
     client = SupabaseRestClient(cfg)
     table = cfg.assignments_table or "assignments"

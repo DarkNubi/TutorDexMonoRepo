@@ -432,3 +432,80 @@ JSON: {
   ],
   "additional_remarks": "Group: 1-3 pax max. Tutor to have taken the A Level exam. Tutor must be a Singaporean/PR. Tutor to commit until the end of 2026. Commission: Standard 1st 2 weeks of lessons (per timeslot assigned)"
 }
+
+Example 5:
+Raw: Code ID: 0101xh
+(Full-Time Tutor)
+Subject: 2026 P5 Math & Science
+Address: 815 Jurong West Street 81. (S)640815
+Frequency: 2 Hr, 2x A Week (1 day per subj)
+Rate: $40-55/Hr
+
+- Available on: Tutor to Quote
+- Start: ASAP
+- Face-to-Face Lessons
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+Any bugs/questions, WhatsApp 9695 3522
+JSON: {
+  "assignment_code": "0101xh",
+  "is_tuition_centre": false,
+  "subjects": ["Mathematics", "Science"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 5"],
+  "academic_display_text": "2026 P5 Math & Science",
+  "academic_signals": {
+    "year": 2026,
+    "stream": null,
+    "exam": null
+  },
+  "student_gender": null,
+  "student_count": null,
+  "learning_mode": {
+    "mode": "Face-to-Face",
+    "raw_text": "Face-to-Face Lessons"
+  },
+  "address": ["815 Jurong West Street 81"],
+  "postal_code": ["640815"],
+  "nearest_mrt": null,
+  "lesson_schedule": {
+    "lessons_per_week": 2,
+    "hours_per_lesson": 2,
+    "total_hours_per_week": 4,
+    "per_subject": true,
+    "subject_breakdown": null,
+    "raw_text": "Frequency: 2 Hr, 2x A Week (1 day per subj)"
+  },
+  "start_date": "ASAP",
+  "time_availability": {
+    "explicit": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "estimated": {
+      "monday": [],
+      "tuesday": [],
+      "wednesday": [],
+      "thursday": [],
+      "friday": [],
+      "saturday": [],
+      "sunday": []
+    },
+    "note": "Tutor to Quote"
+  },
+  "rate": {
+    "min": 40,
+    "max": 55,
+    "rate_type": "hourly",
+    "raw_text": "$40-55/Hr"
+  },
+  "tutor_gender": null,
+  "tutor_type": ["Full-Time Tutor"],
+  "slot_details": null,
+  "additional_remarks": null
+}

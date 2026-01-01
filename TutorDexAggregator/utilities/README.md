@@ -18,7 +18,7 @@ Guidelines:
 
 - `python utilities/check_recent_counts.py --minutes 60`
   - Compares `telegram_messages_raw` vs `assignments` counts for the recent window (default 60 minutes).
-  - Requires `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` in the environment.
+  - Requires `SUPABASE_SERVICE_ROLE_KEY` and one of `SUPABASE_URL_HOST` / `SUPABASE_URL_DOCKER` / `SUPABASE_URL` in the environment.
 - `python utilities/check_compilations.py --file compilations_sample.txt`
   - Runs `compilation_detection.is_compilation` against sample messages (defaults to `compilations.jsonl` if not provided).
 - `python utilities/smoke_extract.py --text "..."` (or `--file sample.txt`)

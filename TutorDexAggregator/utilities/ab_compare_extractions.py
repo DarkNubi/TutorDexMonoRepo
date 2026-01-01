@@ -16,6 +16,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,12 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote
 
 import requests
+
+AGG_DIR = Path(__file__).resolve().parents[1]
+if str(AGG_DIR) not in sys.path:
+    sys.path.insert(0, str(AGG_DIR))
+
+from supabase_env import resolve_supabase_url  # noqa: E402
 
 
 def _truthy(value: Optional[str]) -> bool:
@@ -32,11 +39,13 @@ def _truthy(value: Optional[str]) -> bool:
 
 
 def _supabase_cfg() -> Tuple[str, str]:
-    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
     enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
     if not enabled:
-        raise SystemExit("Supabase not enabled. Set SUPABASE_ENABLED=1, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.")
+        raise SystemExit(
+            "Supabase not enabled. Set SUPABASE_ENABLED=1, SUPABASE_SERVICE_ROLE_KEY, and one of SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL."
+        )
     return url, key
 
 
@@ -370,4 +379,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

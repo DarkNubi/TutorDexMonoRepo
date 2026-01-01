@@ -16,13 +16,13 @@ from typing import Optional
 
 
 CHANNELS: Optional[str] = None
-SINCE_ISO: Optional[str] = None
-UNTIL_ISO: Optional[str] = None
+SINCE_ISO: Optional[str] = "2025-12-01T00:00:00+00:00"
+UNTIL_ISO: Optional[str] = "2026-01-02T00:00:00+00:00"
 MAX_MESSAGES_PER_CHANNEL: Optional[int] = None
 PAGE_SIZE: int = 500
 
 # Recommended: set a new pipeline version when you change prompt/schema/model.
-PIPELINE_VERSION_OVERRIDE: Optional[str] = None
+PIPELINE_VERSION_OVERRIDE: Optional[str] = "2026-01-01_prompt_v2"
 
 # If you keep the same pipeline version, set FORCE=True to reprocess already-ok jobs.
 FORCE: bool = True
@@ -54,4 +54,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

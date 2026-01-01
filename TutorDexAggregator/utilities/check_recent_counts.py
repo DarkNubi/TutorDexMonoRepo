@@ -5,7 +5,7 @@ Usage:
   python utilities/check_recent_counts.py --minutes 60
 
 Requires:
-- SUPABASE_URL
+- SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL
 - SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_KEY)
 
 This does not modify data; it only queries counts. If Supabase is disabled or env vars
@@ -14,14 +14,22 @@ are missing, the script exits with a message.
 
 import argparse
 import os
+import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, Tuple
 
 import requests
 
+AGG_DIR = Path(__file__).resolve().parents[1]
+if str(AGG_DIR) not in sys.path:
+    sys.path.insert(0, str(AGG_DIR))
+
+from supabase_env import resolve_supabase_url  # noqa: E402
+
 
 def _supabase_cfg() -> Optional[Tuple[str, str]]:
-    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
     if not (url and key):
         return None
@@ -51,7 +59,7 @@ def _count(client: requests.Session, base: str, table: str, ts_column: str, sinc
 def main() -> None:
     cfg = _supabase_cfg()
     if not cfg:
-        print("Supabase env not set (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY). Nothing to do.")
+        print("Supabase env not set (SUPABASE_URL_HOST/SUPABASE_URL_DOCKER/SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY). Nothing to do.")
         return
     url, key = cfg
     p = argparse.ArgumentParser(description="Check recent raw vs assignments counts")

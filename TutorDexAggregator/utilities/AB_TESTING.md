@@ -41,7 +41,7 @@ This runs:
 
 Your environment (or `TutorDexAggregator/.env`) must include:
 - `SUPABASE_ENABLED=1`
-- `SUPABASE_URL=...`
+- `SUPABASE_URL_HOST=...` (host Python) and/or `SUPABASE_URL_DOCKER=...` (Docker), or `SUPABASE_URL=...` (fallback)
 - `SUPABASE_SERVICE_ROLE_KEY=...`
 - `SUPABASE_RAW_ENABLED=1` (so Mode 3 enqueue can read raw)
 - `EXTRACTION_QUEUE_ENABLED=1`

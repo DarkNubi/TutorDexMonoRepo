@@ -205,7 +205,9 @@ def main() -> None:
 
     store = SupabaseRawStore()
     if not store.enabled() or not store.client:
-        raise SystemExit("Supabase raw store not enabled. Check SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_RAW_ENABLED.")
+        raise SystemExit(
+            "Supabase raw store not enabled. Check SUPABASE_URL_HOST/SUPABASE_URL_DOCKER/SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + SUPABASE_RAW_ENABLED."
+        )
 
     channels = [_normalize_channel_link(c) for c in _parse_channels_from_env() if str(c).strip()]
     if not channels:

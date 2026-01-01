@@ -4,7 +4,7 @@ This guide explains how to keep TutorDex running automatically on Windows. Conta
 
 ## Docker-first (recommended)
 - From repo root: `docker compose up -d --build`
-- Supabase: join the `supabase_default` network (the compose file already does this) and point `SUPABASE_URL` to `http://supabase-kong:8000`.
+- Supabase: join the `supabase_default` network (the compose file already does this) and set `SUPABASE_URL_DOCKER=http://supabase-kong:8000`.
 - Llama: keep `llama-server` on the Windows host; containers use `LLM_API_URL=http://host.docker.internal:1234`.
 - Freshness tiers: enable the sidecar with `docker compose --profile tiers up -d freshness-tiers` (uses `.env` defaults or `FRESHNESS_TIERS_*` overrides).
 

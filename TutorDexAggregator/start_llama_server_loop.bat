@@ -4,7 +4,7 @@ REM Expects you to set LLAMA_SERVER_EXE and LLAMA_MODEL_PATH (either in this fil
 REM
 REM Recommended:
 REM - Keep port at 1234 so TutorDexAggregator's default LLM_API_URL works unchanged.
-REM - Keep ctx at 8192 to match your current LM Studio setup.
+REM - Keep ctx at 16384 to match your current LM Studio setup.
 REM
 REM Example (edit to your actual paths):
 REM set "LLAMA_SERVER_EXE=C:\llama-bin\llama-server.exe"
@@ -13,7 +13,7 @@ REM
 REM Optional overrides:
 REM set "LLAMA_SERVER_HOST=0.0.0.0"
 REM set "LLAMA_SERVER_PORT=1234"
-REM set "LLAMA_CTX=16324"
+REM set "LLAMA_CTX=16384"
 REM set "LLAMA_THREADS=6"
 REM set "LLAMA_BATCH=512"
 REM set "LLAMA_NGL=999"
@@ -42,7 +42,7 @@ if "%LLAMA_MODEL_PATH%"=="" (
 REM Bind to 0.0.0.0 by default so WSL/containers can reach the server.
 if "%LLAMA_SERVER_HOST%"=="" set "LLAMA_SERVER_HOST=0.0.0.0"
 if "%LLAMA_SERVER_PORT%"=="" set "LLAMA_SERVER_PORT=1234"
-if "%LLAMA_CTX%"=="" set "LLAMA_CTX=8192"
+if "%LLAMA_CTX%"=="" set "LLAMA_CTX=16384"
 if "%LLAMA_THREADS%"=="" set "LLAMA_THREADS=6"
 if "%LLAMA_BATCH%"=="" set "LLAMA_BATCH=512"
 if "%LLAMA_NGL%"=="" set "LLAMA_NGL=999"

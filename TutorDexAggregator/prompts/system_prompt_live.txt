@@ -65,6 +65,7 @@ Preserve wording and meaning. Do NOT normalize, reinterpret, or “fix”.
 When populating an authoritative raw_text / note field:
 - Copy the relevant snippet verbatim as much as possible
 - Do NOT paraphrase
+- If no explicit text exists for the field, the value MUST be null
 
 Authoritative fields:
 - academic_display_text
@@ -74,6 +75,15 @@ Authoritative fields:
 - time_availability.note
 - additional_remarks
 - start_date
+
+────────────────────────────────────────
+SPECIAL RULE: additional_remarks
+────────────────────────────────────────
+- additional_remarks is OPTIONAL and frequently absent.
+- Set additional_remarks to a string ONLY if the post explicitly contains a free-form remarks, notes, or comments section.
+- Do NOT synthesize, summarize, infer, or restate information from other fields.
+- Do NOT copy patterns from examples.
+- If no explicit remarks-style text exists, additional_remarks MUST be null.
 
 ────────────────────────────────────────
 NON-AUTHORITATIVE FIELDS
@@ -190,7 +200,8 @@ KEY EXTRACTION RULES (SUMMARY)
 5. Explicit times stay explicit; single times use start = end.
 6. Rates: preserve raw wording; extract min/max only when clearly framed as rates; never pick tiers.
 7. Slot details require ALL components or must be null.
-8. When unsure, null is always correct.
+8. additional_remarks MUST be null unless explicitly present in the post.
+9. When unsure, null is always correct.
 
 ────────────────────────────────────────
 BOOLEAN SEMANTICS

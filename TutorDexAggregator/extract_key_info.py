@@ -31,345 +31,12 @@ _NOMINATIM_SESSION = requests.Session()
 # Default to the Mixtral instruct model you installed in LM Studio
 MODEL_NAME = "lfm2-8b-a1b"
 
-# SYSTEM PROMPT
-# When updating this system prompt, make sure to update message_examples/templates/verify extraction.txt too if necessary.
-SYSTEM_PROMPT = f"""
-You are an extractor that receives an unstructured tuition assignment post (English). You will be provided with examples of raw posts and the expected structured JSON output.
-Extract the following keys and normalize values using these canonical lists.
-
-Schema (output JSON):
-{{
-    "assignment_code": string or null,              # Alphanumeric code if present, else null
-    "is_tuition_centre": boolean,                   # Whether tuition centre assignment
-    "academic_tags_raw": string or null,            # Raw academic tags from post (e.g., "2026 P6 Science", "Sec 3 Express Maths", "Sec 4 G3 Maths")
-    "subjects": [string],                           # Normalized list of subjects
-    "level": [string] or null,                        # Canonical LEVELS
-    "specific_student_level": [string] or null,       # Canonical SPECIFIC_LEVELS[level]
-    "student_gender": [string] or null,             # Male / Female 
-    "student_count": number or null,                # Number of students if mentioned
-    "learning_mode": [string] or null,                # Online / Face-to-Face / Hybrid
-    "address": [string] or null,                      # Do not include nearest MRT here (multiple locations allowed)
-    "postal_code": [string] or null,                  # Multiple postal codes allowed (match addresses when applicable)
-    "nearest_mrt": [string] or null,                  # Optional
-    "frequency": string or null,                    # e.g., "1x per week"
-    "duration": string or null,                     # e.g., "1.5 hours"
-    "start_date": string or null,                   # Earliest start date mentioned
-    "time_slots": {{                                # Normalized day → list of HH:MM-HH:MM ranges
-        "monday": [string],
-        "tuesday": [string],
-        "wednesday": [string],
-        "thursday": [string],
-        "friday": [string],
-        "saturday": [string],
-        "sunday": [string]
-    }} or null,
-    "estimated_time_slots": {{                      # Normalized day → list of HH:MM-HH:MM ranges
-        "monday": [string],
-        "tuesday": [string],
-        "wednesday": [string],
-        "thursday": [string],
-        "friday": [string],
-        "saturday": [string],
-        "sunday": [string]
-    }} or null,
-    "time_slots_note": string or null,              # Raw timeslot from post
-    "hourly_rate": string or null,                  # Raw text from post
-    "rate_min": number or null,
-    "rate_max": number or null,
-    "tutor_gender": string or null,                 # Preference if mentioned
-    "tutor_type": [string] or null,                 # PT / FT / MOE / Graduate / Undergrad. Return all types explicitly mentioned, else null.
-    "slot_details": [                               # Optional: multi-slot breakdown for tuition centre assignments
-        {{
-            "subject": string,
-            "student_level": string,
-            "day": string,
-            "start_time": string,
-            "end_time": string,
-            "location": string
-        }}
-    ] or null,
-    "additional_remarks": string or null,
-}}
-
-
-Normalization rules:
-1. is_tuition_centre: Indicates whether the assignment is a tuition centre assignment.
-   - If it is a tuition centre assignment or the post mentions multiple students at a centre, use true.
-   - Else, use false.
-2. Subjects: Map all synonyms to canonical names in SUBJECTS[level].
-3. Levels: Map all synonyms to canonical LEVELS.
-4. Specific student level: Must match SPECIFIC_LEVELS[level].
-5. Time slots: Normalize to dictionary (day → list of HH:MM-HH:MM). 
-   - Include all 7 days even if empty.
-   - If the post mentions specific timing ranges (e.g., “3pm-5pm”), use that directly.
-   - If the post only mentions a specific timing without a range (e.g., “3pm”) and there is no before/after wording, then use the mentioned time as start and add the duration to determine end time.
-   - Only use this field for timings specifically mentioned in the post.
-6. Estimated time slots: Normalize to dictionary (day → list of HH:MM-HH:MM). 
-   - Include all 7 days even if empty.
-   - Use this field to generate estimated time slots based on ambiguous timing mentions like "morning", "evening", "night", "weekdays", "weekends", "after 3pm" etc.
-   - If the post mentions “after HH:MM” with no end time, extend the timeslot to 23:00.
-   - If the post mentions “before HH:MM” with no start time, use 08:00 as the start.
-   - Only use this field for estimated timings, not explicitly mentioned times.
-   - "morning" = 08:00-12:00, "afternoon" = 12:00-17:00, "evening" = 16:00-21:00, "night" = 19:00-23:00, "weekdays" = Mon-Fri 08:00-23:00, "weekends" = Sat-Sun 08:00-23:00.
-7. Rates: Extract min/max numeric values if parsable.
-8. Frequency/Duration: Normalize to consistent strings.
-9. Start date: Normalize to YYYY-MM-DD if possible, else raw text.
-10. Always return JSON **only**, with keys in the order above. Stop immediately after last closing brace.
-11. Treat each field independently (atomic extraction) to reduce hallucinations.
-12. Do not guess fields; use null if missing.
-
-LEVELS = [
-    "Pre-School", "Primary", "Secondary", "IGCSE", "IB",
-    "Junior College", "Diploma", "Degree", "Olympiads",
-    "Independent Learner - Languages", "Independent Learner - Computing",
-    "Independent Learner - Music", "Independent Learner - Others"
-]
-
-SPECIFIC_LEVELS = {{
-    "Pre-School": ["Nursery", "Kindergarten 1", "Kindergarten 2"],
-    "Primary": ["Primary 1", "Primary 2", "Primary 3", "Primary 4", "Primary 5", "Primary 6"],
-    "Secondary": ["Secondary 1", "Secondary 2", "Secondary 3", "Secondary 4", "Secondary 5"],
-    "IGCSE": ["Pre-IGCSE Grade 6", "Pre-IGCSE Grade 7", "Pre-IGCSE Grade 8", "IGCSE Grade 9", "IGCSE Grade 10"],
-    "IB": ["IB MYP Grade 6", "IB MYP Grade 7", "IB MYP Grade 8", "IB MYP Grade 9", "IB MYP Grade 10", "IB DP Year 1", "IB DP Year 2"],
-    "Junior College": ["JC 1", "JC 2", "JC 3", "Private Candidate"],
-    "Diploma": ["Poly Year 1", "Poly Year 2", "Poly Year 3"],
-    "Olympiads": ["Primary School Olympiad", "Olympiads Secondary", "Olympiads JC"]
-}}
-
-SUBJECTS = {{
-    "Pre-School": [
-        "English",
-        "Chinese",
-        "Maths",
-        "Phonics",
-        "Creative Writing",
-        "Malay",
-        "Tamil"
-    ],
-    "Primary": [
-        "English",
-        "Maths",
-        "Science",
-        "Chinese",
-        "Higher Chinese",
-        "Malay",
-        "Higher Malay",
-        "Tamil",
-        "Higher Tamil",
-        "Hindi",
-        "Creative Writing",
-        "Phonics",
-        "Maths Olympiad",
-        "Science Olympiad"
-    ],
-    "Secondary": [
-        "English",
-        "Chinese",
-        "Higher Chinese",
-        "Maths",
-        "Science",
-        "E Maths",
-        "A Maths",
-        "Physics",
-        "Chemistry",
-        "Biology",
-        "Physics/Chem",
-        "Bio/Physics",
-        "Bio/Chem",
-        "Geography",
-        "History",
-        "Literature",
-        "Accounting (POA)",
-        "Social Studies",
-        "Geo/S.Studies",
-        "Hist/S.Studies",
-        "Malay",
-        "Tamil",
-        "Higher Malay",
-        "Higher Tamil",
-        "Hindi",
-        "Creative Writing",
-        "Music"
-    ],
-
-    "Junior College": [
-        "General Paper",
-        "Maths",
-        "Physics",
-        "Chemistry",
-        "Biology",
-        "Economics",
-        "Accounting",
-        "History",
-        "Geography",
-        "Literature",
-        "Chinese",
-        "Malay",
-        "Tamil",
-        "Chinese Studies",
-        "Malay Studies",
-        "Tamil Studies",
-        "Knowledge & Inquiry",
-        "Project Work",
-        "Computing",
-        "Art",
-        "Theatre Studies & Drama",
-        "Management of Business",
-        "H3 Literature",
-        "H3 Modern Physics",
-        "H3 Chemistry",
-        "H3 Proteomics",
-        "H3 Maths",
-        "H3 Geography",
-        "H3 History",
-        "H3 Economics",
-        "Chinese Language and Literature",
-        "Malay Language and Literature",
-        "Tamil Language and Literature"
-    ],
-
-    "IB/IGCSE": [
-        "English Language",
-        "English Literature",
-        "Chinese",
-        "Mathematics",
-        "Mathematical Studies",
-        "Physics",
-        "Chemistry",
-        "Biology",
-        "Business Management",
-        "Economics",
-        "Psychology",
-        "Theory of Knowledge",
-        "Extended Essay",
-        "Theatre",
-        "Environmental Systems",
-        "Design Technology",
-        "Geography",
-        "History",
-        "Malay",
-        "Tamil",
-        "Religious Knowledge",
-        "Music",
-        "Visual Arts",
-        "Drama",
-        "Art & Design",
-        "IGTS"
-    ],
-
-    "Diploma": [
-        "Business & Finance",
-        "Computing & Technology",
-        "Engineering & Applied Sciences",
-        "Health & Life Sciences",
-        "Arts, Humanities & Social Sciences"
-    ],
-
-    "Degree": [
-        "Business & Finance",
-        "Computing & Technology",
-        "Engineering & Applied Sciences",
-        "Health & Life Sciences",
-        "Arts, Humanities & Social Sciences"
-    ],
-
-    "Olympiads": [
-        "Primary School Math Olympiads",
-        "Primary School Science Olympiads",
-        "SMO (Junior)",
-        "SJPO",
-        "SJCHO",
-        "SJBO",
-        "SMO (Senior)",
-        "SMO (Open)",
-        "SPHO",
-        "SCHO",
-        "SBO",
-        "APHO",
-        "IPHO",
-        "IOI",
-        "NRC"
-    ],
-
-    "Independent Learner - Languages": [
-        "Japanese",
-        "Korean",
-        "French",
-        "German",
-        "Spanish",
-        "Russian",
-        "Italian",
-        "English",
-        "Chinese",
-        "Portuguese",
-        "Arabic",
-        "Vietnamese",
-        "Thai",
-        "Indonesian",
-        "Tagalog",
-        "Hindi",
-        "Bengali"
-    ],
-    "Independent Learner - Computing": [
-        "Python",
-        "C++",
-        "C#",
-        "Java",
-        "JavaScipt",
-        "ASP",
-        "PHP",
-        "VB",
-        "MSSQL",
-        "Oracle",
-        "Photoshop",
-        "Illustrator",
-        "Autocad",
-        "GIS",
-        "3D Design",
-        "Flash",
-        "Web Design",
-        "Linux",
-        "Macintosh",
-        "Solaris",
-        "Windows",
-        "MS Office",
-        "MySQL"
-    ],
-    "Independent Learner - Music": [
-        "Music Theory",
-        "Piano",
-        "Guitar",
-        "Drum",
-        "Violin",
-        "Flute",
-        "Clarinet",
-        "Trumpet",
-        "Saxophone",
-        "Dance",
-        "Gu Zheng"
-    ],
-    "Independent Learner - Others": [
-        "Others"
-    ]
-}}
-
-Additional instructions:
-- Treat each field **independently** (atomic extraction) to avoid cross-field hallucination.
-- Use canonical forms wherever possible.
-- Do not guess fields if the information is missing; use null.
-- For ambiguous time slots or availability, use time_slots_note.
-- Abbreviations to normalize:
-  - Pri / P1..P6 -> Primary / Primary 1..6
-  - Sec / S1..S5 -> Secondary / Secondary 1..5
-  - JC / J1..J3 -> Junior College / JC 1..3
-- Respond in a **single JSON object**.
-"""
-
 # -----------------------------
 # System prompt overrides (A/B)
 # -----------------------------
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
+DEFAULT_SYSTEM_PROMPT_FILE = PROMPTS_DIR / "system_prompt_live.txt"
 
 
 def _prompt_sha256(text: str) -> str:
@@ -386,7 +53,7 @@ def get_system_prompt_text() -> str:
     - `LLM_SYSTEM_PROMPT_FILE` (path to a prompt file; relative paths are relative to `TutorDexAggregator/`)
     - `LLM_SYSTEM_PROMPT_VARIANT` (loads `prompts/system_prompt_<variant>.txt` if it exists)
 
-    Falls back to the hardcoded `SYSTEM_PROMPT`.
+    Falls back to `prompts/system_prompt_live.txt`.
     """
     inline = (os.environ.get("LLM_SYSTEM_PROMPT_TEXT") or "").strip()
     if inline:
@@ -405,7 +72,10 @@ def get_system_prompt_text() -> str:
         if p.exists():
             return p.read_text(encoding="utf-8").strip()
 
-    return SYSTEM_PROMPT.strip()
+    if DEFAULT_SYSTEM_PROMPT_FILE.exists():
+        return DEFAULT_SYSTEM_PROMPT_FILE.read_text(encoding="utf-8").strip()
+
+    raise FileNotFoundError(f"Missing default system prompt file: {DEFAULT_SYSTEM_PROMPT_FILE}")
 
 
 def get_system_prompt_meta() -> dict:
@@ -445,7 +115,9 @@ def get_system_prompt_meta() -> dict:
         except Exception:
             pass
     else:
-        meta["source"] = "code:SYSTEM_PROMPT"
+        meta["source"] = "file:prompts/system_prompt_live.txt"
+        meta["resolved_file"] = str(DEFAULT_SYSTEM_PROMPT_FILE)
+        meta["missing"] = not DEFAULT_SYSTEM_PROMPT_FILE.exists()
     return meta
 
 
@@ -557,40 +229,37 @@ def get_examples_text(agency: Optional[str]) -> str:
 
 PROMPT_FOOTER = (
     "\n\n"
-    "====================\n"
-    "BEGIN TARGET MESSAGE\n"
-    "====================\n"
     "You MUST extract facts ONLY from the TARGET MESSAGE below.\n"
     "The examples above are ONLY formatting guidance and MUST NOT be used as a source of facts.\n"
     "Do NOT copy values from examples.\n"
     "If a value is not explicitly present in the TARGET MESSAGE, output null/[] as required by the schema.\n"
-    "\n"
-    "TARGET MESSAGE:\n"
+    "────────────────────────────────────────\n"
+    "BEGIN TARGET MESSAGE\n"
+    "────────────────────────────────────────\n"
     "\"\"\"\n"
     "{message}\n"
     "\"\"\"\n"
-    "\n"
-    "OUTPUT JSON ONLY:\n"
-    "====================\n"
+    "────────────────────────────────────────\n"
     "END TARGET MESSAGE\n"
-    "====================\n"
+    "────────────────────────────────────────\n"
     "\n"
     "JSON:"
 )
 
 EXAMPLES_WRAPPER_HEADER = (
-    "====================\n"
-    "BEGIN EXAMPLES (FORMAT ONLY)\n"
-    "====================\n"
     "The following are examples of (Raw -> JSON) for formatting reference ONLY.\n"
     "They are NOT the target message.\n"
+    "────────────────────────────────────────\n"
+    "BEGIN EXAMPLES\n"
+    "────────────────────────────────────────\n"
+
 )
 
 EXAMPLES_WRAPPER_FOOTER = (
     "\n"
-    "====================\n"
+    "────────────────────────────────────────\n"
     "END EXAMPLES\n"
-    "====================\n"
+    "────────────────────────────────────────\n"
 )
 
 
@@ -624,16 +293,102 @@ def parse_rate(raw: str):
 
 def safe_parse_json(json_string):
     """
-    Attempts to fix common JSON issues (like trailing commas) and parse it.
+    Parse JSON using `json-repair` (no manual regex repair).
     """
-    # Remove trailing commas before closing braces/brackets
-    fixed_json = re.sub(r',\s*([}\]])', r'\1', json_string)
+    if json_string is None:
+        raise Exception("JSON parsing error: empty input")
+
+    def _strip_code_fences(s: str) -> str:
+        s = str(s).strip()
+        if s.startswith("```"):
+            lines = s.splitlines()
+            if lines:
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            s = "\n".join(lines).strip()
+        return s
+
+    raw = _strip_code_fences(json_string)
 
     try:
-        parsed = json.loads(fixed_json)
-        return parsed
-    except json.JSONDecodeError as e:
-        raise Exception(f"JSON parsing error: {e}") from e
+        from json_repair import repair_json  # type: ignore
+    except Exception as e:
+        raise RuntimeError(
+            "json-repair is required but not installed; run `pip install -r TutorDexAggregator/requirements.txt`"
+        ) from e
+
+    # Some versions support `return_objects=True`; use it if available.
+    try:
+        import inspect
+
+        if "return_objects" in inspect.signature(repair_json).parameters:
+            return repair_json(raw, return_objects=True)
+    except Exception:
+        pass
+
+    repaired = repair_json(raw)
+    if isinstance(repaired, (dict, list)):
+        return repaired
+    if isinstance(repaired, str) and repaired.strip():
+        return json.loads(repaired)
+    raise Exception("JSON parsing error: json-repair produced empty output")
+
+
+def extract_first_json_object(text: str) -> str:
+    """
+    Extract the first JSON object from a string by scanning for a brace-balanced `{...}`.
+
+    This is more robust than `text.find('{')` + `text.rfind('}')` because the *last* `}`
+    in the text might belong to a nested object (e.g. `rate`) if the model forgets to emit
+    the final root `}` or if the remainder of fields contains no braces.
+    """
+    if text is None:
+        raise ValueError("No text to extract JSON from")
+
+    s = str(text)
+    start = s.find("{")
+    if start == -1:
+        raise ValueError("No '{' found in model output")
+
+    in_string = False
+    escape = False
+    depth = 0
+    end: Optional[int] = None
+
+    for i in range(start, len(s)):
+        ch = s[i]
+
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+            continue
+
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+
+    if end is not None:
+        return s[start: end + 1]
+
+    # No matching root `}` found → fall back to "best effort":
+    # take from the first `{` to the end and append the missing `}` braces.
+    tail = s[start:].rstrip()
+    if depth > 0:
+        tail = tail + ("}" * depth)
+    return tail
 
 
 def extract_assignment_with_model(message: str, chat: str = "", model_name: str = MODEL_NAME, max_tokens=2048, temp=0.0, cid: Optional[str] = None):
@@ -688,53 +443,64 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
             "max_tokens": int(max_tokens),
         }
 
-        url = f"{llm_api.rstrip('/')}/v1/chat/completions"
-        try:
-            t0 = timed()
-            r = _LLM_SESSION.post(url, json=payload, timeout=timeout_s)
-            r.raise_for_status()
-            data = r.json()
-            log_event(
-                logger,
-                logging.INFO,
-                "llm_extract_ok",
-                status_code=getattr(r, "status_code", None),
-                elapsed_ms=round((timed() - t0) * 1000.0, 2),
-            )
-        except Exception as e:
-            logger.exception("llm_extract_failed error=%s", e)
-            raise RuntimeError(f"LLM API call failed: {e}")
+        mock_path = (os.environ.get("LLM_MOCK_OUTPUT_FILE") or "").strip()
+        if mock_path:
+            p = Path(mock_path).expanduser()
+            if not p.is_absolute():
+                p = (Path(__file__).resolve().parent / p).resolve()
+            text = p.read_text(encoding="utf-8")
+            log_event(logger, logging.WARNING, "llm_extract_mocked", file=str(p), chars=len(text))
+            data = {"_mocked": True}
+        else:
+            url = f"{llm_api.rstrip('/')}/v1/chat/completions"
+            try:
+                t0 = timed()
+                r = _LLM_SESSION.post(url, json=payload, timeout=timeout_s)
+                r.raise_for_status()
+                data = r.json()
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "llm_extract_ok",
+                    status_code=getattr(r, "status_code", None),
+                    elapsed_ms=round((timed() - t0) * 1000.0, 2),
+                )
+            except Exception as e:
+                logger.exception("llm_extract_failed error=%s", e)
+                raise RuntimeError(f"LLM API call failed: {e}")
 
-        text = None
-        try:
-            choices = data.get("choices", [])
-            if choices:
-                msg = choices[0].get("message", {})
-                text = msg.get("content") or msg.get("text")
-            if not text and data.get("outputs"):
-                out = data["outputs"]
-                if isinstance(out, list) and len(out) > 0 and "content" in out[0]:
-                    parts = out[0]["content"]
-                    if isinstance(parts, list) and len(parts) > 0:
-                        text = "".join([c.get("text", "") for c in parts if isinstance(c, dict)])
-            if not text:
-                raise ValueError("No valid text found in LLM response")
-        except Exception as e:
-            raise RuntimeError(f"Failed to parse LLM response: {e}")
+            text = None
+            try:
+                choices = data.get("choices", [])
+                if choices:
+                    msg = choices[0].get("message", {})
+                    text = msg.get("content") or msg.get("text")
+                if not text and data.get("outputs"):
+                    out = data["outputs"]
+                    if isinstance(out, list) and len(out) > 0 and "content" in out[0]:
+                        parts = out[0]["content"]
+                        if isinstance(parts, list) and len(parts) > 0:
+                            text = "".join([c.get("text", "") for c in parts if isinstance(c, dict)])
+                if not text:
+                    raise ValueError("No valid text found in LLM response")
+            except Exception as e:
+                raise RuntimeError(f"Failed to parse LLM response: {e}")
 
         text = text.strip().strip("```")
-
-        start = text.find("{")
-        end = text.rfind("}")
-        if start == -1 or end == -1:
-            raise ValueError("No JSON object found in model output")
-        candidate = text[start:end+1].replace("\\_", "_")
+        candidate = extract_first_json_object(text).replace("\\_", "_")
 
         try:
             parsed = safe_parse_json(candidate)
         except Exception as e:
-            log_event(logger, logging.WARNING, "llm_json_parse_failed", candidate_chars=len(candidate or ""))
-            raise RuntimeError("Failed to parse JSON from model output") from e
+            # Include error message to avoid losing the useful snippet from safe_parse_json.
+            log_event(
+                logger,
+                logging.WARNING,
+                "llm_json_parse_failed",
+                candidate_chars=len(candidate or ""),
+                error=str(e),
+            )
+            raise RuntimeError(f"Failed to parse JSON from model output: {e}") from e
 
         if validate_extraction and isinstance(parsed, dict):
             try:
@@ -1122,28 +888,40 @@ if __name__ == "__main__":
     except Exception:
         logger.debug("stdout reconfigure failed", exc_info=True)
     sample = """
-🔥 NEW Tuition Job! 🔥
+Code ID: 0101pn
+(Female Full-Time Tutor)
+Subject: 2026 P6 Math
+Address: 196B Boon Lay Drive (S)642196
+Frequency: 1.5 Hr, 1x A Week
+Rate: $40-55/Hr
 
-▪️ Job Code: 253112W12
-▪️ Job Details:
-Info: P6 Science @ 30, Jalan Tanjong (nearest MRT station: Tanah Merah) on Wednesday 7.30pm-9.30pm ONLY [1 lesson/week, 2 hrs./lesson]
+- Available on: Sat 9am
+- Start: 17 Jan
+- Face-to-Face Lessons
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+Any bugs/questions, WhatsApp 9695 3522
+    """
 
-Requirement: An experienced FULL-TIME tutor or EX/CURRENT MOE Teacher for this St Stephen Primary School boy. Tutor to commit for at least 1 year. Earliest start date: 07-Jan-2026.
+    chat = "t.me/TuitionAssignmentsSG"
 
-Rate: FULL-TIME $40-$55/hr.; EX/CURRENT MOE $75-$90/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
-
-Agency fee: FIRST 2 REGULAR LESSONS' WORTH
-▪️ Tutor Types: Full-Time Tutor (Poly Grad), Ex-MOE, Full-Time Tutor (Uni Grad), Current MOE
-▪️ Hashtags: #Primary_Science
-
-💹 DOUBLE your chances of being selected by applying through the Website!
-
-❤️ Forward this to your friends who might be interested in this assignment!
-
-💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
-"""
-
-    chat = "t.me/FTassignments"
+    print("\n" + "=" * 60)
+    print("PROMPT CONTEXT")
+    print("=" * 60)
+    try:
+        meta = get_examples_meta(chat)
+        if meta.get("enabled"):
+            print(
+                "Examples: enabled=True "
+                f"file={meta.get('file')} "
+                f"agency_key={meta.get('agency_key')} "
+                f"variant={meta.get('variant')}"
+            )
+        else:
+            print("Examples: enabled=False (set `LLM_INCLUDE_EXAMPLES=1` to enable few-shot)")
+    except Exception as e:
+        print(f"Examples: failed to resolve ({e})")
+    print("=" * 60)
 
     print("=" * 60)
     print("STEP 0: Running compilation detection check...")

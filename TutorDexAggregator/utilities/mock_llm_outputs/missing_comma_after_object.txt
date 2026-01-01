@@ -1,0 +1,48 @@
+```json
+{
+  "assignment_code": "253112W12",
+  "is_tuition_centre": false,
+  "subjects": ["Science"],
+  "level": ["Primary"],
+  "specific_student_level": ["Primary 6"],
+  "academic_display_text": "P6 Science",
+  "academic_signals": {
+    "year": null,
+    "stream": null,
+    "exam": null
+  },
+  "student_gender": ["Male"],
+  "student_count": 1,
+  "learning_mode": {
+    "mode": "Face-to-Face",
+    "raw_text": "Face-to-face"
+  },
+  "address": ["30, Jalan Tanjong"],
+  "postal_code": null,
+  "nearest_mrt": ["Tanah Merah"],
+  "lesson_schedule": {
+    "lessons_per_week": 1,
+    "hours_per_lesson": 2,
+    "total_hours_per_week": 2,
+    "per_subject": null,
+    "subject_breakdown": null,
+    "raw_text": "Wednesday 7.30pm-9.30pm ONLY [1 lesson/week, 2 hrs./lesson]"
+  },
+  "start_date": null,
+  "time_availability": {
+    "explicit": null,
+    "estimated": null,
+    "note": null
+  },
+  "rate": {
+    "min": 40,
+    "max": 55,
+    "rate_type": "hourly",
+    "raw_text": "FULL-TIME $40-$55/hr.; EX/CURRENT MOE $75-$90/hr"
+  }
+  "tutor_gender": "Any",
+  "tutor_type": ["Full-Time Tutor", "Ex-MOE", "Current MOE"],
+  "slot_details": null,
+  "additional_remarks": "Tutor to commit for at least 1 year."
+}
+```

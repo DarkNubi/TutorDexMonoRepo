@@ -82,7 +82,8 @@ When you bump the version, the queue keys by `(raw_id, pipeline_version)`, so yo
 
 - **DB schema + RPC installed:** ensure your DB has `telegram_messages_raw`, `telegram_extractions`, and the queue RPC helpers from `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql`.
 - **Supabase access (service role):** set:
-  - `SUPABASE_URL=https://...` (no trailing slash)
+  - `SUPABASE_URL_HOST=...` (host Python runs) and/or `SUPABASE_URL_DOCKER=...` (Docker runs)
+    - If you set only `SUPABASE_URL`, it is used as a fallback for both.
   - `SUPABASE_SERVICE_ROLE_KEY=...`
   - `SUPABASE_ENABLED=1` (required by the extraction worker)
   - `SUPABASE_RAW_ENABLED=1` (required by the raw collector + enqueue-from-raw)

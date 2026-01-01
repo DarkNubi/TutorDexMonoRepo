@@ -532,7 +532,7 @@ function formatAssignmentsLoadError(err) {
   }
 
   if (msg.includes("supabase_disabled")) {
-    return "Assignments unavailable: backend Supabase integration is disabled/misconfigured (check SUPABASE_ENABLED, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).";
+    return "Assignments unavailable: backend Supabase integration is disabled/misconfigured (check SUPABASE_ENABLED, SUPABASE_URL_HOST/SUPABASE_URL_DOCKER/SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).";
   }
 
   if (msg.includes("postal_required_for_distance")) {

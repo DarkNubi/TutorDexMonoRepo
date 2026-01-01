@@ -45,7 +45,9 @@ Helper (discover chat ids after users message the DM bot):
 
 **Supabase persistence (optional)**
 - `SUPABASE_ENABLED`: `true/false` (default `false`)
-- `SUPABASE_URL`: Supabase project URL (e.g. `https://<project-ref>.supabase.co`)
+- `SUPABASE_URL`: Supabase project URL fallback (e.g. `https://<project-ref>.supabase.co`)
+- `SUPABASE_URL_DOCKER`: optional override when running inside Docker (e.g. `http://supabase-kong:8000`)
+- `SUPABASE_URL_HOST`: optional override when running on the host (Windows/macOS/Linux)
 - `SUPABASE_SERVICE_ROLE_KEY`: Service role key for inserts/updates (server-side only)
 - `SUPABASE_ASSIGNMENTS_TABLE`: Table name (default `assignments`)
 - `SUPABASE_BUMP_MIN_SECONDS`: Minimum seconds between bump increments for duplicates (default `21600` = 6 hours)
@@ -149,7 +151,9 @@ Progress:
     - `backend` (FastAPI)
   - Legacy single-process Telethon reader (`runner.py start`) is behind a compose profile:
     - `docker compose --profile legacy up --build aggregator-ingest`
-  - Supabase (self-host) is expected to be running on the external Docker network `supabase_default` with Kong at `supabase-kong:8000` (HTTP). In `.env`, set `SUPABASE_URL=http://supabase-kong:8000`.
+  - Supabase (self-host) is expected to be running on the external Docker network `supabase_default` with Kong at `supabase-kong:8000` (HTTP).
+    - In `.env`, prefer `SUPABASE_URL_DOCKER=http://supabase-kong:8000` (so Docker runs work).
+    - If you also run scripts with Windows Python, set `SUPABASE_URL_HOST=...` to a host-reachable Supabase REST URL/port.
   - Host llama server: keep `LLM_API_URL=http://host.docker.internal:1234`.
   - DM/backend matching uses the internal service `backend:8000` (already set in `.env`).
   - Mounts `./logs` and `./monitoring` for persistence.

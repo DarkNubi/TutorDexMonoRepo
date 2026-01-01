@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
+from urllib.parse import urlparse
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
+from supabase_env import resolve_supabase_url, running_in_docker
 
 
 setup_logging()
@@ -82,13 +84,39 @@ class SupabaseRawConfig:
 
 
 def load_raw_config_from_env() -> SupabaseRawConfig:
-    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url_env = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url_docker_env = (os.environ.get("SUPABASE_URL_DOCKER") or "").strip().rstrip("/")
+    url_host_env = (os.environ.get("SUPABASE_URL_HOST") or "").strip().rstrip("/")
+
+    in_docker = running_in_docker()
+    if in_docker:
+        chosen = url_docker_env or url_env or url_host_env
+        source = "SUPABASE_URL_DOCKER" if url_docker_env else ("SUPABASE_URL" if url_env else ("SUPABASE_URL_HOST" if url_host_env else "missing"))
+    else:
+        chosen = url_host_env or url_env or url_docker_env
+        source = "SUPABASE_URL_HOST" if url_host_env else ("SUPABASE_URL" if url_env else ("SUPABASE_URL_DOCKER" if url_docker_env else "missing"))
+
+    url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
 
     # Default to SUPABASE_ENABLED, but allow overriding independently.
     raw_enabled_env = os.environ.get("SUPABASE_RAW_ENABLED")
     enabled = _truthy(raw_enabled_env) if raw_enabled_env is not None else _truthy(os.environ.get("SUPABASE_ENABLED"))
     enabled = bool(enabled and url and key)
+
+    # This is intentionally INFO-level to make host-vs-docker connectivity issues obvious.
+    log_event(
+        logger,
+        logging.INFO,
+        "supabase_raw_url_selected",
+        in_docker=in_docker,
+        source=source,
+        url=chosen or None,
+        url_host_set=bool(url_host_env),
+        url_docker_set=bool(url_docker_env),
+        url_set=bool(url_env),
+        enabled=enabled,
+    )
 
     return SupabaseRawConfig(
         url=url,
@@ -106,6 +134,15 @@ class SupabaseRestClient:
         self.cfg = cfg
         self.base = f"{cfg.url}/rest/v1"
         self.session = requests.Session()
+        # On some Windows setups, global proxy env vars can cause requests to proxy even localhost
+        # traffic, leading to confusing "RemoteDisconnected" errors. For local Supabase (Kong on
+        # 127.0.0.1/localhost), disable trusting env proxy vars.
+        try:
+            host = (urlparse(cfg.url).hostname or "").lower()
+            if host in {"127.0.0.1", "localhost", "::1"}:
+                self.session.trust_env = False
+        except Exception:
+            pass
         self.session.headers.update(
             {
                 "apikey": cfg.key,

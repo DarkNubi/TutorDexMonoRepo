@@ -18,6 +18,7 @@ import random
 import json
 import requests
 
+from supabase_env import resolve_supabase_url
 from logging_setup import (
     bind_log_context,
     log_event,
@@ -412,7 +413,7 @@ def _extract_assignment_codes_from_compilation(text: str) -> list[str]:
 
 
 def _load_supabase_bump_config() -> dict[str, Any]:
-    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
     enabled = bool(str(os.environ.get("SUPABASE_ENABLED", "")).strip().lower() in {"1", "true", "yes", "y", "on"} and url and key)
     return {

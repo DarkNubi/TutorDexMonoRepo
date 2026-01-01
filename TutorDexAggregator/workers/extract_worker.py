@@ -29,6 +29,7 @@ if str(AGG_DIR) not in sys.path:
 from compilation_detection import is_compilation  # noqa: E402
 from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta, process_parsed_payload  # noqa: E402
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
+from supabase_env import resolve_supabase_url  # noqa: E402
 from supabase_persist import mark_assignment_closed, persist_assignment_to_supabase  # noqa: E402
 from schema_validation import validate_parsed_assignment  # noqa: E402
 
@@ -119,11 +120,13 @@ def _load_env() -> None:
 
 
 def _supabase_cfg() -> Tuple[str, str]:
-    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
     enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
     if not enabled:
-        raise SystemExit("Supabase not enabled. Set SUPABASE_ENABLED=1, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.")
+        raise SystemExit(
+            "Supabase not enabled. Set SUPABASE_ENABLED=1, SUPABASE_SERVICE_ROLE_KEY, and one of SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL."
+        )
     return url, key
 
 
@@ -650,10 +653,29 @@ def main() -> None:
                 time.sleep(max(0.25, float(idle_sleep_s)))
                 continue
 
+            log_event(logger, logging.INFO, "claimed_jobs", count=len(jobs), pipeline_version=pipeline_version)
             for job in jobs:
                 if isinstance(job, dict):
-                    _work_one(url, key, job)
-                    processed += 1
+                    extraction_id = job.get("id")
+                    raw_id = job.get("raw_id")
+                    channel_link = str(job.get("channel_link") or "").strip() or "t.me/unknown"
+                    message_id = str(job.get("message_id") or "").strip()
+                    t0 = time.time()
+                    logger.info(
+                        "job_begin extraction_id=%s raw_id=%s channel=%s message_id=%s",
+                        extraction_id,
+                        raw_id,
+                        channel_link,
+                        message_id,
+                    )
+                    try:
+                        _work_one(url, key, job)
+                        processed += 1
+                        dt_ms = int((time.time() - t0) * 1000)
+                        logger.info("job_end extraction_id=%s dt_ms=%s", extraction_id, dt_ms)
+                    except Exception as e:
+                        dt_ms = int((time.time() - t0) * 1000)
+                        logger.warning("job_error extraction_id=%s dt_ms=%s error=%s", extraction_id, dt_ms, str(e))
                     if max_jobs and processed >= max_jobs:
                         log_event(logger, logging.INFO, "worker_max_jobs_reached", processed=processed, max_jobs=max_jobs, pipeline_version=pipeline_version)
                         return

@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, List
 
 import requests
+from urllib.parse import urlparse
 
+from supabase_env import resolve_supabase_url
 
 logger = logging.getLogger("supabase_store")
 
@@ -28,7 +30,7 @@ class SupabaseConfig:
 
 
 def load_supabase_config() -> SupabaseConfig:
-    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
     enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
     return SupabaseConfig(url=url, key=key, enabled=enabled)
@@ -39,6 +41,12 @@ class SupabaseRestClient:
         self.cfg = cfg
         self.base = f"{cfg.url}/rest/v1"
         self.session = requests.Session()
+        try:
+            host = (urlparse(cfg.url).hostname or "").lower()
+            if host in {"127.0.0.1", "localhost", "::1"}:
+                self.session.trust_env = False
+        except Exception:
+            pass
         self.session.headers.update(
             {
                 "apikey": cfg.key,

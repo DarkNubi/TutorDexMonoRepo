@@ -1,11 +1,15 @@
 name: Deploy via Tailscale SSH
 
 on:
-  push:
-    branches: [ "main" ]   # change if needed
+  pull_request:
+    branches: [ "main" ]
+    types: [ closed ]
 
 jobs:
   deploy:
+    # Only run if the PR was actually merged (not just closed)
+    if: github.event.pull_request.merged == true && github.event.pull_request.merge_commit_sha != null
+
     runs-on: ubuntu-latest
 
     steps:
@@ -25,4 +29,4 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true
           script: |
-            cmd /Q /C "cd /d D:\TutorDex && git pull && docker compose up -d --build"
+            cmd /Q /C "cd /d D:\TutorDex && git pull --ff-only && docker compose pull && docker compose up -d --build"

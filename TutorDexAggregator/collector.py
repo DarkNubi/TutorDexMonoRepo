@@ -647,7 +647,9 @@ async def run_enqueue_from_raw(args: argparse.Namespace) -> int:
     """
     store = SupabaseRawStore()
     if not store.enabled() or not store.client:
-        raise SystemExit("Supabase raw store is disabled/misconfigured. Set SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY and SUPABASE_RAW_ENABLED=1.")
+        raise SystemExit(
+            "Supabase raw store is disabled/misconfigured. Set SUPABASE_SERVICE_ROLE_KEY and SUPABASE_RAW_ENABLED=1, and one of SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL."
+        )
 
     channels = _parse_channels_arg(getattr(args, "channels", None)) or [_normalize_channel_ref(x) for x in _parse_channels_from_env()]
     channels = [c for c in channels if c]
@@ -760,7 +762,9 @@ async def run_enqueue_from_raw(args: argparse.Namespace) -> int:
 def run_status(args: argparse.Namespace) -> int:
     store = SupabaseRawStore()
     if not store.enabled():
-        print("Supabase raw store is disabled (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY missing or SUPABASE_RAW_ENABLED=false).")
+        print(
+            "Supabase raw store is disabled (SUPABASE_URL_HOST/SUPABASE_URL_DOCKER/SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY missing or SUPABASE_RAW_ENABLED=false)."
+        )
         return 2
 
     run_id: Optional[int] = int(args.run_id) if args.run_id else None

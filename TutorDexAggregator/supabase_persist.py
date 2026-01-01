@@ -7,8 +7,10 @@ from typing import Any, Dict, Optional, Tuple, List
 import re
 
 import requests
+from urllib.parse import urlparse
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
+from supabase_env import resolve_supabase_url
 from taxonomy.canonicalize_subjects import (
     canonicalize_subjects_for_assignment_row,
     subject_taxonomy_debug_enabled,
@@ -438,7 +440,7 @@ class SupabaseConfig:
 
 
 def load_config_from_env() -> SupabaseConfig:
-    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
     assignments_table = (os.environ.get("SUPABASE_ASSIGNMENTS_TABLE") or "assignments").strip()
     enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key and assignments_table)
@@ -457,6 +459,12 @@ class SupabaseRestClient:
         self.cfg = cfg
         self.base = f"{cfg.url}/rest/v1"
         self.session = requests.Session()
+        try:
+            host = (urlparse(cfg.url).hostname or "").lower()
+            if host in {"127.0.0.1", "localhost", "::1"}:
+                self.session.trust_env = False
+        except Exception:
+            pass
         self.session.headers.update(
             {
                 "apikey": cfg.key,
