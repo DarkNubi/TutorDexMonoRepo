@@ -109,11 +109,20 @@ def _parse_rate(rate: Optional[str]) -> Dict[str, Any]:
             nums.append(n)
         except Exception:
             continue
+
+    def _to_int(x: float) -> int:
+        # Supabase schema expects integer for rate_min/rate_max. TutorCity values frequently look like "60.0".
+        # Round to the nearest integer to preserve typical human rates (e.g. 60.0 -> 60).
+        try:
+            return int(round(float(x)))
+        except Exception:
+            return int(x)
+
     if len(nums) == 1:
-        out["rate_min"] = out["rate_max"] = nums[0]
+        out["rate_min"] = out["rate_max"] = _to_int(nums[0])
     elif len(nums) >= 2:
-        out["rate_min"] = min(nums)
-        out["rate_max"] = max(nums)
+        out["rate_min"] = _to_int(min(nums))
+        out["rate_max"] = _to_int(max(nums))
     return out
 
 
