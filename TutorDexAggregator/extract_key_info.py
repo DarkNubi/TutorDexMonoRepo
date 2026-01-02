@@ -13,11 +13,6 @@ import logging
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_examples_key
 
-try:
-    from validator import validate as validate_extraction  # type: ignore
-except Exception:
-    validate_extraction = None  # type: ignore
-
 setup_logging()
 logger = logging.getLogger("extract_key_info")
 
@@ -293,7 +288,7 @@ def parse_rate(raw: str):
 
 def safe_parse_json(json_string):
     """
-    Parse JSON using `json-repair` (no manual regex repair).
+    Parse JSON with a fast-path for valid JSON, and a fallback to `json-repair` for common model errors.
     """
     if json_string is None:
         raise Exception("JSON parsing error: empty input")
@@ -310,6 +305,12 @@ def safe_parse_json(json_string):
         return s
 
     raw = _strip_code_fences(json_string)
+
+    # Fast path: valid JSON should not require `json-repair` to be installed.
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
 
     try:
         from json_repair import repair_json  # type: ignore
@@ -502,12 +503,9 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
             )
             raise RuntimeError(f"Failed to parse JSON from model output: {e}") from e
 
-        if validate_extraction and isinstance(parsed, dict):
-            try:
-                parsed = validate_extraction(parsed)
-            except Exception as e:
-                # Do not fail the pipeline due to validator bugs; continue with raw extraction.
-                log_event(logger, logging.WARNING, "validator_failed", error=str(e))
+        # NOTE: Legacy `validator.py` post-processor removed. Hardening happens in:
+        # - `hard_validator.py` (null/drop invariants)
+        # - deterministic extractors (e.g., `extractors/time_availability.py`)
 
         return parsed
 

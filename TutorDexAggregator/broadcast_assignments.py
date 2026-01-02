@@ -275,10 +275,25 @@ def build_message_text(
     distance_km: Optional[float] = None,
 ) -> str:
     parsed = payload.get('parsed') or {}
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+    signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
+    signals_obj = None
+    if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
+        signals_obj = signals_meta.get("signals")
+
     academic_raw = _escape(_join_text(parsed.get("academic_display_text") or parsed.get("academic_tags_raw")))
-    subjects = _escape(_join_text(parsed.get('subjects')))
+    subjects_val = parsed.get("subjects")
+    if (not subjects_val) and isinstance(signals_obj, dict):
+        subjects_val = signals_obj.get("subjects")
+    subjects = _escape(_join_text(subjects_val))
+
     # Prefer specific level; fall back to level. Do not show both.
-    specific_or_level = _escape(_join_text(parsed.get('specific_student_level')) or _join_text(parsed.get('level')))
+    specific_val = parsed.get("specific_student_level")
+    level_val = parsed.get("level")
+    if (not specific_val and not level_val) and isinstance(signals_obj, dict):
+        specific_val = signals_obj.get("specific_student_levels")
+        level_val = signals_obj.get("levels")
+    specific_or_level = _escape(_join_text(specific_val) or _join_text(level_val))
     assignment_code = _escape(_join_text(parsed.get('assignment_code')))
     assignment_type = _escape(_join_text(parsed.get('type')))
     address = _escape(_join_text(parsed.get('address')))
@@ -458,24 +473,32 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
 
         try:
             parsed = payload.get('parsed') or {}
-            subjects = _flatten_text_list(parsed.get('subjects'))
+            academic_display_text = _join_text(parsed.get("academic_display_text") or parsed.get("academic_tags_raw"))
             addresses = _flatten_text_list(parsed.get('address'))
             postal = _join_text(parsed.get('postal_code')) or _join_text(parsed.get('postal_code_estimated'))
+            rate_text = _join_text(parsed.get("hourly_rate"))
+            if not rate_text and isinstance(parsed.get("rate"), dict):
+                rate_text = _join_text((parsed.get("rate") or {}).get("raw_text"))
+            ts_note_val = _join_text(parsed.get("time_slots_note"))
+            if not ts_note_val and isinstance(parsed.get("time_availability"), dict):
+                ts_note_val = _join_text((parsed.get("time_availability") or {}).get("note"))
+            if not ts_note_val and isinstance(parsed.get("lesson_schedule"), dict):
+                ts_note_val = _join_text((parsed.get("lesson_schedule") or {}).get("raw_text"))
             log_event(
                 logger,
                 logging.DEBUG,
                 "broadcast_built",
                 text_len=len(text),
                 build_ms=build_ms,
-                subjects_count=len(subjects),
+                has_academic_display_text=bool(academic_display_text),
                 has_address=bool(addresses),
                 has_postal=bool(postal),
-                has_rate=bool(_join_text(parsed.get('hourly_rate'))),
-                has_time_slots_note=bool(_join_text(parsed.get('time_slots_note'))),
+                has_rate=bool(rate_text),
+                has_time_slots_note=bool(ts_note_val),
             )
-            if not subjects or not addresses:
+            if not academic_display_text or not addresses:
                 log_event(logger, logging.WARNING, "broadcast_missing_fields",
-                          missing_subjects=not bool(subjects), missing_address=not bool(addresses))
+                          missing_academic_display_text=not bool(academic_display_text), missing_address=not bool(addresses))
         except Exception:
             logger.exception('Failed to build broadcast summary')
 

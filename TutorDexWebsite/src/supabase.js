@@ -76,7 +76,7 @@ export async function listOpenAssignments({ limit = 200 } = {}) {
   if (!isSupabaseEnabled()) return [];
 
   const baseCols =
-    "id,external_id,message_link,agency_name,learning_mode,subject,subjects,level,specific_student_level,address,postal_code,nearest_mrt,frequency,duration,hourly_rate,rate_min,rate_max,student_gender,tutor_gender,status,created_at,last_seen";
+    "id,external_id,message_link,agency_name,learning_mode,subject,subjects,level,specific_student_level,address,postal_code,nearest_mrt,frequency,duration,time_slots_note,hourly_rate,rate_min,rate_max,student_gender,tutor_gender,status,created_at,last_seen";
   const optionalCols = ["freshness_tier"];
 
   const params = new URLSearchParams();
@@ -120,6 +120,24 @@ export async function listOpenAssignments({ limit = 200 } = {}) {
     if (row?.frequency) freqBits.push(String(row.frequency).trim());
     if (row?.duration) freqBits.push(String(row.duration).trim());
 
+    const timeNotes = (() => {
+      const v = row?.time_slots_note;
+      if (v == null) return [];
+      if (Array.isArray(v)) {
+        return v.map((x) => String(x || "").trim()).filter(Boolean);
+      }
+      const s = String(v).trim();
+      if (!s) return [];
+      if (s.startsWith("[") && s.endsWith("]")) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) return parsed.map((x) => String(x || "").trim()).filter(Boolean);
+        } catch {}
+      }
+      if (s.includes("\n")) return s.split("\n").map((x) => x.trim()).filter(Boolean);
+      return [s];
+    })();
+
     return {
       id: (row?.external_id || `DB-${row?.id || ""}`).trim(),
       messageLink: (row?.message_link || "").trim(),
@@ -131,6 +149,7 @@ export async function listOpenAssignments({ limit = 200 } = {}) {
       gender: (row?.tutor_gender || row?.student_gender || "Any").trim(),
       freshnessTier: (row?.freshness_tier || "").trim() || "green",
       freq: freqBits.join(" / "),
+      timeNotes,
       agencyName: (row?.agency_name || "").trim(),
       learningMode,
       updatedAt: (row?.last_seen || row?.created_at || "").trim(),

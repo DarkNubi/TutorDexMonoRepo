@@ -106,6 +106,32 @@ function pickFirst(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function toStringList(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((v) => toStringList(v))
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+  }
+  const s = String(value).trim();
+  if (!s) return [];
+
+  // If the API/DB stores a JSON-encoded list in a string, prefer that.
+  if (s.startsWith("[") && s.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) {
+        return parsed.map((x) => String(x || "").trim()).filter(Boolean);
+      }
+    } catch {}
+  }
+
+  // If the backend stores multi-line notes in a single string, treat each line as an item.
+  if (s.includes("\n")) return s.split("\n").map((x) => x.trim()).filter(Boolean);
+  return [s];
+}
+
 function mapAssignmentRow(row) {
   const subject = (row?.subject || "").trim() || pickFirst(row?.subjects) || "Unknown";
 
@@ -133,6 +159,8 @@ function mapAssignmentRow(row) {
   if (row?.frequency) freqBits.push(String(row.frequency).trim());
   if (row?.duration) freqBits.push(String(row.duration).trim());
 
+  const timeNotes = toStringList(row?.time_slots_note);
+
   return {
     id: (row?.external_id || `DB-${row?.id || ""}`).trim(),
     messageLink: (row?.message_link || "").trim(),
@@ -145,6 +173,7 @@ function mapAssignmentRow(row) {
     gender: (row?.tutor_gender || row?.student_gender || "Any").trim(),
     freshnessTier: (row?.freshness_tier || "").trim() || "green",
     freq: freqBits.join(" / "),
+    timeNotes,
     agencyName: (row?.agency_name || "").trim(),
     learningMode,
     updatedAt: (row?.last_seen || row?.created_at || "").trim(),
@@ -289,7 +318,10 @@ function renderCards(data) {
     if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
       addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
     }
-    addDetail("fa-solid fa-clock", job.freq);
+    if (job.freq) addDetail("fa-solid fa-calendar-days", job.freq);
+    if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
+      job.timeNotes.forEach((line) => addDetail("fa-solid fa-clock", line));
+    }
     addDetail("fa-solid fa-user", `Pref: ${job.gender}`);
     if (job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
     if (job.agencyName) addDetail("fa-solid fa-building", job.agencyName);

@@ -21,6 +21,10 @@ if str(AGG_DIR) not in sys.path:
 
 from compilation_detection import is_compilation
 from extract_key_info import extract_assignment_with_model, process_parsed_payload
+from extractors.time_availability import extract_time_availability
+from hard_validator import hard_validate
+from normalize import normalize_text
+from signals_builder import build_signals
 from supabase_persist import persist_assignment_to_supabase
 from supabase_raw_persist import SupabaseRawStore
 from logging_setup import bind_log_context, log_event, setup_logging
@@ -61,6 +65,12 @@ class Counters:
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def _load_env() -> None:
@@ -130,6 +140,39 @@ def _looks_like_assignment(parsed: Dict[str, Any]) -> bool:
         return True
 
     signals = 0
+
+    # V2 schema signals
+    if str(parsed.get("academic_display_text") or "").strip() or str(parsed.get("academic_tags_raw") or "").strip():
+        signals += 1
+
+    rate_text = str(parsed.get("hourly_rate") or "").strip()
+    if not rate_text and isinstance(parsed.get("rate"), dict):
+        rate_text = str((parsed.get("rate") or {}).get("raw_text") or "").strip()
+    if rate_text:
+        signals += 1
+
+    ta = parsed.get("time_availability")
+    if isinstance(ta, dict):
+        note = str(ta.get("note") or "").strip()
+        if note:
+            signals += 1
+        else:
+            for section in ("explicit", "estimated"):
+                day_map = ta.get(section)
+                if isinstance(day_map, dict) and any(isinstance(v, list) and any(str(x).strip() for x in v) for v in day_map.values()):
+                    signals += 1
+                    break
+
+    lesson = parsed.get("lesson_schedule")
+    if isinstance(lesson, dict):
+        if str(lesson.get("raw_text") or "").strip():
+            signals += 1
+        elif any(lesson.get(k) is not None for k in ("lessons_per_week", "hours_per_lesson", "total_hours_per_week")):
+            signals += 1
+    elif isinstance(lesson, list) and any(isinstance(x, str) and x.strip() for x in lesson):
+        signals += 1
+
+    # Legacy schema signals (kept for older pipeline versions)
     if parsed.get("subjects"):
         signals += 1
     if str(parsed.get("level") or "").strip():
@@ -281,7 +324,11 @@ def main() -> None:
 
                     with bind_log_context(cid=cid, channel=ch, message_id=msg_id, step="reprocess"):
                         try:
-                            parsed = extract_assignment_with_model(raw_text, chat=ch, cid=cid)
+                            normalized_text = normalize_text(raw_text)
+                            use_norm = _truthy(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM"))
+                            llm_input = normalized_text if use_norm else raw_text
+
+                            parsed = extract_assignment_with_model(llm_input, chat=ch, cid=cid)
                             if not isinstance(parsed, dict):
                                 parsed = {}
 
@@ -306,6 +353,45 @@ def main() -> None:
                             }
 
                             payload = process_parsed_payload(payload, False)
+
+                            # Deterministic time overwrite (recommended).
+                            if _truthy(os.environ.get("USE_DETERMINISTIC_TIME")):
+                                try:
+                                    det_ta, det_meta = extract_time_availability(raw_text=raw_text, normalized_text=normalized_text)
+                                    if isinstance(payload.get("parsed"), dict):
+                                        payload["parsed"]["time_availability"] = det_ta
+                                except Exception:
+                                    det_meta = {"ok": False, "error": "time_extract_failed"}
+                            else:
+                                det_meta = None
+
+                            # Hard validation (default enforce for reprocessing).
+                            hard_mode = (os.environ.get("HARD_VALIDATE_MODE") or "enforce").strip().lower()
+                            hard_meta = None
+                            if hard_mode in {"report", "enforce"}:
+                                try:
+                                    cleaned, violations = hard_validate(payload.get("parsed") or {}, raw_text=raw_text, normalized_text=normalized_text)
+                                    hard_meta = {"mode": hard_mode, "violations_count": len(violations), "violations": violations[:50]}
+                                    if hard_mode == "enforce":
+                                        payload["parsed"] = cleaned
+                                except Exception as e:
+                                    hard_meta = {"mode": hard_mode, "error": str(e)}
+
+                            # Deterministic signals (recommended).
+                            sig_meta = None
+                            if _truthy(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS")):
+                                try:
+                                    sig, err = build_signals(parsed=payload.get("parsed") or {}, raw_text=raw_text, normalized_text=normalized_text)
+                                    sig_meta = {"ok": False, "error": err} if err else {"ok": True, "signals": sig}
+                                except Exception as e:
+                                    sig_meta = {"ok": False, "error": str(e)}
+
+                            payload["meta"] = {
+                                "normalization": {"chars": len(normalized_text), "preview": normalized_text[:200]},
+                                "time_deterministic": det_meta,
+                                "hard_validation": hard_meta,
+                                "signals": sig_meta,
+                            }
                             persist_res = persist_assignment_to_supabase(payload)
 
                             ok = bool(persist_res and persist_res.get("ok"))

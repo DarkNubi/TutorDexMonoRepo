@@ -169,6 +169,22 @@ Progress:
 
 The live aggregator uses a single LLM call per message (see `extract_key_info.py`) and then broadcasts + optionally persists the result.
 
+## Deterministic matching signals (recommended)
+
+In addition to the LLM “display JSON” (stored in `telegram_extractions.canonical_json`), the queue worker can compute deterministic academic matching signals and store them under `telegram_extractions.meta.signals`.
+
+- Docs: `docs/signals.md`
+- Flags:
+  - `ENABLE_DETERMINISTIC_SIGNALS=0/1` (default `1`)
+  - `HARD_VALIDATE_MODE=off|report|enforce` (default `report`)
+  - `USE_NORMALIZED_TEXT_FOR_LLM=0/1` (default `0`)
+  - `USE_DETERMINISTIC_TIME=0/1` (default `0`; when `1`, overwrites `time_availability` deterministically)
+
+For the current hardened pipeline version (`2026-01-02_det_time_v1`), the recommended `.env` settings are:
+- `EXTRACTION_PIPELINE_VERSION=2026-01-02_det_time_v1`
+- `USE_DETERMINISTIC_TIME=1`
+- `HARD_VALIDATE_MODE=enforce`
+
 ## Telegram edit/delete monitoring (optional)
 
 Some agencies edit or delete assignment posts after publishing. You can run a lightweight monitor to collect:

@@ -16,6 +16,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -30,6 +31,13 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from supabase_env import resolve_supabase_url  # noqa: E402
+
+try:
+    from support_checks import has_remarks_marker, rate_is_quote_like, substring_supported  # type: ignore
+except Exception:
+    has_remarks_marker = None  # type: ignore
+    rate_is_quote_like = None  # type: ignore
+    substring_supported = None  # type: ignore
 
 
 def _truthy(value: Optional[str]) -> bool:
@@ -277,6 +285,231 @@ def compare_runs(cfg: CompareConfig) -> Dict[str, Any]:
         }
 
     summary["field_metrics"] = field_metrics
+
+    # Optional deeper metrics that require joining raw_text from `telegram_messages_raw`.
+    # Enable with `AB_EXTRA_METRICS=1`.
+    if _truthy(os.environ.get("AB_EXTRA_METRICS")):
+        url, key = _supabase_cfg()
+
+        def _chunks(xs: List[str], n: int) -> Iterable[List[str]]:
+            for i in range(0, len(xs), max(1, n)):
+                yield xs[i : i + n]
+
+        def _fetch_raw_text_map(raw_ids: List[str]) -> Dict[str, str]:
+            out: Dict[str, str] = {}
+            for chunk in _chunks(raw_ids, 150):
+                items = ",".join(quote(str(rid), safe="") for rid in chunk if str(rid).strip())
+                if not items:
+                    continue
+                q = f"select=id,raw_text&id=in.({items})"
+                rows = _get_rows(url, key, "telegram_messages_raw", q, timeout=30)
+                for r in rows:
+                    rid = r.get("id")
+                    if rid is None:
+                        continue
+                    out[str(rid)] = str(r.get("raw_text") or "")
+            return out
+
+        raw_text_by_id = _fetch_raw_text_map(raw_ids_both)
+
+        TIME_RE = re.compile(r"^\\d{2}:\\d{2}-\\d{2}:\\d{2}$")
+
+        def _valid_time_slot(s: Any) -> bool:
+            if not isinstance(s, str):
+                return False
+            t = s.strip().replace("–", "-").replace("—", "-").replace("−", "-").replace("‒", "-")
+            t = re.sub(r"\\s*-\\s*", "-", t)
+            if not TIME_RE.match(t):
+                return False
+            try:
+                start, end = t.split("-", 1)
+                sh, sm = start.split(":")
+                eh, em = end.split(":")
+                sh_i, sm_i, eh_i, em_i = int(sh), int(sm), int(eh), int(em)
+                if not (0 <= sh_i <= 23 and 0 <= eh_i <= 23 and 0 <= sm_i <= 59 and 0 <= em_i <= 59):
+                    return False
+                if (sh_i, sm_i) > (eh_i, em_i):
+                    return False
+                return True
+            except Exception:
+                return False
+
+        def _extract_rate(parsed: Dict[str, Any]) -> Tuple[Optional[float], Optional[float], Optional[str]]:
+            rate = parsed.get("rate")
+            if not isinstance(rate, dict):
+                return None, None, None
+            raw = rate.get("raw_text")
+            raw_s = str(raw).strip() if isinstance(raw, str) and str(raw).strip() else None
+
+            def _num(v: Any) -> Optional[float]:
+                if v is None:
+                    return None
+                if isinstance(v, (int, float)):
+                    return float(v)
+                try:
+                    sv = str(v).strip()
+                    if re.fullmatch(r"-?\\d+(?:\\.\\d+)?", sv):
+                        return float(sv)
+                except Exception:
+                    return None
+                return None
+
+            return _num(rate.get("min")), _num(rate.get("max")), raw_s
+
+        def _extra_metrics_for_pipeline(rows_by_raw: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+            ok_rows = [r for r in rows_by_raw.values() if str(r.get("status")) == "ok" and r.get("raw_id") is not None]
+
+            time_total = 0
+            time_invalid = 0
+            time_structure_errors = 0
+            time_non_empty_rows = 0
+            time_note_present_rows = 0
+
+            quote_cases = 0
+            quote_minmax_nonnull = 0
+
+            remarks_nonnull = 0
+            remarks_no_marker = 0
+            remarks_not_substring = 0
+
+            signals_ok = 0
+            signals_subjects_nonempty = 0
+            signals_academic_requests_nonnull = 0
+            signals_ambiguous = 0
+            signals_display_mismatch = 0
+
+            by_channel: Dict[str, Dict[str, int]] = {}
+
+            display_academic_hint_re = re.compile(r"(?i)\b(p\\s*\\d|pri\\b|primary\\b|sec\\b|s\\s*\\d|secondary\\b|jc\\b|j\\s*\\d|ib\\b|igcse\\b)\\b")
+
+            for r in ok_rows:
+                rid = str(r.get("raw_id"))
+                parsed = r.get("canonical_json") if isinstance(r.get("canonical_json"), dict) else {}
+                raw_text = raw_text_by_id.get(rid, "")
+                channel = str(r.get("channel_link") or "unknown")
+
+                ta = parsed.get("time_availability") if isinstance(parsed.get("time_availability"), dict) else None
+                if not ta:
+                    time_structure_errors += 1
+                else:
+                    # Row-level time coverage.
+                    has_any = False
+                    for section in ("explicit", "estimated"):
+                        day_map = ta.get(section) if isinstance(ta.get(section), dict) else {}
+                        for slots in day_map.values():
+                            if isinstance(slots, list) and any(isinstance(x, str) and str(x).strip() for x in slots):
+                                has_any = True
+                                break
+                        if has_any:
+                            break
+                    if has_any:
+                        time_non_empty_rows += 1
+                    note_s = str(ta.get("note") or "").strip() if isinstance(ta.get("note"), (str, type(None))) else ""
+                    if note_s:
+                        time_note_present_rows += 1
+
+                    for section in ("explicit", "estimated"):
+                        day_map = ta.get(section) if isinstance(ta.get(section), dict) else None
+                        if not day_map:
+                            time_structure_errors += 1
+                            continue
+                        for slots in day_map.values():
+                            if not isinstance(slots, list):
+                                time_structure_errors += 1
+                                continue
+                            for slot in slots:
+                                time_total += 1
+                                if not _valid_time_slot(slot):
+                                    time_invalid += 1
+
+                meta = r.get("meta") if isinstance(r.get("meta"), dict) else {}
+                rmin, rmax, rraw = _extract_rate(parsed)
+                is_quote = bool(rate_is_quote_like(rraw)) if rate_is_quote_like else False
+                if is_quote:
+                    quote_cases += 1
+                    if rmin is not None or rmax is not None:
+                        quote_minmax_nonnull += 1
+
+                ar = parsed.get("additional_remarks")
+                ar_s = str(ar).strip() if isinstance(ar, str) and str(ar).strip() else None
+                if ar_s:
+                    remarks_nonnull += 1
+                    marker = bool(has_remarks_marker(raw_text)) if has_remarks_marker else False
+                    if not marker:
+                        remarks_no_marker += 1
+                    elif substring_supported and not substring_supported(raw_text, ar_s):
+                        remarks_not_substring += 1
+
+                sig = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
+                if sig and sig.get("ok") is True and isinstance(sig.get("signals"), dict):
+                    signals_ok += 1
+                    sig_obj = sig.get("signals") if isinstance(sig.get("signals"), dict) else {}
+                    subj = sig_obj.get("subjects") if isinstance(sig_obj.get("subjects"), list) else []
+                    if any(isinstance(x, str) and x.strip() for x in subj):
+                        signals_subjects_nonempty += 1
+                    arq = sig_obj.get("academic_requests")
+                    if isinstance(arq, list) and len(arq) > 0:
+                        signals_academic_requests_nonnull += 1
+                    flags = sig_obj.get("confidence_flags") if isinstance(sig_obj.get("confidence_flags"), dict) else {}
+                    if bool(flags.get("ambiguous_academic_mapping")):
+                        signals_ambiguous += 1
+
+                    # Non-fatal mismatch proxy: display text hints academic content but signals has no subjects.
+                    disp = parsed.get("academic_display_text")
+                    disp_s = str(disp) if isinstance(disp, str) else ""
+                    if disp_s and display_academic_hint_re.search(disp_s) and not any(isinstance(x, str) and x.strip() for x in subj):
+                        signals_display_mismatch += 1
+
+                bc = by_channel.setdefault(channel, {"ok_rows": 0})
+                bc["ok_rows"] = bc.get("ok_rows", 0) + 1
+                if sig and sig.get("ok") is True:
+                    bc["signals_ok"] = bc.get("signals_ok", 0) + 1
+                    sig_obj = sig.get("signals") if isinstance(sig.get("signals"), dict) else {}
+                    subj = sig_obj.get("subjects") if isinstance(sig_obj.get("subjects"), list) else []
+                    if any(isinstance(x, str) and x.strip() for x in subj):
+                        bc["signals_subjects_nonempty"] = bc.get("signals_subjects_nonempty", 0) + 1
+                    arq = sig_obj.get("academic_requests")
+                    if isinstance(arq, list) and len(arq) > 0:
+                        bc["signals_academic_requests_nonnull"] = bc.get("signals_academic_requests_nonnull", 0) + 1
+                    flags = sig_obj.get("confidence_flags") if isinstance(sig_obj.get("confidence_flags"), dict) else {}
+                    if bool(flags.get("ambiguous_academic_mapping")):
+                        bc["signals_ambiguous"] = bc.get("signals_ambiguous", 0) + 1
+
+            time_valid_rate = None
+            if time_total:
+                time_valid_rate = (time_total - time_invalid) / float(time_total)
+
+            return {
+                "ok_rows": len(ok_rows),
+                "time_slots_total": time_total,
+                "time_slots_invalid": time_invalid,
+                "time_structure_errors": time_structure_errors,
+                "time_valid_rate": time_valid_rate,
+                "time_non_empty_rows": time_non_empty_rows,
+                "time_non_empty_rate": (time_non_empty_rows / float(len(ok_rows))) if ok_rows else None,
+                "time_note_present_rows": time_note_present_rows,
+                "time_note_present_rate": (time_note_present_rows / float(len(ok_rows))) if ok_rows else None,
+                "rate_quote_cases": quote_cases,
+                "rate_quote_minmax_nonnull": quote_minmax_nonnull,
+                "additional_remarks_nonnull": remarks_nonnull,
+                "additional_remarks_no_marker": remarks_no_marker,
+                "additional_remarks_not_substring": remarks_not_substring,
+                "signals_ok": signals_ok,
+                "signals_subjects_nonempty": signals_subjects_nonempty,
+                "signals_academic_requests_nonnull": signals_academic_requests_nonnull,
+                "signals_ambiguous": signals_ambiguous,
+                "signals_display_mismatch": signals_display_mismatch,
+                "by_channel": by_channel,
+            }
+
+        summary["extra_metrics"] = {
+            "enabled": True,
+            "pipelines": {
+                "a": _extra_metrics_for_pipeline(a_by_raw),
+                "b": _extra_metrics_for_pipeline(b_by_raw),
+            },
+        }
+
     return {
         "summary": summary,
         "a_by_raw": a_by_raw,

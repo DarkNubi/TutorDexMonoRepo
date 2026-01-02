@@ -5,17 +5,29 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, Optional, Tuple, List
 import re
+import math
 
 import requests
 from urllib.parse import urlparse
 
-from logging_setup import bind_log_context, log_event, setup_logging, timed
-from supabase_env import resolve_supabase_url
-from taxonomy.canonicalize_subjects import (
-    canonicalize_subjects_for_assignment_row,
-    subject_taxonomy_debug_enabled,
-    subject_taxonomy_enabled,
-)
+try:
+    # Running from `TutorDexAggregator/` with that folder on sys.path.
+    from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+    from supabase_env import resolve_supabase_url  # type: ignore
+    from taxonomy.canonicalize_subjects import (  # type: ignore
+        canonicalize_subjects_for_assignment_row,
+        subject_taxonomy_debug_enabled,
+        subject_taxonomy_enabled,
+    )
+except Exception:
+    # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
+    from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+    from TutorDexAggregator.supabase_env import resolve_supabase_url  # type: ignore
+    from TutorDexAggregator.taxonomy.canonicalize_subjects import (  # type: ignore
+        canonicalize_subjects_for_assignment_row,
+        subject_taxonomy_debug_enabled,
+        subject_taxonomy_enabled,
+    )
 
 setup_logging()
 logger = logging.getLogger("supabase_persist")
@@ -131,6 +143,52 @@ def _safe_str(value: Any) -> Optional[str]:
         return None
     s = str(value).strip()
     return s or None
+
+
+def _coerce_int_like(value: Any) -> Optional[int]:
+    """
+    Convert values like 45, 45.0, "45", "45.0" into an int.
+
+    Returns None if the value is not safely representable as an integer (e.g. 45.5).
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return None
+        rounded = round(value)
+        if abs(value - rounded) < 1e-9:
+            return int(rounded)
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            f = float(s)
+        except Exception:
+            return None
+        if not math.isfinite(f):
+            return None
+        rounded = round(f)
+        if abs(f - rounded) < 1e-9:
+            return int(rounded)
+        return None
+    # Best-effort fallback for numerics (e.g. Decimal)
+    try:
+        f2 = float(value)
+    except Exception:
+        return None
+    if not math.isfinite(f2):
+        return None
+    rounded2 = round(f2)
+    if abs(f2 - rounded2) < 1e-9:
+        return int(rounded2)
+    return None
 
 
 def _first_text(value: Any) -> Optional[str]:
@@ -313,7 +371,56 @@ def _derive_external_id(payload: Dict[str, Any]) -> str:
 def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     parsed = payload.get("parsed") or {}
     agency_name, agency_link = _derive_agency(payload)
+
+    # -------------------------
+    # Backward-compatible rollups for the `assignments` table
+    # -------------------------
+    # The new hardened pipeline stores deterministic academic rollups in `payload.meta.signals.signals`.
+    # Many downstream consumers (backend + website) still rely on `assignments.subjects/level/specific_student_level`.
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+    signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
+    signals_obj = None
+    if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
+        signals_obj = signals_meta.get("signals")
+
     subjects = parsed.get("subjects")
+    level = parsed.get("level")
+    specific_student_level = parsed.get("specific_student_level")
+
+    # Fallback: if signals were not computed upstream, compute them here (best-effort) to keep
+    # the `assignments` table populated for the website/backend/matching.
+    if signals_obj is None and (not _truthy_text(subjects)) and isinstance(parsed, dict):
+        try:
+            try:
+                from signals_builder import build_signals  # type: ignore
+                from normalize import normalize_text  # type: ignore
+            except Exception:
+                from TutorDexAggregator.signals_builder import build_signals  # type: ignore
+                from TutorDexAggregator.normalize import normalize_text  # type: ignore
+
+            raw_text = str(payload.get("raw_text") or "")
+            normalized_text = normalize_text(raw_text) if raw_text else ""
+            sig, err = build_signals(parsed=parsed, raw_text=raw_text, normalized_text=normalized_text)
+            if not err and isinstance(sig, dict):
+                signals_obj = sig
+        except Exception:
+            signals_obj = None
+
+    if (not _truthy_text(subjects)) and isinstance(signals_obj, dict):
+        sig_subjects = signals_obj.get("subjects")
+        if isinstance(sig_subjects, list) and any(isinstance(x, str) and x.strip() for x in sig_subjects):
+            subjects = [str(x).strip() for x in sig_subjects if isinstance(x, str) and str(x).strip()]
+
+    if not _truthy_text(level) and isinstance(signals_obj, dict):
+        sig_levels = signals_obj.get("levels")
+        if isinstance(sig_levels, list):
+            level = _first_text(sig_levels)
+
+    if not _truthy_text(specific_student_level) and isinstance(signals_obj, dict):
+        sig_specific = signals_obj.get("specific_student_levels")
+        if isinstance(sig_specific, list):
+            specific_student_level = _first_text(sig_specific)
+
     subject = _first_text(subjects)
 
     def _v2_get(path: str) -> Any:
@@ -392,8 +499,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "raw_text": _safe_str(payload.get("raw_text")),
         "subject": subject,
         "subjects": subjects if isinstance(subjects, list) else None,
-        "level": _first_text(parsed.get("level")),
-        "specific_student_level": _first_text(parsed.get("specific_student_level")),
+        "level": _safe_str(level),
+        "specific_student_level": _safe_str(specific_student_level),
         "type": _first_text(parsed.get("type")),
         "address": _first_text(parsed.get("address")),
         "postal_code": postal_code,
@@ -406,8 +513,9 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "frequency": _safe_str(parsed.get("frequency")) or _format_lessons_per_week(_v2_get("lesson_schedule.lessons_per_week")),
         "duration": _safe_str(parsed.get("duration")) or _format_hours(_v2_get("lesson_schedule.hours_per_lesson")),
         "hourly_rate": _safe_str(parsed.get("hourly_rate")) or _safe_str(_v2_get("rate.raw_text")),
-        "rate_min": parsed.get("rate_min") if parsed.get("rate_min") is not None else _v2_get("rate.min"),
-        "rate_max": parsed.get("rate_max") if parsed.get("rate_max") is not None else _v2_get("rate.max"),
+        # DB schema uses integer columns; v2 schema uses numbers and may surface `45.0`.
+        "rate_min": _coerce_int_like(parsed.get("rate_min")) if parsed.get("rate_min") is not None else _coerce_int_like(_v2_get("rate.min")),
+        "rate_max": _coerce_int_like(parsed.get("rate_max")) if parsed.get("rate_max") is not None else _coerce_int_like(_v2_get("rate.max")),
         "time_slots": parsed.get("time_slots") if parsed.get("time_slots") is not None else _coerce_dict(_v2_get("time_availability.explicit")),
         "estimated_time_slots": parsed.get("estimated_time_slots") if parsed.get("estimated_time_slots") is not None else _coerce_dict(_v2_get("time_availability.estimated")),
         "time_slots_note": _safe_str(parsed.get("time_slots_note")) or _safe_str(_v2_get("time_availability.note")) or _safe_str(_v2_get("lesson_schedule.raw_text")),

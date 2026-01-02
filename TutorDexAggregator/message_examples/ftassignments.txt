@@ -20,18 +20,7 @@ Agency fee: FIRST 2 REGULAR LESSONS' WORTH
 💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
 JSON: {
   "assignment_code": "240710CF9",
-  "is_tuition_centre": false,
-  "subjects": ["Chinese"],
-  "level": ["Primary"],
-  "specific_student_level": ["Primary 2"],
   "academic_display_text": "P2 Chinese",
-  "academic_signals": {
-    "year": null,
-    "stream": null,
-    "exam": null
-  },
-  "student_gender": ["Female"],
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -39,14 +28,7 @@ JSON: {
   "address": ["323b Thomson Road"],
   "postal_code": null,
   "nearest_mrt": ["Novena"],
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 1,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "[1 lesson/week, 1 hr/lesson]"
-  },
+  "lesson_schedule": ["[1 lesson/week, 1 hr/lesson]"],
   "start_date": "ASAP",
   "time_availability": {
     "explicit": {
@@ -70,14 +52,10 @@ JSON: {
     "note": "on Mon 3.30pm-4.30pm and Wed 2.30pm-3.30pm ONLY"
   },
   "rate": {
-    "min": 25,
-    "max": 50,
-    "rate_type": "hourly",
+    "min": null,
+    "max": null,
     "raw_text": "PART-TIME $25-$35/hr, FULL-TIME $35-$50/hr"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Part-Time Tutor", "Full-Time Tutor"],
-  "slot_details": null,
   "additional_remarks": "An experienced PART-TIME or FULL-TIME tutor for this Marymount Convent School girl. She finds Chinese challenging and tends to get distracted, as she enjoys games. Family is looking for someone who can help her strengthen her vocabulary and work on comprehension. Although she attends a Chinese tuition center, family also needs a tutor to help her specifically with reviewing homework. Ideally, the session would include 20-30 minutes of schoolwork revision followed by expanding her Chinese conversation and vocabulary. Tutor to commit for at least 6 months."
 }
 
@@ -105,18 +83,7 @@ Agency fee: FIRST 2 REGULAR LESSONS' WORTH
 💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
 JSON: {
   "assignment_code": "240710CM7",
-  "is_tuition_centre": false,
-  "subjects": ["Engineering Drawing & Modelling and Materials Technology"],
-  "level": ["Polytechnic"],
-  "specific_student_level": null,
   "academic_display_text": "Poly Engineering Drawing & Modelling and Materials Technology",
-  "academic_signals": {
-    "year": null,
-    "stream": null,
-    "exam": null
-  },
-  "student_gender": ["Male"],
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -124,14 +91,7 @@ JSON: {
   "address": ["109A Edgedale Plains"],
   "postal_code": null,
   "nearest_mrt": ["Meridian", "Coral Edge"],
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "[1 lesson/week, 1.5 hrs/lesson]"
-  },
+  "lesson_schedule": ["[1 lesson/week, 1.5 hrs/lesson]"],
   "start_date": "ASAP",
   "time_availability": {
     "explicit": {
@@ -155,14 +115,10 @@ JSON: {
     "note": "on Fri after 7pm, Sat/Sun afternoon"
   },
   "rate": {
-    "min": 60,
-    "max": 150,
-    "rate_type": "hourly",
+    "min": null,
+    "max": null,
     "raw_text": "PART-TIME $60-$80/hr, FULL-TIME $80-$150/hr"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Part-Time Tutor", "Full-Time Tutor"],
-  "slot_details": null,
   "additional_remarks": "An experienced PART-TIME or FULL-TIME tutor for this NYP male student. Tutor to commit for at least 6 months."
 }
 
@@ -190,18 +146,7 @@ Agency fee: FIRST 2 REGULAR LESSONS' WORTH
 💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
 JSON: {
   "assignment_code": "242608CW11",
-  "is_tuition_centre": false,
-  "subjects": ["Physics", "Mathematics"],
-  "level": ["JC"],
-  "specific_student_level": ["JC 1"],
   "academic_display_text": "JC1 H2 Physics and H2 Maths",
-  "academic_signals": {
-    "year": null,
-    "stream": "H2",
-    "exam": null
-  },
-  "student_gender": ["Male"],
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -209,14 +154,7 @@ JSON: {
   "address": ["290B Bukit Batok Street 24"],
   "postal_code": null,
   "nearest_mrt": ["Bukit Batok"],
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 2,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "[1 lesson/week, 2 hrs/lesson]"
-  },
+  "lesson_schedule": ["[1 lesson/week, 2 hrs/lesson]"],
   "start_date": "12-Sep-24",
   "time_availability": {
     "explicit": {
@@ -240,15 +178,11 @@ JSON: {
     "note": "on Thurs 7.30pm, Sat 2pm-5pm"
   },
   "rate": {
-    "min": 50,
-    "max": 70,
-    "rate_type": "hourly",
+    "min": null,
+    "max": null,
     "raw_text": "PART-TIME $50-$60/hr, FULL-TIME $60-$70/hr"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Part-Time Tutor", "Full-Time Tutor"],
-  "slot_details": null,
-  "additional_remarks": "An experienced PART-TIME or FULL-TIME tutor with at least 8 years of experience for this JPJC male student. Looking for one tutor who can teach both subjects. Main focus is Physics. Tutor to commit for at least Till end 2025 (JC2). Tutor must be okay with paid trial lessons before committing long term."
+  "additional_remarks": "An experienced PART-TIME or FULL-TIME tutor with at least 8 years of experience for this JPJC male student. Looking for one tutor who can teach both subjects. Main focus is Physics, which he is having difficulty. He is ok in Maths, but may need guidance in some topics, which hopefully the tutor is able to guide him where needed. Tutor to commit for at least Till end 2025 (JC2). Tutor must be okay with paid trial lessons before committing long term."
 }
 
    
@@ -275,18 +209,7 @@ Agency fee: FIRST 2 REGULAR LESSONS' WORTH
 💎 Looking for Tutors or have a Tuition Job to post? With @sgTuitionsBot, press Start or send /start to begin!
 JSON: {
   "assignment_code": "242708CF5",
-  "is_tuition_centre": false,
-  "subjects": ["Chinese"],
-  "level": ["Preschool"],
-  "specific_student_level": ["K2"],
   "academic_display_text": "K2 Chinese",
-  "academic_signals": {
-    "year": null,
-    "stream": null,
-    "exam": null
-  },
-  "student_gender": ["Male"],
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -294,14 +217,7 @@ JSON: {
   "address": ["546 Sixth Avenue"],
   "postal_code": null,
   "nearest_mrt": ["Holland Village"],
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": null,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "[1 lesson/week, 1-1.5 hrs/lesson]"
-  },
+  "lesson_schedule": ["[1 lesson/week, 1-1.5 hrs/lesson]"],
   "start_date": "ASAP",
   "time_availability": {
     "explicit": {
@@ -327,11 +243,7 @@ JSON: {
   "rate": {
     "min": 65,
     "max": 70,
-    "rate_type": "hourly",
     "raw_text": "$65-$70/hr"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Ex-MOE Teacher", "Current MOE Teacher"],
-  "slot_details": null,
   "additional_remarks": "An experienced EX/CURRENT MOE teacher for this Mindchamps boy."
 }

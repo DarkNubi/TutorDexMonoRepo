@@ -9,7 +9,10 @@ from typing import Any, Dict, List, Tuple
 
 
 REQUIRED_FIELDS_V1 = ("subjects", "level")
-REQUIRED_FIELDS_V2 = ("subjects",)
+# V2 prompt/schema no longer reliably includes `subjects` (and the prompt requires other
+# fixed-shape fields like `time_availability`), so keep required fields empty here and
+# rely on the schedule/address checks below.
+REQUIRED_FIELDS_V2: Tuple[str, ...] = ()
 # Note: Address fields are optional for online-only lessons (learning_mode == "online").
 ADDRESS_FIELDS = ("address", "postal_code", "postal_code_estimated")
 # At least one of these should be present to avoid empty schedules.
@@ -51,6 +54,10 @@ def _is_online_only(learning_mode: Any) -> bool:
 
 def _v2_has_schedule_info(data: Dict[str, Any]) -> bool:
     lesson = data.get("lesson_schedule")
+    if isinstance(lesson, list):
+        for item in lesson:
+            if isinstance(item, str) and item.strip():
+                return True
     if isinstance(lesson, dict):
         for k in ("raw_text", "lessons_per_week", "hours_per_lesson", "total_hours_per_week", "subject_breakdown"):
             if _has_value(lesson.get(k)):
@@ -58,9 +65,22 @@ def _v2_has_schedule_info(data: Dict[str, Any]) -> bool:
 
     ta = data.get("time_availability")
     if isinstance(ta, dict):
-        for k in ("note", "explicit", "estimated"):
-            if _has_value(ta.get(k)):
-                return True
+        note = ta.get("note")
+        if isinstance(note, str) and note.strip():
+            return True
+
+        def _has_any_slots(obj: Any) -> bool:
+            if not isinstance(obj, dict):
+                return False
+            for day_val in obj.values():
+                if isinstance(day_val, list) and any(isinstance(x, str) and x.strip() for x in day_val):
+                    return True
+            return False
+
+        if _has_any_slots(ta.get("explicit")):
+            return True
+        if _has_any_slots(ta.get("estimated")):
+            return True
 
     return False
 

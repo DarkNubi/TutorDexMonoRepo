@@ -138,7 +138,7 @@ def _enqueue_enabled() -> bool:
 
 
 def _pipeline_version() -> str:
-    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "singlecall_v1").strip() or "singlecall_v1"
+    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
 
 
 def _enqueue_extraction_jobs(store: SupabaseRawStore, *, channel_link: str, message_ids: List[str], force: bool = False) -> None:

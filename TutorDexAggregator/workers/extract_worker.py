@@ -12,6 +12,7 @@ This is designed to be run continuously.
 """
 
 import json
+import hashlib
 import logging
 import os
 import sys
@@ -32,6 +33,10 @@ from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E4
 from supabase_env import resolve_supabase_url  # noqa: E402
 from supabase_persist import mark_assignment_closed, persist_assignment_to_supabase  # noqa: E402
 from schema_validation import validate_parsed_assignment  # noqa: E402
+from normalize import normalize_text  # noqa: E402
+from hard_validator import hard_validate  # noqa: E402
+from signals_builder import build_signals  # noqa: E402
+from extractors.time_availability import extract_time_availability  # noqa: E402
 
 try:
     import broadcast_assignments  # noqa: E402
@@ -51,7 +56,7 @@ except Exception:
 # --------------------------------------------------------------------------------------
 # Easy knobs (no required CLI args; runnable via VS Code “Run”)
 # --------------------------------------------------------------------------------------
-DEFAULT_PIPELINE_VERSION = "singlecall_v1"
+DEFAULT_PIPELINE_VERSION = "2026-01-02_det_time_v1"
 DEFAULT_CLAIM_BATCH_SIZE = 10
 DEFAULT_IDLE_SLEEP_SECONDS = 2.0
 DEFAULT_MAX_ATTEMPTS = 3
@@ -60,6 +65,10 @@ DEFAULT_BACKOFF_MAX_S = 60.0
 DEFAULT_QUEUE_HEARTBEAT_FILE = "monitoring/heartbeat_queue_worker.json"
 DEFAULT_QUEUE_HEARTBEAT_SECONDS = 30
 DEFAULT_STALE_PROCESSING_SECONDS = 900  # 15 minutes
+DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM = False
+DEFAULT_HARD_VALIDATE_MODE = "report"  # off|report|enforce
+DEFAULT_ENABLE_DETERMINISTIC_SIGNALS = True
+DEFAULT_USE_DETERMINISTIC_TIME = False
 
 # Best-effort side-effects (same behavior as legacy pipeline when enabled/configured).
 DEFAULT_ENABLE_BROADCAST = True
@@ -74,6 +83,10 @@ BACKOFF_MAX_S = DEFAULT_BACKOFF_MAX_S
 QUEUE_HEARTBEAT_FILE = DEFAULT_QUEUE_HEARTBEAT_FILE
 QUEUE_HEARTBEAT_SECONDS = DEFAULT_QUEUE_HEARTBEAT_SECONDS
 STALE_PROCESSING_SECONDS = DEFAULT_STALE_PROCESSING_SECONDS
+USE_NORMALIZED_TEXT_FOR_LLM = DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM
+HARD_VALIDATE_MODE = DEFAULT_HARD_VALIDATE_MODE
+ENABLE_DETERMINISTIC_SIGNALS = DEFAULT_ENABLE_DETERMINISTIC_SIGNALS
+USE_DETERMINISTIC_TIME = DEFAULT_USE_DETERMINISTIC_TIME
 
 
 setup_logging()
@@ -224,6 +237,31 @@ def _merge_meta(existing: Any, patch: Optional[Dict[str, Any]]) -> Optional[Dict
     merged = dict(base)
     merged.update(patch)
     return merged
+
+
+def _sha256(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def _hard_mode() -> str:
+    m = str(HARD_VALIDATE_MODE or "").strip().lower()
+    if m in {"off", "report", "enforce"}:
+        return m
+    return "report"
+
+
+def _signals_enabled() -> bool:
+    v = os.environ.get("ENABLE_DETERMINISTIC_SIGNALS")
+    if v is None:
+        return bool(ENABLE_DETERMINISTIC_SIGNALS)
+    return _truthy(v)
+
+
+def _deterministic_time_enabled() -> bool:
+    v = os.environ.get("USE_DETERMINISTIC_TIME")
+    if v is None:
+        return bool(USE_DETERMINISTIC_TIME)
+    return _truthy(v)
 
 
 def _requeue_stale_processing(url: str, key: str, *, older_than_s: int) -> Optional[int]:
@@ -451,6 +489,13 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt({"reason": "empty_text", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             return
 
+        normalized_text = normalize_text(raw_text)
+        norm_meta = {
+            "sha256": _sha256(normalized_text),
+            "chars": len(normalized_text),
+            "preview": normalized_text[:200] if normalized_text else "",
+        }
+
         is_comp, comp_details = is_compilation(raw_text)
         if is_comp:
             _mark_extraction(
@@ -458,7 +503,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 key,
                 extraction_id,
                 status="skipped",
-                meta_patch=_with_prompt({"reason": "compilation", "details": comp_details, "ts": _utc_now_iso()}),
+                meta_patch=_with_prompt({"reason": "compilation", "details": comp_details, "ts": _utc_now_iso(), "normalization": norm_meta}),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
@@ -466,11 +511,21 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
 
         # 1) Extract
         try:
-            parsed = extract_assignment_with_model(raw_text, chat=channel_link, cid=cid)
+            llm_input = normalized_text if bool(USE_NORMALIZED_TEXT_FOR_LLM) else raw_text
+            parsed = extract_assignment_with_model(llm_input, chat=channel_link, cid=cid)
             if not isinstance(parsed, dict):
                 parsed = {}
         except Exception as e:
-            _mark_extraction(url, key, extraction_id, status="failed", error={"error": str(e)}, meta_patch=_with_prompt({"stage": "llm", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(
+                url,
+                key,
+                extraction_id,
+                status="failed",
+                error={"error": str(e)},
+                meta_patch=_with_prompt({"stage": "llm", "ts": _utc_now_iso(), "normalization": norm_meta, "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw"}),
+                existing_meta=existing_meta,
+                llm_model=llm_model,
+            )
             return
 
         payload: Dict[str, Any] = {
@@ -493,6 +548,67 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             log_event(logger, logging.WARNING, "enrich_failed", error=str(e))
             payload = payload
 
+        # 2a) Deterministic time_availability (overwrites LLM output when enabled).
+        time_meta: Optional[Dict[str, Any]] = None
+        if _deterministic_time_enabled():
+            try:
+                parsed_obj = payload.get("parsed") or {}
+                det_ta, det_meta = extract_time_availability(raw_text=raw_text, normalized_text=normalized_text)
+                if isinstance(parsed_obj, dict):
+                    parsed_obj["time_availability"] = det_ta
+                    payload["parsed"] = parsed_obj
+                time_meta = {"ok": True}
+                if isinstance(det_meta, dict):
+                    time_meta.update(det_meta)
+            except Exception as e:
+                time_meta = {"ok": False, "error": str(e)}
+
+        # 2a) Hard validation (report/enforce; default report; never guesses/fixes)
+        hard_meta: Optional[Dict[str, Any]] = None
+        mode = _hard_mode()
+        if mode != "off":
+            try:
+                cleaned, violations = hard_validate(payload.get("parsed") or {}, raw_text=raw_text, normalized_text=normalized_text)
+                hard_meta = {
+                    "mode": mode,
+                    "violations_count": int(len(violations)),
+                    "violations": violations[:50],
+                }
+                if mode == "enforce":
+                    payload["parsed"] = cleaned
+            except Exception as e:
+                hard_meta = {"mode": mode, "error": str(e)}
+
+        # 2a.1) Deterministic signals (never breaks the job; stored in meta only)
+        signals_meta: Optional[Dict[str, Any]] = None
+        if _signals_enabled():
+            try:
+                signals, err = build_signals(parsed=payload.get("parsed") or {}, raw_text=raw_text, normalized_text=normalized_text)
+                if err:
+                    signals_meta = {"ok": False, "error": err}
+                else:
+                    signals_meta = {
+                        "ok": True,
+                        "signals": signals,
+                        "summary": {
+                            "subjects": len((signals or {}).get("subjects") or []) if isinstance(signals, dict) else 0,
+                            "levels": len((signals or {}).get("levels") or []) if isinstance(signals, dict) else 0,
+                            "academic_requests": len((signals or {}).get("academic_requests") or []) if isinstance((signals or {}).get("academic_requests"), list) else 0,
+                            "ambiguous": bool(((signals or {}).get("confidence_flags") or {}).get("ambiguous_academic_mapping")) if isinstance(signals, dict) else False,
+                        },
+                    }
+            except Exception as e:
+                signals_meta = {"ok": False, "error": str(e)}
+
+        # Make deterministic diagnostics available to downstream side-effects (persist/broadcast/DM),
+        # without mutating the stored canonical_json schema.
+        payload["meta"] = {
+            "normalization": norm_meta,
+            "time_deterministic": time_meta,
+            "hard_validation": hard_meta,
+            "signals": signals_meta,
+        }
+
         # 2b) Contract validation before persistence/broadcast
         ok_schema, schema_errors = validate_parsed_assignment(payload.get("parsed") or {})
         if not ok_schema:
@@ -502,7 +618,18 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 extraction_id,
                 status="failed",
                 error={"error": "validation_failed", "errors": schema_errors},
-                meta_patch=_with_prompt({"stage": "validation", "errors": schema_errors, "ts": _utc_now_iso()}),
+                meta_patch=_with_prompt(
+                    {
+                        "stage": "validation",
+                        "errors": schema_errors,
+                        "ts": _utc_now_iso(),
+                        "normalization": norm_meta,
+                        "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw",
+                        "time_deterministic": time_meta,
+                        "hard_validation": hard_meta,
+                        "signals": signals_meta,
+                    }
+                ),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
@@ -553,6 +680,11 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             "persist": persist_res,
             "broadcast": broadcast_res,
             "dm": dm_res,
+            "normalization": norm_meta,
+            "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw",
+            "time_deterministic": time_meta,
+            "hard_validation": hard_meta,
+            "signals": signals_meta,
         }
 
         ok = bool(persist_res.get("ok"))
@@ -575,6 +707,10 @@ def main() -> None:
 
     enable_broadcast = str(os.environ.get("EXTRACTION_WORKER_BROADCAST", "1" if DEFAULT_ENABLE_BROADCAST else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
     enable_dms = str(os.environ.get("EXTRACTION_WORKER_DMS", "1" if DEFAULT_ENABLE_DMS else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    use_norm = str(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM", "1" if DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    hard_mode = (os.environ.get("HARD_VALIDATE_MODE") or DEFAULT_HARD_VALIDATE_MODE).strip()
+    enable_signals = str(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS", "1" if DEFAULT_ENABLE_DETERMINISTIC_SIGNALS else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    use_det_time = str(os.environ.get("USE_DETERMINISTIC_TIME", "1" if DEFAULT_USE_DETERMINISTIC_TIME else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
 
     oneshot = str(os.environ.get("EXTRACTION_WORKER_ONESHOT", "")).strip().lower() in {"1", "true", "yes", "y", "on"}
     max_jobs = int(os.environ.get("EXTRACTION_WORKER_MAX_JOBS") or "0")
@@ -595,11 +731,15 @@ def main() -> None:
         heartbeat_file=hb_file,
         heartbeat_seconds=hb_seconds,
         stale_processing_s=stale_processing_s,
+        use_normalized_text_for_llm=bool(use_norm),
+        hard_validate_mode=(hard_mode or DEFAULT_HARD_VALIDATE_MODE),
+        enable_deterministic_signals=bool(enable_signals),
+        use_deterministic_time=bool(use_det_time),
         oneshot=oneshot,
         max_jobs=max_jobs or None,
     )
 
-    global ENABLE_BROADCAST, ENABLE_DMS, MAX_ATTEMPTS, BACKOFF_BASE_S, BACKOFF_MAX_S, QUEUE_HEARTBEAT_FILE, QUEUE_HEARTBEAT_SECONDS, STALE_PROCESSING_SECONDS
+    global ENABLE_BROADCAST, ENABLE_DMS, MAX_ATTEMPTS, BACKOFF_BASE_S, BACKOFF_MAX_S, QUEUE_HEARTBEAT_FILE, QUEUE_HEARTBEAT_SECONDS, STALE_PROCESSING_SECONDS, USE_NORMALIZED_TEXT_FOR_LLM, HARD_VALIDATE_MODE, ENABLE_DETERMINISTIC_SIGNALS, USE_DETERMINISTIC_TIME
     ENABLE_BROADCAST = enable_broadcast
     ENABLE_DMS = enable_dms
     MAX_ATTEMPTS = max(1, int(max_attempts))
@@ -608,6 +748,10 @@ def main() -> None:
     QUEUE_HEARTBEAT_FILE = hb_file or DEFAULT_QUEUE_HEARTBEAT_FILE
     QUEUE_HEARTBEAT_SECONDS = max(5, int(hb_seconds))
     STALE_PROCESSING_SECONDS = max(60, int(stale_processing_s))
+    USE_NORMALIZED_TEXT_FOR_LLM = bool(use_norm)
+    HARD_VALIDATE_MODE = (hard_mode or DEFAULT_HARD_VALIDATE_MODE).strip()
+    ENABLE_DETERMINISTIC_SIGNALS = bool(enable_signals)
+    USE_DETERMINISTIC_TIME = bool(use_det_time)
 
     hb_path = AGG_DIR / QUEUE_HEARTBEAT_FILE
     last_hb = 0.0
