@@ -1,32 +1,97 @@
-Next steps to implement taxonomy in the pipeline
+Next steps to implement subjects taxonomy v2 in the pipeline (end-to-end, drift-free)
 
-This folder currently contains:
-- subjects_taxonomy_v1.json: v1 taxonomy + deterministic mapping from current LLM subject strings + level.
-- MAPPING_RULES_v1.txt: human-readable rules and constraints.
+Single source of truth (authoritative):
+- shared/taxonomy/subjects/subjects_taxonomy_v2.json
+- shared/taxonomy/subjects/MAPPING_RULES_v2.md
+- shared/taxonomy/subjects/validate_taxonomy.py
 
-To wire this into TutorDex end-to-end:
+Derived (must match source exactly; do not edit by hand):
+- TutorDexAggregator/taxonomy/subjects_taxonomy_v2.json
+- TutorDexWebsite/src/generated/subjects_taxonomy_v2.json
+- Sync: python3 shared/taxonomy/subjects/sync_taxonomy_artifacts.py
 
-1) Database (Supabase)
-- Add columns to assignments:
-  - subjects_canonical text[] default '{}'
-  - subjects_general text[] default '{}'
-  - canonicalization_version int default 1
-  - optional: canonicalization_debug jsonb
-- Add GIN indexes on subjects_canonical and subjects_general for fast filtering.
+--------------------------------------------------------------------------------
+Phase 0: Repo exploration notes (required)
 
-2) Aggregator canonicalization layer
-- Add a small pure function:
-  - input: parsed.level, parsed.subjects[]
-  - output: subjects_canonical[], subjects_general[], canonicalization_version
-- Use the deterministic mapping table in subjects_taxonomy_v1.json.
-- For ambiguous cases, prefer *_UNKNOWN codes rather than guessing.
+- v1 taxonomy file: TutorDexAggregator/taxonomy/subjects_taxonomy_v1.json
+  - Imported by:
+    - TutorDexAggregator/taxonomy/canonicalize_subjects.py (v1 canonicalization)
+    - TutorDexAggregator/extractors/subjects_matcher.py (subject extraction into signals)
+- Website subject options were previously hardcoded in TutorDexWebsite/subjectsData.js
+- Deterministic academic extraction:
+  - TutorDexAggregator/signals_builder.py -> extractors/academic_requests.py -> extractors/subjects_matcher.py
+- TutorCity API handling:
+  - TutorDexAggregator/utilities/tutorcity_fetch.py maps TutorCity subject IDs -> labels
+- DB schema/functions live in:
+  - TutorDexAggregator/supabase sqls/ (schema + RPC functions used by backend/website)
 
-3) Persist
-- When upserting an assignment row, compute + write these new arrays.
-- Backfill existing open assignments using a batch script.
+--------------------------------------------------------------------------------
+Phase 1: Database (Supabase)
 
-4) Website UI (future)
-- Add a "General subject" filter using subjects_general.
-- Add an "Advanced subject" filter using subjects_canonical.
-- Use taxonomy labels to render clean user-facing names.
+1) Apply SQL migrations:
+- TutorDexAggregator/supabase sqls/2026-01-03_subjects_taxonomy_v2.sql
+  - Adds: assignments.subjects_canonical, assignments.subjects_general, canonicalization_version, canonicalization_debug
+  - Adds GIN indexes on subjects_canonical and subjects_general
+  - Updates RPCs to accept subject_general / subject_canonical filters and return v2 facet counts
+
+Rollback plan:
+- If you need to roll back the UI/backend quickly, clear subject filters in the UI and/or stop passing
+  subject_general/subject_canonical query params.
+- Aggregator persistence is resilient: if the DB schema is not updated yet, it retries without the new columns.
+
+--------------------------------------------------------------------------------
+Phase 2: Aggregator (TutorDexAggregator)
+
+What happens now (v2):
+- Subject matching stays deterministic (regex-based) and now emits:
+  - signals.subjects (display labels for debugging)
+  - signals.subjects_canonical[] (stable codes)
+  - signals.subjects_general[] (general category codes)
+  - signals.canonicalization_version (= taxonomy version)
+- Persistence writes these arrays into public.assignments.* taxonomy columns when available.
+- TutorCity API rows canonicalize from meta.source_mapped.level + meta.source_mapped.subjects (labels).
+
+Key files:
+- TutorDexAggregator/extractors/subjects_matcher.py (v2-driven matching)
+- TutorDexAggregator/extractors/academic_requests.py (adds v2 canonicalization fields)
+- TutorDexAggregator/supabase_persist.py (writes taxonomy columns; safe retry when DB not migrated)
+
+Backfill:
+- python utilities/backfill_subjects_taxonomy_v2.py --limit 2000 --status open
+
+--------------------------------------------------------------------------------
+Phase 3: Backend (TutorDexBackend)
+
+API additions (back-compat preserved):
+- /assignments and /assignments/facets accept:
+  - subject_general=<general_category_code>
+  - subject_canonical=<canonical_subject_code>
+- Legacy subject=<string> still works (matches signals_subjects and also matches new code arrays).
+
+--------------------------------------------------------------------------------
+Phase 4: Website (TutorDexWebsite)
+
+No hard-coded subject arrays:
+- Subject filter options + labels come from taxonomy v2 JSON:
+  - TutorDexWebsite/src/generated/subjects_taxonomy_v2.json (derived)
+  - TutorDexWebsite/src/taxonomy/subjectsTaxonomyV2.js (UI helpers)
+
+Filters:
+- General subject filter uses subjects_general codes.
+- Advanced subject filter uses subjects_canonical codes.
+- Cards display taxonomy-derived canonical labels when available.
+
+Tutor profile:
+- Selected tutor subjects are stored as canonical subject codes.
+
+--------------------------------------------------------------------------------
+Phase 5: Version bumps (safe process)
+
+When changing taxonomy mappings or adding codes:
+1) Edit shared/taxonomy/subjects/subjects_taxonomy_v2.json (do not rename codes; add/deprecate)
+2) Run validator + drift guard:
+   - python3 shared/taxonomy/subjects/validate_taxonomy.py --check-sync
+3) Sync derived artifacts:
+   - python3 shared/taxonomy/subjects/sync_taxonomy_artifacts.py
+4) Apply DB SQL if needed and backfill existing rows.
 

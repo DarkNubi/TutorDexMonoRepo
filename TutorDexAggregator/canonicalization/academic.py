@@ -76,18 +76,13 @@ _LEVEL_CANON: dict[str, str] = {
     "cambridge igcse": "IGCSE",
     "cigcse": "IGCSE",
     # Tertiary (kept for completeness; taxonomy may not map subjects for these)
-    "poly": "Polytechnic",
-    "polytechnic": "Polytechnic",
-    "uni": "University",
-    "university": "University",
-    "undergraduate": "University",
-    "undergrad": "University",
-    "degree": "University",
-    "postgraduate": "Postgraduate",
-    "postgrad": "Postgraduate",
-    "masters": "Postgraduate",
-    "master": "Postgraduate",
-    "phd": "Postgraduate",
+    "poly": "Diploma",
+    "polytechnic": "Diploma",
+    "uni": "Degree",
+    "university": "Degree",
+    "undergraduate": "Degree",
+    "undergrad": "Degree",
+    "degree": "Degree"
 }
 
 

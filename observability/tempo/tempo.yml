@@ -28,6 +28,4 @@ metrics_generator:
     path: /var/tempo/metrics
   processor:
     service_graphs:
-      enabled: true
     span_metrics:
-      enabled: true

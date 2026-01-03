@@ -63,7 +63,8 @@ def _payload_to_query(payload: Dict[str, Any]) -> Dict[str, Any]:
     subjects: Any = []
     levels: Any = []
     if isinstance(signals_obj, dict):
-        subjects = signals_obj.get("subjects") or []
+        # Prefer v2 taxonomy stable codes when present; fallback to legacy subject labels.
+        subjects = signals_obj.get("subjects_canonical") or signals_obj.get("subjects") or []
         levels = signals_obj.get("levels") or []
 
     lm_val = parsed.get("learning_mode") if isinstance(parsed, dict) else None

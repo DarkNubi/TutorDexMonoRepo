@@ -1,4 +1,3 @@
-import "../subjectsData.js";
 import { getCurrentUid, waitForAuth } from "../auth.js";
 import {
   getOpenAssignmentFacets,
@@ -9,16 +8,19 @@ import {
   trackEvent,
 } from "./backend.js";
 import { debugLog, isDebugEnabled } from "./debug.js";
+import { SPECIFIC_LEVELS } from "./academicEnums.js";
+import {
+  canonicalSubjectsForLevel,
+  generalCategoryOptions,
+  labelForCanonicalCode,
+  labelForGeneralCategoryCode,
+  labelsForCanonicalCodes,
+  labelsForGeneralCategoryCodes,
+} from "./taxonomy/subjectsTaxonomyV2.js";
 
 const BUILD_TIME = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
 
-const subjectsData = window.tutorDexSubjects || window.subjectsData || {};
-const specificLevelsData = window.tutorDexSpecificLevels || {};
-
-function getSubjectsKey(level) {
-  if (level === "IGCSE" || level === "IB") return "IB/IGCSE";
-  return level;
-}
+const specificLevelsData = SPECIFIC_LEVELS || {};
 
 // --- 3. RENDER FUNCTIONS ---
 const grid = document.getElementById("assignments-grid");
@@ -175,6 +177,8 @@ function mapAssignmentRow(row) {
 
   const externalId = toText(row?.external_id);
   const internalId = row?.id != null ? String(row.id).trim() : "";
+  const subjectsCanonical = toStringList(row?.subjects_canonical);
+  const subjectsGeneral = toStringList(row?.subjects_general);
 
   return {
     id: externalId || (internalId ? `DB-${internalId}` : ""),
@@ -184,6 +188,10 @@ function mapAssignmentRow(row) {
     signalsSubjects: toStringList(row?.signals_subjects),
     signalsLevels: toStringList(row?.signals_levels),
     signalsSpecificLevels: toStringList(row?.signals_specific_student_levels),
+    subjectsCanonical,
+    subjectsGeneral,
+    subjectsCanonicalLabels: labelsForCanonicalCodes(subjectsCanonical),
+    subjectsGeneralLabels: labelsForGeneralCategoryCodes(subjectsGeneral),
     location,
     region: toText(row?.region),
     nearestMrt: toText(row?.nearest_mrt_computed),
@@ -357,8 +365,14 @@ function renderCards(data) {
       details.appendChild(row);
     }
 
-    if (Array.isArray(job.signalsSubjects) && job.signalsSubjects.length) {
-      addDetail("fa-solid fa-book", job.signalsSubjects.slice(0, 5).join(" / "));
+    const subjectBits =
+      Array.isArray(job.subjectsCanonicalLabels) && job.subjectsCanonicalLabels.length
+        ? job.subjectsCanonicalLabels
+        : Array.isArray(job.signalsSubjects) && job.signalsSubjects.length
+          ? job.signalsSubjects
+          : [];
+    if (subjectBits.length) {
+      addDetail("fa-solid fa-book", subjectBits.slice(0, 5).join(" / "));
     }
     addDetail("fa-solid fa-location-dot", job.location);
     if (job.region) {
@@ -488,31 +502,41 @@ function updateFilterSpecificLevels() {
 
 function updateFilterSubjects() {
   const level = document.getElementById("filter-level").value;
-  const subjectSelect = document.getElementById("filter-subject");
-  const subjectsKey = getSubjectsKey(level);
+  const generalSelect = document.getElementById("filter-subject-general");
+  const canonicalSelect = document.getElementById("filter-subject-canonical");
 
-  subjectSelect.innerHTML = '<option value="">All Subjects</option>';
+  if (generalSelect) generalSelect.innerHTML = '<option value="">All General Subjects</option>';
+  if (canonicalSelect) canonicalSelect.innerHTML = '<option value="">All Advanced Subjects</option>';
 
   // Prefer server facets when available (accurate), fallback to static list.
-  const facetOptions = Array.isArray(lastFacets?.subjects) ? lastFacets.subjects : null;
-  if (facetOptions && facetOptions.length) {
-    facetOptions.forEach((item) => {
-      const name = String(item?.value || "").trim();
-      if (!name) return;
+  const facetGeneral = Array.isArray(lastFacets?.subjects_general) ? lastFacets.subjects_general : null;
+  const facetCanonical = Array.isArray(lastFacets?.subjects_canonical) ? lastFacets.subjects_canonical : null;
+
+  if (generalSelect) {
+    const items = facetGeneral && facetGeneral.length ? facetGeneral : generalCategoryOptions().map((c) => ({ value: c.code, count: null }));
+    items.forEach((item) => {
+      const code = String(item?.value || "").trim();
+      if (!code) return;
+      const label = labelForGeneralCategoryCode(code) || code;
       const option = document.createElement("option");
-      option.value = name;
-      option.text = item?.count ? `${name} (${item.count})` : name;
-      subjectSelect.appendChild(option);
+      option.value = code;
+      option.text = item?.count ? `${label} (${item.count})` : label;
+      generalSelect.appendChild(option);
     });
-    return;
   }
 
-  if (subjectsData[subjectsKey]) {
-    subjectsData[subjectsKey].forEach((sub) => {
+  if (canonicalSelect) {
+    const lvl = String(level || "").trim();
+    const fallback = lvl ? canonicalSubjectsForLevel(lvl) : [];
+    const items = facetCanonical && facetCanonical.length ? facetCanonical : fallback.map((s) => ({ value: s.code, count: null }));
+    items.forEach((item) => {
+      const code = String(item?.value || "").trim();
+      if (!code) return;
+      const label = labelForCanonicalCode(code) || code;
       const option = document.createElement("option");
-      option.value = sub;
-      option.text = sub;
-      subjectSelect.appendChild(option);
+      option.value = code;
+      option.text = item?.count ? `${label} (${item.count})` : label;
+      canonicalSelect.appendChild(option);
     });
   }
 }
@@ -521,7 +545,8 @@ function collectFiltersFromUI() {
   return {
     level: (document.getElementById("filter-level")?.value || "").trim() || null,
     specificStudentLevel: (document.getElementById("filter-specific-level")?.value || "").trim() || null,
-    subject: (document.getElementById("filter-subject")?.value || "").trim() || null,
+    subjectGeneral: (document.getElementById("filter-subject-general")?.value || "").trim() || null,
+    subjectCanonical: (document.getElementById("filter-subject-canonical")?.value || "").trim() || null,
     location: (document.getElementById("filter-location")?.value || "").trim() || null,
     sort: (document.getElementById("filter-sort")?.value || "").trim() || "newest",
     minRate: (document.getElementById("filter-rate")?.value || "").trim() || null,
@@ -533,14 +558,16 @@ async function applyFilters() {
     // Legacy fallback: filter only the currently loaded in-memory list.
     const level = document.getElementById("filter-level").value;
     const specificLevel = document.getElementById("filter-specific-level").value;
-    const subject = document.getElementById("filter-subject").value;
+    const subjectGeneral = document.getElementById("filter-subject-general").value;
+    const subjectCanonical = document.getElementById("filter-subject-canonical").value;
     const location = document.getElementById("filter-location").value;
     const minRate = document.getElementById("filter-rate").value;
 
     const filtered = allAssignments.filter((job) => {
       if (level && !(Array.isArray(job.signalsLevels) && job.signalsLevels.includes(level))) return false;
       if (specificLevel && !(Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.includes(specificLevel))) return false;
-      if (subject && !(Array.isArray(job.signalsSubjects) && job.signalsSubjects.includes(subject))) return false;
+      if (subjectGeneral && !(Array.isArray(job.subjectsGeneral) && job.subjectsGeneral.includes(subjectGeneral))) return false;
+      if (subjectCanonical && !(Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.includes(subjectCanonical))) return false;
       if (location) {
         const haystack = String(job.location || "").toLowerCase();
         const needle = String(location).toLowerCase();
@@ -563,7 +590,10 @@ function clearFilters() {
   document.getElementById("filter-specific-level").value = "";
   document.getElementById("filter-specific-level").innerHTML = '<option value="">All Specific Levels</option>';
   document.getElementById("filter-specific-level").disabled = true;
-  document.getElementById("filter-subject").innerHTML = '<option value="">All Subjects</option>';
+  const g = document.getElementById("filter-subject-general");
+  if (g) g.innerHTML = '<option value="">All General Subjects</option>';
+  const c = document.getElementById("filter-subject-canonical");
+  if (c) c.innerHTML = '<option value="">All Advanced Subjects</option>';
   document.getElementById("filter-location").value = "";
   const sortEl = document.getElementById("filter-sort");
   if (sortEl) sortEl.value = "newest";
@@ -617,7 +647,7 @@ function formatAssignmentsLoadError(err) {
 
   // Backend exists but can't serve because DB functions weren't applied.
   if (msg.includes("list_assignments_failed") || msg.includes("facets_failed")) {
-    return "Assignments unavailable: backend is up, but the Supabase RPC functions for pagination/facets are missing or failing. Apply the SQL in `TutorDexAggregator/supabase sqls/2025-12-25_assignments_facets_pagination.sql` and try again.";
+    return "Assignments unavailable: backend is up, but the Supabase RPC functions for pagination/facets are missing or failing. Apply `TutorDexAggregator/supabase sqls/2025-12-25_assignments_facets_pagination.sql`, `TutorDexAggregator/supabase sqls/2025-12-29_assignments_distance_sort.sql`, and (for v2 subjects) `TutorDexAggregator/supabase sqls/2026-01-03_subjects_taxonomy_v2.sql`.";
   }
 
   if (msg.includes("supabase_disabled")) {
@@ -701,7 +731,8 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       cursorDistanceKm: append && sort === "distance" ? nextCursorDistanceKm : null,
       level: filters.level,
       specificStudentLevel: filters.specificStudentLevel,
-      subject: filters.subject,
+      subjectGeneral: filters.subjectGeneral,
+      subjectCanonical: filters.subjectCanonical,
       location: filters.location,
       minRate: Number.isFinite(minRate) ? minRate : null,
     });
@@ -762,7 +793,7 @@ async function prepopulateFiltersFromProfile() {
     if (!profile) return;
 
     const level = Array.isArray(profile.levels) ? profile.levels[0] : "";
-    const subject = Array.isArray(profile.subjects) ? profile.subjects[0] : "";
+    const subjectCanonical = Array.isArray(profile.subjects) ? profile.subjects[0] : "";
     const lat = profile?.postal_lat;
     const lon = profile?.postal_lon;
     hasPostalCoords = typeof lat === "number" && Number.isFinite(lat) && typeof lon === "number" && Number.isFinite(lon);
@@ -774,11 +805,12 @@ async function prepopulateFiltersFromProfile() {
       updateFilterSubjects();
     }
 
-    if (subject) {
-      document.getElementById("filter-subject").value = subject;
+    if (subjectCanonical) {
+      const el = document.getElementById("filter-subject-canonical");
+      if (el) el.value = subjectCanonical;
     }
 
-    if (level || subject) applyFilters();
+    if (level || subjectCanonical) applyFilters();
   } catch (err) {
     console.error("Failed to prepopulate filters from profile.", err);
   }

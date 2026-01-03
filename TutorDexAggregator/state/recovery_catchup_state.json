@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "created_at": "2026-01-03T05:19:52.433917+00:00",
+  "created_at": "2026-01-03T19:21:42.960964+00:00",
   "pipeline_version": "2026-01-02_det_time_v1",
-  "target_iso": "2026-01-03T05:17:52.433917+00:00",
+  "target_iso": "2026-01-03T19:19:42.960964+00:00",
   "cursors": {
-    "t.me/TuitionAssignmentsSG": "2026-01-03T05:17:52.433917+00:00",
-    "t.me/tuitionassignmentsttrsg": "2026-01-03T05:17:52.433917+00:00",
-    "t.me/TutorAnywhr": "2026-01-03T05:17:52.433917+00:00",
-    "t.me/elitetutorsg": "2026-01-03T05:17:52.433917+00:00",
-    "t.me/FTassignments": "2026-01-03T05:17:52.433917+00:00",
-    "t.me/TutorNowAssignments": "2026-01-03T05:17:52.433917+00:00"
+    "t.me/TuitionAssignmentsSG": "2026-01-03T17:59:21+00:00",
+    "t.me/tuitionassignmentsttrsg": "2026-01-03T19:11:16+00:00",
+    "t.me/TutorAnywhr": "2026-01-03T08:24:42+00:00",
+    "t.me/elitetutorsg": "2026-01-03T19:19:42.960964+00:00",
+    "t.me/FTassignments": "2026-01-03T19:19:42.960964+00:00",
+    "t.me/TutorNowAssignments": "2026-01-03T19:19:42.960964+00:00"
   },
-  "status": "ok",
-  "last_update_at": "2026-01-03T05:43:00.472831+00:00",
+  "status": "running",
+  "last_update_at": "2026-01-03T19:21:44.355195+00:00",
   "errors": []
 }

@@ -91,6 +91,12 @@ create table if not exists public.assignments (
   signals_academic_requests jsonb,
   signals_confidence_flags jsonb,
 
+  -- v2 subject taxonomy (stable codes + general rollups)
+  subjects_canonical text[] not null default '{}',
+  subjects_general text[] not null default '{}',
+  canonicalization_version int not null default 2,
+  canonicalization_debug jsonb,
+
   canonical_json jsonb,
   meta jsonb,
   parse_quality_score int not null default 0,
@@ -213,6 +219,18 @@ alter table public.assignments
 
 alter table public.assignments
   add column if not exists signals_confidence_flags jsonb;
+
+alter table public.assignments
+  add column if not exists subjects_canonical text[];
+
+alter table public.assignments
+  add column if not exists subjects_general text[];
+
+alter table public.assignments
+  add column if not exists canonicalization_version integer;
+
+alter table public.assignments
+  add column if not exists canonicalization_debug jsonb;
 
 alter table public.assignments
   add column if not exists canonical_json jsonb;

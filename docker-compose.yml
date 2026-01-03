@@ -10,6 +10,7 @@ services:
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
+      - ./shared:/app/shared:ro
     environment:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
@@ -31,6 +32,7 @@ services:
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
+      - ./shared:/app/shared:ro
     environment:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
@@ -114,6 +116,10 @@ services:
           sleep ${FRESHNESS_TIERS_INTERVAL_SECONDS:-3600}
         done
     restart: unless-stopped
+    volumes:
+      - ./TutorDexAggregator:/app
+      - ./TutorDexAggregator/logs:/app/logs
+      - ./shared:/app/shared:ro
     environment:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
@@ -142,6 +148,7 @@ services:
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
+      - ./shared:/app/shared:ro
     environment:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
@@ -208,6 +215,8 @@ services:
   promtail:
     image: grafana/promtail:2.9.4
     command: ["-config.file=/etc/promtail/promtail-config.yml"]
+    environment:
+      DOCKER_API_VERSION: "1.44"
     volumes:
       - ./observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -237,12 +246,21 @@ services:
       - loki
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
     restart: unless-stopped
     privileged: true
+    command:
+      - "-docker_only"
+      # Docker Desktop on WSL doesn't expose the engine's overlayfs layerdb on the host filesystem,
+      # so filesystem/disk metrics can be noisy or inaccurate; disable them to avoid warnings.
+      - "-disable_metrics=advtcp,cpu_topology,cpuset,disk,diskIO,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp"
+    environment:
+      # Docker Desktop Engine (29.x) enforces a minimum API version.
+      DOCKER_API_VERSION: "1.44"
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:rw
+      - /etc/machine-id:/etc/machine-id:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     networks:
@@ -255,11 +273,14 @@ services:
       - "--path.procfs=/host/proc"
       - "--path.sysfs=/host/sys"
       - "--path.rootfs=/rootfs"
-      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|run|mnt/wsl)($$|/)"
+      - "--no-collector.netstat"
+      - "--no-collector.softnet"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      - /run/udev/data:/run/udev/data:ro
     networks:
       - tutordex
 
@@ -293,6 +314,8 @@ services:
       - ./observability/otel-collector/config.yml:/etc/otelcol/config.yml:ro
     networks:
       - tutordex
+    depends_on:
+      - tempo
 
 networks:
   tutordex:

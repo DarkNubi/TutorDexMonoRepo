@@ -10,17 +10,14 @@ clients:
 
 scrape_configs:
   - job_name: docker
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
     relabel_configs:
-      - source_labels: ["__meta_docker_container_name"]
-        regex: "/(.*)"
+      - source_labels: ["__path__"]
+        regex: ".*/containers/([0-9a-f]{64})/.*"
         target_label: "container"
-      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
-        target_label: "compose_service"
-      - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
-        target_label: "compose_project"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          __path__: /var/lib/docker/containers/*/*-json.log
     pipeline_stages:
       - docker: {}
       - json:
@@ -40,4 +37,3 @@ scrape_configs:
           channel:
           pipeline_version:
           schema_version:
-          compose_service:
