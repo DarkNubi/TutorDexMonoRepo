@@ -1,14 +1,13 @@
 services:
-  ingest:
+  collector-tail:
     build: .
     env_file:
       - .env
-    command: ["python", "runner.py", "start"]
+    command: ["python", "collector.py", "tail"]
     restart: unless-stopped
     volumes:
       - ./:/app
       - ./logs:/app/logs
-      - ./monitoring:/app/monitoring
     # Expose if you run a local LLM server inside this compose; otherwise it will reach host/localhost by default.
     # network_mode: host
 
@@ -19,21 +18,7 @@ services:
     command: ["python", "workers/extract_worker.py"]
     restart: unless-stopped
     depends_on:
-      - ingest
+      - collector-tail
     volumes:
       - ./:/app
-      - ./logs:/app/logs
-      - ./monitoring:/app/monitoring
-
-  monitor:
-    build: .
-    env_file:
-      - .env
-    command: ["python", "monitoring/monitor.py"]
-    restart: unless-stopped
-    depends_on:
-      - ingest
-    volumes:
-      - ./:/app
-      - ./monitoring:/app/monitoring
       - ./logs:/app/logs

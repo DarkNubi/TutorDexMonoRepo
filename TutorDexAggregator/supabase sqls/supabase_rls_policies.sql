@@ -15,13 +15,14 @@ alter table public.telegram_extractions enable row level security;
 alter table public.ingestion_runs enable row level security;
 alter table public.ingestion_run_progress enable row level security;
 
--- 2) Public read access for open assignments (website uses anon key)
-drop policy if exists "public_read_open_assignments" on public.assignments;
-create policy "public_read_open_assignments"
+-- 2) Assignments: no anonymous access (website is backend-only)
+drop policy if exists "no_assignments_access" on public.assignments;
+create policy "no_assignments_access"
 on public.assignments
-for select
+for all
 to anon
-using (status = 'open');
+using (false)
+with check (false);
 
 -- 3) Agencies: website doesn't need direct access (lock down)
 drop policy if exists "no_agencies_access" on public.agencies;

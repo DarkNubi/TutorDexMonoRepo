@@ -125,23 +125,31 @@ def _val_for_csv(value: Any) -> str:
 FIELDS: List[Tuple[str, str]] = [
     # (field, type)
     ("assignment_code", "str"),
-    ("is_tuition_centre", "bool"),
-    ("subjects", "list"),
-    ("level", "list"),
-    ("specific_student_level", "list"),
-    ("learning_mode", "list"),
+    ("academic_display_text", "str"),
+    ("learning_mode.mode", "str"),
+    ("learning_mode.raw_text", "str"),
     ("address", "list"),
     ("postal_code", "list"),
-    ("postal_code_estimated", "list"),
     ("nearest_mrt", "list"),
-    ("frequency", "str"),
-    ("duration", "str"),
-    ("hourly_rate", "str"),
-    ("rate_min", "num"),
-    ("rate_max", "num"),
-    ("student_gender", "list"),
-    ("tutor_gender", "list"),
+    ("lesson_schedule", "list"),
+    ("start_date", "str"),
+    ("time_availability.note", "str"),
+    ("time_availability.explicit", "json"),
+    ("time_availability.estimated", "json"),
+    ("rate.min", "num"),
+    ("rate.max", "num"),
+    ("rate.raw_text", "str"),
+    ("additional_remarks", "str"),
 ]
+
+
+def _get_path(obj: Any, path: str) -> Any:
+    cur: Any = obj
+    for part in str(path).split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    return cur
 
 
 def _normalize_field(field_type: str, value: Any) -> Any:
@@ -151,6 +159,12 @@ def _normalize_field(field_type: str, value: Any) -> Any:
         return _normalize_num(value)
     if field_type == "list":
         return _normalize_list(value)
+    if field_type == "json":
+        if value is None:
+            return None
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+        return _normalize_str(value)
     if field_type == "bool":
         if value is None:
             return None
@@ -260,8 +274,8 @@ def compare_runs(cfg: CompareConfig) -> Dict[str, Any]:
             a_json = (a_by_raw[rid].get("canonical_json") or {}) if isinstance(a_by_raw[rid].get("canonical_json"), dict) else {}
             b_json = (b_by_raw[rid].get("canonical_json") or {}) if isinstance(b_by_raw[rid].get("canonical_json"), dict) else {}
 
-            va = _normalize_field(field_type, a_json.get(field))
-            vb = _normalize_field(field_type, b_json.get(field))
+            va = _normalize_field(field_type, _get_path(a_json, field))
+            vb = _normalize_field(field_type, _get_path(b_json, field))
 
             if _present(va):
                 present_a += 1
@@ -580,8 +594,8 @@ def write_reports(out_dir: Path, cfg: CompareConfig, result: Dict[str, Any]) -> 
             }
 
             for field, field_type in FIELDS:
-                va = _normalize_field(field_type, a_json.get(field))
-                vb = _normalize_field(field_type, b_json.get(field))
+                va = _normalize_field(field_type, _get_path(a_json, field))
+                vb = _normalize_field(field_type, _get_path(b_json, field))
                 row[f"{field}_a"] = _val_for_csv(va)
                 row[f"{field}_b"] = _val_for_csv(vb)
                 row[f"{field}_eq"] = "1" if va == vb else "0"

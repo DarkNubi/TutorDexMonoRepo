@@ -4,7 +4,6 @@ Run a single sample post through the local extraction pipeline (NO Supabase).
 This script is meant for fast iteration/debugging:
 - normalize (always; raw text remains the source of truth)
 - LLM extract (or mock via `LLM_MOCK_OUTPUT_FILE`)
-- enrich (postal estimation etc.)
 - hard validate (off|report|enforce)
 - deterministic signals (meta only)
 
@@ -30,7 +29,7 @@ AGG_DIR = Path(__file__).resolve().parents[1]
 if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
-from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta, process_parsed_payload  # noqa: E402
+from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta  # noqa: E402
 from hard_validator import hard_validate  # noqa: E402
 from normalize import normalize_text  # noqa: E402
 from signals_builder import build_signals  # noqa: E402
@@ -57,6 +56,58 @@ def _safe_str(value: Any) -> Optional[str]:
         return None
     s = str(value).strip()
     return s or None
+
+
+def _extract_sg_postal_codes(text: str) -> Optional[list[str]]:
+    import re
+
+    try:
+        codes = re.findall(r"\b(\d{6})\b", str(text or ""))
+    except Exception:
+        codes = []
+    seen = set()
+    out: list[str] = []
+    for c in codes:
+        if c in seen:
+            continue
+        seen.add(c)
+        out.append(c)
+    return out or None
+
+
+def _coerce_list_str(value: Any) -> Optional[list[str]]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        return [s] if s else None
+    if isinstance(value, (list, tuple)):
+        out: list[str] = []
+        for x in value:
+            out.extend(_coerce_list_str(x) or [])
+        seen = set()
+        uniq: list[str] = []
+        for s in out:
+            ss = str(s).strip()
+            if not ss or ss in seen:
+                continue
+            seen.add(ss)
+            uniq.append(ss)
+        return uniq or None
+    s2 = str(value).strip()
+    return [s2] if s2 else None
+
+
+def _fill_postal_code(parsed: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
+    if not isinstance(parsed, dict):
+        return {}
+    existing = _coerce_list_str(parsed.get("postal_code"))
+    if existing:
+        parsed["postal_code"] = existing
+        return parsed
+    codes = _extract_sg_postal_codes(raw_text)
+    parsed["postal_code"] = codes
+    return parsed
 
 
 def run_once(
@@ -99,9 +150,10 @@ def run_once(
     parsed = extract_assignment_with_model(llm_input, chat=str(chat), cid=cid) or {}
     payload: Dict[str, Any] = {"cid": cid, "raw_text": raw_text, "parsed": parsed}
 
-    # Enrich (postal_code_estimated etc.)
+    # Deterministic postal-code fill (strict: only explicit 6-digit tokens in the post).
     try:
-        payload = process_parsed_payload(payload, False)
+        if isinstance(payload.get("parsed"), dict):
+            payload["parsed"] = _fill_postal_code(payload["parsed"], raw_text)
     except Exception:
         pass
 

@@ -15,6 +15,7 @@ import json
 import hashlib
 import logging
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -28,7 +29,7 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from compilation_detection import is_compilation  # noqa: E402
-from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta, process_parsed_payload  # noqa: E402
+from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta  # noqa: E402
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
 from supabase_env import resolve_supabase_url  # noqa: E402
 from supabase_persist import mark_assignment_closed, persist_assignment_to_supabase  # noqa: E402
@@ -37,6 +38,32 @@ from normalize import normalize_text  # noqa: E402
 from hard_validator import hard_validate  # noqa: E402
 from signals_builder import build_signals  # noqa: E402
 from extractors.time_availability import extract_time_availability  # noqa: E402
+from extractors.postal_code_estimated import estimate_postal_codes  # noqa: E402
+from observability_http import start_observability_http_server  # noqa: E402
+from otel import setup_otel  # noqa: E402
+from observability_metrics import (  # noqa: E402
+    assignment_quality_inconsistency_total,
+    assignment_quality_missing_field_total,
+    queue_failed,
+    queue_ok,
+    queue_oldest_pending_age_seconds,
+    queue_oldest_processing_age_seconds,
+    queue_pending,
+    queue_processing,
+    set_version_metrics,
+    worker_job_latency_seconds,
+    worker_job_stage_latency_seconds,
+    worker_jobs_processed_total,
+    worker_llm_call_latency_seconds,
+    worker_llm_requests_total,
+    worker_llm_fail_total,
+    worker_requeued_stale_jobs_total,
+    worker_supabase_fail_total,
+    worker_supabase_latency_seconds,
+    worker_supabase_requests_total,
+    worker_parse_failure_total,
+    worker_parse_success_total,
+)
 
 try:
     import broadcast_assignments  # noqa: E402
@@ -62,13 +89,12 @@ DEFAULT_IDLE_SLEEP_SECONDS = 2.0
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_BACKOFF_BASE_S = 1.5
 DEFAULT_BACKOFF_MAX_S = 60.0
-DEFAULT_QUEUE_HEARTBEAT_FILE = "monitoring/heartbeat_queue_worker.json"
-DEFAULT_QUEUE_HEARTBEAT_SECONDS = 30
 DEFAULT_STALE_PROCESSING_SECONDS = 900  # 15 minutes
 DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM = False
 DEFAULT_HARD_VALIDATE_MODE = "report"  # off|report|enforce
 DEFAULT_ENABLE_DETERMINISTIC_SIGNALS = True
-DEFAULT_USE_DETERMINISTIC_TIME = False
+DEFAULT_USE_DETERMINISTIC_TIME = True
+DEFAULT_ENABLE_POSTAL_CODE_ESTIMATED = True
 
 # Best-effort side-effects (same behavior as legacy pipeline when enabled/configured).
 DEFAULT_ENABLE_BROADCAST = True
@@ -80,17 +106,20 @@ ENABLE_DMS = DEFAULT_ENABLE_DMS
 MAX_ATTEMPTS = DEFAULT_MAX_ATTEMPTS
 BACKOFF_BASE_S = DEFAULT_BACKOFF_BASE_S
 BACKOFF_MAX_S = DEFAULT_BACKOFF_MAX_S
-QUEUE_HEARTBEAT_FILE = DEFAULT_QUEUE_HEARTBEAT_FILE
-QUEUE_HEARTBEAT_SECONDS = DEFAULT_QUEUE_HEARTBEAT_SECONDS
 STALE_PROCESSING_SECONDS = DEFAULT_STALE_PROCESSING_SECONDS
 USE_NORMALIZED_TEXT_FOR_LLM = DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM
 HARD_VALIDATE_MODE = DEFAULT_HARD_VALIDATE_MODE
 ENABLE_DETERMINISTIC_SIGNALS = DEFAULT_ENABLE_DETERMINISTIC_SIGNALS
 USE_DETERMINISTIC_TIME = DEFAULT_USE_DETERMINISTIC_TIME
+ENABLE_POSTAL_CODE_ESTIMATED = DEFAULT_ENABLE_POSTAL_CODE_ESTIMATED
 
 
 setup_logging()
 logger = logging.getLogger("extract_worker")
+_V = set_version_metrics(component="worker")
+setup_otel(service_name=os.environ.get("OTEL_SERVICE_NAME") or "tutordex-aggregator-worker")
+_DEFAULT_LOG_CTX = bind_log_context(component="worker", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version)
+_DEFAULT_LOG_CTX.__enter__()
 
 _CHANNEL_CACHE: Dict[str, Dict[str, Any]] = {}
 
@@ -148,27 +177,55 @@ def _headers(key: str) -> Dict[str, str]:
 
 
 def _rpc(url: str, key: str, fn: str, body: Dict[str, Any], *, timeout: int = 30) -> Any:
-    resp = requests.post(f"{url}/rest/v1/rpc/{fn}", headers=_headers(key), json=body, timeout=timeout)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"rpc {fn} failed status={resp.status_code} body={resp.text[:300]}")
+    t0 = time.perf_counter()
+    op = f"rpc:{fn}"
     try:
-        return resp.json()
+        worker_supabase_requests_total.labels(operation=op, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
     except Exception:
-        return None
+        pass
+    try:
+        resp = requests.post(f"{url}/rest/v1/rpc/{fn}", headers=_headers(key), json=body, timeout=timeout)
+        if resp.status_code >= 400:
+            raise RuntimeError(f"rpc {fn} failed status={resp.status_code} body={resp.text[:300]}")
+        try:
+            return resp.json()
+        except Exception:
+            return None
+    finally:
+        try:
+            worker_supabase_latency_seconds.labels(operation=op, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                max(0.0, time.perf_counter() - t0)
+            )
+        except Exception:
+            pass
 
 
 def _get_one(url: str, key: str, table: str, query: str, *, timeout: int = 30) -> Optional[Dict[str, Any]]:
-    resp = requests.get(f"{url}/rest/v1/{table}?{query}", headers=_headers(key), timeout=timeout)
-    if resp.status_code >= 400:
-        return None
+    t0 = time.perf_counter()
+    op = f"get:{table}"
     try:
-        data = resp.json()
+        worker_supabase_requests_total.labels(operation=op, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
     except Exception:
+        pass
+    try:
+        resp = requests.get(f"{url}/rest/v1/{table}?{query}", headers=_headers(key), timeout=timeout)
+        if resp.status_code >= 400:
+            return None
+        try:
+            data = resp.json()
+        except Exception:
+            return None
+        if isinstance(data, list) and data:
+            row = data[0]
+            return row if isinstance(row, dict) else None
         return None
-    if isinstance(data, list) and data:
-        row = data[0]
-        return row if isinstance(row, dict) else None
-    return None
+    finally:
+        try:
+            worker_supabase_latency_seconds.labels(operation=op, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                max(0.0, time.perf_counter() - t0)
+            )
+        except Exception:
+            pass
 
 
 def _count_from_range(rng: Optional[str]) -> Optional[int]:
@@ -211,20 +268,22 @@ def _oldest_created_age_s(url: str, key: str, status: str) -> Optional[float]:
         return None
 
 
-def _write_queue_heartbeat(path: Path, payload: Dict[str, Any]) -> None:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
-        tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        os.replace(str(tmp), str(path))
-    except Exception:
-        logger.debug("queue_heartbeat_write_failed", exc_info=True)
-
-
 def _patch(url: str, key: str, table: str, where: str, body: Dict[str, Any], *, timeout: int = 30) -> bool:
+    t0 = time.perf_counter()
+    op = f"patch:{table}"
+    try:
+        worker_supabase_requests_total.labels(operation=op, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+    except Exception:
+        pass
     h = dict(_headers(key))
     h["prefer"] = "return=minimal"
     resp = requests.patch(f"{url}/rest/v1/{table}?{where}", headers=h, json=body, timeout=timeout)
+    try:
+        worker_supabase_latency_seconds.labels(operation=op, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+            max(0.0, time.perf_counter() - t0)
+        )
+    except Exception:
+        pass
     return resp.status_code < 400
 
 
@@ -241,6 +300,134 @@ def _merge_meta(existing: Any, patch: Optional[Dict[str, Any]]) -> Optional[Dict
 
 def _sha256(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def _extract_sg_postal_codes(text: str) -> List[str]:
+    try:
+        codes = re.findall(r"\b(\d{6})\b", str(text or ""))
+    except Exception:
+        codes = []
+    # de-dup while preserving order
+    seen = set()
+    out: List[str] = []
+    for c in codes:
+        if c in seen:
+            continue
+        seen.add(c)
+        out.append(c)
+    return out
+
+
+def _llm_model_name() -> str:
+    return (os.environ.get("LLM_MODEL_NAME") or "").strip() or "unknown"
+
+
+def _classify_llm_error(err: Exception) -> str:
+    s = str(err or "").lower()
+    if "timeout" in s or "timed out" in s:
+        return "llm_timeout"
+    if "connection" in s or "connection refused" in s or "failed to establish a new connection" in s:
+        return "llm_connection"
+    if "failed to parse json" in s or "json parsing" in s or "json parse" in s:
+        return "llm_invalid_json"
+    if "failed to parse llm response" in s or "no valid text found" in s:
+        return "llm_bad_response"
+    return "llm_error"
+
+
+def _inc_quality_missing(field: str, channel: str) -> None:
+    try:
+        assignment_quality_missing_field_total.labels(
+            field=field,
+            channel=channel,
+            pipeline_version=_V.pipeline_version,
+            schema_version=_V.schema_version,
+        ).inc()
+    except Exception:
+        pass
+
+
+def _inc_quality_inconsistency(kind: str, channel: str) -> None:
+    try:
+        assignment_quality_inconsistency_total.labels(
+            kind=kind,
+            channel=channel,
+            pipeline_version=_V.pipeline_version,
+            schema_version=_V.schema_version,
+        ).inc()
+    except Exception:
+        pass
+
+
+def _quality_checks(*, parsed: Dict[str, Any], signals: Optional[Dict[str, Any]], channel: str) -> None:
+    p = parsed if isinstance(parsed, dict) else {}
+    s = signals if isinstance(signals, dict) else {}
+
+    subjects = s.get("subjects") or []
+    levels = s.get("levels") or []
+    if not isinstance(subjects, list) or len(subjects) == 0:
+        _inc_quality_missing("signals_subjects", channel)
+    if not isinstance(levels, list) or len(levels) == 0:
+        _inc_quality_missing("signals_levels", channel)
+
+    postal = p.get("postal_code")
+    if not (isinstance(postal, list) and any(str(x).strip() for x in postal)):
+        _inc_quality_missing("postal_code", channel)
+
+    academic = str(p.get("academic_display_text") or "")
+    if not academic.strip():
+        _inc_quality_missing("academic_display_text", channel)
+
+    headline = academic.lower()
+    sig_levels = {str(x).strip() for x in levels} if isinstance(levels, list) else set()
+    if "ib" in headline and "IB" not in sig_levels:
+        _inc_quality_inconsistency("headline_ib_no_signal", channel)
+    if "igcse" in headline and "IGCSE" not in sig_levels:
+        _inc_quality_inconsistency("headline_igcse_no_signal", channel)
+
+
+def _coerce_list_of_str(value: Any) -> Optional[List[str]]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        return [s] if s else None
+    if isinstance(value, (list, tuple)):
+        out: List[str] = []
+        for x in value:
+            out.extend(_coerce_list_of_str(x) or [])
+        # de-dup while preserving order
+        seen = set()
+        uniq: List[str] = []
+        for s in out:
+            ss = str(s).strip()
+            if not ss or ss in seen:
+                continue
+            seen.add(ss)
+            uniq.append(ss)
+        return uniq or None
+    s2 = str(value).strip()
+    return [s2] if s2 else None
+
+
+def _fill_postal_code_from_text(parsed: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
+    """
+    Best-effort, deterministic enrichment:
+    - Ensures `parsed["postal_code"]` is a list[str] when explicit 6-digit SG codes exist in the post.
+    - Never guesses a postal code from an address (no external geocoding here).
+    """
+    if not isinstance(parsed, dict):
+        return {}
+    existing = _coerce_list_of_str(parsed.get("postal_code"))
+    if existing:
+        parsed["postal_code"] = existing
+        return parsed
+    codes = _extract_sg_postal_codes(raw_text)
+    if codes:
+        parsed["postal_code"] = codes
+    else:
+        parsed["postal_code"] = None
+    return parsed
 
 
 def _hard_mode() -> str:
@@ -261,6 +448,13 @@ def _deterministic_time_enabled() -> bool:
     v = os.environ.get("USE_DETERMINISTIC_TIME")
     if v is None:
         return bool(USE_DETERMINISTIC_TIME)
+    return _truthy(v)
+
+
+def _postal_code_estimated_enabled() -> bool:
+    v = os.environ.get("ENABLE_POSTAL_CODE_ESTIMATED")
+    if v is None:
+        return bool(ENABLE_POSTAL_CODE_ESTIMATED)
     return _truthy(v)
 
 
@@ -400,7 +594,7 @@ def _build_message_link(channel_link: str, message_id: str) -> Optional[str]:
     return None
 
 
-def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
+def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
     extraction_id = job.get("id")
     raw_id = job.get("raw_id")
     channel_link = str(job.get("channel_link") or "").strip() or "t.me/unknown"
@@ -431,6 +625,12 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
         return out
     attempt = _job_attempt(job)
     if attempt >= MAX_ATTEMPTS:
+        try:
+            worker_parse_failure_total.labels(
+                channel=channel_link, reason="max_attempts", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version
+            ).inc()
+        except Exception:
+            pass
         _mark_extraction(
             url,
             key,
@@ -441,18 +641,40 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             existing_meta=existing_meta,
             llm_model=llm_model,
         )
-        return
+        return "failed"
 
     if attempt > 1 and BACKOFF_BASE_S > 0:
         delay = min(BACKOFF_MAX_S, BACKOFF_BASE_S * (2 ** max(0, attempt - 1)))
         time.sleep(delay)
 
-    with bind_log_context(cid=cid, channel=channel_link, message_id=message_id, step="worker.process"):
+    with bind_log_context(
+        cid=cid,
+        channel=channel_link,
+        message_id=message_id,
+        assignment_id=str(extraction_id) if extraction_id is not None else None,
+        step="worker.process",
+        component="worker",
+        pipeline_version=_V.pipeline_version,
+        schema_version=_V.schema_version,
+    ):
+        t_load0 = time.perf_counter()
         ch_info = _fetch_channel(url, key, channel_link) or {}
         raw = _fetch_raw(url, key, raw_id)
+        try:
+            worker_job_stage_latency_seconds.labels(stage="load_raw", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                max(0.0, time.perf_counter() - t_load0)
+            )
+        except Exception:
+            pass
         if not raw:
             _mark_extraction(url, key, extraction_id, status="failed", error={"error": "raw_missing"}, meta_patch=_with_prompt({"ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
-            return
+            try:
+                worker_parse_failure_total.labels(
+                    channel=channel_link, reason="raw_missing", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version
+                ).inc()
+            except Exception:
+                pass
+            return "failed"
 
         if raw.get("deleted_at"):
             try:
@@ -478,16 +700,16 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
-            return
+            return "skipped"
 
         if bool(raw.get("is_forward")):
             _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt({"reason": "forward", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
-            return
+            return "skipped"
 
         raw_text = str(raw.get("raw_text") or "").strip()
         if not raw_text:
             _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt({"reason": "empty_text", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
-            return
+            return "skipped"
 
         normalized_text = normalize_text(raw_text)
         norm_meta = {
@@ -507,15 +729,41 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
-            return
+            return "skipped"
 
         # 1) Extract
         try:
             llm_input = normalized_text if bool(USE_NORMALIZED_TEXT_FOR_LLM) else raw_text
+            model = _llm_model_name()
+            try:
+                worker_llm_requests_total.labels(model=model, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+            except Exception:
+                pass
+            t_llm0 = time.perf_counter()
             parsed = extract_assignment_with_model(llm_input, chat=channel_link, cid=cid)
+            try:
+                worker_llm_call_latency_seconds.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(time.perf_counter() - t_llm0)
+                worker_job_stage_latency_seconds.labels(stage="llm", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                    max(0.0, time.perf_counter() - t_llm0)
+                )
+            except Exception:
+                pass
             if not isinstance(parsed, dict):
                 parsed = {}
         except Exception as e:
+            try:
+                worker_llm_fail_total.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+            except Exception:
+                pass
+            try:
+                worker_parse_failure_total.labels(
+                    channel=channel_link,
+                    reason=_classify_llm_error(e),
+                    pipeline_version=_V.pipeline_version,
+                    schema_version=_V.schema_version,
+                ).inc()
+            except Exception:
+                pass
             _mark_extraction(
                 url,
                 key,
@@ -526,10 +774,12 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
-            return
+            return "failed"
 
         payload: Dict[str, Any] = {
             "cid": cid,
+            "pipeline_version": _V.pipeline_version,
+            "schema_version": _V.schema_version,
             "channel_link": channel_link,
             "channel_id": raw.get("channel_id") or ch_info.get("channel_id"),
             "channel_title": ch_info.get("title"),
@@ -541,12 +791,36 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             "parsed": parsed,
         }
 
-        # 2) Enrich (postal estimation etc.)
+        # 2) Deterministic enrichment (safe, no guessing)
+        postal_meta: Optional[Dict[str, Any]] = None
         try:
-            payload = process_parsed_payload(payload, False)
+            parsed_obj = payload.get("parsed") or {}
+            if isinstance(parsed_obj, dict):
+                before = parsed_obj.get("postal_code")
+                parsed_obj = _fill_postal_code_from_text(parsed_obj, raw_text)
+                payload["parsed"] = parsed_obj
+                after = parsed_obj.get("postal_code")
+                postal_meta = {
+                    "ok": True,
+                    "changed": before != after,
+                    "postal_code_count": len(after) if isinstance(after, list) else (1 if isinstance(after, str) and after.strip() else 0),
+                }
         except Exception as e:
-            log_event(logger, logging.WARNING, "enrich_failed", error=str(e))
-            payload = payload
+            postal_meta = {"ok": False, "error": str(e)}
+
+        # 2a) Estimated postal code (best-effort; external Nominatim fallback).
+        postal_estimated_meta: Optional[Dict[str, Any]] = None
+        if _postal_code_estimated_enabled():
+            try:
+                parsed_obj = payload.get("parsed") or {}
+                if isinstance(parsed_obj, dict):
+                    res = estimate_postal_codes(parsed=parsed_obj, raw_text=raw_text)
+                    parsed_obj["postal_code_estimated"] = res.estimated
+                    payload["parsed"] = parsed_obj
+                    postal_estimated_meta = dict(res.meta or {})
+                    postal_estimated_meta["estimated"] = res.estimated
+            except Exception as e:
+                postal_estimated_meta = {"ok": False, "error": str(e)}
 
         # 2a) Deterministic time_availability (overwrites LLM output when enabled).
         time_meta: Optional[Dict[str, Any]] = None
@@ -604,14 +878,29 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
         # without mutating the stored canonical_json schema.
         payload["meta"] = {
             "normalization": norm_meta,
+            "postal_code_fill": postal_meta,
+            "postal_code_estimated": postal_estimated_meta,
             "time_deterministic": time_meta,
             "hard_validation": hard_meta,
             "signals": signals_meta,
         }
 
         # 2b) Contract validation before persistence/broadcast
+        t_val0 = time.perf_counter()
         ok_schema, schema_errors = validate_parsed_assignment(payload.get("parsed") or {})
+        try:
+            worker_job_stage_latency_seconds.labels(stage="validate", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                max(0.0, time.perf_counter() - t_val0)
+            )
+        except Exception:
+            pass
         if not ok_schema:
+            try:
+                worker_parse_failure_total.labels(
+                    channel=channel_link, reason="schema_validation_failed", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version
+                ).inc()
+            except Exception:
+                pass
             _mark_extraction(
                 url,
                 key,
@@ -625,6 +914,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                         "ts": _utc_now_iso(),
                         "normalization": norm_meta,
                         "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw",
+                        "postal_code_estimated": postal_estimated_meta,
                         "time_deterministic": time_meta,
                         "hard_validation": hard_meta,
                         "signals": signals_meta,
@@ -633,18 +923,42 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
-            return
+            return "failed"
 
         # 3) Persist assignment row
         persist_res: Dict[str, Any] = {}
+        t_persist0 = time.perf_counter()
         try:
+            try:
+                worker_supabase_requests_total.labels(operation="persist", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+            except Exception:
+                pass
             r = persist_assignment_to_supabase(payload)
             persist_res = r if isinstance(r, dict) else {}
         except Exception as e:
             persist_res = {"ok": False, "error": str(e)}
+        try:
+            worker_supabase_latency_seconds.labels(operation="persist", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                max(0.0, time.perf_counter() - t_persist0)
+            )
+            worker_job_stage_latency_seconds.labels(stage="persist", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                max(0.0, time.perf_counter() - t_persist0)
+            )
+        except Exception:
+            pass
 
         # Retry path for transient Supabase failures: requeue if attempts remain.
         if not bool(persist_res.get("ok")) and attempt + 1 < MAX_ATTEMPTS:
+            try:
+                worker_supabase_fail_total.labels(operation="persist", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+            except Exception:
+                pass
+            try:
+                worker_parse_failure_total.labels(
+                    channel=channel_link, reason="supabase_persist_failed", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version
+                ).inc()
+            except Exception:
+                pass
             new_attempt = attempt + 1
             meta_patch = _merge_meta(existing_meta, {"attempt": new_attempt, "persist_error": persist_res})
             _mark_extraction(
@@ -657,7 +971,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
-            return
+            return "requeued"
 
         # 4) Broadcast/DM (best-effort)
         broadcast_res: Any = None
@@ -682,6 +996,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
             "dm": dm_res,
             "normalization": norm_meta,
             "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw",
+            "postal_code_estimated": postal_estimated_meta,
             "time_deterministic": time_meta,
             "hard_validation": hard_meta,
             "signals": signals_meta,
@@ -689,11 +1004,53 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> None:
 
         ok = bool(persist_res.get("ok"))
         _mark_extraction(url, key, extraction_id, status="ok" if ok else "failed", canonical_json=payload.get("parsed"), meta_patch=_with_prompt(meta), existing_meta=existing_meta, llm_model=llm_model)
+        try:
+            sigs = None
+            if isinstance(signals_meta, dict) and isinstance(signals_meta.get("signals"), dict):
+                sigs = signals_meta.get("signals")
+            _quality_checks(parsed=payload.get("parsed") or {}, signals=sigs, channel=channel_link)
+        except Exception:
+            pass
+        if not ok:
+            try:
+                worker_supabase_fail_total.labels(operation="persist", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+            except Exception:
+                pass
+            try:
+                worker_parse_failure_total.labels(
+                    channel=channel_link, reason="supabase_persist_failed_final", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version
+                ).inc()
+            except Exception:
+                pass
+        else:
+            try:
+                worker_parse_success_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+            except Exception:
+                pass
+        return "ok" if ok else "failed"
 
 
 def main() -> None:
     _load_env()
     url, key = _supabase_cfg()
+
+    def _dep_health() -> tuple[bool, Dict[str, Any]]:
+        try:
+            h = dict(_headers(key))
+            h["prefer"] = "count=exact"
+            resp = requests.get(f"{url}/rest/v1/telegram_extractions?select=id&limit=1", headers=h, timeout=5)
+            return (resp.status_code < 400), {"status_code": resp.status_code}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    start_observability_http_server(
+        port=9002,
+        component="worker",
+        health_handlers={
+            "/health/worker": lambda: (True, {"pipeline_version": _V.pipeline_version, "schema_version": _V.schema_version}),
+            "/health/dependencies": _dep_health,
+        },
+    )
 
     pipeline_version = (os.environ.get("EXTRACTION_PIPELINE_VERSION") or DEFAULT_PIPELINE_VERSION).strip() or DEFAULT_PIPELINE_VERSION
     claim_batch_size = int(os.environ.get("EXTRACTION_WORKER_BATCH", str(DEFAULT_CLAIM_BATCH_SIZE)) or DEFAULT_CLAIM_BATCH_SIZE)
@@ -701,8 +1058,6 @@ def main() -> None:
     max_attempts = int(os.environ.get("EXTRACTION_MAX_ATTEMPTS", str(DEFAULT_MAX_ATTEMPTS)) or DEFAULT_MAX_ATTEMPTS)
     backoff_base_s = float(os.environ.get("EXTRACTION_BACKOFF_BASE_S", str(DEFAULT_BACKOFF_BASE_S)) or DEFAULT_BACKOFF_BASE_S)
     backoff_max_s = float(os.environ.get("EXTRACTION_BACKOFF_MAX_S", str(DEFAULT_BACKOFF_MAX_S)) or DEFAULT_BACKOFF_MAX_S)
-    hb_file = (os.environ.get("EXTRACTION_QUEUE_HEARTBEAT_FILE") or DEFAULT_QUEUE_HEARTBEAT_FILE).strip()
-    hb_seconds = int(os.environ.get("EXTRACTION_QUEUE_HEARTBEAT_SECONDS", str(DEFAULT_QUEUE_HEARTBEAT_SECONDS)) or DEFAULT_QUEUE_HEARTBEAT_SECONDS)
     stale_processing_s = int(os.environ.get("EXTRACTION_STALE_PROCESSING_SECONDS", str(DEFAULT_STALE_PROCESSING_SECONDS)) or DEFAULT_STALE_PROCESSING_SECONDS)
 
     enable_broadcast = str(os.environ.get("EXTRACTION_WORKER_BROADCAST", "1" if DEFAULT_ENABLE_BROADCAST else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
@@ -728,8 +1083,6 @@ def main() -> None:
         max_attempts=max_attempts,
         backoff_base_s=backoff_base_s,
         backoff_max_s=backoff_max_s,
-        heartbeat_file=hb_file,
-        heartbeat_seconds=hb_seconds,
         stale_processing_s=stale_processing_s,
         use_normalized_text_for_llm=bool(use_norm),
         hard_validate_mode=(hard_mode or DEFAULT_HARD_VALIDATE_MODE),
@@ -739,24 +1092,21 @@ def main() -> None:
         max_jobs=max_jobs or None,
     )
 
-    global ENABLE_BROADCAST, ENABLE_DMS, MAX_ATTEMPTS, BACKOFF_BASE_S, BACKOFF_MAX_S, QUEUE_HEARTBEAT_FILE, QUEUE_HEARTBEAT_SECONDS, STALE_PROCESSING_SECONDS, USE_NORMALIZED_TEXT_FOR_LLM, HARD_VALIDATE_MODE, ENABLE_DETERMINISTIC_SIGNALS, USE_DETERMINISTIC_TIME
+    global ENABLE_BROADCAST, ENABLE_DMS, MAX_ATTEMPTS, BACKOFF_BASE_S, BACKOFF_MAX_S, STALE_PROCESSING_SECONDS, USE_NORMALIZED_TEXT_FOR_LLM, HARD_VALIDATE_MODE, ENABLE_DETERMINISTIC_SIGNALS, USE_DETERMINISTIC_TIME, ENABLE_POSTAL_CODE_ESTIMATED
     ENABLE_BROADCAST = enable_broadcast
     ENABLE_DMS = enable_dms
     MAX_ATTEMPTS = max(1, int(max_attempts))
     BACKOFF_BASE_S = max(0.0, float(backoff_base_s))
     BACKOFF_MAX_S = max(BACKOFF_BASE_S, float(backoff_max_s)) if backoff_max_s > 0 else DEFAULT_BACKOFF_MAX_S
-    QUEUE_HEARTBEAT_FILE = hb_file or DEFAULT_QUEUE_HEARTBEAT_FILE
-    QUEUE_HEARTBEAT_SECONDS = max(5, int(hb_seconds))
     STALE_PROCESSING_SECONDS = max(60, int(stale_processing_s))
     USE_NORMALIZED_TEXT_FOR_LLM = bool(use_norm)
     HARD_VALIDATE_MODE = (hard_mode or DEFAULT_HARD_VALIDATE_MODE).strip()
     ENABLE_DETERMINISTIC_SIGNALS = bool(enable_signals)
     USE_DETERMINISTIC_TIME = bool(use_det_time)
-
-    hb_path = AGG_DIR / QUEUE_HEARTBEAT_FILE
-    last_hb = 0.0
+    ENABLE_POSTAL_CODE_ESTIMATED = _postal_code_estimated_enabled()
     last_requeue = 0.0
     processed = 0
+    last_metrics = 0.0
 
     while True:
         try:
@@ -765,7 +1115,28 @@ def main() -> None:
                 requeued = _requeue_stale_processing(url, key, older_than_s=STALE_PROCESSING_SECONDS)
                 if requeued:
                     log_event(logger, logging.INFO, "requeued_stale_jobs", count=requeued, older_than_s=STALE_PROCESSING_SECONDS)
+                    try:
+                        worker_requeued_stale_jobs_total.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc(requeued)
+                    except Exception:
+                        pass
                 last_requeue = now
+
+            if now - last_metrics >= 15.0:
+                try:
+                    counts = _queue_counts(url, key, ["pending", "processing", "ok", "failed"])
+                    pv = _V.pipeline_version
+                    sv = _V.schema_version
+                    queue_pending.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("pending") or 0))
+                    queue_processing.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("processing") or 0))
+                    queue_ok.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("ok") or 0))
+                    queue_failed.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("failed") or 0))
+                    oldest_pending = _oldest_created_age_s(url, key, "pending")
+                    oldest_processing = _oldest_created_age_s(url, key, "processing")
+                    queue_oldest_pending_age_seconds.labels(pipeline_version=pv, schema_version=sv).set(float(oldest_pending or 0.0))
+                    queue_oldest_processing_age_seconds.labels(pipeline_version=pv, schema_version=sv).set(float(oldest_processing or 0.0))
+                except Exception:
+                    logger.debug("queue_metrics_update_failed", exc_info=True)
+                last_metrics = now
 
             jobs = _rpc(
                 url,
@@ -775,21 +1146,6 @@ def main() -> None:
                 timeout=30,
             )
             if not isinstance(jobs, list) or not jobs:
-                now = time.time()
-                if now - last_hb >= QUEUE_HEARTBEAT_SECONDS:
-                    counts = _queue_counts(url, key, ["pending", "processing", "ok", "failed"])
-                    oldest = _oldest_created_age_s(url, key, "pending")
-                    hb_payload = {
-                        "ts": int(now),
-                        "iso": _utc_now_iso(),
-                        "counts": counts,
-                        "oldest_pending_age_s": oldest,
-                        "pid": os.getpid(),
-                        "pipeline_version": pipeline_version,
-                    }
-                    _write_queue_heartbeat(hb_path, hb_payload)
-                    last_hb = now
-
                 if oneshot:
                     log_event(logger, logging.INFO, "worker_oneshot_done", processed=processed, pipeline_version=pipeline_version)
                     return
@@ -804,7 +1160,7 @@ def main() -> None:
                     raw_id = job.get("raw_id")
                     channel_link = str(job.get("channel_link") or "").strip() or "t.me/unknown"
                     message_id = str(job.get("message_id") or "").strip()
-                    t0 = time.time()
+                    t0 = time.perf_counter()
                     logger.info(
                         "job_begin extraction_id=%s raw_id=%s channel=%s message_id=%s",
                         extraction_id,
@@ -813,12 +1169,24 @@ def main() -> None:
                         message_id,
                     )
                     try:
-                        _work_one(url, key, job)
+                        status = _work_one(url, key, job)
                         processed += 1
-                        dt_ms = int((time.time() - t0) * 1000)
+                        dt_s = time.perf_counter() - t0
+                        dt_ms = int(dt_s * 1000)
+                        try:
+                            worker_job_latency_seconds.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(dt_s)
+                            worker_jobs_processed_total.labels(status=str(status), pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                        except Exception:
+                            pass
                         logger.info("job_end extraction_id=%s dt_ms=%s", extraction_id, dt_ms)
                     except Exception as e:
-                        dt_ms = int((time.time() - t0) * 1000)
+                        dt_s = time.perf_counter() - t0
+                        dt_ms = int(dt_s * 1000)
+                        try:
+                            worker_job_latency_seconds.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(dt_s)
+                            worker_jobs_processed_total.labels(status="error", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                        except Exception:
+                            pass
                         logger.warning("job_error extraction_id=%s dt_ms=%s error=%s", extraction_id, dt_ms, str(e))
                     if max_jobs and processed >= max_jobs:
                         log_event(logger, logging.INFO, "worker_max_jobs_reached", processed=processed, max_jobs=max_jobs, pipeline_version=pipeline_version)

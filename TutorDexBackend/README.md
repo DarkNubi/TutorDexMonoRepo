@@ -4,7 +4,7 @@ Minimal FastAPI service that stores tutor preferences in Redis and returns match
 
 ## Setup
 
-1. Start Redis (local or managed) and set `REDIS_URL`.
+1. Start Redis (this repo’s root `docker compose` includes a local Redis service), and set `REDIS_URL` only if you are not using Docker.
 2. Install deps:
    - `pip install -r TutorDexBackend/requirements.txt`
 3. Run:
@@ -21,7 +21,7 @@ Minimal FastAPI service that stores tutor preferences in Redis and returns match
 
 ## Environment variables
 
-- `REDIS_URL`: e.g. `redis://localhost:6379/0`
+- `REDIS_URL`: `redis://redis:6379/0` (docker compose) or `redis://localhost:6379/0` (host)
 - `REDIS_PREFIX`: key prefix (default `tutordex`)
 - `MATCH_MIN_SCORE`: minimum score to include (default `3`)
 - `CORS_ALLOW_ORIGINS`: `*` or comma-separated origins (default `*`)
@@ -48,9 +48,9 @@ Env vars:
 ## Quick test
 
 1. Upsert a tutor:
-   - `curl -X PUT http://127.0.0.1:8000/tutors/alice -H "content-type: application/json" -d "{\"chat_id\":\"123\",\"subjects\":[\"Maths\"],\"levels\":[\"Primary\"],\"types\":[\"Private\"]}"`
+   - `curl -X PUT http://127.0.0.1:8000/tutors/alice -H "content-type: application/json" -d "{\"chat_id\":\"123\",\"subjects\":[\"Maths\"],\"levels\":[\"Primary\"],\"assignment_types\":[\"Private\"]}"`
 2. Match a payload:
-   - `curl -X POST http://127.0.0.1:8000/match/payload -H "content-type: application/json" -d "{\"payload\":{\"parsed\":{\"subjects\":[\"Maths\"],\"level\":\"Primary\",\"type\":\"Private\"}}}"`
+   - `curl -X POST http://127.0.0.1:8000/match/payload -H "content-type: application/json" -d "{\"payload\":{\"parsed\":{\"learning_mode\":{\"mode\":\"Face-to-Face\",\"raw_text\":\"Face-to-Face\"}},\"meta\":{\"signals\":{\"ok\":true,\"signals\":{\"subjects\":[\"Maths\"],\"levels\":[\"Primary\"]}}}}}"`
 
 ## Telegram linking (recommended)
 

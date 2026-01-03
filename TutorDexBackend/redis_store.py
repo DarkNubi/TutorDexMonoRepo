@@ -3,6 +3,7 @@ import json
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Optional, List
 
 import redis
@@ -78,8 +79,11 @@ class RedisConfig:
 
 
 def load_redis_config() -> RedisConfig:
+    # Prefer the local docker-compose Redis service when running inside Docker.
+    in_docker = Path("/.dockerenv").exists()
+    default_url = "redis://redis:6379/0" if in_docker else "redis://localhost:6379/0"
     return RedisConfig(
-        url=_env("REDIS_URL", "redis://localhost:6379/0"),
+        url=_env("REDIS_URL", default_url),
         prefix=_env("REDIS_PREFIX", "tutordex"),
     )
 

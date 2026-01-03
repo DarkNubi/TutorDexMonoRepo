@@ -25,11 +25,8 @@ CRITICAL CONCEPT: NULL VS EMPTY
 - Use [] (empty array) ONLY when the schema or rules explicitly require an array (including day arrays below), and you are confident there are zero valid items.
 - Do NOT substitute [] for null unless explicitly instructed.
 
-Required arrays (MUST be arrays; may be empty []):
-- time_availability.explicit.[day] (monday–sunday)
-- time_availability.estimated.[day] (monday–sunday)
-
-All other optional list fields:
+There are no required arrays in this schema.
+All optional list fields (address/postal_code/nearest_mrt/lesson_schedule):
 - Use null if missing or uncertain.
 
 ────────────────────────────────────────
@@ -74,7 +71,6 @@ When populating an authoritative raw_text / note field:
 Authoritative fields:
 - academic_display_text
 - learning_mode.raw_text
-- time_availability.note
 - rate.raw_text
 - start_date
 - additional_remarks
@@ -105,8 +101,6 @@ If uncertain, set to null (or empty arrays where required).
 
 - assignment_code
 - learning_mode.mode
-- time_availability.explicit
-- time_availability.estimated
 - rate.min
 - rate.max
 
@@ -126,27 +120,6 @@ OUTPUT SCHEMA (JSON)
   "nearest_mrt": [string] | null,
   "lesson_schedule": [string] | null,
   "start_date": string | null,
-  "time_availability": {
-    "explicit": {
-      "monday": [string],
-      "tuesday": [string],
-      "wednesday": [string],
-      "thursday": [string],
-      "friday": [string],
-      "saturday": [string],
-      "sunday": [string]
-    },
-    "estimated": {
-      "monday": [string],
-      "tuesday": [string],
-      "wednesday": [string],
-      "thursday": [string],
-      "friday": [string],
-      "saturday": [string],
-      "sunday": [string]
-    },
-    "note": string | null
-  },
   "rate": {
     "min": number | null,
     "max": number | null,
@@ -160,14 +133,12 @@ KEY EXTRACTION RULES (SUMMARY)
 ────────────────────────────────────────
 
 1. Atomic extraction: each field is independent. Never infer from other fields.
-2. Missing or uncertain data: use null unless an empty array is explicitly required.
+2. Missing or uncertain data: use null.
 3. Authoritative fields must be verbatim snippets (or null). Do NOT paraphrase.
 4. Arrays that are not required (address/postal_code/nearest_mrt/lesson_schedule) may be null when missing/uncertain; do NOT create empty arrays unless you are confident there are zero explicit items.
-5. time_availability day arrays are required and must always be arrays (use [] if none).
-6. Explicit times stay explicit; single times use start = end (no inferred duration).
-7. Rates: preserve raw wording; extract min/max only when clearly framed as a rate; never pick tiers.
-8. additional_remarks MUST be null unless explicitly present in the post.
-9. When unsure, null is always correct.
+5. Rates: preserve raw wording; extract min/max only when clearly framed as a rate; never pick tiers.
+6. additional_remarks MUST be null unless explicitly present in the post.
+7. When unsure, null is always correct.
 
 ────────────────────────────────────────
 ASSIGNMENT CODE
@@ -225,60 +196,6 @@ Note on ranges:
 - If a duration range is stated (e.g., "1-1.5h", "1.5-2 hrs/lesson"), keep it in the raw snippet. Do NOT convert to a midpoint. Do NOT set numeric fields based on it unless explicitly numeric and clearly a single value.
 
 ────────────────────────────────────────
-TIME AVAILABILITY
-────────────────────────────────────────
-
-Structure rules:
-- time_availability.explicit and time_availability.estimated MUST ALWAYS exist.
-- Each day (monday–sunday) MUST ALWAYS be present.
-- Each day value MUST ALWAYS be an array (use [] if none).
-
-Time format in arrays:
-- "HH:MM-HH:MM" (24-hour, leading zeros, ASCII hyphen).
-
-Explicit timing:
-- Use ONLY when a concrete day AND a concrete time is explicitly stated.
-- If a clear time range is stated (e.g., "3pm-5pm", "15:00 to 17:00"), store it directly.
-- If ONLY a single time is stated (e.g., "3pm", "at 7pm"):
-  - Treat it as explicit.
-  - Convert it to 24-hour time.
-  - Set start_time = end_time (e.g., "19:00-19:00").
-  - Do NOT infer or assume any duration.
-  - time_availability.note must preserve original wording verbatim where possible; do NOT summarize.
-- Do NOT move explicit timings into estimated.
-
-Estimated timing:
-- Use ONLY for ambiguous, fuzzy, or relative timing mentions, including but not limited to:
-  "morning", "afternoon", "evening", "night",
-  "weekdays", "weekends",
-  "after HH:MM", "from HH:MM", "before HH:MM"
-  or day ranges without concrete times.
-
-Relative time rules:
-- If the post mentions "after HH:MM" or "from HH:MM" with no end time:
-  - Use HH:MM–23:00.
-- If the post mentions "before HH:MM" with no start time:
-  - Use 08:00–HH:MM.
-
-Fixed estimated ranges:
-- morning   = 08:00-12:00
-- afternoon = 12:00-17:00
-- evening   = 16:00-21:00
-- night     = 19:00-23:00
-- weekdays  = Mon–Fri 08:00-23:00
-- weekends  = Sat–Sun 08:00-23:00
-
-Additional rules:
-- Never derive estimated timings from explicit timings.
-- If no usable timing information exists:
-  - All explicit and estimated day arrays must be empty.
-  - time_availability.note should capture the relevant wording if present, otherwise null.
-
-time_availability.note (authoritative):
-- Copy the relevant timing wording verbatim as much as possible (e.g., "ONLY ON SUNDAY FROM 10AM ONWARDS", "Weekday PM, Weekends").
-- If no timing wording exists at all → null.
-
-────────────────────────────────────────
 RATES
 ────────────────────────────────────────
 
@@ -311,7 +228,6 @@ Before output:
 - Output is valid JSON only.
 - Authoritative fields are verbatim snippets or null (no paraphrase).
 - additional_remarks is null unless explicitly present in the post.
-- time_availability explicit/estimated each include all 7 days; each day is an array.
 - No inference occurred; when unsure → null.
 - Stop immediately after the final closing brace.
 

@@ -8,6 +8,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -17,10 +18,13 @@ from TutorDexBackend.supabase_store import SupabaseStore
 from TutorDexBackend.firebase_auth import firebase_admin_status, verify_bearer_token
 from TutorDexBackend.logging_setup import setup_logging
 from TutorDexBackend.geocoding import geocode_sg_postal_code, normalize_sg_postal_code
+from TutorDexBackend.metrics import metrics_payload, observe_request
+from TutorDexBackend.otel import setup_otel
 
 
 setup_logging()
 logger = logging.getLogger("tutordex_backend")
+setup_otel()
 
 app = FastAPI(title="TutorDex Backend", version="0.1.0")
 store = TutorStore()
@@ -170,6 +174,24 @@ def _truthy(value: Optional[str]) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
+def _parse_traceparent(value: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """
+    Parse W3C traceparent: version-traceid-spanid-flags
+    Example: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+    """
+    s = (value or "").strip()
+    if not s:
+        return None, None
+    parts = s.split("-")
+    if len(parts) != 4:
+        return None, None
+    trace_id = parts[1].strip().lower()
+    span_id = parts[2].strip().lower()
+    if len(trace_id) != 32 or len(span_id) != 16:
+        return None, None
+    return trace_id, span_id
+
+
 @app.middleware("http")
 async def access_log_middleware(request: Request, call_next):
     request_id = (
@@ -179,6 +201,7 @@ async def access_log_middleware(request: Request, call_next):
     )
     start = time.perf_counter()
     status_code = 500
+    trace_id, span_id = _parse_traceparent(request.headers.get("traceparent") or request.headers.get("Traceparent"))
 
     try:
         response = await call_next(request)
@@ -197,9 +220,14 @@ async def access_log_middleware(request: Request, call_next):
         )
         raise
     finally:
-        latency_ms = (time.perf_counter() - start) * 1000.0
+        latency_s = time.perf_counter() - start
+        latency_ms = latency_s * 1000.0
         client_ip = getattr(getattr(request, "client", None), "host", None)
         uid = getattr(getattr(request, "state", None), "uid", None)
+        try:
+            observe_request(method=request.method, path=request.url.path, status_code=int(status_code), latency_s=float(latency_s))
+        except Exception:
+            pass
         logger.info(
             "http_request",
             extra={
@@ -210,8 +238,16 @@ async def access_log_middleware(request: Request, call_next):
                 "latency_ms": round(latency_ms, 2),
                 "client_ip": client_ip,
                 "uid": uid,
+                "trace_id": trace_id or "-",
+                "span_id": span_id or "-",
             },
         )
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    data, content_type = metrics_payload()
+    return Response(content=data, media_type=content_type)
 
 
 class TutorUpsert(BaseModel):
@@ -311,6 +347,41 @@ def health_full() -> Dict[str, Any]:
     supabase_h = health_supabase()
     ok = bool(base.get("ok")) and bool(redis_h.get("ok")) and (bool(supabase_h.get("ok")) or bool(supabase_h.get("skipped")))
     return {"ok": ok, "base": base, "redis": redis_h, "supabase": supabase_h}
+
+
+def _check_url_ok(url: str, *, timeout_s: float = 2.0) -> Dict[str, Any]:
+    import requests  # local import
+
+    try:
+        resp = requests.get(url, timeout=timeout_s)
+        ok = resp.status_code < 400
+        body = None
+        try:
+            body = resp.json()
+        except Exception:
+            body = None
+        return {"ok": ok, "status_code": resp.status_code, "body": body}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/health/collector")
+def health_collector() -> Dict[str, Any]:
+    # Binary liveness only: use metrics/logs for diagnosis.
+    res = _check_url_ok("http://collector-tail:9001/health/collector")
+    return {"ok": bool(res.get("ok")), "collector": res}
+
+
+@app.get("/health/worker")
+def health_worker() -> Dict[str, Any]:
+    res = _check_url_ok("http://aggregator-worker:9002/health/worker")
+    return {"ok": bool(res.get("ok")), "worker": res}
+
+
+@app.get("/health/dependencies")
+def health_dependencies() -> Dict[str, Any]:
+    # Keep compatibility with callers expecting a dependencies endpoint.
+    return health_full()
 
 
 def _clean_opt_str(value: Optional[str]) -> Optional[str]:

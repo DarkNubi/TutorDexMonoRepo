@@ -68,7 +68,58 @@ class AcademicRequestsTests(unittest.TestCase):
         self.assertEqual(reqs[0]["stream"], "HL")
         self.assertEqual(reqs[0]["subjects"], ["English Literature (IB/IGCSE)"])
 
+    def test_kindergarten_and_psle_level_only(self) -> None:
+        res = parse_academic_requests(text="K1 English, PSLE Maths")
+        self.assertIn("Kindergarten 1", res["specific_student_levels"])
+        self.assertIn("Pre-School", res["levels"])
+        self.assertIn("Primary", res["levels"])
+        self.assertEqual(res["subjects"], ["English", "Maths"])
+
+    def test_o_levels_and_n_levels_map_to_secondary(self) -> None:
+        res = parse_academic_requests(text="O Levels Physics / N level Maths")
+        self.assertIn("Secondary", res["levels"])
+        self.assertEqual(res["specific_student_levels"], [])
+        self.assertIn("Physics", res["subjects"])
+        self.assertIn("Maths", res["subjects"])
+
+    def test_a_levels_and_h2(self) -> None:
+        res = parse_academic_requests(text="A Level H2 Maths")
+        self.assertIn("Junior College", res["levels"])
+        self.assertIn("H2", res["streams"])
+        reqs = res["academic_requests"] or []
+        self.assertEqual(len(reqs), 1)
+        self.assertEqual(reqs[0]["level"], "Junior College")
+        self.assertEqual(reqs[0]["stream"], "H2")
+        self.assertEqual(reqs[0]["subjects"], ["Maths"])
+
+    def test_normal_academic_and_integrated_programme(self) -> None:
+        res = parse_academic_requests(text="Sec 2 Normal Academic English; Sec 3 Integrated Programme Math")
+        self.assertIn("Secondary 2", res["specific_student_levels"])
+        self.assertIn("Secondary 3", res["specific_student_levels"])
+        self.assertIn("NA", res["streams"])
+        self.assertIn("IP", res["streams"])
+        reqs = res["academic_requests"] or []
+        self.assertEqual(len(reqs), 2)
+        self.assertEqual(reqs[0]["specific_student_level"], "Secondary 2")
+        self.assertEqual(reqs[0]["stream"], "NA")
+        self.assertEqual(reqs[0]["subjects"], ["English"])
+        self.assertEqual(reqs[1]["specific_student_level"], "Secondary 3")
+        self.assertEqual(reqs[1]["stream"], "IP")
+        self.assertEqual(reqs[1]["subjects"], ["Maths"])
+
+    def test_higher_level_and_standard_level_words(self) -> None:
+        res = parse_academic_requests(text="IB Year 5 Higher Level Chemistry and Standard Level Maths")
+        self.assertIn("IB", res["levels"])
+        self.assertIn("IB Year 5", res["specific_student_levels"])
+        self.assertIn("HL", res["streams"])
+        self.assertIn("SL", res["streams"])
+        reqs = res["academic_requests"] or []
+        self.assertEqual(len(reqs), 2)
+        self.assertEqual(reqs[0]["stream"], "HL")
+        self.assertEqual(reqs[0]["subjects"], ["Chemistry"])
+        self.assertEqual(reqs[1]["stream"], "SL")
+        self.assertEqual(reqs[1]["subjects"], ["Maths"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

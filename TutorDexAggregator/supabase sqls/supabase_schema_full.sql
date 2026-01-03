@@ -30,6 +30,17 @@ create unique index if not exists agencies_channel_link_uq
 create unique index if not exists agencies_name_uq
   on public.agencies (name);
 
+-- --------------------------------------------------------------------------------
+-- Public assignments listing table (materialized from latest extraction output)
+--
+-- Source of truth for extraction remains:
+-- - `public.telegram_messages_raw` (raw post)
+-- - `public.telegram_extractions.canonical_json` (v2 display schema)
+-- - `public.telegram_extractions.meta` (deterministic signals + diagnostics)
+--
+-- `public.assignments` is a denormalized, query-friendly projection used by the website/backend.
+-- --------------------------------------------------------------------------------
+
 create table if not exists public.assignments (
   id bigserial primary key,
   agency_id bigint references public.agencies(id) on delete set null,
@@ -44,38 +55,45 @@ create table if not exists public.assignments (
   message_link text,
   raw_text text,
 
-  subject text,
-  subjects text[],
-  level text,
-  specific_student_level text,
-  type text,
-  address text,
-  postal_code text,
+  -- v2 display fields (from `telegram_extractions.canonical_json`)
+  assignment_code text,
+  academic_display_text text,
+  learning_mode text,
+  learning_mode_raw_text text,
+
+  address text[],
+  postal_code text[],
+  postal_code_estimated text[],
   postal_lat double precision,
   postal_lon double precision,
-  nearest_mrt text,
-  learning_mode text,
-  student_gender text,
-  tutor_gender text,
-  frequency text,
-  duration text,
-  hourly_rate text,
+  nearest_mrt text[],
+  region text,
+  nearest_mrt_computed text,
+  nearest_mrt_computed_line text,
+  nearest_mrt_computed_distance_m int,
+  lesson_schedule text[],
+  start_date text,
+
+  time_availability_note text,
+  time_availability_explicit jsonb,
+  time_availability_estimated jsonb,
+
   rate_min int,
   rate_max int,
-  time_slots jsonb,
-  estimated_time_slots jsonb,
-  time_slots_note text,
+  rate_raw_text text,
   additional_remarks text,
 
-  payload_json jsonb,
-  parsed_json jsonb,
-  parse_quality_score int not null default 0,
+  -- deterministic signals rollups (from `telegram_extractions.meta.signals`)
+  signals_subjects text[] not null default '{}',
+  signals_levels text[] not null default '{}',
+  signals_specific_student_levels text[] not null default '{}',
+  signals_streams text[] not null default '{}',
+  signals_academic_requests jsonb,
+  signals_confidence_flags jsonb,
 
-  -- canonicalization artifacts (optional but used by aggregator)
-  subjects_canonical text[] not null default '{}',
-  subjects_general text[] not null default '{}',
-  tags text[] not null default '{}',
-  canonicalization_version int not null default 1,
+  canonical_json jsonb,
+  meta jsonb,
+  parse_quality_score int not null default 0,
 
   created_at timestamptz not null default now(),
   last_seen timestamptz not null default now(),
@@ -84,8 +102,7 @@ create table if not exists public.assignments (
   status text not null default 'open'
 );
 
--- If this schema is applied onto an existing DB, `create table if not exists` will not add new columns.
--- Keep these as additive upgrades so later functions (distance sort, etc.) still compile.
+-- Additive upgrades for older DBs (avoid failures when creating indexes/functions).
 alter table public.assignments
   add column if not exists agency_id bigint;
 
@@ -111,25 +128,25 @@ alter table public.assignments
   add column if not exists raw_text text;
 
 alter table public.assignments
-  add column if not exists subject text;
+  add column if not exists assignment_code text;
 
 alter table public.assignments
-  add column if not exists subjects text[];
+  add column if not exists academic_display_text text;
 
 alter table public.assignments
-  add column if not exists level text;
+  add column if not exists learning_mode text;
 
 alter table public.assignments
-  add column if not exists specific_student_level text;
+  add column if not exists learning_mode_raw_text text;
 
 alter table public.assignments
-  add column if not exists type text;
+  add column if not exists address text[];
 
 alter table public.assignments
-  add column if not exists address text;
+  add column if not exists postal_code text[];
 
 alter table public.assignments
-  add column if not exists postal_code text;
+  add column if not exists postal_code_estimated text[];
 
 alter table public.assignments
   add column if not exists postal_lat double precision;
@@ -138,25 +155,34 @@ alter table public.assignments
   add column if not exists postal_lon double precision;
 
 alter table public.assignments
-  add column if not exists nearest_mrt text;
+  add column if not exists nearest_mrt text[];
 
 alter table public.assignments
-  add column if not exists learning_mode text;
+  add column if not exists region text;
 
 alter table public.assignments
-  add column if not exists student_gender text;
+  add column if not exists nearest_mrt_computed text;
 
 alter table public.assignments
-  add column if not exists tutor_gender text;
+  add column if not exists nearest_mrt_computed_line text;
 
 alter table public.assignments
-  add column if not exists frequency text;
+  add column if not exists nearest_mrt_computed_distance_m int;
 
 alter table public.assignments
-  add column if not exists duration text;
+  add column if not exists lesson_schedule text[];
 
 alter table public.assignments
-  add column if not exists hourly_rate text;
+  add column if not exists start_date text;
+
+alter table public.assignments
+  add column if not exists time_availability_note text;
+
+alter table public.assignments
+  add column if not exists time_availability_explicit jsonb;
+
+alter table public.assignments
+  add column if not exists time_availability_estimated jsonb;
 
 alter table public.assignments
   add column if not exists rate_min integer;
@@ -165,37 +191,37 @@ alter table public.assignments
   add column if not exists rate_max integer;
 
 alter table public.assignments
-  add column if not exists time_slots jsonb;
-
-alter table public.assignments
-  add column if not exists estimated_time_slots jsonb;
-
-alter table public.assignments
-  add column if not exists time_slots_note text;
+  add column if not exists rate_raw_text text;
 
 alter table public.assignments
   add column if not exists additional_remarks text;
 
 alter table public.assignments
-  add column if not exists payload_json jsonb;
+  add column if not exists signals_subjects text[];
 
 alter table public.assignments
-  add column if not exists parsed_json jsonb;
+  add column if not exists signals_levels text[];
+
+alter table public.assignments
+  add column if not exists signals_specific_student_levels text[];
+
+alter table public.assignments
+  add column if not exists signals_streams text[];
+
+alter table public.assignments
+  add column if not exists signals_academic_requests jsonb;
+
+alter table public.assignments
+  add column if not exists signals_confidence_flags jsonb;
+
+alter table public.assignments
+  add column if not exists canonical_json jsonb;
+
+alter table public.assignments
+  add column if not exists meta jsonb;
 
 alter table public.assignments
   add column if not exists parse_quality_score integer;
-
-alter table public.assignments
-  add column if not exists subjects_canonical text[];
-
-alter table public.assignments
-  add column if not exists subjects_general text[];
-
-alter table public.assignments
-  add column if not exists tags text[];
-
-alter table public.assignments
-  add column if not exists canonicalization_version integer;
 
 alter table public.assignments
   add column if not exists created_at timestamptz;
@@ -224,23 +250,60 @@ create index if not exists assignments_status_last_seen_idx
 create index if not exists assignments_parse_quality_score_idx
   on public.assignments (parse_quality_score desc);
 
-create index if not exists assignments_status_level_idx
-  on public.assignments (status, level);
-
 create index if not exists assignments_status_agency_name_idx
   on public.assignments (status, agency_name);
 
-create index if not exists assignments_subjects_gin
-  on public.assignments using gin (subjects);
+create index if not exists assignments_status_learning_mode_idx
+  on public.assignments (status, learning_mode);
 
-create index if not exists assignments_subjects_canonical_gin
-  on public.assignments using gin (subjects_canonical);
+create index if not exists assignments_status_region_idx
+  on public.assignments (status, region);
 
-create index if not exists assignments_subjects_general_gin
-  on public.assignments using gin (subjects_general);
+create index if not exists assignments_status_nearest_mrt_computed_idx
+  on public.assignments (status, nearest_mrt_computed);
 
-create index if not exists assignments_tags_gin
-  on public.assignments using gin (tags);
+create index if not exists assignments_signals_subjects_gin
+  on public.assignments using gin (signals_subjects);
+
+create index if not exists assignments_signals_levels_gin
+  on public.assignments using gin (signals_levels);
+
+create index if not exists assignments_signals_specific_levels_gin
+  on public.assignments using gin (signals_specific_student_levels);
+
+create index if not exists assignments_signals_streams_gin
+  on public.assignments using gin (signals_streams);
+
+-- --------------------------------------------------------------------------------
+-- RPC (function) compatibility
+--
+-- Postgres cannot `CREATE OR REPLACE` a function when the `RETURNS TABLE (...)` OUT parameter list changes.
+-- To make this schema file re-runnable across DB states, we proactively drop any existing overloads of the
+-- affected RPCs before recreating them.
+--
+-- Note: we use `CASCADE` to avoid failures if something depends on the old signature (rare, but possible).
+-- --------------------------------------------------------------------------------
+do $$
+declare
+  r record;
+begin
+  for r in
+    select
+      n.nspname as schema_name,
+      p.proname as func_name,
+      pg_get_function_identity_arguments(p.oid) as args
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'list_open_assignments',
+        'list_open_assignments_v2',
+        'open_assignment_facets'
+      )
+  loop
+    execute format('drop function if exists %I.%I(%s) cascade;', r.schema_name, r.func_name, r.args);
+  end loop;
+end $$;
 
 -- Website pagination + facets (server-side filtering)
 create or replace function public.list_open_assignments(
@@ -261,21 +324,25 @@ returns table(
   message_link text,
   agency_name text,
   learning_mode text,
-  subject text,
-  subjects text[],
-  level text,
-  specific_student_level text,
-  address text,
-  postal_code text,
-  nearest_mrt text,
-  frequency text,
-  duration text,
-  time_slots_note text,
-  hourly_rate text,
+  assignment_code text,
+  academic_display_text text,
+  address text[],
+  postal_code text[],
+  postal_code_estimated text[],
+  nearest_mrt text[],
+  region text,
+  nearest_mrt_computed text,
+  nearest_mrt_computed_line text,
+  nearest_mrt_computed_distance_m int,
+  lesson_schedule text[],
+  start_date text,
+  time_availability_note text,
   rate_min integer,
   rate_max integer,
-  student_gender text,
-  tutor_gender text,
+  rate_raw_text text,
+  signals_subjects text[],
+  signals_levels text[],
+  signals_specific_student_levels text[],
   status text,
   created_at timestamptz,
   last_seen timestamptz,
@@ -289,29 +356,24 @@ as $$
 with base as (
   select
     a.*,
-    case
-      when a.level = 'International Baccalaureate' then 'IB'
-      else a.level
-    end as _level_norm,
-    coalesce(
-      nullif(a.subjects_general, '{}'::text[]),
-      nullif(a.subjects_canonical, '{}'::text[]),
-      nullif(a.subjects, '{}'::text[]),
-      case
-        when a.subject is not null and btrim(a.subject) <> '' then array[btrim(a.subject)]
-        else '{}'::text[]
-      end
-    ) as _subject_list,
-    lower(concat_ws(' ', nullif(a.address, ''), nullif(a.postal_code, ''), nullif(a.nearest_mrt, ''))) as _loc
+    lower(
+      concat_ws(
+        ' ',
+        nullif(array_to_string(a.address, ' '), ''),
+        nullif(array_to_string(a.postal_code, ' '), ''),
+        nullif(array_to_string(a.postal_code_estimated, ' '), ''),
+        nullif(array_to_string(a.nearest_mrt, ' '), '')
+      )
+    ) as _loc
   from public.assignments a
   where a.status = 'open'
 ),
 filtered as (
   select *
   from base
-  where (p_level is null or _level_norm = (case when p_level = 'International Baccalaureate' then 'IB' else p_level end))
-    and (p_specific_student_level is null or specific_student_level = p_specific_student_level)
-    and (p_subject is null or p_subject = any(_subject_list))
+  where (p_level is null or p_level = any(signals_levels))
+    and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
+    and (p_subject is null or p_subject = any(signals_subjects))
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -331,21 +393,25 @@ select
   message_link,
   agency_name,
   learning_mode,
-  subject,
-  subjects,
-  _level_norm as level,
-  specific_student_level,
+  assignment_code,
+  academic_display_text,
   address,
   postal_code,
+  postal_code_estimated,
   nearest_mrt,
-  frequency,
-  duration,
-  time_slots_note,
-  hourly_rate,
+  region,
+  nearest_mrt_computed,
+  nearest_mrt_computed_line,
+  nearest_mrt_computed_distance_m,
+  lesson_schedule,
+  start_date,
+  time_availability_note,
   rate_min,
   rate_max,
-  student_gender,
-  tutor_gender,
+  rate_raw_text,
+  signals_subjects,
+  signals_levels,
+  signals_specific_student_levels,
   status,
   created_at,
   last_seen,
@@ -382,21 +448,25 @@ returns table(
   message_link text,
   agency_name text,
   learning_mode text,
-  subject text,
-  subjects text[],
-  level text,
-  specific_student_level text,
-  address text,
-  postal_code text,
-  nearest_mrt text,
-  frequency text,
-  duration text,
-  time_slots_note text,
-  hourly_rate text,
+  assignment_code text,
+  academic_display_text text,
+  address text[],
+  postal_code text[],
+  postal_code_estimated text[],
+  nearest_mrt text[],
+  region text,
+  nearest_mrt_computed text,
+  nearest_mrt_computed_line text,
+  nearest_mrt_computed_distance_m int,
+  lesson_schedule text[],
+  start_date text,
+  time_availability_note text,
   rate_min integer,
   rate_max integer,
-  student_gender text,
-  tutor_gender text,
+  rate_raw_text text,
+  signals_subjects text[],
+  signals_levels text[],
+  signals_specific_student_levels text[],
   status text,
   created_at timestamptz,
   last_seen timestamptz,
@@ -412,29 +482,24 @@ as $$
 with base as (
   select
     a.*,
-    case
-      when a.level = 'International Baccalaureate' then 'IB'
-      else a.level
-    end as _level_norm,
-    coalesce(
-      nullif(a.subjects_general, '{}'::text[]),
-      nullif(a.subjects_canonical, '{}'::text[]),
-      nullif(a.subjects, '{}'::text[]),
-      case
-        when a.subject is not null and btrim(a.subject) <> '' then array[btrim(a.subject)]
-        else '{}'::text[]
-      end
-    ) as _subject_list,
-    lower(concat_ws(' ', nullif(a.address, ''), nullif(a.postal_code, ''), nullif(a.nearest_mrt, ''))) as _loc
+    lower(
+      concat_ws(
+        ' ',
+        nullif(array_to_string(a.address, ' '), ''),
+        nullif(array_to_string(a.postal_code, ' '), ''),
+        nullif(array_to_string(a.postal_code_estimated, ' '), ''),
+        nullif(array_to_string(a.nearest_mrt, ' '), '')
+      )
+    ) as _loc
   from public.assignments a
   where a.status = 'open'
 ),
 filtered as (
   select *
   from base
-  where (p_level is null or _level_norm = (case when p_level = 'International Baccalaureate' then 'IB' else p_level end))
-    and (p_specific_student_level is null or specific_student_level = p_specific_student_level)
-    and (p_subject is null or p_subject = any(_subject_list))
+  where (p_level is null or p_level = any(signals_levels))
+    and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
+    and (p_subject is null or p_subject = any(signals_subjects))
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -495,21 +560,25 @@ select
   message_link,
   agency_name,
   learning_mode,
-  subject,
-  subjects,
-  _level_norm as level,
-  specific_student_level,
+  assignment_code,
+  academic_display_text,
   address,
   postal_code,
+  postal_code_estimated,
   nearest_mrt,
-  frequency,
-  duration,
-  time_slots_note,
-  hourly_rate,
+  region,
+  nearest_mrt_computed,
+  nearest_mrt_computed_line,
+  nearest_mrt_computed_distance_m,
+  lesson_schedule,
+  start_date,
+  time_availability_note,
   rate_min,
   rate_max,
-  student_gender,
-  tutor_gender,
+  rate_raw_text,
+  signals_subjects,
+  signals_levels,
+  signals_specific_student_levels,
   status,
   created_at,
   last_seen,
@@ -544,29 +613,24 @@ as $$
 with base as (
   select
     a.*,
-    case
-      when a.level = 'International Baccalaureate' then 'IB'
-      else a.level
-    end as _level_norm,
-    coalesce(
-      nullif(a.subjects_general, '{}'::text[]),
-      nullif(a.subjects_canonical, '{}'::text[]),
-      nullif(a.subjects, '{}'::text[]),
-      case
-        when a.subject is not null and btrim(a.subject) <> '' then array[btrim(a.subject)]
-        else '{}'::text[]
-      end
-    ) as _subject_list,
-    lower(concat_ws(' ', nullif(a.address, ''), nullif(a.postal_code, ''), nullif(a.nearest_mrt, ''))) as _loc
+    lower(
+      concat_ws(
+        ' ',
+        nullif(array_to_string(a.address, ' '), ''),
+        nullif(array_to_string(a.postal_code, ' '), ''),
+        nullif(array_to_string(a.postal_code_estimated, ' '), ''),
+        nullif(array_to_string(a.nearest_mrt, ' '), '')
+      )
+    ) as _loc
   from public.assignments a
   where a.status = 'open'
 ),
 filtered as (
   select *
   from base
-  where (p_level is null or _level_norm = (case when p_level = 'International Baccalaureate' then 'IB' else p_level end))
-    and (p_specific_student_level is null or specific_student_level = p_specific_student_level)
-    and (p_subject is null or p_subject = any(_subject_list))
+  where (p_level is null or p_level = any(signals_levels))
+    and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
+    and (p_subject is null or p_subject = any(signals_subjects))
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -584,10 +648,13 @@ select jsonb_build_object(
       '[]'::jsonb
     )
     from (
-      select _level_norm as level, count(*) as c
-      from filtered
-      where _level_norm is not null and btrim(_level_norm) <> ''
-      group by _level_norm
+      select level, count(*) as c
+      from (
+        select distinct id, unnest(signals_levels) as level
+        from filtered
+      ) d
+      where level is not null and btrim(level) <> ''
+      group by level
     ) s
   ),
   'specific_levels', (
@@ -597,7 +664,10 @@ select jsonb_build_object(
     )
     from (
       select specific_student_level, count(*) as c
-      from filtered
+      from (
+        select distinct id, unnest(signals_specific_student_levels) as specific_student_level
+        from filtered
+      ) d
       where specific_student_level is not null and btrim(specific_student_level) <> ''
       group by specific_student_level
     ) s
@@ -610,7 +680,7 @@ select jsonb_build_object(
     from (
       select subject, count(*) as c
       from (
-        select distinct id, unnest(_subject_list) as subject
+        select distinct id, unnest(signals_subjects) as subject
         from filtered
       ) d
       where subject is not null and btrim(subject) <> ''
@@ -1203,3 +1273,163 @@ begin
   end if;
 end $$;
 
+-- Queue RPC helpers for the "raw collector + extraction worker" pipeline.
+-- Apply in Supabase SQL Editor (or psql) on your existing DB.
+--
+-- This uses `public.telegram_extractions` as a work queue keyed by (raw_id, pipeline_version).
+-- The worker claims jobs via `FOR UPDATE SKIP LOCKED` to avoid double-processing.
+
+create or replace function public.enqueue_telegram_extractions(
+  p_pipeline_version text,
+  p_channel_link text,
+  p_message_ids text[],
+  p_force boolean default false
+)
+returns integer
+language sql
+as $$
+  with src as (
+    select id as raw_id, channel_link, message_id, message_date
+    from public.telegram_messages_raw
+    where channel_link = p_channel_link
+      and message_id = any(p_message_ids)
+      and deleted_at is null
+  ),
+  upserted as (
+    insert into public.telegram_extractions (
+      raw_id,
+      pipeline_version,
+      status,
+      channel_link,
+      message_id,
+      message_date,
+      created_at,
+      updated_at
+    )
+    select
+      s.raw_id,
+      p_pipeline_version,
+      'pending',
+      s.channel_link,
+      s.message_id,
+      s.message_date,
+      now(),
+      now()
+    from src s
+    on conflict (raw_id, pipeline_version) do update
+      set
+        status = case
+          when public.telegram_extractions.status = 'ok' and not p_force then public.telegram_extractions.status
+          else 'pending'
+        end,
+        channel_link = excluded.channel_link,
+        message_id = excluded.message_id,
+        message_date = excluded.message_date,
+        updated_at = now()
+      where p_force or public.telegram_extractions.status <> 'ok'
+    returning 1
+  )
+  select count(*)::int from upserted;
+$$;
+
+
+create or replace function public.claim_telegram_extractions(
+  p_pipeline_version text,
+  p_limit integer default 20
+)
+returns setof public.telegram_extractions
+language plpgsql
+as $$
+begin
+  return query
+    with cte as (
+      select te.id
+      from public.telegram_extractions te
+      where te.pipeline_version = p_pipeline_version
+        and te.status = 'pending'
+      order by te.created_at asc, te.id asc
+      for update skip locked
+      limit greatest(1, p_limit)
+    )
+    update public.telegram_extractions te
+      set
+        status = 'processing',
+        updated_at = now(),
+        meta = coalesce(te.meta, '{}'::jsonb)
+              || jsonb_build_object(
+                'processing_started_at', now(),
+                'attempt', coalesce(nullif((te.meta->>'attempt'), '')::int, 0) + 1
+              )
+    from cte
+    where te.id = cte.id
+    returning te.*;
+end;
+$$;
+
+alter function public.enqueue_telegram_extractions(text, text, text[], boolean)
+  set search_path = public, extensions;
+
+alter function public.claim_telegram_extractions(text, integer)
+  set search_path = public, extensions;
+
+-- Simplify `public.telegram_extractions` to a single-pass extract+canonicalize pipeline.
+--
+-- This removes the legacy stage A/B columns and replaces them with:
+-- - llm_model (text)
+-- - error_json (jsonb)
+--
+-- Safe to run once on an existing DB. Review before applying in production.
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'telegram_extractions'
+      and column_name = 'stage_b_errors'
+  ) and not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'telegram_extractions'
+      and column_name = 'error_json'
+  ) then
+    alter table public.telegram_extractions rename column stage_b_errors to error_json;
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'telegram_extractions'
+      and column_name = 'model_a'
+  ) and not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'telegram_extractions'
+      and column_name = 'llm_model'
+  ) then
+    alter table public.telegram_extractions rename column model_a to llm_model;
+  end if;
+end $$;
+
+alter table public.telegram_extractions
+  add column if not exists llm_model text,
+  add column if not exists error_json jsonb,
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.telegram_extractions
+  drop column if exists model_b,
+  drop column if exists stage_a_json,
+  drop column if exists stage_a_errors,
+  drop column if exists compilation_assignment_ids,
+  drop column if exists bump_applied_at,
+  drop column if exists bump_applied_count,
+  drop column if exists bump_applied_errors;
+
+drop index if exists public.telegram_extractions_bump_applied_at_idx;
+
+create index if not exists telegram_extractions_created_at_idx
+  on public.telegram_extractions (created_at desc);

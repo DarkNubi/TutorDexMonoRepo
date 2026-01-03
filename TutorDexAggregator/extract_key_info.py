@@ -1,13 +1,10 @@
 import json
 import hashlib
 import os
-import re
 import requests
-import time
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
-import broadcast_assignments
 import logging
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
@@ -18,7 +15,6 @@ logger = logging.getLogger("extract_key_info")
 
 # Reuse HTTP sessions for better throughput (keep-alive) when doing large backfills.
 _LLM_SESSION = requests.Session()
-_NOMINATIM_SESSION = requests.Session()
 
 # No local model fallback: require a local LLM HTTP API (LM Studio / Mixtral).
 # Configure the endpoint via the LLM_API_URL environment variable (e.g. http://127.0.0.1:7860/api/generate)
@@ -46,7 +42,6 @@ def get_system_prompt_text() -> str:
     Overrides (highest priority first):
     - `LLM_SYSTEM_PROMPT_TEXT` (inline)
     - `LLM_SYSTEM_PROMPT_FILE` (path to a prompt file; relative paths are relative to `TutorDexAggregator/`)
-    - `LLM_SYSTEM_PROMPT_VARIANT` (loads `prompts/system_prompt_<variant>.txt` if it exists)
 
     Falls back to `prompts/system_prompt_live.txt`.
     """
@@ -61,12 +56,6 @@ def get_system_prompt_text() -> str:
             p = (Path(__file__).resolve().parent / p).resolve()
         return p.read_text(encoding="utf-8").strip()
 
-    variant = (os.environ.get("LLM_SYSTEM_PROMPT_VARIANT") or "").strip()
-    if variant:
-        p = PROMPTS_DIR / f"system_prompt_{variant}.txt"
-        if p.exists():
-            return p.read_text(encoding="utf-8").strip()
-
     if DEFAULT_SYSTEM_PROMPT_FILE.exists():
         return DEFAULT_SYSTEM_PROMPT_FILE.read_text(encoding="utf-8").strip()
 
@@ -80,7 +69,6 @@ def get_system_prompt_meta() -> dict:
     """
     inline = (os.environ.get("LLM_SYSTEM_PROMPT_TEXT") or "").strip()
     file_path = (os.environ.get("LLM_SYSTEM_PROMPT_FILE") or "").strip()
-    variant = (os.environ.get("LLM_SYSTEM_PROMPT_VARIANT") or "").strip()
 
     prompt_text = get_system_prompt_text()
     meta = {
@@ -96,15 +84,6 @@ def get_system_prompt_meta() -> dict:
             p = Path(file_path).expanduser()
             if not p.is_absolute():
                 p = (Path(__file__).resolve().parent / p).resolve()
-            meta["resolved_file"] = str(p)
-            meta["missing"] = not p.exists()
-        except Exception:
-            pass
-    elif variant:
-        meta["source"] = "env:LLM_SYSTEM_PROMPT_VARIANT"
-        meta["variant"] = variant
-        try:
-            p = PROMPTS_DIR / f"system_prompt_{variant}.txt"
             meta["resolved_file"] = str(p)
             meta["missing"] = not p.exists()
         except Exception:
@@ -262,7 +241,7 @@ def build_prompt(message: str, chat: str) -> str:
     """
     Build the full user prompt by selecting an agency examples file based on `chat`.
 
-    `chat` is expected to look like `t.me/<ChannelUsername>` (as produced by `read_assignments.py`).
+    `chat` is expected to look like `t.me/<ChannelUsername>`.
     """
     include_examples = _truthy(os.environ.get("LLM_INCLUDE_EXAMPLES")) if os.environ.get("LLM_INCLUDE_EXAMPLES") is not None else False
     if include_examples:
@@ -272,18 +251,6 @@ def build_prompt(message: str, chat: str) -> str:
         return (wrapped_examples + "\n\n" + PROMPT_FOOTER.format(message=message)).strip()
 
     return PROMPT_FOOTER.format(message=message)
-
-
-def parse_rate(raw: str):
-    # simple heuristic rate parser (improve as needed)
-    import re
-    m = re.findall(r"(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:[.,]\d+)?))?", raw, flags=re.IGNORECASE)
-    if not m:
-        return None, None
-    mn = float(m[0][0].replace(",", ""))
-    mx = m[0][1]
-    mx = float(mx.replace(",", "")) if mx else mn
-    return mn, mx
 
 
 def safe_parse_json(json_string):
@@ -510,373 +477,6 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
         return parsed
 
 
-def _nominatim_user_agent() -> str:
-    return os.environ.get("NOMINATIM_USER_AGENT") or "TutorDex/1.0"
-
-
-@lru_cache(maxsize=20000)
-def _estimate_postal_from_cleaned_address(cleaned_address: str, timeout: float = 30.0) -> Optional[str]:
-    if not cleaned_address:
-        return None
-
-    params = {
-        "q": cleaned_address + ", Singapore",
-        "format": "json",
-        "countrycodes": "sg",
-        "addressdetails": 1,
-        "limit": 5,
-    }
-    url = "https://nominatim.openstreetmap.org/search"
-    headers = {"User-Agent": _nominatim_user_agent()}
-    q = params.get("q") or ""
-
-    # Nominatim is rate-limited; retry gently on 429/503 with backoff.
-    last_err: Optional[Exception] = None
-    for attempt in range(3):
-        try:
-            log_event(logger, logging.INFO, "nominatim_lookup_start", q_chars=len(q), attempt=attempt + 1)
-            start_ts = timed()
-            resp = _NOMINATIM_SESSION.get(url, params=params, headers=headers, timeout=timeout)
-
-            if resp.status_code in {429, 503}:
-                retry_after = resp.headers.get("Retry-After")
-                sleep_s = 2.0 * (attempt + 1)
-                if retry_after:
-                    try:
-                        sleep_s = max(sleep_s, float(retry_after))
-                    except Exception:
-                        pass
-                log_event(logger, logging.WARNING, "nominatim_throttled", status_code=resp.status_code, sleep_s=sleep_s)
-                time.sleep(min(20.0, sleep_s))
-                continue
-
-            resp.raise_for_status()
-            results = resp.json()
-            log_event(
-                logger,
-                logging.INFO,
-                "nominatim_lookup_ok",
-                status_code=getattr(resp, "status_code", None),
-                elapsed_ms=round((timed() - start_ts) * 1000.0, 2),
-                results=len(results) if isinstance(results, list) else None,
-            )
-
-            for idx, r in enumerate(results if isinstance(results, list) else []):
-                address_details = r.get("address", {}) if isinstance(r, dict) else {}
-                postal = address_details.get("postcode") if isinstance(address_details, dict) else None
-                log_event(logger, logging.DEBUG, "nominatim_result", idx=idx, has_postcode=bool(postal))
-                if postal:
-                    m = re.search(r"(\d{6})", str(postal))
-                    if m:
-                        return m.group(1)
-
-                display_name = r.get("display_name", "") if isinstance(r, dict) else ""
-                m = re.search(r"(\d{6})", str(display_name))
-                if m:
-                    return m.group(1)
-
-            log_event(logger, logging.INFO, "nominatim_lookup_no_postcode", q_chars=len(q))
-            return None
-        except Exception as e:
-            last_err = e
-            log_event(logger, logging.WARNING, "nominatim_lookup_failed", q_chars=len(cleaned_address), error=str(e), attempt=attempt + 1)
-            time.sleep(min(10.0, 1.0 * (attempt + 1)))
-
-    if last_err:
-        return None
-    return None
-
-
-def estimate_postal_from_address(address: object, timeout: float = 30.0) -> Optional[str]:
-    """
-    Use OpenStreetMap Nominatim API to estimate a postal code for a given address string.
-    No API key required. Free service with usage limits.
-
-    Returns the postal code string (6 digits) if found, otherwise None.
-    """
-    if str(os.environ.get("DISABLE_NOMINATIM", "")).strip().lower() in {"1", "true", "yes", "y"}:
-        log_event(logger, logging.DEBUG, "nominatim_disabled")
-        return None
-
-    # Normalize address to a string early (LLM sometimes returns lists for string fields)
-    address_text = ""
-    try:
-        if address is None:
-            address_text = ""
-        elif isinstance(address, (list, tuple)):
-            parts = [str(x).strip() for x in address if x is not None and str(x).strip()]
-            address_text = " ".join(parts)
-        else:
-            address_text = str(address).strip()
-    except Exception:
-        logger.debug("Failed to normalize address for postal estimation", exc_info=True)
-        address_text = ""
-
-    if not address_text:
-        return None
-
-    # Filter out the word "near" from the address
-    cleaned_address = re.sub(r'\bnear\b', '', address_text, flags=re.IGNORECASE).strip()
-
-    # First try heuristic extraction of 6-digit code from address
-    m = re.search(r"\b(\d{6})\b", cleaned_address)
-    if m:
-        log_event(logger, logging.DEBUG, "postal_heuristic_hit", postal=m.group(1), address_chars=len(cleaned_address))
-        return m.group(1)
-
-    # Remove any bracketed text to improve geocoding
-    cleaned_address = re.sub(r'[\[\(].*?[\]\)]', '', cleaned_address).strip()
-
-    # If no postal code found in text, try Nominatim API
-    return _estimate_postal_from_cleaned_address(cleaned_address, timeout=timeout)
-
-
-def process_parsed_payload(payload: dict, do_send: bool = False) -> dict:
-    """
-    Enrich a payload (as produced by read_assignments) by ensuring postal codes.
-    If parsed.postal_code is missing and address present, attempt to estimate it and
-    write the result under parsed['postal_code_estimated'].
-
-    If do_send is True, call broadcast_assignments.send_broadcast(payload) after enrichment.
-    Returns the (possibly modified) payload.
-    """
-    parsed = payload.get('parsed') if isinstance(payload, dict) else None
-    if not parsed:
-        return payload
-
-    # Back-compat: broadcaster/persistence may expect a "type" field.
-    # Derive it from signals if present and type is missing.
-    if isinstance(parsed, dict) and (parsed.get("type") is None or str(parsed.get("type")).strip() == ""):
-        tc_sig = str(parsed.get("tuition_centre_signal") or "").strip()
-        pv_sig = str(parsed.get("private_signal") or "").strip()
-        if tc_sig:
-            parsed["type"] = "Tuition Centre"
-        elif pv_sig:
-            parsed["type"] = "Private"
-
-    cid = payload.get("cid") if isinstance(payload, dict) else None
-    chat = payload.get("channel_link") if isinstance(payload, dict) else None
-    message_id = payload.get("message_id") if isinstance(payload, dict) else None
-
-    def _coerce_text(value) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, (list, tuple)):
-            parts = [str(x).strip() for x in value if x is not None and str(x).strip()]
-            return " ".join(parts).strip()
-        return str(value).strip()
-
-    def _coerce_text_list(value) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, (list, tuple)):
-            return [str(x).strip() for x in value if x is not None and str(x).strip()]
-        text = str(value).strip()
-        return [text] if text else []
-
-    def _extract_sg_postal_code(value) -> Optional[str]:
-        text = _coerce_text(value)
-        if not text:
-            return None
-        m = re.search(r"\b(\d{6})\b", text)
-        return m.group(1) if m else None
-
-    def _extract_sg_postal_codes(value) -> list[str]:
-        codes: list[str] = []
-        for item in _coerce_text_list(value):
-            m = re.search(r"\b(\d{6})\b", item)
-            if m:
-                codes.append(m.group(1))
-        # de-dup while preserving order
-        seen = set()
-        deduped: list[str] = []
-        for c in codes:
-            if c in seen:
-                continue
-            seen.add(c)
-            deduped.append(c)
-        return deduped
-
-    def _extract_address_from_raw_text(raw_text: str) -> Optional[str]:
-        if not raw_text:
-            return None
-        for line in str(raw_text).splitlines():
-            ln = line.strip()
-            if not ln:
-                continue
-            if ln.startswith("📍"):
-                candidate = ln.lstrip("📍").strip()
-                return candidate or None
-            m = re.match(r"(?i)^(address|location)\s*[:：]\s*(.+)$", ln)
-            if m:
-                candidate = (m.group(2) or "").strip()
-                return candidate or None
-        return None
-
-    def _log_assignment_json(stage: str) -> None:
-        log_full = str(os.environ.get("LOG_ASSIGNMENT_JSON", "")).strip().lower() in {"1", "true", "yes", "y"}
-        try:
-            dumped = json.dumps(parsed, ensure_ascii=False)
-        except Exception:
-            dumped = str(parsed)
-        log_event(
-            logger,
-            logging.INFO if log_full else logging.DEBUG,
-            "assignment_json",
-            stage=stage,
-            cid=cid,
-            chat=chat,
-            message_id=message_id,
-            parsed=dumped,
-        )
-
-    _log_assignment_json(stage="pre_enrich")
-
-    # Normalize explicit postal_code(s) to 6-digit strings, or set to None.
-    original_postal = parsed.get("postal_code")
-    explicit_postals = _extract_sg_postal_codes(original_postal)
-    if explicit_postals:
-        # Preserve list vs scalar shape where possible (downstream code supports both).
-        if isinstance(original_postal, (list, tuple)):
-            parsed["postal_code"] = explicit_postals
-        else:
-            parsed["postal_code"] = explicit_postals[0]
-    else:
-        if _coerce_text(original_postal):
-            log_event(
-                logger,
-                logging.WARNING,
-                "invalid_postal_code_value",
-                cid=cid,
-                chat=chat,
-                message_id=message_id,
-                postal_code=str(original_postal)[:120],
-            )
-        parsed["postal_code"] = None
-
-    # If postal_code is falsy, attempt estimation
-    if not parsed.get('postal_code'):
-        raw_text = payload.get("raw_text") if isinstance(payload, dict) else ""
-
-        # Step between: try regex fill from raw text first (6-digit SG postal-like tokens).
-        try:
-            raw_postals = re.findall(r"\b(\d{6})\b", str(raw_text or ""))
-        except Exception:
-            raw_postals = []
-
-        # de-dup while preserving order
-        seen = set()
-        raw_postals = [c for c in raw_postals if c and not (c in seen or seen.add(c))]
-
-        if raw_postals:
-            parsed["postal_code"] = raw_postals if len(raw_postals) > 1 else raw_postals[0]
-            parsed["postal_code_estimated"] = None
-            log_event(
-                logger,
-                logging.INFO,
-                "postal_regex_fill_ok",
-                cid=cid,
-                chat=chat,
-                message_id=message_id,
-                count=len(raw_postals),
-            )
-        else:
-            log_event(
-                logger,
-                logging.DEBUG,
-                "postal_regex_fill_none",
-                cid=cid,
-                chat=chat,
-                message_id=message_id,
-            )
-
-        # If regex fill succeeded, skip Nominatim estimation.
-        if parsed.get("postal_code"):
-            log_event(logger, logging.DEBUG, "postal_estimate_skipped", cid=cid, chat=chat, message_id=message_id, reason="postal_regex_filled")
-        else:
-            address_value = parsed.get("address")
-            address_list = _coerce_text_list(address_value)
-            if not address_list:
-                raw_addr = _extract_address_from_raw_text(raw_text) or ""
-                address_list = [raw_addr.strip()] if raw_addr.strip() else []
-
-            if not address_list:
-                parsed['postal_code_estimated'] = None
-                log_event(logger, logging.INFO, "postal_estimate_skipped", cid=cid, chat=chat, message_id=message_id, reason="missing_address")
-            else:
-                estimated_codes: list[str] = []
-                for idx, addr in enumerate(address_list, start=1):
-                    try:
-                        log_event(
-                            logger,
-                            logging.DEBUG,
-                            "postal_estimate_start",
-                            cid=cid,
-                            chat=chat,
-                            message_id=message_id,
-                            addr_idx=idx,
-                            addr_total=len(address_list),
-                            address_chars=len(addr or ""),
-                        )
-                        code = estimate_postal_from_address(addr)
-                    except Exception:
-                        logger.debug("Postal estimate attempt failed", exc_info=True)
-                        code = None
-                    if code:
-                        estimated_codes.append(code)
-
-                # de-dup estimates while preserving order
-                seen = set()
-                estimated_codes = [c for c in estimated_codes if not (c in seen or seen.add(c))]
-
-                if estimated_codes:
-                    parsed['postal_code_estimated'] = estimated_codes if len(address_list) > 1 else estimated_codes[0]
-                    log_event(logger, logging.INFO, "postal_estimate_ok", cid=cid, chat=chat, message_id=message_id, count=len(estimated_codes))
-                else:
-                    parsed['postal_code_estimated'] = None
-                    log_event(logger, logging.INFO, "postal_estimate_none", cid=cid, chat=chat, message_id=message_id)
-    else:
-        log_event(logger, logging.DEBUG, "postal_estimate_skipped", cid=cid, chat=chat, message_id=message_id, reason="postal_present")
-
-    try:
-        log_event(
-            logger,
-            logging.INFO,
-            "parsed_enrich_summary",
-            cid=cid,
-            chat=chat,
-            message_id=message_id,
-            has_address=bool(_coerce_text(parsed.get("address"))),
-            has_postal=bool(parsed.get("postal_code")),
-            has_postal_estimated=bool(parsed.get("postal_code_estimated")),
-        )
-    except Exception:
-        logger.debug("Failed to emit parsed_enrich_summary", exc_info=True)
-
-    _log_assignment_json(stage="post_enrich")
-
-    # Optionally send via broadcaster
-    if do_send:
-        try:
-            broadcast_assignments.send_broadcast(payload)
-        except Exception:
-            # do not raise — leave caller to handle
-            logger.exception("broadcast_send_failed_during_enrich")
-
-    return payload
-
-
-def process_and_send(payload: dict) -> dict:
-    """Convenience wrapper: enrich then send. Returns enrichment result dict."""
-    enriched = process_parsed_payload(payload, do_send=False)
-    # send synchronously
-    try:
-        broadcast_assignments.send_broadcast(enriched)
-    except Exception:
-        logger.exception("broadcast_send_failed_in_process_and_send")
-    return enriched
-
-
 if __name__ == "__main__":
     # Avoid UnicodeEncodeError on Windows consoles when printing sample text.
     try:
@@ -921,99 +521,14 @@ Any bugs/questions, WhatsApp 9695 3522
         print(f"Examples: failed to resolve ({e})")
     print("=" * 60)
 
-    print("=" * 60)
-    print("STEP 0: Running compilation detection check...")
-    print("=" * 60)
-
-    # Import compilation detection from read_assignments
-    try:
-        from read_assignments import is_compilation
-        is_comp, comp_details = is_compilation(sample)
-
-        if is_comp:
-            print("\n❌ COMPILATION DETECTED - Message would be SKIPPED")
-            print("\nTriggered checks:")
-            for detail in comp_details:
-                print(f"  • {detail}")
-            print("\n⚠️  This message will NOT be processed by the LLM.")
-            print("=" * 60)
-            import sys
-            sys.exit(0)
-        else:
-            print("\n✅ PASSED - Not a compilation, proceeding to extraction...")
-            print("=" * 60)
-    except ImportError as e:
-        print(f"\n⚠️  Could not import compilation check: {e}")
-        print("Proceeding anyway...")
-        print("=" * 60)
-
     print("\n" + "=" * 60)
-    print("STEP 1: Extracting assignment info with LLM...")
+    print("LLM OUTPUT (display fields only)")
     print("=" * 60)
     out = extract_assignment_with_model(sample, chat)
-    print("\nExtracted data:")
     print(json.dumps(out, indent=2, ensure_ascii=False))
 
-    # Check for validation errors
-    if out.get('error') == 'validation_failed':
-        print("\n❌ VALIDATION FAILED - Message would be SKIPPED")
-        print(f"\nError: {out.get('error_detail')}")
-        if out.get('validation_errors'):
-            print("\nValidation errors:")
-            for err in out['validation_errors']:
-                print(f"  • {err.replace('_', ' ')}")
-        print("\n⚠️  This message will NOT be processed further.")
-        print("=" * 60)
-        import sys
-        sys.exit(0)
-    else:
-        print("\n✅ PASSED VALIDATION - Proceeding to enrichment...")
-
     print("\n" + "=" * 60)
-    print("STEP 2: Creating payload and enriching with postal code...")
+    print("NOTE")
     print("=" * 60)
-
-    # Create a payload structure similar to what read_assignments produces
-    payload = {
-        'raw_text': sample,
-        'parsed': out,
-        'channel_id': 'test',
-        'message_id': 'test123'
-    }
-
-    # Run the full enrichment flow (includes postal code estimation)
-    enriched = process_parsed_payload(payload, do_send=False)
-
-    print("\nEnriched payload:")
-    print(json.dumps(enriched, indent=2, ensure_ascii=False))
-
-    print("\n" + "=" * 60)
-    print("SUMMARY")
-    print("=" * 60)
-    parsed = enriched.get('parsed', {})
-    # Print all top-level keys in the parsed dict, including nested dicts/lists
-
-    def print_nested(d, prefix=""):
-        if isinstance(d, dict):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    print(f"{prefix}{k}:")
-                    print_nested(v, prefix + "  ")
-                elif isinstance(v, list):
-                    print(f"{prefix}{k}: [")
-                    for item in v:
-                        if isinstance(item, dict):
-                            print(f"{prefix}  - ")
-                            print_nested(item, prefix + "    ")
-                        else:
-                            print(f"{prefix}  - {item}")
-                    print(f"{prefix}]")
-                else:
-                    print(f"{prefix}{k}: {v}")
-        else:
-            print(f"{prefix}{d}")
-    print_nested(parsed)
-    # Also print postal_code_estimated if present in enriched
-    if 'postal_code_estimated' in parsed:
-        print(f"postal_code_estimated: {parsed['postal_code_estimated']}")
-    print("=" * 60)
+    print("For the full hardened pipeline (normalize + deterministic time + hard_validate + signals), run:")
+    print("  python3 utilities/run_sample_pipeline.py --file utilities/sample_assignment_post.sample.txt --print-json")

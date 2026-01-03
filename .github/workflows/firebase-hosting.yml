@@ -15,9 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Vite only injects `VITE_*` variables at build time, so they must exist in CI env.
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_SUPABASE_ASSIGNMENTS_TABLE: ${{ secrets.VITE_SUPABASE_ASSIGNMENTS_TABLE }}
       VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
     steps:
       - uses: actions/checkout@v4

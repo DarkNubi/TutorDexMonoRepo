@@ -6,7 +6,7 @@ Monitor configured Telegram channels for:
 
 Stores detailed events + per-message stats in a local SQLite DB for later analysis.
 
-Reads Telegram config from TutorDexAggregator/.env (same as read_assignments.py):
+Reads Telegram config from `TutorDexAggregator/.env` (same as `collector.py`):
 - TELEGRAM_API_ID / TELEGRAM_API_HASH
 - SESSION_STRING or TG_SESSION (session file)
 - CHANNEL_LIST (JSON array or comma-separated)
@@ -774,4 +774,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

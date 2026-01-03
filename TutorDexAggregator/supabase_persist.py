@@ -14,24 +14,22 @@ try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from supabase_env import resolve_supabase_url  # type: ignore
-    from taxonomy.canonicalize_subjects import (  # type: ignore
-        canonicalize_subjects_for_assignment_row,
-        subject_taxonomy_debug_enabled,
-        subject_taxonomy_enabled,
-    )
+    from geo_enrichment import enrich_from_coords  # type: ignore
 except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from TutorDexAggregator.supabase_env import resolve_supabase_url  # type: ignore
-    from TutorDexAggregator.taxonomy.canonicalize_subjects import (  # type: ignore
-        canonicalize_subjects_for_assignment_row,
-        subject_taxonomy_debug_enabled,
-        subject_taxonomy_enabled,
-    )
+    from TutorDexAggregator.geo_enrichment import enrich_from_coords  # type: ignore
 
 setup_logging()
 logger = logging.getLogger("supabase_persist")
 _SG_POSTAL_RE = re.compile(r"\b(\d{6})\b")
+
+try:
+    from observability_metrics import worker_supabase_fail_total, versions as _obs_versions  # type: ignore
+except Exception:
+    worker_supabase_fail_total = None  # type: ignore
+    _obs_versions = None  # type: ignore
 
 
 def _truthy(value: Optional[str]) -> bool:
@@ -234,17 +232,25 @@ def _truthy_text(value: Any) -> bool:
 def _compute_parse_quality(row_like: Dict[str, Any]) -> int:
     # Simple heuristic score used to prevent low-quality reposts from overwriting richer data.
     score = 0
-    if _truthy_text(row_like.get("subjects")) or _truthy_text(row_like.get("subject")):
-        score += 2
-    if _truthy_text(row_like.get("level")):
-        score += 2
-    if _truthy_text(row_like.get("address")) or _truthy_text(row_like.get("postal_code")) or _truthy_text(row_like.get("nearest_mrt")):
-        score += 2
-    if row_like.get("rate_min") is not None or row_like.get("rate_max") is not None or _truthy_text(row_like.get("hourly_rate")):
+    if _truthy_text(row_like.get("academic_display_text")):
+        score += 3
+    if _truthy_text(row_like.get("assignment_code")):
         score += 1
-    if _truthy_text(row_like.get("frequency")) or _truthy_text(row_like.get("duration")):
+    if _truthy_text(row_like.get("signals_subjects")):
+        score += 2
+    if _truthy_text(row_like.get("signals_levels")) or _truthy_text(row_like.get("signals_specific_student_levels")):
         score += 1
-    if row_like.get("time_slots") is not None or row_like.get("estimated_time_slots") is not None or _truthy_text(row_like.get("time_slots_note")):
+    if _truthy_text(row_like.get("address")) or _truthy_text(row_like.get("postal_code")) or _truthy_text(row_like.get("postal_code_estimated")) or _truthy_text(row_like.get("nearest_mrt")):
+        score += 2
+    if row_like.get("rate_min") is not None or row_like.get("rate_max") is not None or _truthy_text(row_like.get("rate_raw_text")):
+        score += 1
+    if _truthy_text(row_like.get("lesson_schedule")):
+        score += 1
+    if row_like.get("time_availability_explicit") is not None or row_like.get("time_availability_estimated") is not None or _truthy_text(row_like.get("time_availability_note")):
+        score += 1
+    if _truthy_text(row_like.get("region")):
+        score += 1
+    if _truthy_text(row_like.get("nearest_mrt_computed")):
         score += 1
     return int(score)
 
@@ -270,7 +276,7 @@ def _merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any])
 
     # Only update heavy/raw blobs when we're upgrading quality.
     if upgrade:
-        for k in ("raw_text", "payload_json", "parsed_json"):
+        for k in ("raw_text", "canonical_json", "meta"):
             if k in incoming_row and incoming_row.get(k) is not None:
                 patch[k] = incoming_row[k]
 
@@ -295,20 +301,9 @@ def _merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any])
             patch[k] = v
             continue
 
-    # Union subjects when not upgrading (preserve + add).
+    # Union signal rollups when not upgrading (preserve + add).
     if not upgrade:
-        existing_subjects = _coerce_text_list(existing.get("subjects") or [])
-        incoming_subjects = _coerce_text_list(incoming_row.get("subjects") or [])
-        if incoming_subjects:
-            combined = _coerce_text_list(existing_subjects + incoming_subjects)
-            if combined != existing_subjects:
-                patch["subjects"] = combined
-            if not _truthy_text(existing.get("subject")) and _truthy_text(incoming_row.get("subject")):
-                patch["subject"] = incoming_row.get("subject")
-
-    # Union canonical arrays when not upgrading (preserve + add).
-    if not upgrade:
-        for key in ("subjects_canonical", "subjects_general", "tags"):
+        for key in ("signals_subjects", "signals_levels", "signals_specific_student_levels", "signals_streams"):
             existing_vals = _coerce_text_list(existing.get(key) or [])
             incoming_vals = _coerce_text_list(incoming_row.get(key) or [])
             if incoming_vals:
@@ -344,7 +339,12 @@ def _derive_external_id(payload: Dict[str, Any]) -> str:
         # TutorCity API can return multiple rows with the same assignment_code but different subject sets.
         # Use a composite external_id to avoid collisions.
         if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api":
-            subs = parsed.get("subjects") or []
+            meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+            signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
+            signals_obj = None
+            if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
+                signals_obj = signals_meta.get("signals")
+            subs = signals_obj.get("subjects") if isinstance(signals_obj, dict) else None
             if isinstance(subs, (list, tuple)) and subs:
                 parts = [str(s).strip() for s in subs if str(s).strip()]
                 if parts:
@@ -372,24 +372,14 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     parsed = payload.get("parsed") or {}
     agency_name, agency_link = _derive_agency(payload)
 
-    # -------------------------
-    # Backward-compatible rollups for the `assignments` table
-    # -------------------------
-    # The new hardened pipeline stores deterministic academic rollups in `payload.meta.signals.signals`.
-    # Many downstream consumers (backend + website) still rely on `assignments.subjects/level/specific_student_level`.
     meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
     signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
-    signals_obj = None
+    signals_obj: Optional[Dict[str, Any]] = None
     if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
         signals_obj = signals_meta.get("signals")
 
-    subjects = parsed.get("subjects")
-    level = parsed.get("level")
-    specific_student_level = parsed.get("specific_student_level")
-
-    # Fallback: if signals were not computed upstream, compute them here (best-effort) to keep
-    # the `assignments` table populated for the website/backend/matching.
-    if signals_obj is None and (not _truthy_text(subjects)) and isinstance(parsed, dict):
+    # Fallback: if signals were not computed upstream, compute them here (best-effort).
+    if signals_obj is None:
         try:
             try:
                 from signals_builder import build_signals  # type: ignore
@@ -406,87 +396,81 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             signals_obj = None
 
-    if (not _truthy_text(subjects)) and isinstance(signals_obj, dict):
-        sig_subjects = signals_obj.get("subjects")
-        if isinstance(sig_subjects, list) and any(isinstance(x, str) and x.strip() for x in sig_subjects):
-            subjects = [str(x).strip() for x in sig_subjects if isinstance(x, str) and str(x).strip()]
-
-    if not _truthy_text(level) and isinstance(signals_obj, dict):
-        sig_levels = signals_obj.get("levels")
-        if isinstance(sig_levels, list):
-            level = _first_text(sig_levels)
-
-    if not _truthy_text(specific_student_level) and isinstance(signals_obj, dict):
-        sig_specific = signals_obj.get("specific_student_levels")
-        if isinstance(sig_specific, list):
-            specific_student_level = _first_text(sig_specific)
-
-    subject = _first_text(subjects)
-
-    def _v2_get(path: str) -> Any:
-        cur: Any = parsed
-        for part in path.split("."):
-            if not isinstance(cur, dict):
-                return None
-            cur = cur.get(part)
-        return cur
-
-    def _learning_mode_text() -> Optional[str]:
-        lm = parsed.get("learning_mode")
-        if isinstance(lm, dict):
-            return _safe_str(lm.get("mode")) or _safe_str(lm.get("raw_text"))
-        return _first_text(lm)
-
-    def _format_lessons_per_week(value: Any) -> Optional[str]:
-        if value is None:
-            return None
-        try:
-            n = float(value)
-        except Exception:
-            return None
-        if n <= 0:
-            return None
-        if abs(n - round(n)) < 1e-9:
-            return f"{int(round(n))}x per week"
-        s = f"{n:.2f}".rstrip("0").rstrip(".")
-        return f"{s}x per week"
-
-    def _format_hours(value: Any) -> Optional[str]:
-        if value is None:
-            return None
-        try:
-            h = float(value)
-        except Exception:
-            return None
-        if h <= 0:
-            return None
-        s = f"{h:.2f}".rstrip("0").rstrip(".")
-        unit = "hour" if abs(h - 1.0) < 1e-9 else "hours"
-        return f"{s} {unit}"
+    def _opt_list(value: Any) -> Optional[List[str]]:
+        vals = _coerce_text_list(value)
+        return vals or None
 
     def _coerce_dict(value: Any) -> Optional[Dict[str, Any]]:
         return value if isinstance(value, dict) else None
 
-    postal_code = _first_text(parsed.get("postal_code")) or _first_text(parsed.get("postal_code_estimated"))
+    # v2 display fields
+    assignment_code = _safe_str(parsed.get("assignment_code")) if isinstance(parsed, dict) else None
+    academic_display_text = _safe_str(parsed.get("academic_display_text")) if isinstance(parsed, dict) else None
+
+    lm_mode = None
+    lm_raw = None
+    lm = parsed.get("learning_mode") if isinstance(parsed, dict) else None
+    if isinstance(lm, dict):
+        lm_mode = _safe_str(lm.get("mode"))
+        lm_raw = _safe_str(lm.get("raw_text"))
+    else:
+        lm_mode = _safe_str(lm)
+
+    address = _opt_list(parsed.get("address") if isinstance(parsed, dict) else None)
+    postal_codes = _coerce_text_list(parsed.get("postal_code") if isinstance(parsed, dict) else None)
+    postal_code = postal_codes[0] if postal_codes else None
+    postal_code_list = _opt_list(postal_codes)
+    postal_code_estimated = _opt_list(parsed.get("postal_code_estimated") if isinstance(parsed, dict) else None)
+    nearest_mrt = _opt_list(parsed.get("nearest_mrt") if isinstance(parsed, dict) else None)
+    lesson_schedule = _opt_list(parsed.get("lesson_schedule") if isinstance(parsed, dict) else None)
+    start_date = _safe_str(parsed.get("start_date")) if isinstance(parsed, dict) else None
+
+    ta = parsed.get("time_availability") if isinstance(parsed, dict) else None
+    if not isinstance(ta, dict):
+        ta = {}
+    ta_note = _safe_str(ta.get("note"))
+    ta_explicit = _coerce_dict(ta.get("explicit"))
+    ta_estimated = _coerce_dict(ta.get("estimated"))
+
+    rate = parsed.get("rate") if isinstance(parsed, dict) else None
+    if not isinstance(rate, dict):
+        rate = {}
+    rate_min = _coerce_int_like(rate.get("min"))
+    rate_max = _coerce_int_like(rate.get("max"))
+    rate_raw_text = _safe_str(rate.get("raw_text"))
+
+    additional_remarks = _safe_str(parsed.get("additional_remarks")) if isinstance(parsed, dict) else None
+
+    # Deterministic signals rollups (optional, but default enabled).
+    signals_subjects = _coerce_text_list(signals_obj.get("subjects") if isinstance(signals_obj, dict) else None)
+    signals_levels = _coerce_text_list(signals_obj.get("levels") if isinstance(signals_obj, dict) else None)
+    signals_specific = _coerce_text_list(signals_obj.get("specific_student_levels") if isinstance(signals_obj, dict) else None)
+    signals_streams = _coerce_text_list(signals_obj.get("streams") if isinstance(signals_obj, dict) else None)
+    signals_academic_requests = signals_obj.get("academic_requests") if isinstance(signals_obj, dict) else None
+    signals_confidence_flags = signals_obj.get("confidence_flags") if isinstance(signals_obj, dict) else None
+
     postal_lat = None
     postal_lon = None
-
-    # Prefer explicit coords in the payload when present (e.g., API sources).
-    try:
-        lat_raw = parsed.get("postal_lat")
-        lon_raw = parsed.get("postal_lon")
-        if lat_raw is not None and lon_raw is not None:
-            postal_lat = float(lat_raw)
-            postal_lon = float(lon_raw)
-    except Exception:
-        postal_lat = None
-        postal_lon = None
-
     if postal_code:
-        if postal_lat is None or postal_lon is None:
-            coords = _geocode_sg_postal(postal_code)
-            if coords:
-                postal_lat, postal_lon = coords
+        coords = _geocode_sg_postal(postal_code)
+        if coords:
+            postal_lat, postal_lon = coords
+
+    region = None
+    nearest_mrt_computed = None
+    nearest_mrt_computed_line = None
+    nearest_mrt_computed_distance_m = None
+    geo_meta: Optional[Dict[str, Any]] = None
+    if postal_lat is not None and postal_lon is not None:
+        try:
+            geo = enrich_from_coords(lat=postal_lat, lon=postal_lon)
+            region = geo.region
+            nearest_mrt_computed = geo.nearest_mrt
+            nearest_mrt_computed_line = geo.nearest_mrt_line
+            nearest_mrt_computed_distance_m = geo.nearest_mrt_distance_m
+            geo_meta = geo.meta if isinstance(geo.meta, dict) else None
+        except Exception:
+            geo_meta = {"ok": False, "error": "geo_enrichment_failed"}
 
     row: Dict[str, Any] = {
         "external_id": _derive_external_id(payload),
@@ -497,44 +481,53 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "message_id": payload.get("message_id"),
         "message_link": _safe_str(payload.get("message_link")),
         "raw_text": _safe_str(payload.get("raw_text")),
-        "subject": subject,
-        "subjects": subjects if isinstance(subjects, list) else None,
-        "level": _safe_str(level),
-        "specific_student_level": _safe_str(specific_student_level),
-        "type": _first_text(parsed.get("type")),
-        "address": _first_text(parsed.get("address")),
-        "postal_code": postal_code,
+        "assignment_code": assignment_code,
+        "academic_display_text": academic_display_text,
+        "learning_mode": lm_mode,
+        "learning_mode_raw_text": lm_raw,
+        "address": address,
+        "postal_code": postal_code_list,
+        "postal_code_estimated": postal_code_estimated,
         "postal_lat": postal_lat,
         "postal_lon": postal_lon,
-        "nearest_mrt": _first_text(parsed.get("nearest_mrt")),
-        "learning_mode": _learning_mode_text(),
-        "student_gender": _first_text(parsed.get("student_gender")),
-        "tutor_gender": _first_text(parsed.get("tutor_gender")),
-        "frequency": _safe_str(parsed.get("frequency")) or _format_lessons_per_week(_v2_get("lesson_schedule.lessons_per_week")),
-        "duration": _safe_str(parsed.get("duration")) or _format_hours(_v2_get("lesson_schedule.hours_per_lesson")),
-        "hourly_rate": _safe_str(parsed.get("hourly_rate")) or _safe_str(_v2_get("rate.raw_text")),
-        # DB schema uses integer columns; v2 schema uses numbers and may surface `45.0`.
-        "rate_min": _coerce_int_like(parsed.get("rate_min")) if parsed.get("rate_min") is not None else _coerce_int_like(_v2_get("rate.min")),
-        "rate_max": _coerce_int_like(parsed.get("rate_max")) if parsed.get("rate_max") is not None else _coerce_int_like(_v2_get("rate.max")),
-        "time_slots": parsed.get("time_slots") if parsed.get("time_slots") is not None else _coerce_dict(_v2_get("time_availability.explicit")),
-        "estimated_time_slots": parsed.get("estimated_time_slots") if parsed.get("estimated_time_slots") is not None else _coerce_dict(_v2_get("time_availability.estimated")),
-        "time_slots_note": _safe_str(parsed.get("time_slots_note")) or _safe_str(_v2_get("time_availability.note")) or _safe_str(_v2_get("lesson_schedule.raw_text")),
-        "additional_remarks": _safe_str(parsed.get("additional_remarks")),
-        "payload_json": payload,
-        "parsed_json": parsed,
+        "nearest_mrt": nearest_mrt,
+        "region": region,
+        "nearest_mrt_computed": nearest_mrt_computed,
+        "nearest_mrt_computed_line": nearest_mrt_computed_line,
+        "nearest_mrt_computed_distance_m": nearest_mrt_computed_distance_m,
+        "lesson_schedule": lesson_schedule,
+        "start_date": start_date,
+        "time_availability_note": ta_note,
+        "time_availability_explicit": ta_explicit,
+        "time_availability_estimated": ta_estimated,
+        "rate_min": rate_min,
+        "rate_max": rate_max,
+        "rate_raw_text": rate_raw_text,
+        "additional_remarks": additional_remarks,
+        "signals_subjects": signals_subjects,
+        "signals_levels": signals_levels,
+        "signals_specific_student_levels": signals_specific,
+        "signals_streams": signals_streams,
+        "signals_academic_requests": signals_academic_requests,
+        "signals_confidence_flags": signals_confidence_flags,
+        "canonical_json": parsed if isinstance(parsed, dict) else None,
+        "meta": meta if isinstance(meta, dict) else None,
     }
-
-    if subject_taxonomy_enabled():
-        canon, general, ver, dbg = canonicalize_subjects_for_assignment_row(row)
-        row["subjects_canonical"] = canon
-        row["subjects_general"] = general
-        row["canonicalization_version"] = int(ver)
-        if subject_taxonomy_debug_enabled():
-            row["canonicalization_debug"] = dbg
+    if geo_meta is not None and isinstance(row.get("meta"), dict):
+        try:
+            row["meta"] = dict(row["meta"])
+            row["meta"]["geo_enrichment"] = geo_meta
+        except Exception:
+            pass
 
     row["parse_quality_score"] = _compute_parse_quality(row)
     if _freshness_enabled():
         row["freshness_tier"] = "green"
+    # Keep empty signal rollups as empty arrays (DB defaults also do this).
+    row["signals_subjects"] = row.get("signals_subjects") or []
+    row["signals_levels"] = row.get("signals_levels") or []
+    row["signals_specific_student_levels"] = row.get("signals_specific_student_levels") or []
+    row["signals_streams"] = row.get("signals_streams") or []
     return {k: v for k, v in row.items() if v is not None}
 
 
@@ -660,15 +653,33 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
     msg_id = payload.get("message_id")
     channel = payload.get("channel_link") or payload.get("channel_username")
 
-    with bind_log_context(cid=str(cid), message_id=msg_id, channel=str(channel) if channel else None, step="supabase"):
+    pv = str(payload.get("pipeline_version") or "").strip()
+    sv = str(payload.get("schema_version") or "").strip()
+    if _obs_versions and not pv:
+        pv = _obs_versions().pipeline_version
+    if _obs_versions and not sv:
+        sv = _obs_versions().schema_version
+    pv = pv or "-"
+    sv = sv or "-"
+
+    row = _build_assignment_row(payload)
+    external_id = row.get("external_id")
+    agency_name = row.get("agency_name")
+    agency_link = row.get("agency_link")
+
+    with bind_log_context(
+        cid=str(cid),
+        message_id=msg_id,
+        channel=str(channel) if channel else None,
+        assignment_id=str(external_id) if external_id else None,
+        step="supabase",
+        component="supabase",
+        pipeline_version=pv,
+        schema_version=sv,
+    ):
         t_all = timed()
 
         client = SupabaseRestClient(cfg)
-        row = _build_assignment_row(payload)
-
-        external_id = row.get("external_id")
-        agency_name = row.get("agency_name")
-        agency_link = row.get("agency_link")
         if not external_id or not agency_name:
             res = {
                 "ok": False,
@@ -705,26 +716,30 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 "parse_quality_score",
                 "message_id",
                 "message_link",
-                "subject",
-                "subjects",
-                "level",
-                "specific_student_level",
-                "type",
                 "address",
                 "postal_code",
                 "nearest_mrt",
                 "learning_mode",
-                "student_gender",
-                "tutor_gender",
-                "frequency",
-                "duration",
-                "hourly_rate",
+                "learning_mode_raw_text",
+                "assignment_code",
+                "academic_display_text",
+                "lesson_schedule",
+                "start_date",
+                "time_availability_note",
+                "time_availability_explicit",
+                "time_availability_estimated",
                 "rate_min",
                 "rate_max",
-                "time_slots",
-                "estimated_time_slots",
-                "time_slots_note",
+                "rate_raw_text",
                 "additional_remarks",
+                "signals_subjects",
+                "signals_levels",
+                "signals_specific_student_levels",
+                "signals_streams",
+                "signals_academic_requests",
+                "signals_confidence_flags",
+                "canonical_json",
+                "meta",
                 "status",
             ]
         )
@@ -748,6 +763,11 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 agency_name=str(agency_name),
                 error=str(e),
             )
+            if worker_supabase_fail_total:
+                try:
+                    worker_supabase_fail_total.labels(operation="get", pipeline_version=pv, schema_version=sv).inc()
+                except Exception:
+                    pass
             return {"ok": False, "error": str(e)}
 
         existing_rows = _coerce_rows(existing_resp) if existing_resp.status_code < 400 else []
@@ -789,6 +809,11 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 patch_ms = round((timed() - t0) * 1000.0, 2)
             except Exception as e:
                 log_event(logger, logging.ERROR, "supabase_patch_failed", row_id=existing.get("id"), error=str(e))
+                if worker_supabase_fail_total:
+                    try:
+                        worker_supabase_fail_total.labels(operation="patch", pipeline_version=pv, schema_version=sv).inc()
+                    except Exception:
+                        pass
                 return {"ok": False, "error": str(e)}
 
             ok = patch_resp.status_code < 400
@@ -807,6 +832,11 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                     ok = patch_resp.status_code < 400
                 except Exception as e:
                     log_event(logger, logging.ERROR, "supabase_patch_failed", row_id=existing.get("id"), error=str(e))
+                    if worker_supabase_fail_total:
+                        try:
+                            worker_supabase_fail_total.labels(operation="patch", pipeline_version=pv, schema_version=sv).inc()
+                        except Exception:
+                            pass
                     return {"ok": False, "error": str(e)}
             if not ok:
                 log_event(logger, logging.WARNING, "supabase_patch_status", status_code=patch_resp.status_code, body=patch_resp.text[:500])
@@ -831,6 +861,11 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             insert_ms = round((timed() - t0) * 1000.0, 2)
         except Exception as e:
             log_event(logger, logging.ERROR, "supabase_insert_failed", external_id=str(external_id), agency_name=str(agency_name), error=str(e))
+            if worker_supabase_fail_total:
+                try:
+                    worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
+                except Exception:
+                    pass
             return {"ok": False, "error": str(e)}
 
         ok = insert_resp.status_code < 400
@@ -849,6 +884,11 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 ok = insert_resp.status_code < 400
             except Exception as e:
                 log_event(logger, logging.ERROR, "supabase_insert_failed", external_id=str(external_id), agency_name=str(agency_name), error=str(e))
+                if worker_supabase_fail_total:
+                    try:
+                        worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
+                    except Exception:
+                        pass
                 return {"ok": False, "error": str(e)}
         if not ok:
             log_event(logger, logging.WARNING, "supabase_insert_status", status_code=insert_resp.status_code, body=insert_resp.text[:500])

@@ -46,7 +46,7 @@ def canonicalize(parsed: Dict[str, Any]) -> Dict[str, Any]:
             data[k] = _safe_str(data.get(k))
 
     # address-like lists
-    for k in ("address", "postal_code", "nearest_mrt", "lesson_schedule"):
+    for k in ("address", "postal_code", "postal_code_estimated", "nearest_mrt", "lesson_schedule"):
         if k in data:
             data[k] = _dedupe_str_list(data.get(k))
 
@@ -76,4 +76,3 @@ def canonicalize(parsed: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     return data
-

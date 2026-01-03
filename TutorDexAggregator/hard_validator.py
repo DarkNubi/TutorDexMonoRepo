@@ -107,6 +107,7 @@ def hard_validate(
     Output schema hardened here focuses on:
     - learning_mode
     - address/postal_code/nearest_mrt
+    - postal_code_estimated (best-effort fallback)
     - lesson_schedule
     - start_date
     - time_availability
@@ -164,7 +165,7 @@ def hard_validate(
             out.append(s)
         return out or None
 
-    for k in ("address", "postal_code", "nearest_mrt", "lesson_schedule"):
+    for k in ("address", "postal_code", "postal_code_estimated", "nearest_mrt", "lesson_schedule"):
         if k in data:
             data[k] = _clean_str_list(k, data.get(k))
 

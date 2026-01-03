@@ -1,6 +1,6 @@
 # TutorDexAggregator
 
-Reads Telegram tuition assignment posts, extracts structured fields using a local LLM HTTP API, enriches with postal code (optional), and broadcasts the result via Telegram Bot API (or saves to a local fallback file).
+Reads Telegram tuition assignment posts, extracts structured display fields using a local LLM HTTP API, adds deterministic hardening (normalization, time parsing, validation, matching signals), persists to Supabase, and optionally broadcasts/DMs.
 
 ## Setup
 
@@ -53,16 +53,12 @@ Helper (discover chat ids after users message the DM bot):
 - `SUPABASE_BUMP_MIN_SECONDS`: Minimum seconds between bump increments for duplicates (default `21600` = 6 hours)
 
 **Raw Telegram persistence (optional, recommended for backfill)**
-- Requires DB migration: `TutorDexAggregator/migrations/2025-12-18_add_telegram_raw_tables.sql`
 - `SUPABASE_RAW_ENABLED`: `true/false` (defaults to `SUPABASE_ENABLED`)
 - `RAW_FALLBACK_FILE`: optional JSONL file to write if raw persistence is disabled/unavailable
 
 Schema files:
-- Minimal single-table schema: `TutorDexAggregator/supabase_schema.sql`
-- Full normalized schema: `TutorDexAggregator/supabase_schema_full.sql`
-- RLS policy templates: `TutorDexAggregator/supabase_rls_policies.sql`
- - Subject taxonomy migration (adds derived arrays): `TutorDexAggregator/migrations/2025-12-17_add_subject_taxonomy.sql`
- - Raw Telegram tables: `TutorDexAggregator/migrations/2025-12-18_add_telegram_raw_tables.sql`
+- Full normalized schema (recommended): `TutorDexAggregator/supabase sqls/supabase_schema_full.sql`
+- Extraction queue RPCs: `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql`
 
 Supabase self-host migration runbook:
 - `infra/supabase_selfhost/README.md`
@@ -94,25 +90,21 @@ Prompt examples live in `TutorDexAggregator/message_examples/`:
 
 From `TutorDexAggregator/`:
 
-- Start the Telegram reader:
-  - `python runner.py start`
-- Quick extract test (no send):
-- `python runner.py test --text "..." `
-- Quick extract test (send via broadcaster):
-  - `python runner.py test --text "..." --send`
-- Process a saved payload JSON:
-- `python runner.py process-file path\\to\\payload.json`
-  - `python runner.py process-file path\\to\\payload.json --send`
+- Start the raw collector (tail live channels):
+  - `python collector.py tail`
+- Start the extraction queue worker:
+  - `python workers/extract_worker.py`
+- Local dry-run on a pasted post (no Supabase writes):
+  - `python utilities/run_sample_pipeline.py --file utilities/sample_assignment_post.sample.txt --print-json`
 - Raw delete handling:
   - If a Telegram message is deleted and the raw collector has recorded it, the queue worker will mark the corresponding assignment row as `closed` in Supabase (best-effort).
 
 ## Raw history collection (recommended)
 
-The production pipeline (`read_assignments.py`) intentionally filters/skips some posts (forwards, compilation posts).
 To build a reprocessable data moat, use the raw collector to persist a lossless message history to Supabase.
 
-1) Apply the raw tables migration in Supabase:
-   - `TutorDexAggregator/migrations/2025-12-18_add_telegram_raw_tables.sql`
+1) Apply the normalized schema in Supabase:
+   - `TutorDexAggregator/supabase sqls/supabase_schema_full.sql`
 
 2) Enable Supabase (and optionally raw enable flag) in `TutorDexAggregator/.env`:
    - `SUPABASE_ENABLED=true`
@@ -125,9 +117,6 @@ To build a reprocessable data moat, use the raw collector to persist a lossless 
 4) Tail new messages/edits/deletes:
   - `python collector.py tail`
 
-Heartbeat:
-- Default file: `TutorDexAggregator/monitoring/heartbeat_raw_collector.json` (override with `--heartbeat-file`)
-
 Progress:
 - Check the latest backfill/tail run progress:
   - `python collector.py status --run-type backfill`
@@ -138,8 +127,6 @@ Progress:
 - Requires applying the RPC helper: `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql`
 - The raw collector can enqueue extraction jobs into `telegram_extractions` (see `collector.py`)
 - Workers (`workers/extract_worker.py`) claim jobs, run extraction/enrichment/persistence, and optionally broadcast/DM
-- Worker heartbeat writes to `TutorDexAggregator/monitoring/heartbeat_queue_worker.json` (config via `EXTRACTION_QUEUE_HEARTBEAT_FILE`)
-- Monitor alerts on stale worker heartbeat or high pending age; configure via `.env` (`ALERT_*`, `EXTRACTION_QUEUE_HEARTBEAT_*`)
 
 ### Docker split roles (ingest + worker + monitor)
 
@@ -147,27 +134,23 @@ Progress:
   - Default services use the **raw collector + queue** pipeline:
     - `collector-tail` (`collector.py tail`) -> writes raw messages + enqueues extraction jobs
     - `aggregator-worker` (`workers/extract_worker.py`) -> drains the queue (LLM extract + persist + broadcast/DM)
-    - `aggregator-monitor` (`monitoring/monitor.py`) -> alerts + health checks
     - `backend` (FastAPI)
-  - Legacy single-process Telethon reader (`runner.py start`) is behind a compose profile:
-    - `docker compose --profile legacy up --build aggregator-ingest`
   - Supabase (self-host) is expected to be running on the external Docker network `supabase_default` with Kong at `supabase-kong:8000` (HTTP).
     - In `.env`, prefer `SUPABASE_URL_DOCKER=http://supabase-kong:8000` (so Docker runs work).
     - If you also run scripts with Windows Python, set `SUPABASE_URL_HOST=...` to a host-reachable Supabase REST URL/port.
   - Host llama server: keep `LLM_API_URL=http://host.docker.internal:1234`.
   - DM/backend matching uses the internal service `backend:8000` (already set in `.env`).
-  - Mounts `./logs` and `./monitoring` for persistence.
+  - Mounts `./logs` for persistence (optional; container logs are shipped via Loki when using `observability/`).
   - TutorCity API fetcher (no LLM): `tutorcity-fetch` polls `TUTORCITY_API_URL` on an interval and persists/broadcasts/DMs directly (source label is always `TutorCity`).
 - Legacy per-folder compose (optional): `docker compose -f docker-compose.roles.yml up --build`
   - Same services as above; use only if you need to run the aggregator stack separately.
 - Helpful env knobs:
-  - `EXTRACTION_QUEUE_HEARTBEAT_FILE` to move the queue heartbeat path
   - `EXTRACTION_STALE_PROCESSING_SECONDS` / `EXTRACTION_MAX_ATTEMPTS` / backoff vars to tune worker retries
-  - `ALERT_*` to target the alert bot/chat/thread
+  - `ALERT_*` to target Alertmanager -> Telegram
 
 ## Extraction
 
-The live aggregator uses a single LLM call per message (see `extract_key_info.py`) and then broadcasts + optionally persists the result.
+The queue worker (`workers/extract_worker.py`) calls the LLM once per message (see `extract_key_info.py`), overwrites `time_availability` deterministically, hard-validates the output, persists to Supabase, and optionally broadcasts/DMs.
 
 ## Deterministic matching signals (recommended)
 
@@ -178,7 +161,7 @@ In addition to the LLM “display JSON” (stored in `telegram_extractions.canon
   - `ENABLE_DETERMINISTIC_SIGNALS=0/1` (default `1`)
   - `HARD_VALIDATE_MODE=off|report|enforce` (default `report`)
   - `USE_NORMALIZED_TEXT_FOR_LLM=0/1` (default `0`)
-  - `USE_DETERMINISTIC_TIME=0/1` (default `0`; when `1`, overwrites `time_availability` deterministically)
+  - `USE_DETERMINISTIC_TIME=0/1` (default `1`; when `1`, overwrites `time_availability` deterministically)
 
 For the current hardened pipeline version (`2026-01-02_det_time_v1`), the recommended `.env` settings are:
 - `EXTRACTION_PIPELINE_VERSION=2026-01-02_det_time_v1`
@@ -204,7 +187,7 @@ By default it writes to `TutorDexAggregator/monitoring/telegram_message_edits.sq
   - Dry run: `python expire_assignments.py --days 7 --dry-run`
 
 - Update freshness tiers (recommended once per hour)
-  - Requires DB migration: `TutorDexAggregator/migrations/2025-12-17_add_freshness_tier.sql`
+  - Requires `assignments.freshness_tier` (included in `supabase_schema_full.sql`)
   - Enable writes from aggregator: set `FRESHNESS_TIER_ENABLED=true` in `TutorDexAggregator/.env`
   - Tier update (7d -> red, no close): `python update_freshness_tiers.py --expire-action none --red-hours 168`
   - Auto-close after 14d: `python update_freshness_tiers.py --expire-action closed --red-hours 336`
@@ -216,31 +199,7 @@ By default it writes to `TutorDexAggregator/monitoring/telegram_message_edits.sq
 
 ## Monitoring & alerting (recommended)
 
-The pipeline writes lightweight heartbeat files and logs pipeline events to `TutorDexAggregator/logs/tutordex_aggregator.log`:
-- Raw collector heartbeat: `TutorDexAggregator/monitoring/heartbeat_raw_collector.json`
-- Queue worker heartbeat: `TutorDexAggregator/monitoring/heartbeat_queue_worker.json`
-
-You can run a simple Telegram alerting loop that:
-- Alerts when the raw collector or queue worker heartbeat stops updating (process stalled/down)
-- Alerts on error spikes (Telegram rate limits, LLM failures, Supabase failures, DM/broadcast failures)
-- Sends a daily “pipeline health summary” to an admin chat/thread
-
-1) Configure (in `TutorDexAggregator/.env`):
-- `ALERT_BOT_TOKEN`, `ALERT_CHAT_ID`, optional `ALERT_THREAD_ID`
-- `MONITOR_BACKEND_HEALTH_URL` (recommended: backend `/health/full`)
-- Recommended defaults (override in `.env`):
-  - `ALERT_HEARTBEAT_STALE_SECONDS=900` (15 minutes)
-  - `ALERT_LOG_STALE_SECONDS=900`
-  - `ALERT_ERROR_BURST_LIMIT=6`
-  - `RAW_HEARTBEAT_FILE=monitoring/heartbeat_raw_collector.json`
-  - `EXTRACTION_QUEUE_HEARTBEAT_FILE=monitoring/heartbeat_queue_worker.json`
-  - Legacy only: `HEARTBEAT_FILE=monitoring/heartbeat.json` (old ingester; monitor ignores this now)
-
-2) Run the monitor (from `TutorDexAggregator/`):
-- `python monitoring/monitor.py`
-
-Windows helper:
-- `TutorDexAggregator/setup_service/start_monitor_loop.bat`
+Use `observability/` (Prometheus + Alertmanager + Grafana + Loki) for metrics, alerts, and logs.
 
 ## Production notes (small checklist)
 
@@ -253,5 +212,5 @@ Windows helper:
 
 ## Notes
 
-- `extract_key_info.py` can optionally call OpenStreetMap Nominatim to estimate postal codes; if network access is blocked/unavailable, it will silently return `None`.
+- Postal geocoding (lat/lon) is best-effort and may be skipped when Nominatim is disabled/unavailable.
 - Keep secrets out of git: `.env` is ignored by `TutorDexAggregator/.gitignore`.

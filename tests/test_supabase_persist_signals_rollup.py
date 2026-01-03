@@ -10,7 +10,7 @@ class TestSupabasePersistSignalsRollup(unittest.TestCase):
         # Ensure we don't accidentally do network geocoding in unit tests.
         os.environ["DISABLE_NOMINATIM"] = "1"
 
-    def test_assignments_row_uses_meta_signals_for_subjects_levels(self):
+    def test_assignments_row_materializes_signals_rollups(self):
         payload = {
             "channel_link": "t.me/sample",
             "channel_title": "Sample",
@@ -39,12 +39,10 @@ class TestSupabasePersistSignalsRollup(unittest.TestCase):
             },
         }
         row = _build_assignment_row(payload)
-        self.assertEqual(row.get("subject"), "English")
-        self.assertEqual(row.get("subjects"), ["English", "Maths"])
-        self.assertEqual(row.get("level"), "Primary")
-        self.assertEqual(row.get("specific_student_level"), "Primary 5")
+        self.assertEqual(row.get("signals_subjects"), ["English", "Maths"])
+        self.assertEqual(row.get("signals_levels"), ["Primary"])
+        self.assertEqual(row.get("signals_specific_student_levels"), ["Primary 5"])
 
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -59,20 +59,25 @@ def _payload_to_query(payload: Dict[str, Any]) -> Dict[str, Any]:
     if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
         signals_obj = signals_meta.get("signals")
 
-    # New hardened pipeline keeps display fields in `parsed`, but deterministic match rollups live in `meta.signals`.
-    subjects = parsed.get("subjects")
-    levels = parsed.get("level")
-    if (not subjects) and isinstance(signals_obj, dict):
+    # Hardened pipeline: deterministic match rollups live in `meta.signals`.
+    subjects: Any = []
+    levels: Any = []
+    if isinstance(signals_obj, dict):
         subjects = signals_obj.get("subjects") or []
-    if (not levels) and isinstance(signals_obj, dict):
         levels = signals_obj.get("levels") or []
+
+    lm_val = parsed.get("learning_mode") if isinstance(parsed, dict) else None
+    if isinstance(lm_val, dict):
+        learning_modes = lm_val.get("mode") or lm_val.get("raw_text")
+    else:
+        learning_modes = lm_val
 
     return {
         "subjects": subjects or [],
-        "levels": levels,
-        "types": parsed.get("type"),
-        "learning_modes": parsed.get("learning_mode"),
-        "tutor_type": parsed.get("tutor_type"),
+        "levels": levels or [],
+        "types": [],
+        "learning_modes": learning_modes,
+        "tutor_type": [],
     }
 
 

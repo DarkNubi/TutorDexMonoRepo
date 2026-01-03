@@ -2,7 +2,7 @@ TutorDex Website UI/UX Review (Developer Report)
 Date: 2025-12-17
 Scope reviewed:
   - Pages: index.html, assignments.html, profile.html, 404.html
-  - Scripts: auth.js, src/page-assignments.js, src/page-profile.js, src/supabase.js, src/backend.js, src/debug.js
+  - Scripts: auth.js, src/page-assignments.js, src/page-profile.js, src/backend.js, src/debug.js
 
 High-level summary
 1) The site already has a strong visual direction (bold “Nike-esque” typography, sticky nav/filters, clear CTAs).
@@ -17,7 +17,7 @@ Where it shows up:
   - Assignments card “Level › Specific level” separator currently renders as “ƒ?›”.
     - src/page-assignments.js builds: `${job.level} ƒ?› ${job.specificLevel}`
   - Frequency joiner renders as “ƒ?§”.
-    - src/supabase.js: `freqBits.join(" ƒ?§ ")`
+    - (removed) direct Supabase client code; website is backend-only
   - “Rate not available” renders as a broken string “ƒ?"".
     - src/page-assignments.js: `... ? `$${job.rate}/hr` : "ƒ?"";`
   - Debug token redaction and auth hints contain broken separators “ƒ?İ”, “ƒ+'”.
@@ -174,4 +174,3 @@ Milestone C: V1.0 UX (1–3 weeks, parallelizable)
    - a) Simple “Agencies” directory page
    - b) “Claim your channel” onboarding form
    - c) Full agency portal (longer)
-

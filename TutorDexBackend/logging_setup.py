@@ -26,6 +26,13 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),
+            "component": getattr(record, "component", "-"),
+            "assignment_id": getattr(record, "assignment_id", "-"),
+            "channel": getattr(record, "channel", "-"),
+            "pipeline_version": getattr(record, "pipeline_version", "-"),
+            "schema_version": getattr(record, "schema_version", "-"),
+            "trace_id": getattr(record, "trace_id", "-"),
+            "span_id": getattr(record, "span_id", "-"),
         }
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
@@ -59,8 +66,29 @@ def setup_logging(service_name: str = "tutordex_backend") -> None:
     for h in list(root.handlers):
         root.removeHandler(h)
 
+    class _ContextFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            if not hasattr(record, "component"):
+                record.component = service_name
+            if not hasattr(record, "assignment_id"):
+                record.assignment_id = "-"
+            if not hasattr(record, "channel"):
+                record.channel = "-"
+            if not hasattr(record, "pipeline_version"):
+                record.pipeline_version = (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "").strip() or "-"
+            if not hasattr(record, "schema_version"):
+                record.schema_version = os.environ.get("SCHEMA_VERSION") or "-"
+            if not hasattr(record, "trace_id"):
+                record.trace_id = "-"
+            if not hasattr(record, "span_id"):
+                record.span_id = "-"
+            return True
+
+    ctx = _ContextFilter()
+
     if log_to_console:
         sh = logging.StreamHandler()
+        sh.addFilter(ctx)
         sh.setFormatter(fmt)
         root.addHandler(sh)
 
@@ -73,6 +101,7 @@ def setup_logging(service_name: str = "tutordex_backend") -> None:
                 backupCount=backup_count,
                 encoding="utf-8",
             )
+            fh.addFilter(ctx)
             fh.setFormatter(fmt)
             root.addHandler(fh)
         except Exception:

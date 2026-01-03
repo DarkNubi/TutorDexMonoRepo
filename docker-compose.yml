@@ -1,21 +1,4 @@
 services:
-  aggregator-ingest:
-    build: ./TutorDexAggregator
-    profiles: ["legacy"]
-    env_file:
-      - ./TutorDexAggregator/.env
-    command: ["python", "runner.py", "start"]
-    restart: unless-stopped
-    volumes:
-      - ./TutorDexAggregator:/app
-      - ./TutorDexAggregator/logs:/app/logs
-      - ./TutorDexAggregator/monitoring:/app/monitoring
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - default
-      - supabase_net
-
   aggregator-worker:
     build: ./TutorDexAggregator
     env_file:
@@ -27,45 +10,37 @@ services:
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
-      - ./TutorDexAggregator/monitoring:/app/monitoring
+    environment:
+      LOG_JSON: "true"
+      LOG_TO_CONSOLE: "true"
+      LOG_TO_FILE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_SERVICE_NAME: "tutordex-aggregator-worker"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
+      - tutordex
       - supabase_net
 
   collector-tail:
     build: ./TutorDexAggregator
     env_file:
       - ./TutorDexAggregator/.env
-    command: ["python", "collector.py", "tail"]
+    command: ["python", "collector.py", "live"]
     restart: unless-stopped
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
-      - ./TutorDexAggregator/monitoring:/app/monitoring
+    environment:
+      LOG_JSON: "true"
+      LOG_TO_CONSOLE: "true"
+      LOG_TO_FILE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_SERVICE_NAME: "tutordex-collector"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
-      - supabase_net
-
-  aggregator-monitor:
-    build: ./TutorDexAggregator
-    env_file:
-      - ./TutorDexAggregator/.env
-    command: ["python", "monitoring/monitor.py"]
-    restart: unless-stopped
-    depends_on:
-      - backend
-    volumes:
-      - ./TutorDexAggregator:/app
-      - ./TutorDexAggregator/logs:/app/logs
-      - ./TutorDexAggregator/monitoring:/app/monitoring
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - default
+      - tutordex
       - supabase_net
 
   backend:
@@ -74,14 +49,22 @@ services:
       - ./TutorDexBackend/.env
     # Use the default CMD from TutorDexBackend/Dockerfile (uvicorn app:app)
     restart: unless-stopped
+    depends_on:
+      - redis
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+    environment:
+      LOG_JSON: "true"
+      LOG_TO_CONSOLE: "true"
+      LOG_TO_FILE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_SERVICE_NAME: "tutordex-backend"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
+      - tutordex
       - supabase_net
 
   telegram-link-bot:
@@ -91,6 +74,11 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
       LINK_BOT_OFFSET_FILE: /state/telegram_link_bot_offset.json
+      LOG_JSON: "true"
+      LOG_TO_CONSOLE: "true"
+      LOG_TO_FILE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_SERVICE_NAME: "tutordex-telegram-link-bot"
     command: ["python", "telegram_link_bot.py", "--poll-seconds", "2"]
     restart: unless-stopped
     depends_on:
@@ -101,8 +89,17 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
+      - tutordex
       - supabase_net
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - tutordex
 
   freshness-tiers:
     build: ./TutorDexAggregator
@@ -117,10 +114,16 @@ services:
           sleep ${FRESHNESS_TIERS_INTERVAL_SECONDS:-3600}
         done
     restart: unless-stopped
+    environment:
+      LOG_JSON: "true"
+      LOG_TO_CONSOLE: "true"
+      LOG_TO_FILE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_SERVICE_NAME: "tutordex-freshness-tiers"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
+      - tutordex
       - supabase_net
 
   tutorcity-fetch:
@@ -139,16 +142,171 @@ services:
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
+    environment:
+      LOG_JSON: "true"
+      LOG_TO_CONSOLE: "true"
+      LOG_TO_FILE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_SERVICE_NAME: "tutordex-tutorcity-fetch"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
+      - tutordex
       - supabase_net
 
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - ./observability/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - tutordex
+    depends_on:
+      - alertmanager
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+    networks:
+      - tutordex
+    depends_on:
+      - alertmanager-telegram
+
+  alertmanager-telegram:
+    build: ./observability/alertmanager-telegram
+    env_file:
+      - ./TutorDexAggregator/.env
+    networks:
+      - tutordex
+
+  loki:
+    image: grafana/loki:2.9.4
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    networks:
+      - tutordex
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    command: ["-config.file=/etc/promtail/promtail-config.yml"]
+    volumes:
+      - ./observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - tutordex
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3300}:3000"
+    networks:
+      - tutordex
+    depends_on:
+      - prometheus
+      - loki
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - tutordex
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    restart: unless-stopped
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - tutordex
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: unless-stopped
+    volumes:
+      - ./observability/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - "--config.file=/etc/blackbox_exporter/config.yml"
+    networks:
+      - tutordex
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    restart: unless-stopped
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
+    networks:
+      - tutordex
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    command: ["--config=/etc/otelcol/config.yml"]
+    restart: unless-stopped
+    volumes:
+      - ./observability/otel-collector/config.yml:/etc/otelcol/config.yml:ro
+    networks:
+      - tutordex
+
 networks:
+  tutordex:
+    name: tutordex
+
   supabase_net:
     external: true
     name: supabase_default
 
 volumes:
   telegram_link_bot_state:
+  prometheus_data:
+  alertmanager_data:
+  loki_data:
+  grafana_data:
+  redis_data:
+  tempo_data:

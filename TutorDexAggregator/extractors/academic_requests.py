@@ -21,20 +21,40 @@ class Token:
     matched_text: str
 
 
-_SPEC_PRIMARY_RE = re.compile(r"(?i)\b(?:p|pri|primary)\s*([1-6])\b")
-_SPEC_SECONDARY_RE = re.compile(r"(?i)\b(?:s|sec|secondary)\s*([1-5])\b")
-_SPEC_JC_RE = re.compile(r"(?i)\b(?:jc|j)\s*([1-2])\b")
+_SPEC_PRIMARY_RE = re.compile(r"(?i)\b(?:p\.?|pri|primary)\s*([1-6])\b")
+_SPEC_SECONDARY_RE = re.compile(r"(?i)\b(?:s\.?|sec|secondary)\s*([1-5])\b")
+_SPEC_JC_RE = re.compile(r"(?i)\b(?:jc|j\.?)\s*([1-2])\b")
 _SPEC_K_RE = re.compile(r"(?i)\b(?:k)\s*([1-2])\b")
+_SPEC_NURSERY_RE = re.compile(r"(?i)\b(?:nur(?:sery)?|n)\s*([1-2])\b")
 
 # IB/IGCSE patterns are conservative: require explicit IB/IGCSE near the year/grade.
 _IB_YEAR_RE = re.compile(r"(?i)\bib\s*(?:year\s*)?(\d{1,2})\b")
 _IGCSE_GRADE_RE = re.compile(r"(?i)\bigcse\s*(?:grade|year)\s*(\d{1,2})\b")
 
 _LEVEL_ONLY_RE = re.compile(
-    r"(?i)\b(pre[-\s]?school|preschool|pri|primary|sec|secondary|jc|junior\s+college|ib|igcse|poly|polytechnic)\b"
+    r"(?i)\b("
+    r"pre[-\s]?school|preschool|kindergarten|nursery|child\s*care|"
+    r"pri(?:mary)?(?:\s+school)?|psle|"
+    r"sec(?:ondary)?(?:\s+school)?|o[-\s]?levels?|n[-\s]?levels?|"
+    r"jc|junior\s+college|a[-\s]?levels?|pre[-\s]?(?:u|uni|university)|pre[-\s]?university|"
+    r"ib|international\s+baccalaureate|ib\s*dp|ibdp|ib\s*diploma|diploma\s+programme|diploma\s+program|"
+    r"igcse|cambridge\s+igcse|"
+    r"poly|polytechnic"
+    r")\b"
 )
 
-_STREAM_RE = re.compile(r"(?i)\b(g[1-3]|express|na|nt|ip|foundation|h[1-3]|hl|sl)\b")
+_STREAM_RE = re.compile(
+    r"(?i)\b("
+    r"g\s*[1-3]|h\s*[1-3]|"
+    r"express|exp|"
+    r"na|nt|ip|foundation|"
+    r"normal\s+(?:academic|acad|technical|tech)|"
+    r"integrated\s+programme|integrated\s+program|"
+    r"(?:higher|standard)\s+level|hl|sl|"
+    r"sbb|subject\s+based\s+banding|"
+    r"(?:arts|science|commerce)\s+stream"
+    r")\b"
+)
 
 
 def _tokenize_levels_and_streams(text: str) -> List[Token]:
@@ -55,6 +75,10 @@ def _tokenize_levels_and_streams(text: str) -> List[Token]:
             out.append(Token("specific_level", spec, m.start(), m.end(), m.group(0)))
     for m in _SPEC_K_RE.finditer(s):
         lvl, spec = canonicalize_specific_level(kind="k", number=m.group(1))
+        if lvl and spec:
+            out.append(Token("specific_level", spec, m.start(), m.end(), m.group(0)))
+    for m in _SPEC_NURSERY_RE.finditer(s):
+        lvl, spec = canonicalize_specific_level(kind="nursery", number=m.group(1))
         if lvl and spec:
             out.append(Token("specific_level", spec, m.start(), m.end(), m.group(0)))
 
@@ -92,6 +116,8 @@ def _specific_to_level(specific: str) -> Optional[str]:
     if ss.startswith("JC "):
         return "Junior College"
     if ss.startswith("Kindergarten "):
+        return "Pre-School"
+    if ss.startswith("Nursery "):
         return "Pre-School"
     if ss.startswith("IB Year "):
         return "IB"
@@ -243,4 +269,3 @@ def parse_academic_requests(
         "evidence": evidence,
         "confidence_flags": confidence_flags,
     }
-

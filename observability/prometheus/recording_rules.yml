@@ -1,0 +1,38 @@
+groups:
+  - name: tutordex-recording
+    interval: 30s
+    rules:
+      - record: tutordex:collector:seconds_since_last_message
+        expr: time() - collector_last_message_timestamp_seconds
+
+      - record: tutordex:worker:throughput_jobs_per_s
+        expr: sum by (pipeline_version, schema_version) (rate(worker_jobs_processed_total[5m]))
+
+      - record: tutordex:worker:llm_fail_rate_per_s
+        expr: rate(worker_llm_fail_total[5m])
+
+      - record: tutordex:worker:supabase_fail_rate_per_s
+        expr: sum by (pipeline_version, schema_version) (rate(worker_supabase_fail_total[5m]))
+
+      - record: tutordex:worker:parse_failure_rate_per_s
+        expr: sum by (reason, pipeline_version, schema_version) (rate(worker_parse_failure_total[10m]))
+
+      - record: tutordex:worker:parse_success_rate_per_s
+        expr: sum by (pipeline_version, schema_version) (rate(worker_parse_success_total[10m]))
+
+      - record: tutordex:worker:parse_error_fraction
+        expr: |
+          (
+            sum(rate(worker_parse_failure_total[10m]))
+          )
+          /
+          clamp_min(
+            sum(rate(worker_parse_failure_total[10m])) + sum(rate(worker_parse_success_total[10m])),
+            0.000001
+          )
+
+      - record: tutordex:quality:missing_field_rate_per_s
+        expr: sum by (field, pipeline_version, schema_version) (rate(assignment_quality_missing_field_total[10m]))
+
+      - record: tutordex:quality:inconsistency_rate_per_s
+        expr: sum by (kind, pipeline_version, schema_version) (rate(assignment_quality_inconsistency_total[10m]))

@@ -12,12 +12,27 @@ Design goals:
 **Purpose:** 24/7 ingestion + extraction.
 
 **What runs:**
-- `collector.py tail` (live raw ingest of new messages/edits/deletes into `telegram_messages_raw`)
+- `collector.py live` (tail + automated catchup recovery into `telegram_messages_raw`)
 - `workers/extract_worker.py` (claims `telegram_extractions` and performs extraction + downstream writes; may broadcast/DM depending on env)
 
 **Notes:**
 - Live mode is the only one intended to run continuously.
 - If you run a backfill that connects to Telegram, avoid running it concurrently with live mode using the same Telethon session.
+
+### Automated catchup recovery (no manual Mode 2/3 needed for most outages)
+
+`collector.py live` runs `tail` immediately, and also runs a bounded "catchup" backfill after restarts to heal gaps.
+The catchup is throttled by the extraction queue backlog so it naturally runs when the queue is drained/low.
+
+Relevant env vars (optional; defaults are safe):
+- `RECOVERY_CATCHUP_ENABLED=1`
+- `TG_SESSION_RECOVERY=tutordex_recovery.session` (separate Telethon session for catchup; avoid conflicts with tail)
+- `RECOVERY_CATCHUP_CHUNK_HOURS=6`
+- `RECOVERY_CATCHUP_QUEUE_LOW_WATERMARK=0`
+- `RECOVERY_CATCHUP_CHECK_INTERVAL_SECONDS=30`
+- `RECOVERY_CATCHUP_TARGET_LAG_MINUTES=2`
+- `RECOVERY_CATCHUP_OVERLAP_MINUTES=10`
+- `RECOVERY_CATCHUP_STATE_FILE=monitoring/recovery_catchup_state.json`
 
 ## Mode 2 — Backfill missing raw data (Manual)
 
@@ -227,7 +242,6 @@ You can A/B both **models** and **system prompts** by doing two runs against the
    - `LLM_MODEL_NAME=...`
 3) Configure the system prompt per run (new):
    - `LLM_SYSTEM_PROMPT_FILE=relative/or/absolute/path/to/prompt.txt`, or
-   - `LLM_SYSTEM_PROMPT_VARIANT=foo` (loads `TutorDexAggregator/prompts/system_prompt_foo.txt` if it exists), or
    - `LLM_SYSTEM_PROMPT_TEXT=...` (inline; convenient but harder to audit)
 4) For each run:
    - Run Mode 3 for a fixed time window.

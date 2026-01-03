@@ -1,0 +1,1241 @@
+[
+  {
+    "name": "CALDECOTT MRT STATION (TE9)",
+    "address": "1 TOA PAYOH LINK CALDECOTT MRT STATION (TE9) SINGAPORE 297608",
+    "latitude": 1.33724561271722,
+    "longitude": 103.840161782075,
+    "line": "TE"
+  },
+  {
+    "name": "CASHEW MRT STATION (DT2)",
+    "address": "1 CASHEW ROAD CASHEW MRT STATION (DT2) SINGAPORE 679696",
+    "latitude": 1.36981544925552,
+    "longitude": 103.76443921414,
+    "line": "DT"
+  },
+  {
+    "name": "LENTOR MRT STATION (TE5)",
+    "address": "1 LENTOR DRIVE LENTOR MRT STATION (TE5) SINGAPORE 789361",
+    "latitude": 1.38550657972169,
+    "longitude": 103.835743809669,
+    "line": "TE"
+  },
+  {
+    "name": "MARINA BAY MRT STATION (CE2)",
+    "address": "23 PARK STREET MARINA BAY MRT STATION (CE2) SINGAPORE 018926",
+    "latitude": 1.27625146423743,
+    "longitude": 103.855447156279,
+    "line": "CE"
+  },
+  {
+    "name": "MARINA BAY MRT STATION (NS27)",
+    "address": "21 PARK STREET MARINA BAY MRT STATION (NS27) SINGAPORE 018925",
+    "latitude": 1.276410298755,
+    "longitude": 103.854595522263,
+    "line": "NS"
+  },
+  {
+    "name": "MARINA BAY MRT STATION (TE20)",
+    "address": "25 PARK STREET MARINA BAY MRT STATION (TE20) SINGAPORE 018929",
+    "latitude": 1.27474173226842,
+    "longitude": 103.855309167928,
+    "line": "TE"
+  },
+  {
+    "name": "MARINA SOUTH PIER MRT STATION (NS28)",
+    "address": "33 MARINA COASTAL DRIVE MARINA SOUTH PIER MRT STATION (NS28) SINGAPORE 018948",
+    "latitude": 1.27102703612006,
+    "longitude": 103.862447515736,
+    "line": "NS"
+  },
+  {
+    "name": "SHENTON WAY MRT STATION (TE19)",
+    "address": "2 PARK STREET SHENTON WAY MRT STATION (TE19) SINGAPORE 018928",
+    "latitude": 1.2777168283425,
+    "longitude": 103.850367596067,
+    "line": "TE"
+  },
+  {
+    "name": "SOMERSET MRT STATION (NS23)",
+    "address": "1 SOMERSET ROAD SOMERSET MRT STATION (NS23) SINGAPORE 238162",
+    "latitude": 1.30026416739006,
+    "longitude": 103.839085753124,
+    "line": "NS"
+  },
+  {
+    "name": "UPPER THOMSON MRT STATION (TE8)",
+    "address": "1 JALAN KELI UPPER THOMSON MRT STATION (TE8) SINGAPORE 577937",
+    "latitude": 1.35441643365401,
+    "longitude": 103.832898468504,
+    "line": "TE"
+  },
+  {
+    "name": "BENDEMEER MRT STATION (DT23)",
+    "address": "11 KALLANG BAHRU BENDEMEER MRT STATION (DT23) SINGAPORE 339356",
+    "latitude": 1.31367252847691,
+    "longitude": 103.862977620945,
+    "line": "DT"
+  },
+  {
+    "name": "CANBERRA MRT STATION (NS12)",
+    "address": "11 CANBERRA LINK CANBERRA MRT STATION (NS12) SINGAPORE 756972",
+    "latitude": 1.44307664075699,
+    "longitude": 103.829702590959,
+    "line": "NS"
+  },
+  {
+    "name": "DHOBY GHAUT MRT STATION (NS24)",
+    "address": "11 ORCHARD ROAD DHOBY GHAUT MRT STATION (NS24) SINGAPORE 238826",
+    "latitude": 1.29870132536119,
+    "longitude": 103.846113677951,
+    "line": "NS"
+  },
+  {
+    "name": "LABRADOR PARK MRT STATION (CC27)",
+    "address": "701 TELOK BLANGAH ROAD LABRADOR PARK MRT STATION (CC27) SINGAPORE 109029",
+    "latitude": 1.27225417749656,
+    "longitude": 103.802631578766,
+    "line": "CC"
+  },
+  {
+    "name": "MARINE PARADE MRT STATION (TE26)",
+    "address": "101 MARINE PARADE ROAD MARINE PARADE MRT STATION (TE26) SINGAPORE 449971",
+    "latitude": 1.30261163483383,
+    "longitude": 103.904983086812,
+    "line": "TE"
+  },
+  {
+    "name": "PUNGGOL COAST MRT STATION (NE18)",
+    "address": "101 NEW PUNGGOL ROAD PUNGGOL COAST MRT STATION (NE18) SINGAPORE 828604",
+    "latitude": 1.41492733388605,
+    "longitude": 103.910166388177,
+    "line": "NE"
+  },
+  {
+    "name": "ROCHOR MRT STATION (DT13)",
+    "address": "11 ROCHOR CANAL ROAD ROCHOR MRT STATION (DT13) SINGAPORE 188505",
+    "latitude": 1.30385218527656,
+    "longitude": 103.852769428884,
+    "line": "DT"
+  },
+  {
+    "name": "SEMBAWANG MRT STATION (NS11)",
+    "address": "11 CANBERRA ROAD SEMBAWANG MRT STATION (NS11) SINGAPORE 759775",
+    "latitude": 1.44905082158502,
+    "longitude": 103.820046140211,
+    "line": "NS"
+  },
+  {
+    "name": "TELOK BLANGAH MRT STATION (CC28)",
+    "address": "463 TELOK BLANGAH ROAD TELOK BLANGAH MRT STATION (CC28) SINGAPORE 109028",
+    "latitude": 1.27070647717762,
+    "longitude": 103.809761611219,
+    "line": "CC"
+  },
+  {
+    "name": "WOODLANDS MRT STATION (TE2)",
+    "address": "11 WOODLANDS SQUARE WOODLANDS MRT STATION (TE2) SINGAPORE 737736",
+    "latitude": 1.43605761708128,
+    "longitude": 103.787938777173,
+    "line": "TE"
+  },
+  {
+    "name": "BEAUTY WORLD MRT STATION (DT5)",
+    "address": "101 UPPER BUKIT TIMAH ROAD BEAUTY WORLD MRT STATION (DT5) SINGAPORE 588216",
+    "latitude": 1.34122317558549,
+    "longitude": 103.775794285083,
+    "line": "DT"
+  },
+  {
+    "name": "BOTANIC GARDENS MRT STATION (CC19)",
+    "address": "100 CLUNY PARK ROAD BOTANIC GARDENS MRT STATION (CC19) SINGAPORE 257494",
+    "latitude": 1.32211373558877,
+    "longitude": 103.814984510627,
+    "line": "CC"
+  },
+  {
+    "name": "BRIGHT HILL MRT STATION (TE7)",
+    "address": "100 SIN MING AVENUE BRIGHT HILL MRT STATION (TE7) SINGAPORE 575737",
+    "latitude": 1.36328318545185,
+    "longitude": 103.832893619992,
+    "line": "TE"
+  },
+  {
+    "name": "BUKIT BATOK MRT STATION (NS2)",
+    "address": "10 BUKIT BATOK CENTRAL BUKIT BATOK MRT STATION (NS2) SINGAPORE 659958",
+    "latitude": 1.34903331201636,
+    "longitude": 103.749566478309,
+    "line": "NS"
+  },
+  {
+    "name": "BUONA VISTA MRT STATION (EW21)",
+    "address": "100 NORTH BUONA VISTA ROAD BUONA VISTA MRT STATION (EW21) SINGAPORE 139345",
+    "latitude": 1.3072237082044,
+    "longitude": 103.790253514502,
+    "line": "EW"
+  },
+  {
+    "name": "OUTRAM PARK MRT STATION (EW16)",
+    "address": "10 OUTRAM ROAD OUTRAM PARK MRT STATION (EW16) SINGAPORE 169037",
+    "latitude": 1.28140504772213,
+    "longitude": 103.839130979249,
+    "line": "EW"
+  },
+  {
+    "name": "PASIR RIS MRT STATION (EW1)",
+    "address": "10 PASIR RIS CENTRAL PASIR RIS MRT STATION (EW1) SINGAPORE 519634",
+    "latitude": 1.37304331635804,
+    "longitude": 103.949284527763,
+    "line": "EW"
+  },
+  {
+    "name": "SIGLAP MRT STATION (TE28)",
+    "address": "1000 MARINE PARADE ROAD SIGLAP MRT STATION (TE28) SINGAPORE 449969",
+    "latitude": 1.31000869432289,
+    "longitude": 103.930025826708,
+    "line": "TE"
+  },
+  {
+    "name": "CLEMENTI MRT STATION (EW23)",
+    "address": "3150 COMMONWEALTH AVENUE WEST CLEMENTI MRT STATION (EW23) SINGAPORE 129580",
+    "latitude": 1.31511625277378,
+    "longitude": 103.765191452888,
+    "line": "EW"
+  },
+  {
+    "name": "DHOBY GHAUT MRT STATION (CC1)",
+    "address": "13 ORCHARD ROAD DHOBY GHAUT MRT STATION (CC1) SINGAPORE 238893",
+    "latitude": 1.29891164362677,
+    "longitude": 103.84629250696,
+    "line": "CC"
+  },
+  {
+    "name": "DOVER MRT STATION (EW22)",
+    "address": "200 COMMONWEALTH AVENUE WEST DOVER MRT STATION (EW22) SINGAPORE 138677",
+    "latitude": 1.31140529320963,
+    "longitude": 103.778637841909,
+    "line": "EW"
+  },
+  {
+    "name": "HAVELOCK MRT STATION (TE16)",
+    "address": "110 ZION ROAD HAVELOCK MRT STATION (TE16) SINGAPORE 168604",
+    "latitude": 1.28850523975311,
+    "longitude": 103.833585838226,
+    "line": "TE"
+  },
+  {
+    "name": "HAW PAR VILLA MRT STATION (CC25)",
+    "address": "270 PASIR PANJANG ROAD HAW PAR VILLA MRT STATION (CC25) SINGAPORE 117396",
+    "latitude": 1.28257135772488,
+    "longitude": 103.781752725064,
+    "line": "CC"
+  },
+  {
+    "name": "JURONG EAST MRT STATION (JE5)",
+    "address": "JURONG EAST STREET 12 JURONG EAST MRT STATION (JE5) SINGAPORE 609690",
+    "latitude": 1.33301320936138,
+    "longitude": 103.741893277263,
+    "line": "EW"
+  },
+  {
+    "name": "KENT RIDGE MRT STATION (CC24)",
+    "address": "301 SOUTH BUONA VISTA ROAD KENT RIDGE MRT STATION (CC24) SINGAPORE 118177",
+    "latitude": 1.29353349887123,
+    "longitude": 103.784572738173,
+    "line": "CC"
+  },
+  {
+    "name": "OUTRAM PARK MRT STATION (TE17)",
+    "address": "13 OUTRAM ROAD OUTRAM PARK MRT STATION (TE17) SINGAPORE 169080",
+    "latitude": 1.28132964411173,
+    "longitude": 103.839137557749,
+    "line": "TE"
+  },
+  {
+    "name": "PASIR PANJANG MRT STATION (CC26)",
+    "address": "119 PASIR PANJANG ROAD PASIR PANJANG MRT STATION (CC26) SINGAPORE 117424",
+    "latitude": 1.27621352233766,
+    "longitude": 103.791350313288,
+    "line": "CC"
+  },
+  {
+    "name": "TUAS WEST ROAD MRT STATION (EW32)",
+    "address": "131 PIONEER ROAD TUAS WEST ROAD MRT STATION (EW32) SINGAPORE 639609",
+    "latitude": 1.32998504653102,
+    "longitude": 103.639616648771,
+    "line": "EW"
+  },
+  {
+    "name": "BAYFRONT MRT STATION (DT16 / CE1)",
+    "address": "11 BAYFRONT AVENUE BAYFRONT MRT STATION (DT16 / CE1) SINGAPORE 018957",
+    "latitude": 1.28187378879209,
+    "longitude": 103.859079764874,
+    "line": "CC"
+  },
+  {
+    "name": "DOWNTOWN MRT STATION (DT17)",
+    "address": "15 CENTRAL BOULEVARD DOWNTOWN MRT STATION (DT17) SINGAPORE 018969",
+    "latitude": 1.27944638178916,
+    "longitude": 103.852840829581,
+    "line": "DT"
+  },
+  {
+    "name": "EXPO MRT STATION (DT35)",
+    "address": "2 EXPO DRIVE EXPO MRT STATION (DT35) SINGAPORE 485985",
+    "latitude": 1.33538252614956,
+    "longitude": 103.962374747451,
+    "line": "DT"
+  },
+  {
+    "name": "GARDENS BY THE BAY MRT STATION (TE22)",
+    "address": "11 MARINA MALL GARDENS BY THE BAY MRT STATION (TE22) SINGAPORE 019396",
+    "latitude": 1.27848725876303,
+    "longitude": 103.867454664421,
+    "line": "TE"
+  },
+  {
+    "name": "KING ALBERT PARK MRT STATION (DT6)",
+    "address": "2 BLACKMORE DRIVE KING ALBERT PARK MRT STATION (DT6) SINGAPORE 599987",
+    "latitude": 1.33566161262214,
+    "longitude": 103.783399113441,
+    "line": "DT"
+  },
+  {
+    "name": "MARINA SOUTH MRT STATION (TE21)",
+    "address": "61 MARINA MALL MARINA SOUTH MRT STATION (TE21) SINGAPORE 019397",
+    "latitude": 1.27455475919137,
+    "longitude": 103.863574321728,
+    "line": "TE"
+  },
+  {
+    "name": "NAPIER MRT STATION (TE12)",
+    "address": "2 NAPIER ROAD NAPIER MRT STATION (TE12) SINGAPORE 258511",
+    "latitude": 1.30678223364785,
+    "longitude": 103.818956796815,
+    "line": "TE"
+  },
+  {
+    "name": "TAMPINES WEST MRT STATION (DT31)",
+    "address": "2 TAMPINES AVENUE 4 TAMPINES WEST MRT STATION (DT31) SINGAPORE 529683",
+    "latitude": 1.34551530560119,
+    "longitude": 103.938436971222,
+    "line": "DT"
+  },
+  {
+    "name": "TANJONG KATONG MRT STATION (TE25)",
+    "address": "2 AMBER ROAD TANJONG KATONG MRT STATION (TE25) SINGAPORE 439846",
+    "latitude": 1.29931925769899,
+    "longitude": 103.897368742078,
+    "line": "TE"
+  },
+  {
+    "name": "TANJONG RHU MRT STATION (TE23)",
+    "address": "2 TANJONG RHU PLACE TANJONG RHU MRT STATION (TE23) SINGAPORE 436488",
+    "latitude": 1.29726507940646,
+    "longitude": 103.873453254621,
+    "line": "TE"
+  },
+  {
+    "name": "CHINATOWN MRT STATION (DT19)",
+    "address": "91 UPPER CROSS STREET CHINATOWN MRT STATION (DT19) SINGAPORE 058362",
+    "latitude": 1.28422391919085,
+    "longitude": 103.845143798953,
+    "line": "DT"
+  },
+  {
+    "name": "KALLANG MRT STATION (EW10)",
+    "address": "5 SIMS AVENUE KALLANG MRT STATION (EW10) SINGAPORE 387405",
+    "latitude": 1.31148890998818,
+    "longitude": 103.871386541754,
+    "line": "EW"
+  },
+  {
+    "name": "NICOLL HIGHWAY MRT STATION (CC5)",
+    "address": "20 REPUBLIC AVENUE NICOLL HIGHWAY MRT STATION (CC5) SINGAPORE 038970",
+    "latitude": 1.29976684675139,
+    "longitude": 103.86363696572,
+    "line": "CC"
+  },
+  {
+    "name": "PROMENADE MRT STATION (CC4)",
+    "address": "2 TEMASEK AVENUE PROMENADE MRT STATION (CC4) SINGAPORE 039193",
+    "latitude": 1.29399798636232,
+    "longitude": 103.860350000188,
+    "line": "CC"
+  },
+  {
+    "name": "PROMENADE MRT STATION (DT15)",
+    "address": "10 TEMASEK AVENUE PROMENADE MRT STATION (DT15) SINGAPORE 039194",
+    "latitude": 1.29289175383295,
+    "longitude": 103.860891800025,
+    "line": "DT"
+  },
+  {
+    "name": "RAFFLES PLACE MRT STATION (EW14 / NS26)",
+    "address": "5 RAFFLES PLACE RAFFLES PLACE MRT STATION (EW14 / NS26) SINGAPORE 048618",
+    "latitude": 1.28412561043658,
+    "longitude": 103.851461712342,
+    "line": "NS"
+  },
+  {
+    "name": "SENGKANG MRT STATION (NE16)",
+    "address": "5 SENGKANG SQUARE SENGKANG MRT STATION (NE16) SINGAPORE 545062",
+    "latitude": 1.39169462601522,
+    "longitude": 103.895484694279,
+    "line": "NE"
+  },
+  {
+    "name": "STADIUM MRT STATION (CC6)",
+    "address": "3 STADIUM WALK STADIUM MRT STATION (CC6) SINGAPORE 397692",
+    "latitude": 1.3028124684707,
+    "longitude": 103.875337711089,
+    "line": "CC"
+  },
+  {
+    "name": "SUNGEI BEDOK MRT STATION (TE31 / DT37)",
+    "address": "3 BEDOK ROAD SUNGEI BEDOK MRT STATION (TE31 / DT37) SINGAPORE 469731",
+    "latitude": 1.32040148729112,
+    "longitude": 103.957183823478,
+    "line": "TE"
+  },
+  {
+    "name": "TELOK AYER MRT STATION (DT18)",
+    "address": "7 CROSS STREET TELOK AYER MRT STATION (DT18) SINGAPORE 048416",
+    "latitude": 1.28206894769394,
+    "longitude": 103.848648781083,
+    "line": "DT"
+  },
+  {
+    "name": "CANTONMENT MRT STATION (CC31)",
+    "address": "100 EVERTON ROAD CANTONMENT MRT STATION (CC31) SINGAPORE 089395",
+    "latitude": 1.27287214563203,
+    "longitude": 103.837062313764,
+    "line": "CC"
+  },
+  {
+    "name": "CHINATOWN MRT STATION (NE4)",
+    "address": "151 NEW BRIDGE ROAD CHINATOWN MRT STATION (NE4) SINGAPORE 059443",
+    "latitude": 1.28435959278583,
+    "longitude": 103.843426681863,
+    "line": "NE"
+  },
+  {
+    "name": "CLARKE QUAY MRT STATION (NE5)",
+    "address": "10 EU TONG SEN STREET CLARKE QUAY MRT STATION (NE5) SINGAPORE 059815",
+    "latitude": 1.28838602407588,
+    "longitude": 103.846555209694,
+    "line": "NE"
+  },
+  {
+    "name": "HARBOURFRONT MRT STATION (NE1 / CC29)",
+    "address": "81 TELOK BLANGAH ROAD HARBOURFRONT MRT STATION (NE1 / CC29) SINGAPORE 098867",
+    "latitude": 1.26538938374901,
+    "longitude": 103.821530157095,
+    "line": "NE"
+  },
+  {
+    "name": "KEPPEL MRT STATION (CC30)",
+    "address": "51 KEPPEL ROAD KEPPEL MRT STATION (CC30) SINGAPORE 099423",
+    "latitude": 1.26977220124441,
+    "longitude": 103.830031459524,
+    "line": "CC"
+  },
+  {
+    "name": "MAXWELL MRT STATION (TE18)",
+    "address": "321 SOUTH BRIDGE ROAD MAXWELL MRT STATION (TE18) SINGAPORE 058841",
+    "latitude": 1.28053329842878,
+    "longitude": 103.843883670633,
+    "line": "TE"
+  },
+  {
+    "name": "ONE-NORTH MRT STATION (CC23)",
+    "address": "9 AYER RAJAH AVENUE ONE-NORTH MRT STATION (CC23) SINGAPORE 138647",
+    "latitude": 1.29975987493555,
+    "longitude": 103.78745750525,
+    "line": "CC"
+  },
+  {
+    "name": "OUTRAM PARK MRT STATION (NE3)",
+    "address": "300 EU TONG SEN STREET OUTRAM PARK MRT STATION (NE3) SINGAPORE 059816",
+    "latitude": 1.27972059383553,
+    "longitude": 103.839439862425,
+    "line": "NE"
+  },
+  {
+    "name": "PRINCE EDWARD ROAD MRT STATION (CC32)",
+    "address": "80 SHENTON WAY PRINCE EDWARD ROAD MRT STATION (CC32) SINGAPORE 079122",
+    "latitude": 1.27315693636085,
+    "longitude": 103.847097123745,
+    "line": "CC"
+  },
+  {
+    "name": "TANJONG PAGAR MRT STATION (EW15)",
+    "address": "120 MAXWELL ROAD TANJONG PAGAR MRT STATION (EW15) SINGAPORE 069119",
+    "latitude": 1.27656131737246,
+    "longitude": 103.845725186759,
+    "line": "EW"
+  },
+  {
+    "name": "BRADDELL MRT STATION (NS18)",
+    "address": "377 LORONG 1 TOA PAYOH BRADDELL MRT STATION (NS18) SINGAPORE 319756",
+    "latitude": 1.3404690010277,
+    "longitude": 103.846799083148,
+    "line": "NS"
+  },
+  {
+    "name": "BUANGKOK MRT STATION (NE15)",
+    "address": "10 SENGKANG CENTRAL BUANGKOK MRT STATION (NE15) SINGAPORE 545061",
+    "latitude": 1.38287001971672,
+    "longitude": 103.893122569706,
+    "line": "NE"
+  },
+  {
+    "name": "CHOA CHU KANG MRT STATION (NS4)",
+    "address": "10 CHOA CHU KANG AVENUE 4 CHOA CHU KANG MRT STATION (NS4) SINGAPORE 689810",
+    "latitude": 1.38536316540225,
+    "longitude": 103.744370779756,
+    "line": "NS"
+  },
+  {
+    "name": "EXPO MRT STATION (CG1)",
+    "address": "21 CHANGI SOUTH AVENUE 1 EXPO MRT STATION (CG1) SINGAPORE 486065",
+    "latitude": 1.33454977824817,
+    "longitude": 103.961548211018,
+    "line": "CG"
+  },
+  {
+    "name": "JURONG EAST MRT STATION (EW24 / NS1)",
+    "address": "10 JURONG EAST STREET 12 JURONG EAST MRT STATION (EW24 / NS1) SINGAPORE 609690",
+    "latitude": 1.33315281585758,
+    "longitude": 103.742286332403,
+    "line": "EW"
+  },
+  {
+    "name": "KAKI BUKIT MRT STATION (DT28)",
+    "address": "30 KAKI BUKIT AVENUE 1 KAKI BUKIT MRT STATION (DT28) SINGAPORE 415804",
+    "latitude": 1.33496735995428,
+    "longitude": 103.908459338046,
+    "line": "DT"
+  },
+  {
+    "name": "MACPHERSON MRT STATION (DT26)",
+    "address": "10 CIRCUIT LINK MACPHERSON MRT STATION (DT26) SINGAPORE 378956",
+    "latitude": 1.32615024457361,
+    "longitude": 103.889298600376,
+    "line": "DT"
+  },
+  {
+    "name": "PASIR RIS EAST MRT STATION (CR4)",
+    "address": "20 PASIR RIS DRIVE 1 PASIR RIS EAST MRT STATION (CR4) SINGAPORE 519969",
+    "latitude": 1.36712928287615,
+    "longitude": 103.960557318417,
+    "line": "CR"
+  },
+  {
+    "name": "TAMPINES MRT STATION (DT32)",
+    "address": "15 TAMPINES CENTRAL 1 TAMPINES MRT STATION (DT32) SINGAPORE 529544",
+    "latitude": 1.35515041120473,
+    "longitude": 103.943009883131,
+    "line": "DT"
+  },
+  {
+    "name": "TAMPINES MRT STATION (EW2)",
+    "address": "20 TAMPINES CENTRAL 1 TAMPINES MRT STATION (EW2) SINGAPORE 529538",
+    "latitude": 1.35330167637376,
+    "longitude": 103.945144586749,
+    "line": "EW"
+  },
+  {
+    "name": "BUONA VISTA MRT STATION (CC22)",
+    "address": "150 NORTH BUONA VISTA ROAD BUONA VISTA MRT STATION (CC22) SINGAPORE 139350",
+    "latitude": 1.30663450405,
+    "longitude": 103.790709404436,
+    "line": "CC"
+  },
+  {
+    "name": "CHINESE GARDEN MRT STATION (EW25)",
+    "address": "151 BOON LAY WAY CHINESE GARDEN MRT STATION (EW25) SINGAPORE 609959",
+    "latitude": 1.34235282081401,
+    "longitude": 103.732596738363,
+    "line": "EW"
+  },
+  {
+    "name": "CITY HALL MRT STATION (EW13 / NS25)",
+    "address": "150 NORTH BRIDGE ROAD CITY HALL MRT STATION (EW13 / NS25) SINGAPORE 179100",
+    "latitude": 1.29293672227779,
+    "longitude": 103.852585580366,
+    "line": "EW"
+  },
+  {
+    "name": "COMMONWEALTH MRT STATION (EW20)",
+    "address": "375 COMMONWEALTH AVENUE COMMONWEALTH MRT STATION (EW20) SINGAPORE 149735",
+    "latitude": 1.30250199924325,
+    "longitude": 103.798228523336,
+    "line": "EW"
+  },
+  {
+    "name": "LORONG CHUAN MRT STATION (CC14)",
+    "address": "150 SERANGOON AVENUE 3 LORONG CHUAN MRT STATION (CC14) SINGAPORE 554533",
+    "latitude": 1.35161217074555,
+    "longitude": 103.864151938651,
+    "line": "CC"
+  },
+  {
+    "name": "MOUNT PLEASANT MRT STATION (TE10)",
+    "address": "14 DENHAM ROAD MOUNT PLEASANT MRT STATION (TE10) SINGAPORE 299781",
+    "latitude": 1.32856455460666,
+    "longitude": 103.83518858199,
+    "line": "TE"
+  },
+  {
+    "name": "PAYA LEBAR MRT STATION (CC9)",
+    "address": "15 PAYA LEBAR ROAD PAYA LEBAR MRT STATION (CC9) SINGAPORE 409049",
+    "latitude": 1.3172473854035,
+    "longitude": 103.892260753884,
+    "line": "CC"
+  },
+  {
+    "name": "QUEENSTOWN MRT STATION (EW19)",
+    "address": "301 COMMONWEALTH AVENUE QUEENSTOWN MRT STATION (EW19) SINGAPORE 149729",
+    "latitude": 1.29455085184931,
+    "longitude": 103.806077155982,
+    "line": "EW"
+  },
+  {
+    "name": "REDHILL MRT STATION (EW18)",
+    "address": "920 TIONG BAHRU ROAD REDHILL MRT STATION (EW18) SINGAPORE 158792",
+    "latitude": 1.28963453412887,
+    "longitude": 103.81674097205,
+    "line": "EW"
+  },
+  {
+    "name": "TIONG BAHRU MRT STATION (EW17)",
+    "address": "300 TIONG BAHRU ROAD TIONG BAHRU MRT STATION (EW17) SINGAPORE 168731",
+    "latitude": 1.28610253615775,
+    "longitude": 103.827445112419,
+    "line": "EW"
+  },
+  {
+    "name": "BENCOOLEN MRT STATION (DT21)",
+    "address": "31 BENCOOLEN STREET BENCOOLEN MRT STATION (DT21) SINGAPORE 189658",
+    "latitude": 1.29891843369422,
+    "longitude": 103.850353762717,
+    "line": "DT"
+  },
+  {
+    "name": "BISHAN MRT STATION (CC15)",
+    "address": "17 BISHAN PLACE BISHAN MRT STATION (CC15) SINGAPORE 579842",
+    "latitude": 1.35131580146658,
+    "longitude": 103.84914026532,
+    "line": "CC"
+  },
+  {
+    "name": "BRAS BASAH MRT STATION (CC2)",
+    "address": "65 BRAS BASAH ROAD BRAS BASAH MRT STATION (CC2) SINGAPORE 189561",
+    "latitude": 1.29686168649656,
+    "longitude": 103.850667371637,
+    "line": "CC"
+  },
+  {
+    "name": "BUGIS MRT STATION (DT14)",
+    "address": "191 ROCHOR ROAD BUGIS MRT STATION (DT14) SINGAPORE 188476",
+    "latitude": 1.29931350344582,
+    "longitude": 103.857125959023,
+    "line": "DT"
+  },
+  {
+    "name": "BUGIS MRT STATION (EW12)",
+    "address": "220 VICTORIA STREET BUGIS MRT STATION (EW12) SINGAPORE 188022",
+    "latitude": 1.30046508509717,
+    "longitude": 103.855706730933,
+    "line": "EW"
+  },
+  {
+    "name": "ESPLANADE MRT STATION (CC3)",
+    "address": "90 BRAS BASAH ROAD ESPLANADE MRT STATION (CC3) SINGAPORE 189562",
+    "latitude": 1.2936577245386,
+    "longitude": 103.855081226245,
+    "line": "CC"
+  },
+  {
+    "name": "FORT CANNING MRT STATION (DT20)",
+    "address": "170 RIVER VALLEY ROAD FORT CANNING MRT STATION (DT20) SINGAPORE 179038",
+    "latitude": 1.29248194822996,
+    "longitude": 103.844331362465,
+    "line": "DT"
+  },
+  {
+    "name": "MACPHERSON MRT STATION (CC10)",
+    "address": "171 PAYA LEBAR ROAD MACPHERSON MRT STATION (CC10) SINGAPORE 409048",
+    "latitude": 1.32607760171665,
+    "longitude": 103.890391305725,
+    "line": "CC"
+  },
+  {
+    "name": "WOODLANDS SOUTH MRT STATION (TE3)",
+    "address": "30 WOODLANDS DRIVE 17 WOODLANDS SOUTH MRT STATION (TE3) SINGAPORE 737741",
+    "latitude": 1.42739605281442,
+    "longitude": 103.79326432221,
+    "line": "TE"
+  },
+  {
+    "name": "YISHUN MRT STATION (NS13)",
+    "address": "301 YISHUN AVENUE 2 YISHUN MRT STATION (NS13) SINGAPORE 769093",
+    "latitude": 1.42944308477331,
+    "longitude": 103.835005047246,
+    "line": "NS"
+  },
+  {
+    "name": "BISHAN MRT STATION (NS17)",
+    "address": "200 BISHAN ROAD BISHAN MRT STATION (NS17) SINGAPORE 579827",
+    "latitude": 1.35083898784737,
+    "longitude": 103.848143964542,
+    "line": "NS"
+  },
+  {
+    "name": "HOLLAND VILLAGE MRT STATION (CC21)",
+    "address": "200 HOLLAND AVENUE HOLLAND VILLAGE MRT STATION (CC21) SINGAPORE 278995",
+    "latitude": 1.31224029631595,
+    "longitude": 103.796399122407,
+    "line": "CC"
+  },
+  {
+    "name": "KHATIB MRT STATION (NS14)",
+    "address": "201 YISHUN AVENUE 2 KHATIB MRT STATION (NS14) SINGAPORE 769092",
+    "latitude": 1.41738337009565,
+    "longitude": 103.832979908243,
+    "line": "NS"
+  },
+  {
+    "name": "ORCHARD BOULEVARD MRT STATION (TE13)",
+    "address": "20 ORCHARD BOULEVARD ORCHARD BOULEVARD MRT STATION (TE13) SINGAPORE 248654",
+    "latitude": 1.30242224836722,
+    "longitude": 103.823868523249,
+    "line": "TE"
+  },
+  {
+    "name": "TAMPINES EAST MRT STATION (DT33)",
+    "address": "20 TAMPINES AVENUE 7 TAMPINES EAST MRT STATION (DT33) SINGAPORE 529623",
+    "latitude": 1.35619148271544,
+    "longitude": 103.9546344625,
+    "line": "DT"
+  },
+  {
+    "name": "TUAS LINK MRT STATION (EW33)",
+    "address": "20 TUAS WEST DRIVE TUAS LINK MRT STATION (EW33) SINGAPORE 638418",
+    "latitude": 1.34088242451105,
+    "longitude": 103.636991425128,
+    "line": "EW"
+  },
+  {
+    "name": "UBI MRT STATION (DT27)",
+    "address": "51 UBI AVENUE 2 UBI MRT STATION (DT27) SINGAPORE 408899",
+    "latitude": 1.32997425973974,
+    "longitude": 103.899226655439,
+    "line": "DT"
+  },
+  {
+    "name": "WOODLANDS MRT STATION (NS9)",
+    "address": "30 WOODLANDS AVENUE 2 WOODLANDS MRT STATION (NS9) SINGAPORE 738343",
+    "latitude": 1.43681962961519,
+    "longitude": 103.786066799253,
+    "line": "NS"
+  },
+  {
+    "name": "WOODLANDS NORTH MRT STATION (TE1)",
+    "address": "20 WOODLANDS NORTH COAST ROAD WOODLANDS NORTH MRT STATION (TE1) SINGAPORE 737668",
+    "latitude": 1.44829245259621,
+    "longitude": 103.785692682441,
+    "line": "TE"
+  },
+  {
+    "name": "DAKOTA MRT STATION (CC8)",
+    "address": "201 OLD AIRPORT ROAD DAKOTA MRT STATION (CC8) SINGAPORE 397973",
+    "latitude": 1.30854798388121,
+    "longitude": 103.889064718377,
+    "line": "CC"
+  },
+  {
+    "name": "FARRER PARK MRT STATION (NE8)",
+    "address": "250 RACE COURSE ROAD FARRER PARK MRT STATION (NE8) SINGAPORE 218703",
+    "latitude": 1.31190557325774,
+    "longitude": 103.853477716509,
+    "line": "NE"
+  },
+  {
+    "name": "JALAN BESAR MRT STATION (DT22)",
+    "address": "90 JALAN BESAR JALAN BESAR MRT STATION (DT22) SINGAPORE 208826",
+    "latitude": 1.3051713878069,
+    "longitude": 103.855295713435,
+    "line": "DT"
+  },
+  {
+    "name": "LAKESIDE MRT STATION (EW26)",
+    "address": "201 BOON LAY WAY LAKESIDE MRT STATION (EW26) SINGAPORE 649845",
+    "latitude": 1.34425911493819,
+    "longitude": 103.720949087456,
+    "line": "EW"
+  },
+  {
+    "name": "LAVENDER MRT STATION (EW11)",
+    "address": "50 KALLANG ROAD LAVENDER MRT STATION (EW11) SINGAPORE 208699",
+    "latitude": 1.30737781747063,
+    "longitude": 103.862767633888,
+    "line": "EW"
+  },
+  {
+    "name": "LITTLE INDIA MRT STATION (DT12)",
+    "address": "62 BUKIT TIMAH ROAD LITTLE INDIA MRT STATION (DT12) SINGAPORE 229902",
+    "latitude": 1.30701826765224,
+    "longitude": 103.848660935092,
+    "line": "DT"
+  },
+  {
+    "name": "LITTLE INDIA MRT STATION (NE7)",
+    "address": "60 BUKIT TIMAH ROAD LITTLE INDIA MRT STATION (NE7) SINGAPORE 229900",
+    "latitude": 1.30680019696174,
+    "longitude": 103.849647059738,
+    "line": "NE"
+  },
+  {
+    "name": "NEWTON MRT STATION (DT11)",
+    "address": "235 BUKIT TIMAH ROAD NEWTON MRT STATION (DT11) SINGAPORE 229901",
+    "latitude": 1.31399286264569,
+    "longitude": 103.837714613091,
+    "line": "DT"
+  },
+  {
+    "name": "NEWTON MRT STATION (NS21)",
+    "address": "49 SCOTTS ROAD NEWTON MRT STATION (NS21) SINGAPORE 228234",
+    "latitude": 1.3123189224097,
+    "longitude": 103.837984594021,
+    "line": "NS"
+  },
+  {
+    "name": "SERANGOON MRT STATION (CC13)",
+    "address": "21 SERANGOON CENTRAL SERANGOON MRT STATION (CC13) SINGAPORE 556082",
+    "latitude": 1.35063361526525,
+    "longitude": 103.872771660431,
+    "line": "CC"
+  },
+  {
+    "name": "ALJUNIED MRT STATION (EW9)",
+    "address": "81 LORONG 25 GEYLANG ALJUNIED MRT STATION (EW9) SINGAPORE 388310",
+    "latitude": 1.3164326118157,
+    "longitude": 103.882906044385,
+    "line": "EW"
+  },
+  {
+    "name": "BOTANIC GARDENS MRT STATION (DT9)",
+    "address": "491 BUKIT TIMAH ROAD BOTANIC GARDENS MRT STATION (DT9) SINGAPORE 259777",
+    "latitude": 1.32248807089544,
+    "longitude": 103.816013994259,
+    "line": "DT"
+  },
+  {
+    "name": "DHOBY GHAUT MRT STATION (NE6)",
+    "address": "60 ORCHARD ROAD DHOBY GHAUT MRT STATION (NE6) SINGAPORE 238889",
+    "latitude": 1.29970458121203,
+    "longitude": 103.845488542541,
+    "line": "NE"
+  },
+  {
+    "name": "GREAT WORLD MRT STATION (TE15)",
+    "address": "351 RIVER VALLEY ROAD GREAT WORLD MRT STATION (TE15) SINGAPORE 238384",
+    "latitude": 1.29394816169384,
+    "longitude": 103.833720837731,
+    "line": "TE"
+  },
+  {
+    "name": "NOVENA MRT STATION (NS20)",
+    "address": "250 THOMSON ROAD NOVENA MRT STATION (NS20) SINGAPORE 307642",
+    "latitude": 1.32044079120154,
+    "longitude": 103.843825618748,
+    "line": "NS"
+  },
+  {
+    "name": "ORCHARD MRT STATION (NS22)",
+    "address": "437 ORCHARD ROAD ORCHARD MRT STATION (NS22) SINGAPORE 238878",
+    "latitude": 1.30398013681715,
+    "longitude": 103.832245244375,
+    "line": "NS"
+  },
+  {
+    "name": "ORCHARD MRT STATION (TE14)",
+    "address": "301 ORCHARD BOULEVARD ORCHARD MRT STATION (TE14) SINGAPORE 237974",
+    "latitude": 1.30304426265194,
+    "longitude": 103.831375000068,
+    "line": "TE"
+  },
+  {
+    "name": "STEVENS MRT STATION (DT10)",
+    "address": "92 STEVENS ROAD STEVENS MRT STATION (DT10) SINGAPORE 257877",
+    "latitude": 1.32006555750626,
+    "longitude": 103.826024401924,
+    "line": "DT"
+  },
+  {
+    "name": "STEVENS MRT STATION (TE11)",
+    "address": "82 STEVENS ROAD STEVENS MRT STATION (TE11) SINGAPORE 257879",
+    "latitude": 1.31933437435349,
+    "longitude": 103.825566965234,
+    "line": "TE"
+  },
+  {
+    "name": "TAN KAH KEE MRT STATION (DT8)",
+    "address": "651 BUKIT TIMAH ROAD TAN KAH KEE MRT STATION (DT8) SINGAPORE 266268",
+    "latitude": 1.32555623519898,
+    "longitude": 103.807760304729,
+    "line": "DT"
+  },
+  {
+    "name": "BEDOK NORTH MRT STATION (DT29)",
+    "address": "651 BEDOK NORTH ROAD BEDOK NORTH MRT STATION (DT29) SINGAPORE 479481",
+    "latitude": 1.33474211664091,
+    "longitude": 103.91797832995,
+    "line": "DT"
+  },
+  {
+    "name": "BEDOK SOUTH MRT STATION (TE30)",
+    "address": "620 UPPER EAST COAST ROAD BEDOK SOUTH MRT STATION (TE30) SINGAPORE 468324",
+    "latitude": 1.31668400658419,
+    "longitude": 103.94931120983,
+    "line": "TE"
+  },
+  {
+    "name": "BUKIT GOMBAK MRT STATION (NS3)",
+    "address": "802 BUKIT BATOK WEST AVENUE 5 BUKIT GOMBAK MRT STATION (NS3) SINGAPORE 659083",
+    "latitude": 1.35861159094192,
+    "longitude": 103.751790910733,
+    "line": "NS"
+  },
+  {
+    "name": "HILLVIEW MRT STATION (DT3)",
+    "address": "510 UPPER BUKIT TIMAH ROAD HILLVIEW MRT STATION (DT3) SINGAPORE 678211",
+    "latitude": 1.36234486803558,
+    "longitude": 103.767418254007,
+    "line": "DT"
+  },
+  {
+    "name": "KATONG PARK MRT STATION (TE24)",
+    "address": "45 MEYER ROAD KATONG PARK MRT STATION (TE24) SINGAPORE 437870",
+    "latitude": 1.29783147778951,
+    "longitude": 103.886178949925,
+    "line": "TE"
+  },
+  {
+    "name": "KEMBANGAN MRT STATION (EW6)",
+    "address": "55 SIMS AVENUE EAST KEMBANGAN MRT STATION (EW6) SINGAPORE 416551",
+    "latitude": 1.3210381335934,
+    "longitude": 103.912947930851,
+    "line": "EW"
+  },
+  {
+    "name": "KOVAN MRT STATION (NE13)",
+    "address": "900 UPPER SERANGOON ROAD KOVAN MRT STATION (NE13) SINGAPORE 534799",
+    "latitude": 1.36017917065237,
+    "longitude": 103.885064856353,
+    "line": "NE"
+  },
+  {
+    "name": "TANAH MERAH MRT STATION (EW4)",
+    "address": "920 NEW UPPER CHANGI ROAD TANAH MERAH MRT STATION (EW4) SINGAPORE 467356",
+    "latitude": 1.32718729074675,
+    "longitude": 103.946348600798,
+    "line": "EW"
+  },
+  {
+    "name": "UPPER CHANGI MRT STATION (DT34)",
+    "address": "690 UPPER CHANGI ROAD EAST UPPER CHANGI MRT STATION (DT34) SINGAPORE 485990",
+    "latitude": 1.34173977444995,
+    "longitude": 103.961472788634,
+    "line": "DT"
+  },
+  {
+    "name": "ADMIRALTY MRT STATION (NS10)",
+    "address": "70 WOODLANDS AVENUE 7 ADMIRALTY MRT STATION (NS10) SINGAPORE 738344",
+    "latitude": 1.44058856161847,
+    "longitude": 103.800990519771,
+    "line": "NS"
+  },
+  {
+    "name": "CHANGI AIRPORT MRT STATION (CG2)",
+    "address": "70 AIRPORT BOULEVARD CHANGI AIRPORT MRT STATION (CG2) SINGAPORE 819661",
+    "latitude": 1.35747897447692,
+    "longitude": 103.98788356959,
+    "line": "CG"
+  },
+  {
+    "name": "KRANJI MRT STATION (NS7)",
+    "address": "960 WOODLANDS ROAD KRANJI MRT STATION (NS7) SINGAPORE 738702",
+    "latitude": 1.42508698073648,
+    "longitude": 103.762137459497,
+    "line": "NS"
+  },
+  {
+    "name": "PUNGGOL MRT STATION (NE17)",
+    "address": "70 PUNGGOL CENTRAL PUNGGOL MRT STATION (NE17) SINGAPORE 828868",
+    "latitude": 1.40454653668991,
+    "longitude": 103.902072622229,
+    "line": "NE"
+  },
+  {
+    "name": "SPRINGLEAF MRT STATION (TE4)",
+    "address": "825 UPPER THOMSON ROAD SPRINGLEAF MRT STATION (TE4) SINGAPORE 787140",
+    "latitude": 1.39758106126824,
+    "longitude": 103.817856949947,
+    "line": "TE"
+  },
+  {
+    "name": "BARTLEY MRT STATION (CC12)",
+    "address": "90 BARTLEY ROAD BARTLEY MRT STATION (CC12) SINGAPORE 539788",
+    "latitude": 1.34250117805245,
+    "longitude": 103.880177899184,
+    "line": "CC"
+  },
+  {
+    "name": "BUKIT PANJANG MRT STATION (DT1)",
+    "address": "950 UPPER BUKIT TIMAH ROAD BUKIT PANJANG MRT STATION (DT1) SINGAPORE 678213",
+    "latitude": 1.37900211641036,
+    "longitude": 103.761535114929,
+    "line": "DT"
+  },
+  {
+    "name": "GUL CIRCLE MRT STATION (EW30)",
+    "address": "7A TUAS ROAD GUL CIRCLE MRT STATION (EW30) SINGAPORE 637288",
+    "latitude": 1.31947090075208,
+    "longitude": 103.660530461345,
+    "line": "EW"
+  },
+  {
+    "name": "HOUGANG MRT STATION (NE14)",
+    "address": "80 HOUGANG CENTRAL HOUGANG MRT STATION (NE14) SINGAPORE 538758",
+    "latitude": 1.37129226620797,
+    "longitude": 103.892380513029,
+    "line": "NE"
+  },
+  {
+    "name": "JOO KOON MRT STATION (EW29)",
+    "address": "91 JOO KOON CIRCLE JOO KOON MRT STATION (EW29) SINGAPORE 629116",
+    "latitude": 1.3277170408447,
+    "longitude": 103.678374996165,
+    "line": "EW"
+  },
+  {
+    "name": "MARYMOUNT MRT STATION (CC16)",
+    "address": "60 MARYMOUNT ROAD MARYMOUNT MRT STATION (CC16) SINGAPORE 573993",
+    "latitude": 1.348707263451,
+    "longitude": 103.839423132332,
+    "line": "CC"
+  },
+  {
+    "name": "SERANGOON MRT STATION (NE12)",
+    "address": "600 UPPER SERANGOON ROAD SERANGOON MRT STATION (NE12) SINGAPORE 534801",
+    "latitude": 1.34970788089564,
+    "longitude": 103.873574849884,
+    "line": "NE"
+  },
+  {
+    "name": "TUAS CRESCENT MRT STATION (EW31)",
+    "address": "90 PIONEER ROAD TUAS CRESCENT MRT STATION (EW31) SINGAPORE 639608",
+    "latitude": 1.32102695598684,
+    "longitude": 103.649078235627,
+    "line": "EW"
+  },
+  {
+    "name": "YEW TEE MRT STATION (NS5)",
+    "address": "61 CHOA CHU KANG DRIVE YEW TEE MRT STATION (NS5) SINGAPORE 689715",
+    "latitude": 1.39753506936297,
+    "longitude": 103.747405150236,
+    "line": "NS"
+  },
+  {
+    "name": "ANG MO KIO MRT STATION (NS16)",
+    "address": "2795 ANG MO KIO AVENUE 8 ANG MO KIO MRT STATION (NS16) SINGAPORE 569812",
+    "latitude": 1.36993284962262,
+    "longitude": 103.84955809232,
+    "line": "NS"
+  },
+  {
+    "name": "BEDOK RESERVOIR MRT STATION (DT30)",
+    "address": "371 BEDOK NORTH AVENUE 3 BEDOK RESERVOIR MRT STATION (DT30) SINGAPORE 469724",
+    "latitude": 1.33660782955099,
+    "longitude": 103.932234623286,
+    "line": "DT"
+  },
+  {
+    "name": "BUKIT BROWN MRT STATION (CC18)",
+    "address": "490 JALAN MASHHOR BUKIT BROWN MRT STATION (CC18) SINGAPORE 299176",
+    "latitude": 1.33372888295973,
+    "longitude": 103.830689549849,
+    "line": "CC"
+  },
+  {
+    "name": "CALDECOTT MRT STATION (CC17)",
+    "address": "38 TOA PAYOH RISE CALDECOTT MRT STATION (CC17) SINGAPORE 298113",
+    "latitude": 1.33767337407828,
+    "longitude": 103.839530785576,
+    "line": "CC"
+  },
+  {
+    "name": "EUNOS MRT STATION (EW7)",
+    "address": "30 EUNOS CRESCENT EUNOS MRT STATION (EW7) SINGAPORE 409423",
+    "latitude": 1.31978354916088,
+    "longitude": 103.903225807255,
+    "line": "EW"
+  },
+  {
+    "name": "FARRER ROAD MRT STATION (CC20)",
+    "address": "71 FARRER ROAD FARRER ROAD MRT STATION (CC20) SINGAPORE 268857",
+    "latitude": 1.31743915158967,
+    "longitude": 103.807379214161,
+    "line": "CC"
+  },
+  {
+    "name": "MARSILING MRT STATION (NS8)",
+    "address": "71 WOODLANDS AVENUE 3 MARSILING MRT STATION (NS8) SINGAPORE 739044",
+    "latitude": 1.43252114855026,
+    "longitude": 103.774074641403,
+    "line": "NS"
+  },
+  {
+    "name": "SIMEI MRT STATION (EW3)",
+    "address": "30 SIMEI STREET 3 SIMEI MRT STATION (EW3) SINGAPORE 529888",
+    "latitude": 1.34319707851829,
+    "longitude": 103.953377214378,
+    "line": "EW"
+  },
+  {
+    "name": "SIXTH AVENUE MRT STATION (DT7)",
+    "address": "777 BUKIT TIMAH ROAD SIXTH AVENUE MRT STATION (DT7) SINGAPORE 269784",
+    "latitude": 1.33085764536226,
+    "longitude": 103.796906838288,
+    "line": "DT"
+  },
+  {
+    "name": "BEDOK MRT STATION (EW5)",
+    "address": "315 NEW UPPER CHANGI ROAD BEDOK MRT STATION (EW5) SINGAPORE 467347",
+    "latitude": 1.32397996868158,
+    "longitude": 103.929984495066,
+    "line": "EW"
+  },
+  {
+    "name": "BOON KENG MRT STATION (NE9)",
+    "address": "900 SERANGOON ROAD BOON KENG MRT STATION (NE9) SINGAPORE 328260",
+    "latitude": 1.31933570922514,
+    "longitude": 103.861569454156,
+    "line": "NE"
+  },
+  {
+    "name": "GEYLANG BAHRU MRT STATION (DT24)",
+    "address": "541 KALLANG BAHRU GEYLANG BAHRU MRT STATION (DT24) SINGAPORE 339355",
+    "latitude": 1.32130110228321,
+    "longitude": 103.871622627142,
+    "line": "DT"
+  },
+  {
+    "name": "HUME MRT STATION (DT4)",
+    "address": "371 UPPER BUKIT TIMAH ROAD HUME MRT STATION (DT4) SINGAPORE 589681",
+    "latitude": 1.3545953239503,
+    "longitude": 103.769118851887,
+    "line": "DT"
+  },
+  {
+    "name": "MATTAR MRT STATION (DT25)",
+    "address": "60 MERPATI ROAD MATTAR MRT STATION (DT25) SINGAPORE 379314",
+    "latitude": 1.32687671501334,
+    "longitude": 103.883247509542,
+    "line": "DT"
+  },
+  {
+    "name": "MAYFLOWER MRT STATION (TE6)",
+    "address": "91 ANG MO KIO AVENUE 4 MAYFLOWER MRT STATION (TE6) SINGAPORE 569900",
+    "latitude": 1.37146318831015,
+    "longitude": 103.836567766945,
+    "line": "TE"
+  },
+  {
+    "name": "POTONG PASIR MRT STATION (NE10)",
+    "address": "55 UPPER SERANGOON ROAD POTONG PASIR MRT STATION (NE10) SINGAPORE 347694",
+    "latitude": 1.33137949021368,
+    "longitude": 103.869055656782,
+    "line": "NE"
+  },
+  {
+    "name": "TAI SENG MRT STATION (CC11)",
+    "address": "33 UPPER PAYA LEBAR ROAD TAI SENG MRT STATION (CC11) SINGAPORE 534803",
+    "latitude": 1.33514150139202,
+    "longitude": 103.888389300191,
+    "line": "CC"
+  },
+  {
+    "name": "TOA PAYOH MRT STATION (NS19)",
+    "address": "510 LORONG 6 TOA PAYOH TOA PAYOH MRT STATION (NS19) SINGAPORE 319398",
+    "latitude": 1.33262928096888,
+    "longitude": 103.847502198048,
+    "line": "NS"
+  },
+  {
+    "name": "WOODLEIGH MRT STATION (NE11)",
+    "address": "400 UPPER SERANGOON ROAD WOODLEIGH MRT STATION (NE11) SINGAPORE 347695",
+    "latitude": 1.33919004519388,
+    "longitude": 103.87081830915,
+    "line": "NE"
+  },
+  {
+    "name": "BAYSHORE MRT STATION (TE29)",
+    "address": "31 BAYSHORE ROAD BAYSHORE MRT STATION (TE29) SINGAPORE 469958",
+    "latitude": 1.31312248291264,
+    "longitude": 103.942309776767,
+    "line": "TE"
+  },
+  {
+    "name": "BOON LAY MRT STATION (EW27)",
+    "address": "301 BOON LAY WAY BOON LAY MRT STATION (EW27) SINGAPORE 649846",
+    "latitude": 1.33860405469845,
+    "longitude": 103.706064622772,
+    "line": "EW"
+  },
+  {
+    "name": "MARINE TERRACE MRT STATION (TE27)",
+    "address": "304 MARINE PARADE ROAD MARINE TERRACE MRT STATION (TE27) SINGAPORE 449970",
+    "latitude": 1.30666510344814,
+    "longitude": 103.9151067005,
+    "line": "TE"
+  },
+  {
+    "name": "MOUNTBATTEN MRT STATION (CC7)",
+    "address": "301 MOUNTBATTEN ROAD MOUNTBATTEN MRT STATION (CC7) SINGAPORE 398006",
+    "latitude": 1.30620190525331,
+    "longitude": 103.882528081052,
+    "line": "CC"
+  },
+  {
+    "name": "PAYA LEBAR MRT STATION (EW8)",
+    "address": "30 PAYA LEBAR ROAD PAYA LEBAR MRT STATION (EW8) SINGAPORE 409006",
+    "latitude": 1.31811149224527,
+    "longitude": 103.893060771576,
+    "line": "EW"
+  },
+  {
+    "name": "PIONEER MRT STATION (EW28)",
+    "address": "31 JURONG WEST STREET 63 PIONEER MRT STATION (EW28) SINGAPORE 648310",
+    "latitude": 1.33758701106708,
+    "longitude": 103.697321608474,
+    "line": "EW"
+  },
+  {
+    "name": "XILIN MRT STATION (DT36)",
+    "address": "301 XILIN AVENUE XILIN MRT STATION (DT36) SINGAPORE 486800",
+    "latitude": 1.32890694938858,
+    "longitude": 103.964902569595,
+    "line": "DT"
+  },
+  {
+    "name": "YIO CHU KANG MRT STATION (NS15)",
+    "address": "3000 ANG MO KIO AVENUE 8 YIO CHU KANG MRT STATION (NS15) SINGAPORE 569813",
+    "latitude": 1.38175587099132,
+    "longitude": 103.84494727118,
+    "line": "NS"
+  }
+]

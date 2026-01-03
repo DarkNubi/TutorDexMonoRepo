@@ -20,17 +20,19 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from compilation_detection import is_compilation
-from extract_key_info import extract_assignment_with_model, process_parsed_payload
+from extract_key_info import extract_assignment_with_model
 from extractors.time_availability import extract_time_availability
 from hard_validator import hard_validate
 from normalize import normalize_text
 from signals_builder import build_signals
+from schema_validation import validate_parsed_assignment
 from supabase_persist import persist_assignment_to_supabase
 from supabase_raw_persist import SupabaseRawStore
 from logging_setup import bind_log_context, log_event, setup_logging
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -132,61 +134,54 @@ def _normalize_channel_link(value: str) -> str:
     return s
 
 
-def _looks_like_assignment(parsed: Dict[str, Any]) -> bool:
-    if not isinstance(parsed, dict) or not parsed:
-        return False
+def _extract_sg_postal_codes(text: str) -> Optional[List[str]]:
+    try:
+        codes = re.findall(r"\b(\d{6})\b", str(text or ""))
+    except Exception:
+        codes = []
+    seen = set()
+    out: List[str] = []
+    for c in codes:
+        if c in seen:
+            continue
+        seen.add(c)
+        out.append(c)
+    return out or None
 
-    if str(parsed.get("assignment_code") or "").strip():
-        return True
 
-    signals = 0
+def _coerce_list_of_str(value: Any) -> Optional[List[str]]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        return [s] if s else None
+    if isinstance(value, (list, tuple)):
+        out: List[str] = []
+        for x in value:
+            out.extend(_coerce_list_of_str(x) or [])
+        seen = set()
+        uniq: List[str] = []
+        for s in out:
+            ss = str(s).strip()
+            if not ss or ss in seen:
+                continue
+            seen.add(ss)
+            uniq.append(ss)
+        return uniq or None
+    s2 = str(value).strip()
+    return [s2] if s2 else None
 
-    # V2 schema signals
-    if str(parsed.get("academic_display_text") or "").strip() or str(parsed.get("academic_tags_raw") or "").strip():
-        signals += 1
 
-    rate_text = str(parsed.get("hourly_rate") or "").strip()
-    if not rate_text and isinstance(parsed.get("rate"), dict):
-        rate_text = str((parsed.get("rate") or {}).get("raw_text") or "").strip()
-    if rate_text:
-        signals += 1
-
-    ta = parsed.get("time_availability")
-    if isinstance(ta, dict):
-        note = str(ta.get("note") or "").strip()
-        if note:
-            signals += 1
-        else:
-            for section in ("explicit", "estimated"):
-                day_map = ta.get(section)
-                if isinstance(day_map, dict) and any(isinstance(v, list) and any(str(x).strip() for x in v) for v in day_map.values()):
-                    signals += 1
-                    break
-
-    lesson = parsed.get("lesson_schedule")
-    if isinstance(lesson, dict):
-        if str(lesson.get("raw_text") or "").strip():
-            signals += 1
-        elif any(lesson.get(k) is not None for k in ("lessons_per_week", "hours_per_lesson", "total_hours_per_week")):
-            signals += 1
-    elif isinstance(lesson, list) and any(isinstance(x, str) and x.strip() for x in lesson):
-        signals += 1
-
-    # Legacy schema signals (kept for older pipeline versions)
-    if parsed.get("subjects"):
-        signals += 1
-    if str(parsed.get("level") or "").strip():
-        signals += 1
-    if str(parsed.get("hourly_rate") or "").strip():
-        signals += 1
-    if parsed.get("postal_code") or parsed.get("postal_code_estimated"):
-        signals += 1
-    if parsed.get("address") or parsed.get("nearest_mrt"):
-        signals += 1
-    if parsed.get("time_slots") or parsed.get("estimated_time_slots") or str(parsed.get("time_slots_note") or "").strip():
-        signals += 1
-
-    return signals >= 2
+def _fill_postal_code_from_text(parsed: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
+    if not isinstance(parsed, dict):
+        return {}
+    existing = _coerce_list_of_str(parsed.get("postal_code"))
+    if existing:
+        parsed["postal_code"] = existing
+        return parsed
+    codes = _extract_sg_postal_codes(raw_text)
+    parsed["postal_code"] = codes
+    return parsed
 
 
 def _report_path() -> Path:
@@ -332,15 +327,6 @@ def main() -> None:
                             if not isinstance(parsed, dict):
                                 parsed = {}
 
-                            if not _looks_like_assignment(parsed):
-                                per_channel[ch]["skipped"] += 1
-                                total["skipped"] += 1
-                                fh.write(
-                                    json.dumps({"channel": ch, "message_id": msg_id, "ok": False, "skipped": "non_assignment"}, ensure_ascii=False)
-                                    + "\n"
-                                )
-                                continue
-
                             payload: Dict[str, Any] = {
                                 "cid": cid,
                                 "channel_link": ch,
@@ -352,7 +338,9 @@ def main() -> None:
                                 "parsed": parsed,
                             }
 
-                            payload = process_parsed_payload(payload, False)
+                            # Deterministic postal-code fill (strict: only explicit 6-digit tokens).
+                            if isinstance(payload.get("parsed"), dict):
+                                payload["parsed"] = _fill_postal_code_from_text(payload["parsed"], raw_text)
 
                             # Deterministic time overwrite (recommended).
                             if _truthy(os.environ.get("USE_DETERMINISTIC_TIME")):
@@ -392,6 +380,19 @@ def main() -> None:
                                 "hard_validation": hard_meta,
                                 "signals": sig_meta,
                             }
+
+                            ok_schema, schema_errors = validate_parsed_assignment(payload.get("parsed") or {})
+                            if not ok_schema:
+                                per_channel[ch]["skipped"] += 1
+                                total["skipped"] += 1
+                                fh.write(
+                                    json.dumps(
+                                        {"channel": ch, "message_id": msg_id, "ok": False, "skipped": "validation_failed", "errors": schema_errors},
+                                        ensure_ascii=False,
+                                    )
+                                    + "\n"
+                                )
+                                continue
                             persist_res = persist_assignment_to_supabase(payload)
 
                             ok = bool(persist_res and persist_res.get("ok"))

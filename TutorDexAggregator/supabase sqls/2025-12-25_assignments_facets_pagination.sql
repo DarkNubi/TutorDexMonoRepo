@@ -7,16 +7,39 @@
 --
 -- Notes:
 -- - Uses `last_seen desc, id desc` ordering for stable pagination.
--- - Subject filtering/facets prefer subjects_general -> subjects_canonical -> subjects -> subject.
+-- - Filters use deterministic rollups materialized on `public.assignments` as `signals_*` arrays.
 
-create index if not exists assignments_status_level_idx
-  on public.assignments (status, level);
+-- Ensure older DBs have the estimated postal code fallback column.
+alter table public.assignments
+  add column if not exists postal_code_estimated text[];
+
+-- Geo enrichment columns (computed once during persistence).
+alter table public.assignments
+  add column if not exists region text;
+
+alter table public.assignments
+  add column if not exists nearest_mrt_computed text;
+
+alter table public.assignments
+  add column if not exists nearest_mrt_computed_line text;
+
+alter table public.assignments
+  add column if not exists nearest_mrt_computed_distance_m int;
 
 create index if not exists assignments_status_agency_name_idx
   on public.assignments (status, agency_name);
 
-create index if not exists assignments_subjects_gin
-  on public.assignments using gin (subjects);
+create index if not exists assignments_status_learning_mode_idx
+  on public.assignments (status, learning_mode);
+
+create index if not exists assignments_signals_subjects_gin
+  on public.assignments using gin (signals_subjects);
+
+create index if not exists assignments_signals_levels_gin
+  on public.assignments using gin (signals_levels);
+
+create index if not exists assignments_signals_specific_levels_gin
+  on public.assignments using gin (signals_specific_student_levels);
 
 create or replace function public.list_open_assignments(
   p_limit integer default 50,
@@ -36,21 +59,25 @@ returns table(
   message_link text,
   agency_name text,
   learning_mode text,
-  subject text,
-  subjects text[],
-  level text,
-  specific_student_level text,
-  address text,
-  postal_code text,
-  nearest_mrt text,
-	  frequency text,
-	  duration text,
-	  time_slots_note text,
-	  hourly_rate text,
-	  rate_min integer,
-	  rate_max integer,
-	  student_gender text,
-	  tutor_gender text,
+  assignment_code text,
+  academic_display_text text,
+  address text[],
+  postal_code text[],
+  postal_code_estimated text[],
+  nearest_mrt text[],
+  region text,
+  nearest_mrt_computed text,
+  nearest_mrt_computed_line text,
+  nearest_mrt_computed_distance_m int,
+  lesson_schedule text[],
+  start_date text,
+  time_availability_note text,
+  rate_min integer,
+  rate_max integer,
+  rate_raw_text text,
+  signals_subjects text[],
+  signals_levels text[],
+  signals_specific_student_levels text[],
   status text,
   created_at timestamptz,
   last_seen timestamptz,
@@ -64,29 +91,24 @@ as $$
 with base as (
   select
     a.*,
-    case
-      when a.level = 'International Baccalaureate' then 'IB'
-      else a.level
-    end as _level_norm,
-    coalesce(
-      nullif(a.subjects_general, '{}'::text[]),
-      nullif(a.subjects_canonical, '{}'::text[]),
-      nullif(a.subjects, '{}'::text[]),
-      case
-        when a.subject is not null and btrim(a.subject) <> '' then array[btrim(a.subject)]
-        else '{}'::text[]
-      end
-    ) as _subject_list,
-    lower(concat_ws(' ', nullif(a.address, ''), nullif(a.postal_code, ''), nullif(a.nearest_mrt, ''))) as _loc
+    lower(
+      concat_ws(
+        ' ',
+        nullif(array_to_string(a.address, ' '), ''),
+        nullif(array_to_string(a.postal_code, ' '), ''),
+        nullif(array_to_string(a.postal_code_estimated, ' '), ''),
+        nullif(array_to_string(a.nearest_mrt, ' '), '')
+      )
+    ) as _loc
   from public.assignments a
   where a.status = 'open'
 ),
 filtered as (
   select *
   from base
-  where (p_level is null or _level_norm = (case when p_level = 'International Baccalaureate' then 'IB' else p_level end))
-    and (p_specific_student_level is null or specific_student_level = p_specific_student_level)
-    and (p_subject is null or p_subject = any(_subject_list))
+  where (p_level is null or p_level = any(signals_levels))
+    and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
+    and (p_subject is null or p_subject = any(signals_subjects))
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -106,21 +128,25 @@ select
   message_link,
   agency_name,
   learning_mode,
-  subject,
-  subjects,
-  _level_norm as level,
-  specific_student_level,
+  assignment_code,
+  academic_display_text,
   address,
   postal_code,
+  postal_code_estimated,
   nearest_mrt,
-	  frequency,
-	  duration,
-	  time_slots_note,
-	  hourly_rate,
-	  rate_min,
-	  rate_max,
-	  student_gender,
-	  tutor_gender,
+  region,
+  nearest_mrt_computed,
+  nearest_mrt_computed_line,
+  nearest_mrt_computed_distance_m,
+  lesson_schedule,
+  start_date,
+  time_availability_note,
+  rate_min,
+  rate_max,
+  rate_raw_text,
+  signals_subjects,
+  signals_levels,
+  signals_specific_student_levels,
   status,
   created_at,
   last_seen,
@@ -148,29 +174,24 @@ as $$
 with base as (
   select
     a.*,
-    case
-      when a.level = 'International Baccalaureate' then 'IB'
-      else a.level
-    end as _level_norm,
-    coalesce(
-      nullif(a.subjects_general, '{}'::text[]),
-      nullif(a.subjects_canonical, '{}'::text[]),
-      nullif(a.subjects, '{}'::text[]),
-      case
-        when a.subject is not null and btrim(a.subject) <> '' then array[btrim(a.subject)]
-        else '{}'::text[]
-      end
-    ) as _subject_list,
-    lower(concat_ws(' ', nullif(a.address, ''), nullif(a.postal_code, ''), nullif(a.nearest_mrt, ''))) as _loc
+    lower(
+      concat_ws(
+        ' ',
+        nullif(array_to_string(a.address, ' '), ''),
+        nullif(array_to_string(a.postal_code, ' '), ''),
+        nullif(array_to_string(a.postal_code_estimated, ' '), ''),
+        nullif(array_to_string(a.nearest_mrt, ' '), '')
+      )
+    ) as _loc
   from public.assignments a
   where a.status = 'open'
 ),
 filtered as (
   select *
   from base
-  where (p_level is null or _level_norm = (case when p_level = 'International Baccalaureate' then 'IB' else p_level end))
-    and (p_specific_student_level is null or specific_student_level = p_specific_student_level)
-    and (p_subject is null or p_subject = any(_subject_list))
+  where (p_level is null or p_level = any(signals_levels))
+    and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
+    and (p_subject is null or p_subject = any(signals_subjects))
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -188,10 +209,13 @@ select jsonb_build_object(
       '[]'::jsonb
     )
     from (
-      select _level_norm as level, count(*) as c
-      from filtered
-      where _level_norm is not null and btrim(_level_norm) <> ''
-      group by _level_norm
+      select level, count(*) as c
+      from (
+        select distinct id, unnest(signals_levels) as level
+        from filtered
+      ) d
+      where level is not null and btrim(level) <> ''
+      group by level
     ) s
   ),
   'specific_levels', (
@@ -201,7 +225,10 @@ select jsonb_build_object(
     )
     from (
       select specific_student_level, count(*) as c
-      from filtered
+      from (
+        select distinct id, unnest(signals_specific_student_levels) as specific_student_level
+        from filtered
+      ) d
       where specific_student_level is not null and btrim(specific_student_level) <> ''
       group by specific_student_level
     ) s
@@ -214,7 +241,7 @@ select jsonb_build_object(
     from (
       select subject, count(*) as c
       from (
-        select distinct id, unnest(_subject_list) as subject
+        select distinct id, unnest(signals_subjects) as subject
         from filtered
       ) d
       where subject is not null and btrim(subject) <> ''
