@@ -14,7 +14,7 @@ from typing import Optional
 
 
 # Optional: override pipeline version to process.
-PIPELINE_VERSION_OVERRIDE: Optional[str] = "2026-01-01_prompt_v2"
+PIPELINE_VERSION_OVERRIDE: Optional[str] = "2026-01-02_det_time_v1"
 
 # Stop once the queue is empty (recommended for manual runs).
 ONESHOT: bool = True

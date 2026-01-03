@@ -22,7 +22,7 @@ MAX_MESSAGES_PER_CHANNEL: Optional[int] = None
 PAGE_SIZE: int = 500
 
 # Recommended: set a new pipeline version when you change prompt/schema/model.
-PIPELINE_VERSION_OVERRIDE: Optional[str] = "2026-01-01_prompt_v2"
+PIPELINE_VERSION_OVERRIDE: Optional[str] = "2026-01-02_det_time_v1"
 
 # If you keep the same pipeline version, set FORCE=True to reprocess already-ok jobs.
 FORCE: bool = True

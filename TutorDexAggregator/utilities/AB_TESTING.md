@@ -52,14 +52,10 @@ Your environment (or `TutorDexAggregator/.env`) must include:
 
 Set exactly one (precedence top → bottom):
 - `LLM_SYSTEM_PROMPT_TEXT="..."` (inline)
-- `LLM_SYSTEM_PROMPT_FILE=prompts/system_prompt_A.txt`
-- `LLM_SYSTEM_PROMPT_VARIANT=A` (loads `TutorDexAggregator/prompts/system_prompt_A.txt` if present)
+- `LLM_SYSTEM_PROMPT_FILE=prompts/system_prompt_live.txt`
 
 Recommended workflow:
-- Create two prompt files:
-  - `TutorDexAggregator/prompts/system_prompt_A.txt`
-  - `TutorDexAggregator/prompts/system_prompt_B.txt`
-- Set `system_prompt_variant="A"` / `"B"` in `ab_experiment.py`.
+- Create two prompt files and point each run at its file via `system_prompt_file=...` in `ab_experiment.py`.
 
 ## Examples switching options
 

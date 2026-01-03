@@ -14,6 +14,12 @@ _cid_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_cid", d
 _message_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_message_id", default="-")
 _channel_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_channel", default="-")
 _step_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_step", default="-")
+_assignment_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_assignment_id", default="-")
+_pipeline_version_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_pipeline_version", default="-")
+_schema_version_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_schema_version", default="-")
+_component_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_component", default="-")
+_trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_trace_id", default="-")
+_span_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_span_id", default="-")
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -37,6 +43,12 @@ def bind_log_context(
     message_id: Optional[str] = None,
     channel: Optional[str] = None,
     step: Optional[str] = None,
+    assignment_id: Optional[str] = None,
+    pipeline_version: Optional[str] = None,
+    schema_version: Optional[str] = None,
+    component: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    span_id: Optional[str] = None,
 ) -> Iterator[None]:
     tokens = []
     try:
@@ -48,6 +60,18 @@ def bind_log_context(
             tokens.append((_channel_var, _channel_var.set(str(channel))))
         if step is not None:
             tokens.append((_step_var, _step_var.set(str(step))))
+        if assignment_id is not None:
+            tokens.append((_assignment_id_var, _assignment_id_var.set(str(assignment_id))))
+        if pipeline_version is not None:
+            tokens.append((_pipeline_version_var, _pipeline_version_var.set(str(pipeline_version))))
+        if schema_version is not None:
+            tokens.append((_schema_version_var, _schema_version_var.set(str(schema_version))))
+        if component is not None:
+            tokens.append((_component_var, _component_var.set(str(component))))
+        if trace_id is not None:
+            tokens.append((_trace_id_var, _trace_id_var.set(str(trace_id))))
+        if span_id is not None:
+            tokens.append((_span_id_var, _span_id_var.set(str(span_id))))
         yield
     finally:
         for var, token in reversed(tokens):
@@ -71,6 +95,18 @@ class _ContextFilter(logging.Filter):
             record.channel = _channel_var.get()
         if not hasattr(record, "step"):
             record.step = _step_var.get()
+        if not hasattr(record, "assignment_id"):
+            record.assignment_id = _assignment_id_var.get()
+        if not hasattr(record, "pipeline_version"):
+            record.pipeline_version = _pipeline_version_var.get()
+        if not hasattr(record, "schema_version"):
+            record.schema_version = _schema_version_var.get()
+        if not hasattr(record, "component"):
+            record.component = _component_var.get()
+        if not hasattr(record, "trace_id"):
+            record.trace_id = _trace_id_var.get()
+        if not hasattr(record, "span_id"):
+            record.span_id = _span_id_var.get()
         if not hasattr(record, "event"):
             record.event = record.msg if isinstance(record.msg, str) else record.name
         if not hasattr(record, "data"):
@@ -84,12 +120,18 @@ class _JsonFormatter(logging.Formatter):
             "ts": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S%z"),
             "level": record.levelname,
             "logger": record.name,
+            "component": getattr(record, "component", "-"),
             "event": getattr(record, "event", record.getMessage()),
             "msg": record.getMessage(),
             "cid": getattr(record, "cid", "-"),
             "message_id": getattr(record, "message_id", "-"),
             "channel": getattr(record, "channel", "-"),
             "step": getattr(record, "step", "-"),
+            "assignment_id": getattr(record, "assignment_id", "-"),
+            "pipeline_version": getattr(record, "pipeline_version", "-"),
+            "schema_version": getattr(record, "schema_version", "-"),
+            "trace_id": getattr(record, "trace_id", "-"),
+            "span_id": getattr(record, "span_id", "-"),
         }
         data = getattr(record, "data", None)
         if isinstance(data, dict) and data:

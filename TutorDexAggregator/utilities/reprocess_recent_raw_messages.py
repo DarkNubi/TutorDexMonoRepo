@@ -20,13 +20,19 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from compilation_detection import is_compilation
-from extract_key_info import extract_assignment_with_model, process_parsed_payload
+from extract_key_info import extract_assignment_with_model
+from extractors.time_availability import extract_time_availability
+from hard_validator import hard_validate
+from normalize import normalize_text
+from signals_builder import build_signals
+from schema_validation import validate_parsed_assignment
 from supabase_persist import persist_assignment_to_supabase
 from supabase_raw_persist import SupabaseRawStore
 from logging_setup import bind_log_context, log_event, setup_logging
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -61,6 +67,12 @@ class Counters:
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def _load_env() -> None:
@@ -122,28 +134,54 @@ def _normalize_channel_link(value: str) -> str:
     return s
 
 
-def _looks_like_assignment(parsed: Dict[str, Any]) -> bool:
-    if not isinstance(parsed, dict) or not parsed:
-        return False
+def _extract_sg_postal_codes(text: str) -> Optional[List[str]]:
+    try:
+        codes = re.findall(r"\b(\d{6})\b", str(text or ""))
+    except Exception:
+        codes = []
+    seen = set()
+    out: List[str] = []
+    for c in codes:
+        if c in seen:
+            continue
+        seen.add(c)
+        out.append(c)
+    return out or None
 
-    if str(parsed.get("assignment_code") or "").strip():
-        return True
 
-    signals = 0
-    if parsed.get("subjects"):
-        signals += 1
-    if str(parsed.get("level") or "").strip():
-        signals += 1
-    if str(parsed.get("hourly_rate") or "").strip():
-        signals += 1
-    if parsed.get("postal_code") or parsed.get("postal_code_estimated"):
-        signals += 1
-    if parsed.get("address") or parsed.get("nearest_mrt"):
-        signals += 1
-    if parsed.get("time_slots") or parsed.get("estimated_time_slots") or str(parsed.get("time_slots_note") or "").strip():
-        signals += 1
+def _coerce_list_of_str(value: Any) -> Optional[List[str]]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        return [s] if s else None
+    if isinstance(value, (list, tuple)):
+        out: List[str] = []
+        for x in value:
+            out.extend(_coerce_list_of_str(x) or [])
+        seen = set()
+        uniq: List[str] = []
+        for s in out:
+            ss = str(s).strip()
+            if not ss or ss in seen:
+                continue
+            seen.add(ss)
+            uniq.append(ss)
+        return uniq or None
+    s2 = str(value).strip()
+    return [s2] if s2 else None
 
-    return signals >= 2
+
+def _fill_postal_code_from_text(parsed: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
+    if not isinstance(parsed, dict):
+        return {}
+    existing = _coerce_list_of_str(parsed.get("postal_code"))
+    if existing:
+        parsed["postal_code"] = existing
+        return parsed
+    codes = _extract_sg_postal_codes(raw_text)
+    parsed["postal_code"] = codes
+    return parsed
 
 
 def _report_path() -> Path:
@@ -281,18 +319,13 @@ def main() -> None:
 
                     with bind_log_context(cid=cid, channel=ch, message_id=msg_id, step="reprocess"):
                         try:
-                            parsed = extract_assignment_with_model(raw_text, chat=ch, cid=cid)
+                            normalized_text = normalize_text(raw_text)
+                            use_norm = _truthy(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM"))
+                            llm_input = normalized_text if use_norm else raw_text
+
+                            parsed = extract_assignment_with_model(llm_input, chat=ch, cid=cid)
                             if not isinstance(parsed, dict):
                                 parsed = {}
-
-                            if not _looks_like_assignment(parsed):
-                                per_channel[ch]["skipped"] += 1
-                                total["skipped"] += 1
-                                fh.write(
-                                    json.dumps({"channel": ch, "message_id": msg_id, "ok": False, "skipped": "non_assignment"}, ensure_ascii=False)
-                                    + "\n"
-                                )
-                                continue
 
                             payload: Dict[str, Any] = {
                                 "cid": cid,
@@ -305,7 +338,61 @@ def main() -> None:
                                 "parsed": parsed,
                             }
 
-                            payload = process_parsed_payload(payload, False)
+                            # Deterministic postal-code fill (strict: only explicit 6-digit tokens).
+                            if isinstance(payload.get("parsed"), dict):
+                                payload["parsed"] = _fill_postal_code_from_text(payload["parsed"], raw_text)
+
+                            # Deterministic time overwrite (recommended).
+                            if _truthy(os.environ.get("USE_DETERMINISTIC_TIME")):
+                                try:
+                                    det_ta, det_meta = extract_time_availability(raw_text=raw_text, normalized_text=normalized_text)
+                                    if isinstance(payload.get("parsed"), dict):
+                                        payload["parsed"]["time_availability"] = det_ta
+                                except Exception:
+                                    det_meta = {"ok": False, "error": "time_extract_failed"}
+                            else:
+                                det_meta = None
+
+                            # Hard validation (default enforce for reprocessing).
+                            hard_mode = (os.environ.get("HARD_VALIDATE_MODE") or "enforce").strip().lower()
+                            hard_meta = None
+                            if hard_mode in {"report", "enforce"}:
+                                try:
+                                    cleaned, violations = hard_validate(payload.get("parsed") or {}, raw_text=raw_text, normalized_text=normalized_text)
+                                    hard_meta = {"mode": hard_mode, "violations_count": len(violations), "violations": violations[:50]}
+                                    if hard_mode == "enforce":
+                                        payload["parsed"] = cleaned
+                                except Exception as e:
+                                    hard_meta = {"mode": hard_mode, "error": str(e)}
+
+                            # Deterministic signals (recommended).
+                            sig_meta = None
+                            if _truthy(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS")):
+                                try:
+                                    sig, err = build_signals(parsed=payload.get("parsed") or {}, raw_text=raw_text, normalized_text=normalized_text)
+                                    sig_meta = {"ok": False, "error": err} if err else {"ok": True, "signals": sig}
+                                except Exception as e:
+                                    sig_meta = {"ok": False, "error": str(e)}
+
+                            payload["meta"] = {
+                                "normalization": {"chars": len(normalized_text), "preview": normalized_text[:200]},
+                                "time_deterministic": det_meta,
+                                "hard_validation": hard_meta,
+                                "signals": sig_meta,
+                            }
+
+                            ok_schema, schema_errors = validate_parsed_assignment(payload.get("parsed") or {})
+                            if not ok_schema:
+                                per_channel[ch]["skipped"] += 1
+                                total["skipped"] += 1
+                                fh.write(
+                                    json.dumps(
+                                        {"channel": ch, "message_id": msg_id, "ok": False, "skipped": "validation_failed", "errors": schema_errors},
+                                        ensure_ascii=False,
+                                    )
+                                    + "\n"
+                                )
+                                continue
                             persist_res = persist_assignment_to_supabase(payload)
 
                             ok = bool(persist_res and persist_res.get("ok"))

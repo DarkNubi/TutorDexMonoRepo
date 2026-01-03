@@ -12,8 +12,9 @@ Environment variables:
 
 This script:
   - calls the API once
-  - maps fields into the parsed payload shape expected by persist/broadcast/DM
-  - skips LLM entirely
+  - maps rows into the hardened v2 `canonical_json` display schema
+  - computes deterministic time availability + signals (meta)
+  - persists via `supabase_persist` (which materializes `signals_*` columns for the website/backend)
 """
 
 import argparse
@@ -33,6 +34,9 @@ if str(PARENT) not in sys.path:
 
 from logging_setup import bind_log_context, log_event, setup_logging
 from supabase_persist import SupabaseConfig, load_config_from_env, persist_assignment_to_supabase
+from normalize import normalize_text
+from extractors.time_availability import extract_time_availability
+from signals_builder import build_signals
 
 try:
     from dm_assignments import send_dms
@@ -96,7 +100,7 @@ def _join_text(value: Any) -> str:
 
 def _parse_rate(rate: Optional[str]) -> Dict[str, Any]:
     # Keep the original string; best-effort min/max parsing for simple ranges like "50-80 p/h" or "$30/h".
-    out: Dict[str, Any] = {"hourly_rate": rate}
+    out: Dict[str, Any] = {"min": None, "max": None, "raw_text": rate}
     if not rate:
         return out
     cleaned = rate.replace("$", "").replace("/h", "").replace("p/h", "").replace("p.h", "").replace("per hour", "")
@@ -110,19 +114,11 @@ def _parse_rate(rate: Optional[str]) -> Dict[str, Any]:
         except Exception:
             continue
 
-    def _to_int(x: float) -> int:
-        # Supabase schema expects integer for rate_min/rate_max. TutorCity values frequently look like "60.0".
-        # Round to the nearest integer to preserve typical human rates (e.g. 60.0 -> 60).
-        try:
-            return int(round(float(x)))
-        except Exception:
-            return int(x)
-
     if len(nums) == 1:
-        out["rate_min"] = out["rate_max"] = _to_int(nums[0])
+        out["min"] = out["max"] = nums[0]
     elif len(nums) >= 2:
-        out["rate_min"] = _to_int(min(nums))
-        out["rate_max"] = _to_int(max(nums))
+        out["min"] = float(min(nums))
+        out["max"] = float(max(nums))
     return out
 
 
@@ -136,28 +132,46 @@ def _map_row(row: Dict[str, Any], source_label: str) -> Dict[str, Any]:
     postal_code = _first(row.get("postal_code"))
     availability = _first(row.get("availability"))
     hourly_rate = row.get("hourly_rate")
-    tutor_gender = _first(row.get("tutor_gender"))
     additional_remarks = _first(row.get("additional_remarks"))
     assignment_url = _first(row.get("assignment_url"))
 
-    rate_bits = _parse_rate(_first(hourly_rate))
+    # Build an academic display string (best-effort, API-provided fields only).
+    subj_bits = [str(s).strip() for s in subjects_list if str(s).strip()]
+    headline_parts = [str(x).strip() for x in (year, level) if str(x).strip()]
+    headline = " ".join(headline_parts).strip()
+    if subj_bits:
+        headline = f"{headline} {' / '.join(subj_bits)}".strip()
+    academic_display_text = headline or None
+
+    # Deterministic time availability from the API availability string (if present).
+    det_time = None
+    if availability:
+        try:
+            det_time, _meta = extract_time_availability(raw_text=availability, normalized_text=normalize_text(availability))
+        except Exception:
+            det_time = None
 
     parsed: Dict[str, Any] = {
         "assignment_code": assignment_code,
-        "academic_tags_raw": f"{assignment_code or ''} {level or ''} {year or ''}".strip() or None,
-        "subjects": subjects_list,
-        "level": level,
-        "specific_student_level": year,
-        "address": address,
-        "postal_code": postal_code,
-        "availability": availability,
-        "hourly_rate": _first(hourly_rate),
-        "tutor_gender": tutor_gender,
+        "academic_display_text": academic_display_text,
+        "learning_mode": {"mode": None, "raw_text": None},
+        "address": [address] if address else None,
+        "postal_code": [postal_code] if postal_code else None,
+        "nearest_mrt": None,
+        "lesson_schedule": None,
+        "start_date": None,
+        "time_availability": det_time
+        or {
+            "explicit": {d: [] for d in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")},
+            "estimated": {d: [] for d in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")},
+            "note": availability or None,
+        },
+        "rate": _parse_rate(_first(hourly_rate)),
         "additional_remarks": additional_remarks,
-        "time_slots_note": availability,
-        "assignment_url": assignment_url,
     }
-    parsed.update(rate_bits)
+
+    signals, err = build_signals(parsed=parsed, raw_text="", normalized_text=academic_display_text)
+    signals_meta = {"ok": False, "error": err} if err else {"ok": True, "signals": signals}
 
     payload: Dict[str, Any] = {
         "cid": f"tutorcity:{assignment_code or ''}",
@@ -167,7 +181,8 @@ def _map_row(row: Dict[str, Any], source_label: str) -> Dict[str, Any]:
         "message_id": assignment_code,
         "message_link": assignment_url,
         "parsed": parsed,
-        "raw_text": None,
+        "raw_text": availability or None,
+        "meta": {"signals": signals_meta},
         "source_type": "tutorcity_api",
     }
     return payload

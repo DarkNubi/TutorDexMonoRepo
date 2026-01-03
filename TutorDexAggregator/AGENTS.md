@@ -4,33 +4,41 @@ This folder contains the Telegram ingestion + LLM extraction + broadcast pipelin
 
 Use this document as the "map" when making changes, debugging incidents, or adding new agencies.
 
-## High-level flow
+## High-level flow (current queue pipeline)
 
-1. `read_assignments.py` connects to Telegram via Telethon and listens to channels in `CHANNEL_LIST`.
-2. Each message is filtered (forwarded posts skipped; compilation-like posts skipped).
-3. `extract_key_info.py` calls a local OpenAI-compatible chat API (LM Studio, etc.) to extract a structured JSON object.
-4. The payload is enriched (postal code estimation via OSM Nominatim is best-effort).
-5. `broadcast_assignments.py` formats and sends the result to a target channel via Telegram Bot API (or writes to a JSONL fallback file).
+1. `collector.py tail` connects to Telegram via Telethon and writes raw messages into `public.telegram_messages_raw`.
+2. The collector enqueues extraction jobs into `public.telegram_extractions` via RPC (work queue by `(raw_id, pipeline_version)`).
+3. `workers/extract_worker.py` claims jobs, loads raw text, applies filters (forwarded/deleted/compilation), then:
+   - calls `extract_key_info.py` (LLM) for the v2 display fields
+   - runs deterministic postal-code regex fill (no guessing)
+   - runs deterministic time parsing (`extractors/time_availability.py`) and overwrites `canonical_json.time_availability`
+   - runs hard validation (`hard_validator.py`) and canonicalization (null/drop invalid values)
+   - runs deterministic signals (`signals_builder.py`) into `telegram_extractions.meta.signals`
+4. `supabase_persist.py` materializes the latest extraction into `public.assignments` for the website/backend (including `signals_*` rollups).
+5. `broadcast_assignments.py` and `dm_assignments.py` are optional side effects (best-effort).
 
 ## Entry points
 
-- `runner.py`
-  - `python runner.py start`: starts `read_assignments.main()`
-  - `python runner.py test --text "..." [--send]`: extract one message
-  - `python runner.py process-file path\\to\\payload.json [--send]`: process a saved payload
+- `collector.py`
+  - `python collector.py tail`: tail live Telegram channels into `telegram_messages_raw`
+  - `python collector.py enqueue`: enqueue a time window into `telegram_extractions`
+- `workers/extract_worker.py`
+  - `python workers/extract_worker.py`: run the queue worker loop
+- `utilities/run_sample_pipeline.py`
+  - Fast local dry-run against a single pasted post (no Supabase writes by default)
 
-## File map
+## File map (relevant)
 
-- `read_assignments.py`
-  - Long-running Telethon reader + filters.
-  - Builds a `payload` dict with channel metadata, raw text, and parsed fields.
-  - Calls `broadcast_assignments.send_broadcast(payload)`.
-  - Keeps processed message ids in `processed_ids.json` (configurable).
 - `extract_key_info.py`
   - Prompt/schema definitions.
   - Selects prompt examples based on source channel and files in `message_examples/`.
   - Calls the local LLM API (`LLM_API_URL`) and returns parsed JSON.
-  - Adds best-effort `postal_code_estimated` when `postal_code` is missing.
+- `extractors/time_availability.py`
+  - Deterministic parser that produces `canonical_json.time_availability`.
+- `hard_validator.py`
+  - Hard-null validator for the v2 `canonical_json` schema (never “fixes” by guessing).
+- `signals_builder.py`
+  - Deterministic academic/subject rollups for matching stored in `telegram_extractions.meta.signals`.
 - `broadcast_assignments.py`
   - Builds Telegram HTML message text and enforces safe length limits.
   - Sends via Bot API when configured; otherwise appends to `outgoing_broadcasts.jsonl`.
@@ -44,17 +52,19 @@ Use this document as the "map" when making changes, debugging incidents, or addi
 
 ## Payload shape (core contract)
 
-`read_assignments.py` emits a payload with keys like:
+The queue worker builds a payload with keys like:
 - `channel_id`, `channel_username`, `channel_title`, `channel_link`
 - `message_id`, `message_link`, `date`
 - `raw_text`
 - `parsed`: dict produced by `extract_key_info.extract_assignment_with_model(...)`
 
-`broadcast_assignments.py` expects `payload['parsed']` to contain fields like:
-`subjects`, `level`, `specific_student_level`, `address`, `postal_code` (or `postal_code_estimated`), `hourly_rate`,
-`frequency`, `duration`, `time_slots`/`estimated_time_slots`, `additional_remarks`.
+`payload['parsed']` is the v2 `canonical_json` display object:
+- `assignment_code`, `academic_display_text`, `learning_mode`, `address[]`, `postal_code[]`, `nearest_mrt[]`
+- `lesson_schedule[]`, `start_date`, `time_availability{explicit/estimated/note}`, `rate{min/max/raw_text}`, `additional_remarks`
 
-When changing the extraction schema, keep the broadcaster expectations in mind.
+Deterministic matching metadata lives in `payload['meta']['signals']` (and is also materialized into `public.assignments.signals_*`).
+
+When changing the extraction schema, keep the worker, validator, persistence, and broadcaster expectations in mind.
 
 ## Adding a new agency (chat + examples)
 
@@ -95,7 +105,7 @@ When adding logs:
 This project may call:
 - Telegram (Telethon) for reading messages.
 - Telegram Bot API for broadcasting (optional).
-- OpenStreetMap Nominatim for postal estimation (best-effort; should fail safely).
+- OpenStreetMap Nominatim for SG postal geocoding (lat/lon) (best-effort; should fail safely).
 - Local LLM HTTP API (required for extraction).
 
 Any of these may be blocked/unavailable depending on the runtime environment; error handling should degrade gracefully.

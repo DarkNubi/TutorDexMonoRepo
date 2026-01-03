@@ -1,0 +1,41 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: telegram-warning
+  group_by: ["alertname", "component", "channel", "pipeline_version", "schema_version"]
+  group_wait: 30s
+  group_interval: 10m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - alertname="Watchdog"
+      receiver: telegram-warning
+      group_wait: 5s
+      group_interval: 1h
+      repeat_interval: 24h
+    - matchers:
+        - severity="critical"
+      receiver: telegram-critical
+      group_wait: 5s
+      group_interval: 2m
+      repeat_interval: 30m
+    - matchers:
+        - severity="warning"
+      receiver: telegram-warning
+      group_wait: 30s
+      group_interval: 15m
+      repeat_interval: 6h
+
+receivers:
+  - name: telegram-critical
+    webhook_configs:
+      - url: http://alertmanager-telegram:8080/alert
+        send_resolved: true
+
+  - name: telegram-warning
+    webhook_configs:
+      - url: http://alertmanager-telegram:8080/alert
+        send_resolved: true
+
+  - name: blackhole

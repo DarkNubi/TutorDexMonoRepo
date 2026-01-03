@@ -3,8 +3,8 @@ collector.py
 
 Raw Telegram collector for TutorDex.
 
-Why this exists (vs read_assignments.py):
-- `read_assignments.py` is the production "assignment extraction + broadcast" pipeline and intentionally filters messages.
+Why this exists:
+- The production pipeline is "collector -> extraction queue -> workers/extract_worker.py".
 - This collector persists a lossless raw history (including forwards/compilations) to support reprocessing, dedupe improvements, and analytics.
 
 Commands:
@@ -28,6 +28,15 @@ from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError, SlowModeWaitError, FloodError
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
+from observability_http import start_observability_http_server
+from otel import setup_otel
+from observability_metrics import (
+    collector_errors_total,
+    collector_last_message_timestamp_seconds,
+    collector_messages_seen_total,
+    collector_messages_upserted_total,
+    set_version_metrics,
+)
 from supabase_raw_persist import SupabaseRawStore, build_raw_row
 
 try:
@@ -37,6 +46,10 @@ except Exception:
 
 setup_logging()
 logger = logging.getLogger("collector")
+_V = set_version_metrics(component="collector")
+setup_otel(service_name=os.environ.get("OTEL_SERVICE_NAME") or "tutordex-collector")
+_DEFAULT_LOG_CTX = bind_log_context(component="collector", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version)
+_DEFAULT_LOG_CTX.__enter__()
 
 HERE = Path(__file__).resolve().parent
 ENV_PATH = HERE / ".env"
@@ -138,7 +151,7 @@ def _enqueue_enabled() -> bool:
 
 
 def _pipeline_version() -> str:
-    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "singlecall_v1").strip() or "singlecall_v1"
+    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
 
 
 def _enqueue_extraction_jobs(store: SupabaseRawStore, *, channel_link: str, message_ids: List[str], force: bool = False) -> None:
@@ -221,7 +234,7 @@ def _build_client() -> TelegramClient:
     return TelegramClient(session_name, api_id, api_hash)
 
 
-# Rate limiting and retry configuration (mirrors read_assignments.py)
+# Rate limiting and retry configuration (shared with the queue worker pipeline)
 MAX_RETRIES = int(os.environ.get("TELEGRAM_MAX_RETRIES", "5"))
 INITIAL_RETRY_DELAY = float(os.environ.get("TELEGRAM_INITIAL_RETRY_DELAY", "1.0"))
 MAX_RETRY_DELAY = float(os.environ.get("TELEGRAM_MAX_RETRY_DELAY", "300.0"))
@@ -262,16 +275,6 @@ async def _retry_with_backoff(func, *args, **kwargs):
         raise last_exception
 
 
-def _write_heartbeat(path: Path, payload: Dict[str, Any]) -> None:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
-        tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        os.replace(str(tmp), str(path))
-    except Exception:
-        logger.debug("raw_heartbeat_write_failed", exc_info=True)
-
-
 @dataclass
 class Counters:
     scanned: int = 0
@@ -291,7 +294,6 @@ async def backfill_channel(
     until: Optional[datetime],
     batch_size: int,
     max_messages: Optional[int],
-    heartbeat_path: Path,
     force_enqueue: bool = False,
 ) -> Counters:
     counters = Counters()
@@ -329,6 +331,13 @@ async def backfill_channel(
             # Once we crossed the start boundary, everything else will be older.
             break
 
+        try:
+            collector_messages_seen_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+            if isinstance(dt_utc, datetime):
+                collector_last_message_timestamp_seconds.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).set(dt_utc.timestamp())
+        except Exception:
+            pass
+
         counters.scanned += 1
         row = build_raw_row(channel_link=channel_link, channel_id=channel_id, msg=msg)
         if row:
@@ -340,6 +349,11 @@ async def backfill_channel(
         if len(rows) >= int(batch_size):
             attempted, ok_rows = store.upsert_messages_batch(rows=rows)
             counters.written += ok_rows
+            try:
+                if ok_rows:
+                    collector_messages_upserted_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc(ok_rows)
+            except Exception:
+                pass
             if ok_rows:
                 msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
                 _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=bool(force_enqueue))
@@ -349,26 +363,28 @@ async def backfill_channel(
         counters.last_message_date_iso = _iso(dt_utc) if isinstance(dt_utc, datetime) else counters.last_message_date_iso
 
         if counters.scanned % 200 == 0:
-            _write_heartbeat(
-                heartbeat_path,
-                {
-                    "ts": int(time.time()),
-                    "service": "raw_collector",
-                    "mode": "backfill",
-                    "run_id": run_id,
-                    "channel": channel_link,
-                    "scanned": counters.scanned,
-                    "written": counters.written,
-                    "errors": counters.errors,
-                    "last_message_id": counters.last_message_id,
-                    "last_message_date": counters.last_message_date_iso,
-                    "elapsed_s": round(timed() - t0, 2),
-                },
+            log_event(
+                logger,
+                logging.INFO,
+                "raw_backfill_progress",
+                run_id=run_id,
+                channel=channel_link,
+                scanned=counters.scanned,
+                written=counters.written,
+                errors=counters.errors,
+                last_message_id=counters.last_message_id,
+                last_message_date=counters.last_message_date_iso,
+                elapsed_s=round(timed() - t0, 2),
             )
 
     if rows:
         attempted, ok_rows = store.upsert_messages_batch(rows=rows)
         counters.written += ok_rows
+        try:
+            if ok_rows:
+                collector_messages_upserted_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc(ok_rows)
+        except Exception:
+            pass
         if ok_rows:
             msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
             _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=msg_ids, force=bool(force_enqueue))
@@ -389,6 +405,24 @@ async def backfill_channel(
 async def run_backfill(args: argparse.Namespace) -> int:
     store = SupabaseRawStore()
 
+    def _dep_health() -> tuple[bool, dict[str, Any]]:
+        if not store.enabled() or not store.client:
+            return False, {"reason": "supabase_disabled"}
+        try:
+            resp = store.client.get(f"{store.cfg.messages_table}?select=id&limit=1", timeout=5)
+            return (resp.status_code < 400), {"status_code": resp.status_code}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    start_observability_http_server(
+        port=9001,
+        component="collector",
+        health_handlers={
+            "/health/collector": lambda: (True, {"pipeline_version": _V.pipeline_version, "schema_version": _V.schema_version}),
+            "/health/dependencies": _dep_health,
+        },
+    )
+
     channels = _parse_channels_arg(args.channels) or [_normalize_channel_ref(x) for x in _parse_channels_from_env()]
     channels = [c for c in channels if c]
     if not channels:
@@ -400,11 +434,6 @@ async def run_backfill(args: argparse.Namespace) -> int:
     batch_size = max(20, min(1000, batch_size))
     max_messages = int(args.max_messages) if args.max_messages else None
 
-    heartbeat_path = Path(
-        args.heartbeat_file
-        or (os.environ.get("RAW_HEARTBEAT_FILE") or "").strip()
-        or (HERE / "monitoring" / "heartbeat_raw_collector.json")
-    )
     base_meta = {
         "since": args.since,
         "until": args.until,
@@ -425,7 +454,7 @@ async def run_backfill(args: argparse.Namespace) -> int:
         total_scanned = 0
         total_written = 0
         for ch in channels:
-            with bind_log_context(step="raw.backfill", channel=ch):
+            with bind_log_context(step="raw.backfill", channel=ch, component="collector", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version):
                 log_event(logger, logging.INFO, "raw_backfill_channel_start", channel=ch, run_id=run_id)
                 res = await backfill_channel(
                     client=client,
@@ -436,7 +465,6 @@ async def run_backfill(args: argparse.Namespace) -> int:
                     until=until,
                     batch_size=batch_size,
                     max_messages=max_messages,
-                    heartbeat_path=heartbeat_path,
                     force_enqueue=bool(getattr(args, "force_enqueue", False)),
                 )
                 log_event(
@@ -462,29 +490,11 @@ async def run_backfill(args: argparse.Namespace) -> int:
             }
         )
         store.finish_run(run_id=run_id, status="ok", meta_patch=final_meta)
-
-        _write_heartbeat(
-            heartbeat_path,
-            {
-                "ts": int(time.time()),
-                "service": "raw_collector",
-                "mode": "backfill",
-                "status": "ok",
-                "run_id": run_id,
-                "total_scanned": total_scanned,
-                "total_written": total_written,
-                "total_ms": round((timed() - t0) * 1000.0, 2),
-            },
-        )
         return 0
     except Exception as e:
         err_meta = dict(base_meta)
         err_meta.update({"error": str(e), "finished_at": _utc_now().isoformat()})
         store.finish_run(run_id=run_id, status="error", meta_patch=err_meta)
-        _write_heartbeat(
-            heartbeat_path,
-            {"ts": int(time.time()), "service": "raw_collector", "mode": "backfill", "status": "error", "run_id": run_id, "error": str(e)[:300]},
-        )
         raise
     finally:
         await client.disconnect()
@@ -497,13 +507,26 @@ async def run_tail(args: argparse.Namespace) -> int:
     if not channels:
         raise SystemExit("No channels provided. Set CHANNEL_LIST in .env or pass --channels.")
 
-    heartbeat_path = Path(
-        args.heartbeat_file
-        or (os.environ.get("RAW_HEARTBEAT_FILE") or "").strip()
-        or (HERE / "monitoring" / "heartbeat_raw_collector.json")
-    )
     base_meta = {"supabase_enabled": store.enabled()}
     run_id = store.create_run(run_type="tail", channels=channels, meta=base_meta)
+
+    def _dep_health() -> tuple[bool, dict[str, Any]]:
+        if not store.enabled() or not store.client:
+            return False, {"reason": "supabase_disabled"}
+        try:
+            resp = store.client.get(f"{store.cfg.messages_table}?select=id&limit=1", timeout=5)
+            return (resp.status_code < 400), {"status_code": resp.status_code}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    start_observability_http_server(
+        port=9001,
+        component="collector",
+        health_handlers={
+            "/health/collector": lambda: (True, {"pipeline_version": _V.pipeline_version, "schema_version": _V.schema_version}),
+            "/health/dependencies": _dep_health,
+        },
+    )
 
     client = _build_client()
     await client.connect()
@@ -533,14 +556,27 @@ async def run_tail(args: argparse.Namespace) -> int:
         channel_link = _channel_link_from_entity(entity, "tg:unknown")
         counter = _get_counter(channel_link)
 
-        with bind_log_context(step="raw.tail.new", channel=channel_link, message_id=getattr(msg, "id", None)):
+        with bind_log_context(step="raw.tail.new", channel=channel_link, message_id=getattr(msg, "id", None), component="collector", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version):
             try:
                 counter.scanned += 1
+                try:
+                    collector_messages_seen_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                    dt = getattr(msg, "date", None)
+                    if isinstance(dt, datetime):
+                        dt_utc = dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+                        dt_utc = dt_utc.astimezone(timezone.utc)
+                        collector_last_message_timestamp_seconds.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).set(dt_utc.timestamp())
+                except Exception:
+                    pass
                 row = build_raw_row(channel_link=channel_link, channel_id=channel_id, msg=msg)
                 if row:
                     _, ok_rows = store.upsert_messages_batch(rows=[row])
                     counter.written += ok_rows
                     if ok_rows:
+                        try:
+                            collector_messages_upserted_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc(ok_rows)
+                        except Exception:
+                            pass
                         _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=[str(getattr(msg, "id", ""))], force=False)
                     dt = getattr(msg, "date", None)
                     if isinstance(dt, datetime):
@@ -559,6 +595,10 @@ async def run_tail(args: argparse.Namespace) -> int:
                 )
             except Exception as e:
                 counter.errors += 1
+                try:
+                    collector_errors_total.labels(channel=channel_link, reason="raw_tail_new_failed", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                except Exception:
+                    pass
                 log_event(logger, logging.WARNING, "raw_tail_new_failed", run_id=run_id, error=str(e))
 
     @client.on(events.MessageEdited(chats=entities))
@@ -569,18 +609,26 @@ async def run_tail(args: argparse.Namespace) -> int:
         channel_link = _channel_link_from_entity(entity, "tg:unknown")
         counter = _get_counter(channel_link)
 
-        with bind_log_context(step="raw.tail.edit", channel=channel_link, message_id=getattr(msg, "id", None)):
+        with bind_log_context(step="raw.tail.edit", channel=channel_link, message_id=getattr(msg, "id", None), component="collector", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version):
             try:
                 row = build_raw_row(channel_link=channel_link, channel_id=channel_id, msg=msg)
                 if row:
                     _, ok_rows = store.upsert_messages_batch(rows=[row])
                     counter.written += ok_rows
                     if ok_rows:
+                        try:
+                            collector_messages_upserted_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc(ok_rows)
+                        except Exception:
+                            pass
                         # Edits can change extraction output; request reprocess for this message.
                         _enqueue_extraction_jobs(store, channel_link=channel_link, message_ids=[str(getattr(msg, "id", ""))], force=True)
                 log_event(logger, logging.DEBUG, "raw_tail_edit_ok")
             except Exception as e:
                 counter.errors += 1
+                try:
+                    collector_errors_total.labels(channel=channel_link, reason="raw_tail_edit_failed", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                except Exception:
+                    pass
                 log_event(logger, logging.WARNING, "raw_tail_edit_failed", run_id=run_id, error=str(e))
 
     @client.on(events.MessageDeleted(chats=entities))
@@ -588,31 +636,16 @@ async def run_tail(args: argparse.Namespace) -> int:
         entity = await event.get_chat()
         channel_link = _channel_link_from_entity(entity, "tg:unknown")
         ids = [str(x) for x in (event.deleted_ids or [])]
-        with bind_log_context(step="raw.tail.delete", channel=channel_link):
+        with bind_log_context(step="raw.tail.delete", channel=channel_link, component="collector", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version):
             try:
                 patched = store.mark_deleted(channel_link=channel_link, message_ids=ids)
                 log_event(logger, logging.DEBUG, "raw_tail_delete_ok", ids=len(ids), patched=patched)
             except Exception as e:
+                try:
+                    collector_errors_total.labels(channel=channel_link, reason="raw_tail_delete_failed", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                except Exception:
+                    pass
                 log_event(logger, logging.WARNING, "raw_tail_delete_failed", run_id=run_id, error=str(e))
-
-    async def _heartbeat_loop() -> None:
-        while True:
-            try:
-                summary = {
-                    "ts": int(time.time()),
-                    "service": "raw_collector",
-                    "mode": "tail",
-                    "status": "running",
-                    "run_id": run_id,
-                    "channels": {
-                        k: {"scanned": v.scanned, "written": v.written, "errors": v.errors, "last_message_date": v.last_message_date_iso}
-                        for k, v in counts.items()
-                    },
-                }
-                _write_heartbeat(heartbeat_path, summary)
-            except Exception:
-                pass
-            await asyncio.sleep(max(10, int(args.heartbeat_seconds or 60)))
 
     log_event(
         logger,
@@ -625,16 +658,50 @@ async def run_tail(args: argparse.Namespace) -> int:
         pipeline_version=_pipeline_version(),
         queue_rpc_sql="supabase sqls/2025-12-22_extraction_queue_rpc.sql",
     )
-    hb_task = asyncio.create_task(_heartbeat_loop())
     try:
         await client.run_until_disconnected()
         return 0
     finally:
-        hb_task.cancel()
         meta = dict(base_meta)
         meta.update({"stopped_at": _utc_now().isoformat()})
         store.finish_run(run_id=run_id, status="cancelled", meta_patch=meta)
         await client.disconnect()
+
+
+async def run_live(args: argparse.Namespace) -> int:
+    """
+    Run tail + automated catchup recovery (recommended for production).
+
+    - Tail handles new messages/edits/deletes in real-time.
+    - Catchup heals gaps after outages by backfilling historical windows from Telegram,
+      throttled by extraction queue backlog ("run when the queue is drained/low").
+    """
+    channels = _parse_channels_arg(args.channels) or [_normalize_channel_ref(x) for x in _parse_channels_from_env()]
+    channels = [c for c in channels if c]
+    if not channels:
+        raise SystemExit("No channels provided. Set CHANNEL_LIST in .env or pass --channels.")
+
+    # Start tail immediately, then let catchup run alongside it.
+    tail_task = asyncio.create_task(run_tail(args))
+
+    try:
+        from recovery.catchup import load_catchup_config, run_catchup_until_target  # type: ignore
+
+        store = SupabaseRawStore()
+        cfg = load_catchup_config(agg_dir=HERE)
+        catchup_task = asyncio.create_task(
+            run_catchup_until_target(
+                agg_dir=HERE,
+                channels=channels,
+                store=store,
+                config=cfg,
+            )
+        )
+        await catchup_task
+    except Exception as e:
+        log_event(logger, logging.WARNING, "live_mode_catchup_init_failed", error=str(e))
+
+    return int(await tail_task)
 
 
 async def run_enqueue_from_raw(args: argparse.Namespace) -> int:
@@ -815,7 +882,6 @@ def main() -> None:
     p_backfill.add_argument("--until", help="ISO datetime (exclusive-ish). Example: 2025-02-01T00:00:00+00:00")
     p_backfill.add_argument("--batch-size", type=int, default=200, help="Supabase batch size (default 200).")
     p_backfill.add_argument("--max-messages", type=int, help="Optional cap per channel (useful for dry smoke runs).")
-    p_backfill.add_argument("--heartbeat-file", help="Path for heartbeat JSON (default: monitoring/heartbeat_raw_collector.json).")
     p_backfill.add_argument(
         "--force-enqueue",
         action="store_true",
@@ -824,8 +890,9 @@ def main() -> None:
 
     p_tail = sub.add_parser("tail", help="Tail new messages/edits/deletes and upsert into telegram_messages_raw.")
     p_tail.add_argument("--channels", help="Comma-separated channels or JSON array; defaults to CHANNEL_LIST env var.")
-    p_tail.add_argument("--heartbeat-file", help="Path for heartbeat JSON (default: monitoring/heartbeat_raw_collector.json).")
-    p_tail.add_argument("--heartbeat-seconds", type=int, default=60, help="Heartbeat interval (default 60s).")
+
+    p_live = sub.add_parser("live", help="Tail + automated catchup recovery (recommended).")
+    p_live.add_argument("--channels", help="Comma-separated channels or JSON array; defaults to CHANNEL_LIST env var.")
 
     p_enqueue = sub.add_parser("enqueue", help="Enqueue extraction jobs from existing telegram_messages_raw (no Telegram calls).")
     p_enqueue.add_argument("--channels", help="Comma-separated channels or JSON array; defaults to CHANNEL_LIST env var.")
@@ -846,6 +913,9 @@ def main() -> None:
         return
     if args.cmd == "tail":
         asyncio.run(run_tail(args))
+        return
+    if args.cmd == "live":
+        asyncio.run(run_live(args))
         return
     if args.cmd == "enqueue":
         asyncio.run(run_enqueue_from_raw(args))

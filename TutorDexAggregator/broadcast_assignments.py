@@ -14,6 +14,7 @@ import html
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_display_name
+from observability_metrics import broadcast_fail_reason_total, broadcast_fail_total, broadcast_sent_total, versions as _obs_versions
 
 try:
     from dotenv import load_dotenv
@@ -82,12 +83,20 @@ if not BOT_API_URL and not BOT_TOKEN:
 if not BOT_API_URL and BOT_TOKEN:
     BOT_API_URL = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
 
-def _pretty_subjects(parsed: Dict[str, Any]) -> str:
-    subs = parsed.get('subjects') or []
-    if isinstance(subs, (list, tuple)):
-        return ', '.join(subs)
-    return str(subs)
 
+def _classify_broadcast_error(*, status_code: Optional[int], error: Optional[str]) -> str:
+    msg = str(error or "").lower()
+    if status_code == 429 or "too many requests" in msg or "retry_after" in msg:
+        return "rate_limited"
+    if status_code is not None and status_code >= 500:
+        return "telegram_5xx"
+    if status_code is not None and status_code >= 400:
+        return "telegram_4xx"
+    if "timeout" in msg or "timed out" in msg:
+        return "timeout"
+    if "connection" in msg or "connection refused" in msg:
+        return "connection"
+    return "error"
 
 def _escape(text: Optional[str]) -> str:
     if not text:
@@ -175,7 +184,12 @@ def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     assignment_code = _join_text(parsed.get("assignment_code"))
     if assignment_code:
         if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api":
-            subs = parsed.get("subjects") or []
+            meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+            signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
+            signals_obj = None
+            if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
+                signals_obj = signals_meta.get("signals")
+            subs = signals_obj.get("subjects") if isinstance(signals_obj, dict) else None
             if isinstance(subs, (list, tuple)) and subs:
                 parts = sorted({str(s).strip() for s in subs if str(s).strip()})
                 if parts:
@@ -275,60 +289,50 @@ def build_message_text(
     distance_km: Optional[float] = None,
 ) -> str:
     parsed = payload.get('parsed') or {}
-    academic_raw = _escape(_join_text(parsed.get("academic_display_text") or parsed.get("academic_tags_raw")))
-    subjects = _escape(_join_text(parsed.get('subjects')))
-    # Prefer specific level; fall back to level. Do not show both.
-    specific_or_level = _escape(_join_text(parsed.get('specific_student_level')) or _join_text(parsed.get('level')))
+    academic_raw = _escape(_join_text(parsed.get("academic_display_text")))
     assignment_code = _escape(_join_text(parsed.get('assignment_code')))
-    assignment_type = _escape(_join_text(parsed.get('type')))
     address = _escape(_join_text(parsed.get('address')))
     nearest_mrt = _escape(_join_text(parsed.get('nearest_mrt')))
-    # Prefer explicit postal_code, otherwise use postal_code_estimated
-    postal_raw = parsed.get('postal_code')
-    postal_est = parsed.get('postal_code_estimated')
-    if postal_raw:
-        postal = _escape(_join_text(postal_raw))
-    elif postal_est:
-        postal = _escape(_join_text(postal_est)) + ' (estimated)'
-    else:
-        postal = ''
-    rate_text = parsed.get('hourly_rate')
-    if not rate_text and isinstance(parsed.get("rate"), dict):
-        rate_text = (parsed.get("rate") or {}).get("raw_text")
-    rate = _escape(rate_text)
+    postal = _escape(_join_text(parsed.get("postal_code")))
+    postal_estimated = _escape(_join_text(parsed.get("postal_code_estimated")))
 
-    frequency_text = parsed.get("frequency")
-    if not frequency_text and isinstance(parsed.get("lesson_schedule"), dict):
-        lpw = (parsed.get("lesson_schedule") or {}).get("lessons_per_week")
-        try:
-            if lpw is not None:
-                lpw_f = float(lpw)
-                if lpw_f.is_integer():
-                    frequency_text = f"{int(lpw_f)}x per week"
-                else:
-                    frequency_text = f"{lpw_f:.2f}".rstrip("0").rstrip(".") + "x per week"
-        except Exception:
-            frequency_text = None
-    frequency = _escape(frequency_text)
+    # v2 schema: lesson_schedule is an optional list of raw schedule snippets (authoritative-as-listed).
+    lesson_schedule_lines: list[str] = []
+    if isinstance(parsed.get("lesson_schedule"), list):
+        for item in parsed.get("lesson_schedule") or []:
+            if isinstance(item, str) and item.strip():
+                lesson_schedule_lines.append(_escape(item.strip()))
 
-    duration_text = parsed.get("duration")
-    if not duration_text and isinstance(parsed.get("lesson_schedule"), dict):
-        hpl = (parsed.get("lesson_schedule") or {}).get("hours_per_lesson")
-        try:
-            if hpl is not None and float(hpl) > 0:
-                h = float(hpl)
-                s = f"{h:.2f}".rstrip("0").rstrip(".")
-                duration_text = f"{s} hour" if abs(h - 1.0) < 1e-9 else f"{s} hours"
-        except Exception:
-            duration_text = None
-    duration = _escape(duration_text)
+    start_date = _escape(_join_text(parsed.get("start_date")))
 
-    ts_note_val = parsed.get('time_slots_note')
-    if not ts_note_val and isinstance(parsed.get("time_availability"), dict):
-        ts_note_val = (parsed.get("time_availability") or {}).get("note")
-    if not ts_note_val and isinstance(parsed.get("lesson_schedule"), dict):
-        ts_note_val = (parsed.get("lesson_schedule") or {}).get("raw_text")
-    time_slots_note = _escape(_join_text(ts_note_val))
+    time_note_lines: list[str] = []
+    if isinstance(parsed.get("time_availability"), dict):
+        note = (parsed.get("time_availability") or {}).get("note")
+        if isinstance(note, str) and note.strip():
+            for ln in note.splitlines():
+                s = ln.strip()
+                if s:
+                    time_note_lines.append(_escape(s))
+
+    rate_line = ""
+    if isinstance(parsed.get("rate"), dict):
+        r = parsed.get("rate") or {}
+        raw_rate = r.get("raw_text")
+        if isinstance(raw_rate, str) and raw_rate.strip():
+            rate_line = _escape(raw_rate.strip())
+        else:
+            rmin = r.get("min")
+            rmax = r.get("max")
+            try:
+                if rmin is not None or rmax is not None:
+                    if rmin is None:
+                        rate_line = f"{float(rmax):.0f}"
+                    elif rmax is None:
+                        rate_line = f"{float(rmin):.0f}"
+                    else:
+                        rate_line = f"{float(rmin):.0f}-{float(rmax):.0f}"
+            except Exception:
+                rate_line = ""
     remarks = _escape(parsed.get('additional_remarks'))
 
     max_remarks = int(os.environ.get('BROADCAST_MAX_REMARKS_LEN', '700'))
@@ -347,17 +351,12 @@ def build_message_text(
     if academic_raw:
         header += f"\n<b>{academic_raw}</b>"
     else:
-        if subjects:
-            header += f"\n<b>{subjects}</b>"
-        if specific_or_level:
-            header += f" | {specific_or_level}"
+        header += "\n<b>Tuition Assignment</b>"
     lines.append(header)
 
     # Assignment metadata
     if assignment_code:
         lines.append(f"🆔 {assignment_code}")
-    if assignment_type:
-        lines.append(f"🏷️ {assignment_type}")
 
     # Location
     if address:
@@ -366,6 +365,8 @@ def build_message_text(
         lines.append(f"🚇 {nearest_mrt}")
     if postal:
         lines.append(f"Postal: {postal}")
+    if (not address and not nearest_mrt and not postal) and postal_estimated:
+        lines.append(f"Postal (estimated): {postal_estimated}")
 
     if distance_km is not None:
         try:
@@ -380,19 +381,21 @@ def build_message_text(
         if km is not None and km >= 0 and learning_mode != "online":
             lines.append(f"📏 Distance: ~{km:.1f} km")
 
-    # Rates
-    if rate:
-        rate_line = f"💰 {rate}"
-        # Do not show min/max values — keep only the original rate string
-        lines.append(rate_line)
+    # Start date
+    if start_date:
+        lines.append(f"🗓️ {start_date}")
 
-    # Schedule
-    if frequency:
-        lines.append(f"📆 {frequency}")
-    if duration:
-        lines.append(f"⏱️ {duration}")
-    if time_slots_note:
-        lines.append(f"🕒 {time_slots_note}")
+    # Lesson schedule (raw snippets)
+    for item in lesson_schedule_lines:
+        lines.append(f"📆 {item}")
+
+    # Time availability note (multi-line)
+    for item in time_note_lines:
+        lines.append(f"🕒 {item}")
+
+    # Rate
+    if rate_line:
+        lines.append(f"💰 {rate_line}")
 
     # Remarks
     if remarks:
@@ -414,7 +417,7 @@ def build_message_text(
     max_len = int(os.environ.get('BROADCAST_MAX_MESSAGE_LEN', '3900'))
 
     # Try to keep within Telegram limits without breaking HTML tags.
-    prunable_prefixes = ('📝 ', '🏷️ Source: ', '🕒 ', '⏱️ ', '📆 ')
+    prunable_prefixes = ('📝 ', '🏷️ Source: ', '🕒 ', '📆 ', '🗓️ ', '💰 ')
     while True:
         candidate = '\n'.join(lines + ([footer] if footer else []))
         if len(candidate) <= max_len:
@@ -451,33 +454,52 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
     channel_link = payload.get('channel_link') or payload.get('channel_username') or ''
     chat_id = TARGET_CHAT or payload.get('target_chat')
 
-    with bind_log_context(cid=cid, message_id=msg_id, channel=str(channel_link) if channel_link else None, step="broadcast"):
+    v = _obs_versions()
+    pv = str(payload.get("pipeline_version") or "").strip() or v.pipeline_version
+    sv = str(payload.get("schema_version") or "").strip() or v.schema_version
+    assignment_id = _derive_external_id_for_tracking(payload)
+
+    with bind_log_context(
+        cid=cid,
+        message_id=msg_id,
+        channel=str(channel_link) if channel_link else None,
+        assignment_id=assignment_id,
+        step="broadcast",
+        component="broadcast",
+        pipeline_version=pv,
+        schema_version=sv,
+    ):
         t_build = timed()
         text = build_message_text(payload, include_clicks=True, clicks=0)
         build_ms = round((timed() - t_build) * 1000.0, 2)
 
         try:
-            parsed = payload.get('parsed') or {}
-            subjects = _flatten_text_list(parsed.get('subjects'))
-            addresses = _flatten_text_list(parsed.get('address'))
-            postal = _join_text(parsed.get('postal_code')) or _join_text(parsed.get('postal_code_estimated'))
+            parsed = payload.get("parsed") or {}
+            academic_display_text = _join_text(parsed.get("academic_display_text"))
+            addresses = _flatten_text_list(parsed.get("address"))
+            postals = _flatten_text_list(parsed.get("postal_code"))
+            postals_est = _flatten_text_list(parsed.get("postal_code_estimated"))
+            rate_text = ""
+            if isinstance(parsed.get("rate"), dict):
+                rate_text = _join_text((parsed.get("rate") or {}).get("raw_text"))
+            time_note = ""
+            if isinstance(parsed.get("time_availability"), dict):
+                time_note = _join_text((parsed.get("time_availability") or {}).get("note"))
             log_event(
                 logger,
                 logging.DEBUG,
                 "broadcast_built",
                 text_len=len(text),
                 build_ms=build_ms,
-                subjects_count=len(subjects),
-                has_address=bool(addresses),
-                has_postal=bool(postal),
-                has_rate=bool(_join_text(parsed.get('hourly_rate'))),
-                has_time_slots_note=bool(_join_text(parsed.get('time_slots_note'))),
+                has_academic_display_text=bool(academic_display_text),
+                has_any_location=bool(addresses or postals or postals_est),
+                has_rate=bool(rate_text),
+                has_time_note=bool(time_note),
             )
-            if not subjects or not addresses:
-                log_event(logger, logging.WARNING, "broadcast_missing_fields",
-                          missing_subjects=not bool(subjects), missing_address=not bool(addresses))
+            if not academic_display_text:
+                log_event(logger, logging.WARNING, "broadcast_missing_fields", missing_academic_display_text=True)
         except Exception:
-            logger.exception('Failed to build broadcast summary')
+            logger.exception("Failed to build broadcast summary")
 
         if BOT_API_URL and chat_id:
             body = {
@@ -563,8 +585,24 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                         telegram_error_code=j.get("error_code") if isinstance(j, dict) else None,
                         telegram_description=j.get("description")[:300] if isinstance(j, dict) and isinstance(j.get("description"), str) else None,
                     )
+                    try:
+                        broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
+                    except Exception:
+                        pass
+                    try:
+                        broadcast_fail_reason_total.labels(
+                            reason=_classify_broadcast_error(status_code=int(resp.status_code), error=(j.get("description") if isinstance(j, dict) else None)),
+                            pipeline_version=pv,
+                            schema_version=sv,
+                        ).inc()
+                    except Exception:
+                        pass
                 else:
                     log_event(logger, logging.INFO, "broadcast_sent", status_code=resp.status_code, send_ms=send_ms)
+                    try:
+                        broadcast_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
+                    except Exception:
+                        pass
                     # Best-effort: store broadcast message mapping for click tracking edits.
                     try:
                         if isinstance(j, dict) and isinstance(j.get("result"), dict):
@@ -578,6 +616,18 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                 return {'ok': resp.status_code < 400, 'response': j}
             except Exception as e:
                 logger.exception('Broadcast send error error=%s', e)
+                try:
+                    broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
+                except Exception:
+                    pass
+                try:
+                    broadcast_fail_reason_total.labels(
+                        reason=_classify_broadcast_error(status_code=None, error=str(e)),
+                        pipeline_version=pv,
+                        schema_version=sv,
+                    ).inc()
+                except Exception:
+                    pass
                 return {'ok': False, 'error': str(e)}
 
         # Fallback: append to local file as JSON lines
@@ -585,9 +635,25 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
             with open(FALLBACK_FILE, 'a', encoding='utf8') as fh:
                 fh.write(json.dumps({'payload': payload, 'text': text}, ensure_ascii=False) + '\n')
             log_event(logger, logging.INFO, "broadcast_fallback_written", path=str(FALLBACK_FILE))
+            try:
+                broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
+            except Exception:
+                pass
+            try:
+                broadcast_fail_reason_total.labels(reason="fallback_written", pipeline_version=pv, schema_version=sv).inc()
+            except Exception:
+                pass
             return {'ok': True, 'saved_to_file': FALLBACK_FILE}
         except Exception as e:
             logger.exception('Failed to write fallback broadcast error=%s', e)
+            try:
+                broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
+            except Exception:
+                pass
+            try:
+                broadcast_fail_reason_total.labels(reason="fallback_write_failed", pipeline_version=pv, schema_version=sv).inc()
+            except Exception:
+                pass
             return {'ok': False, 'error': str(e)}
 
 
@@ -603,18 +669,21 @@ if __name__ == '__main__':
             'message_link': 'https://t.me/samplechan/999',
             'raw_text': 'Sample assignment: P5 Math near Woodlands Ring Road, $40/hr',
             'parsed': {
-                'subjects': ['Maths'],
-                'level': 'Primary',
-                'specific_student_level': 'Primary 5',
-                'address': 'Woodlands Ring Road',
+                'assignment_code': 'A1',
+                'academic_display_text': 'P5 Maths',
+                'learning_mode': {'mode': 'Face-to-Face', 'raw_text': 'near Woodlands Ring Road'},
+                'address': ['Woodlands Ring Road'],
                 'postal_code': None,
-                'hourly_rate': '$40/hr',
-                'rate_min': 40,
-                'rate_max': 40,
-                'frequency': '1x a week',
-                'duration': '1.5 hours',
-                'time_slots': 'Weekdays evenings',
-                'additional_remarks': 'Start ASAP'
+                'nearest_mrt': None,
+                'lesson_schedule': ['1x a week, 1.5 hours'],
+                'start_date': 'ASAP',
+                'time_availability': {
+                    'explicit': {d: [] for d in ('monday','tuesday','wednesday','thursday','friday','saturday','sunday')},
+                    'estimated': {d: [] for d in ('monday','tuesday','wednesday','thursday','friday','saturday','sunday')},
+                    'note': 'Weekdays evenings'
+                },
+                'rate': {'min': 40, 'max': 40, 'raw_text': '$40/hr'},
+                'additional_remarks': None,
             }
         }
         print(send_broadcast(sample))

@@ -14,18 +14,7 @@ Additional Requirement:Malay male student from St Patrick Secondary. Parent want
 If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-assignments
 JSON: {
   "assignment_code": null,
-  "is_tuition_centre": false,
-  "subjects": ["Biology"],
-  "level": ["Secondary"],
-  "specific_student_level": ["Secondary 4"],
   "academic_display_text": "SEC 4 G3 COMBINED BIOLOGY",
-  "academic_signals": {
-    "year": null,
-    "stream": "G3",
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -33,14 +22,7 @@ JSON: {
   "address": ["Blk 424 Tampines Street 41"],
   "postal_code": ["520424"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": null,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 OR 2 Hours / Lesson"
-  },
+  "lesson_schedule": ["Frequency: 1 Lesson(s) Per Week, 1.5 OR 2 Hours / Lesson"],
   "start_date": "Start this month",
   "time_availability": {
     "explicit": {
@@ -61,18 +43,14 @@ JSON: {
       "saturday": ["08:00-23:00"],
       "sunday": ["15:00-23:00"]
     },
-    "note": "WEEKDAYS AT 730PM / SATURDAY FLEXIBLE / NO SUNDAY BEFORE 3PM"
+    "note": "Timing: WEEKDAYS AT 730PM / SATURDAY FLEXIBLE / NO SUNDAY BEFORE 3PM*"
   },
   "rate": {
     "min": 80,
     "max": 80,
-    "rate_type": "hourly",
-    "raw_text": "S$80 (MOE EX or Current Teacher)"
+    "raw_text": "Budget Per Hour: S$80 (MOE EX or Current Teacher)"
   },
-  "tutor_gender": null,
-  "tutor_type": ["MOE Ex-Teacher", "Current MOE Teacher"],
-  "slot_details": null,
-  "additional_remarks": "Malay male student from St Patrick Secondary. Parent wants MOE Ex or Current MOE Teacher."
+  "additional_remarks": "Additional Requirement:Malay male student from St Patrick Secondary. Parent wants MOE Ex or Current MOE Teacher."
 }
 
 
@@ -94,18 +72,7 @@ Mum will want to speak to the shortlisted tutor before confirmation.
 If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-assignments
 JSON: {
   "assignment_code": null,
-  "is_tuition_centre": false,
-  "subjects": ["Additional Mathematics", "Elementary Mathematics"],
-  "level": ["Secondary"],
-  "specific_student_level": ["Secondary 4"],
   "academic_display_text": "2026 SEC 4 Additional Math and Elementary Math",
-  "academic_signals": {
-    "year": 2026,
-    "stream": null,
-    "exam": null
-  },
-  "student_gender": ["Female"],
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -113,14 +80,7 @@ JSON: {
   "address": ["Blk 20 Telok Blangah Crescent"],
   "postal_code": ["090020"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"
-  },
+  "lesson_schedule": ["Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"],
   "start_date": "Start coming week",
   "time_availability": {
     "explicit": {
@@ -141,18 +101,14 @@ JSON: {
       "saturday": [],
       "sunday": []
     },
-    "note": "TUESDAY AT 7PM"
+    "note": "Timing: TUESDAY AT 7PM"
   },
   "rate": {
     "min": 50,
     "max": 60,
-    "rate_type": "hourly",
-    "raw_text": "S$50 (part time) 60 (full time)"
+    "raw_text": "Budget Per Hour: S$50 (part time) 60 (full time)"
   },
-  "tutor_gender": "Female",
-  "tutor_type": ["Part-Time Tutor", "Full-Time Tutor"],
-  "slot_details": null,
-  "additional_remarks": "Student has very mild ADHD. Female student from Catholic Girls. Mum will want to speak to the shortlisted tutor before confirmation."
+  "additional_remarks": "Additional Requirement:Student has very mild ADHD. Female student from Catholic Girls. Mum will want to speak to the shortlisted tutor before confirmation."
 }
 
 
@@ -173,18 +129,7 @@ MUST BE AN EXPERIENCED TUTOR IN GUIDING IN STUDENTS ON EE AND IA. Preferably a F
 If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-assignments
 JSON: {
   "assignment_code": null,
-  "is_tuition_centre": false,
-  "subjects": ["Chemistry"],
-  "level": "IB",
-  "specific_student_level": "IB Year 12",
   "academic_display_text": "IB Year 12(2026) HL Chemistry",
-  "academic_signals": {
-    "year": 2026,
-    "stream": "HL",
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -192,14 +137,7 @@ JSON: {
   "address": ["Sky Habitat, Bishan Street 15"],
   "postal_code": ["573908"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"
-  },
+  "lesson_schedule": ["Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"],
   "start_date": null,
   "time_availability": {
     "explicit": {
@@ -220,18 +158,14 @@ JSON: {
       "saturday": ["08:00-23:00"],
       "sunday": ["08:00-23:00"]
     },
-    "note": "Now is Flexible. School Reopen: Weekends Flexible / Weekdays after 5pm"
+    "note": "Timing: Now is Flexible. School Reopen: Weekends Flexible / Weekdays after 5pm"
   },
   "rate": {
     "min": null,
     "max": null,
-    "rate_type": "unknown",
-    "raw_text": "S$mkt rate (not to overquote)"
+    "raw_text": "Budget Per Hour: S$mkt rate (not to overquote)"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Full-Time Tutor"],
-  "slot_details": null,
-  "additional_remarks": "Student is from ACSI IB Year 11. Needs a Tutor on HL Chemistry to guide on EE and IA. MUST BE AN EXPERIENCED TUTOR IN GUIDING IN STUDENTS ON EE AND IA."
+  "additional_remarks": "Additional Requirement:Student is from ACSI IB Year 11. Needs a Tutor on HL Chemistry to guide on EE and IA. MUST BE AN EXPERIENCED TUTOR IN GUIDING IN STUDENTS ON EE AND IA. Preferably a Full Time Tutor who is experienced in teaching IB Hl Chemistry."
 }
 
 
@@ -251,18 +185,7 @@ Additional Requirement: Full Time English Tutor. No students.
 If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-assignments
 JSON: {
   "assignment_code": null,
-  "is_tuition_centre": false,
-  "subjects": ["English"],
-  "level": ["Secondary"],
-  "specific_student_level": ["Secondary 4"],
   "academic_display_text": "2026 SEC 4 ENGLISH",
-  "academic_signals": {
-    "year": 2026,
-    "stream": null,
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -270,14 +193,7 @@ JSON: {
   "address": ["Eight Courtyards, Canberra Drive"],
   "postal_code": ["768097"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"
-  },
+  "lesson_schedule": ["Frequency: 1 Lesson(s) Per Week, 1.5 Hours / Lesson"],
   "start_date": null,
   "time_availability": {
     "explicit": {
@@ -292,24 +208,20 @@ JSON: {
     "estimated": {
       "monday": [],
       "tuesday": [],
-      "wednesday": ["19:30–23:00"],
+      "wednesday": ["19:30-23:00"],
       "thursday": [],
       "friday": [],
       "saturday": [],
-      "sunday": ["16:00–23:00"]
+      "sunday": ["16:00-23:00"]
     },
-    "note": "WED FROM 730PM / SUN FROM 4PM"
+    "note": "Timing: WED FROM 730PM / SUN FROM 4PM"
   },
   "rate": {
     "min": 40,
     "max": 40,
-    "rate_type": "hourly",
-    "raw_text": "S$40 max (mum budget for Full Time Tutor)"
+    "raw_text": "Budget Per Hour: S$40 max (mum budget for Full Time Tutor)"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Full-Time Tutor"],
-  "slot_details": null,
-  "additional_remarks": "Full Time English Tutor. No students."
+  "additional_remarks": "Additional Requirement: Full Time English Tutor. No students."
 }
 
 
@@ -329,18 +241,7 @@ Additional Requirement: Mum would prefer Full Time Female Tutors with Sec 1 G3 M
 If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-assignments
 JSON: {
   "assignment_code": null,
-  "is_tuition_centre": false,
-  "subjects": ["Mathematics", "Science"],
-  "level": ["Secondary"],
-  "specific_student_level": ["Secondary 1"],
   "academic_display_text": "2026 SEC 1 G3 MATH + SCIENCE",
-  "academic_signals": {
-    "year": 2026,
-    "stream": "G3",
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -348,15 +249,8 @@ JSON: {
   "address": ["Blk 238 Hougang Ave 1"],
   "postal_code": ["530238"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 2,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": null,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 2 Lesson(s) Per Week, 1.5 Hours / Lesson"
-  },
-  "start_date": "Jan",
+  "lesson_schedule": ["Frequency: 2 Lesson(s) Per Week, 1.5 Hours / Lesson"],
+  "start_date": "Start in Jan.",
   "time_availability": {
     "explicit": {
       "monday": [],
@@ -376,16 +270,12 @@ JSON: {
       "saturday": ["11:00-23:00"],
       "sunday": ["11:00-23:00"]
     },
-    "note": "WEEKDAYS START AT 5PM OR 6PM / WEEKENDS START AT 11AM OR 12PM"
+    "note": "Timing: WEEKDAYS START AT 5PM OR 6PM / WEEKENDS START AT 11AM OR 12PM"
   },
   "rate": {
     "min": 45,
     "max": 60,
-    "rate_type": "hourly",
-    "raw_text": "S$60 (Full Time Tutor) S$45 (Part Time Tutor)"
+    "raw_text": "Budget Per Hour: S$60 (Full Time Tutor) S$45 (Part Time Tutor)"
   },
-  "tutor_gender": "Female",
-  "tutor_type": ["Full-Time Tutor", "Part-Time Tutor"],
-  "slot_details": null,
-  "additional_remarks": "Mum would prefer Full Time Female Tutors with Sec 1 G3 Math and Science teaching experience. There are 2 SMALL DOGS AT HOME. Tutor must not be scared of dogs. 1 day Math and 1 day Science."
+  "additional_remarks": "Additional Requirement: Mum would prefer Full Time Female Tutors with Sec 1 G3 Math and Science teaching experience. Start in Jan. There are 2 SMALL DOGS AT HOME. Tutor must not be scared of dogs. 1 day Math and 1 day Science."
 }

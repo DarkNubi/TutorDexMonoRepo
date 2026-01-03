@@ -1,9 +1,12 @@
 import os
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Protocol
 
-from TutorDexBackend.redis_store import TutorStore
+
+class TutorStore(Protocol):
+    def list_tutor_ids(self) -> List[str]: ...
+    def get_tutor(self, tutor_id: str) -> Optional[Dict[str, Any]]: ...
 
 
 def _env_int(name: str, default: int) -> int:
@@ -50,12 +53,31 @@ def _canonical_type(value: Any) -> str:
 
 def _payload_to_query(payload: Dict[str, Any]) -> Dict[str, Any]:
     parsed = payload.get("parsed") or {}
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+    signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
+    signals_obj = None
+    if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
+        signals_obj = signals_meta.get("signals")
+
+    # Hardened pipeline: deterministic match rollups live in `meta.signals`.
+    subjects: Any = []
+    levels: Any = []
+    if isinstance(signals_obj, dict):
+        subjects = signals_obj.get("subjects") or []
+        levels = signals_obj.get("levels") or []
+
+    lm_val = parsed.get("learning_mode") if isinstance(parsed, dict) else None
+    if isinstance(lm_val, dict):
+        learning_modes = lm_val.get("mode") or lm_val.get("raw_text")
+    else:
+        learning_modes = lm_val
+
     return {
-        "subjects": parsed.get("subjects") or [],
-        "levels": parsed.get("level"),
-        "types": parsed.get("type"),
-        "learning_modes": parsed.get("learning_mode"),
-        "tutor_type": parsed.get("tutor_type"),
+        "subjects": subjects or [],
+        "levels": levels or [],
+        "types": [],
+        "learning_modes": learning_modes,
+        "tutor_type": [],
     }
 
 
@@ -70,7 +92,11 @@ def _safe_float(value: Any) -> Optional[float]:
 
 def _learning_mode_is_online_only(payload: Dict[str, Any]) -> bool:
     parsed = payload.get("parsed") or {}
-    lm = _norm_text(parsed.get("learning_mode"))
+    lm_val = parsed.get("learning_mode") if isinstance(parsed, dict) else None
+    if isinstance(lm_val, dict):
+        lm = _norm_text(lm_val.get("mode") or lm_val.get("raw_text"))
+    else:
+        lm = _norm_text(lm_val)
     return lm == "online"
 
 

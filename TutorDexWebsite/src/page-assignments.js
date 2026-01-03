@@ -1,5 +1,4 @@
 import "../subjectsData.js";
-import { isSupabaseEnabled, listOpenAssignments } from "./supabase.js";
 import { getCurrentUid, waitForAuth } from "../auth.js";
 import {
   getOpenAssignmentFacets,
@@ -10,7 +9,6 @@ import {
   trackEvent,
 } from "./backend.js";
 import { debugLog, isDebugEnabled } from "./debug.js";
-import { getSupabaseConfigSummary } from "./supabase.js";
 
 const BUILD_TIME = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
 
@@ -106,20 +104,63 @@ function pickFirst(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function mapAssignmentRow(row) {
-  const subject = (row?.subject || "").trim() || pickFirst(row?.subjects) || "Unknown";
+function toText(value) {
+  if (value == null) return "";
+  if (Array.isArray(value)) return pickFirst(value);
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  try {
+    return String(value).trim();
+  } catch {
+    return "";
+  }
+}
 
-  const learningMode = (row?.learning_mode || "").trim();
-  const hasPhysicalLocation = Boolean((row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim());
+function toStringList(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((v) => toStringList(v))
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+  }
+  const s = String(value).trim();
+  if (!s) return [];
+
+  // If the API/DB stores a JSON-encoded list in a string, prefer that.
+  if (s.startsWith("[") && s.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) {
+        return parsed.map((x) => String(x || "").trim()).filter(Boolean);
+      }
+    } catch {}
+  }
+
+  // If the backend stores multi-line notes in a single string, treat each line as an item.
+  if (s.includes("\n")) return s.split("\n").map((x) => x.trim()).filter(Boolean);
+  return [s];
+}
+
+function mapAssignmentRow(row) {
+  const learningMode = toText(row?.learning_mode);
+  const address = pickFirst(row?.address);
+  const postal = pickFirst(row?.postal_code);
+  const postalEstimated = pickFirst(row?.postal_code_estimated);
+  const mrt = pickFirst(row?.nearest_mrt);
+  const hasPhysicalLocation = Boolean(address || postal || mrt);
   const lm = learningMode.toLowerCase();
   const isOnlineOnly = Boolean(learningMode) && lm.includes("online") && !lm.includes("hybrid") && !lm.includes("face");
 
-  const location =
-    isOnlineOnly && !hasPhysicalLocation
-      ? "Online"
-      : (row?.address || "").trim() || (row?.postal_code || "").trim() || (row?.nearest_mrt || "").trim() || "Unknown";
+  const location = (() => {
+    if (isOnlineOnly && !hasPhysicalLocation) return "Online";
+    if (address || postal || mrt) return address || postal || mrt || "Unknown";
+    if (postalEstimated) return `Estimated postal: ${postalEstimated} (estimated)`;
+    return "Unknown";
+  })();
 
-  const rate = row?.rate_min ?? parseRate(row?.hourly_rate);
+  const rateMin = typeof row?.rate_min === "number" ? row.rate_min : parseRate(row?.rate_raw_text);
+  const rateMax = typeof row?.rate_max === "number" ? row.rate_max : null;
 
   let distanceKm = null;
   const dk = row?.distance_km;
@@ -129,25 +170,43 @@ function mapAssignmentRow(row) {
     if (Number.isFinite(parsed)) distanceKm = parsed;
   }
 
-  const freqBits = [];
-  if (row?.frequency) freqBits.push(String(row.frequency).trim());
-  if (row?.duration) freqBits.push(String(row.duration).trim());
+  const timeNotes = toStringList(row?.time_availability_note);
+  const scheduleNotes = toStringList(row?.lesson_schedule);
+
+  const externalId = toText(row?.external_id);
+  const internalId = row?.id != null ? String(row.id).trim() : "";
 
   return {
-    id: (row?.external_id || `DB-${row?.id || ""}`).trim(),
-    messageLink: (row?.message_link || "").trim(),
-    level: (row?.level || "").trim(),
-    specificLevel: (row?.specific_student_level || "").trim(),
-    subject,
+    id: externalId || (internalId ? `DB-${internalId}` : ""),
+    messageLink: toText(row?.message_link),
+    assignmentCode: toText(row?.assignment_code),
+    academicDisplayText: toText(row?.academic_display_text) || "Tuition Assignment",
+    signalsSubjects: toStringList(row?.signals_subjects),
+    signalsLevels: toStringList(row?.signals_levels),
+    signalsSpecificLevels: toStringList(row?.signals_specific_student_levels),
     location,
+    region: toText(row?.region),
+    nearestMrt: toText(row?.nearest_mrt_computed),
+    nearestMrtLine: toText(row?.nearest_mrt_computed_line),
+    nearestMrtDistanceM: (() => {
+      const v = row?.nearest_mrt_computed_distance_m;
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      const s = String(v || "").trim();
+      if (!s) return null;
+      const n = Number.parseInt(s, 10);
+      return Number.isFinite(n) ? n : null;
+    })(),
     distanceKm,
-    rate: typeof rate === "number" && Number.isFinite(rate) ? rate : null,
-    gender: (row?.tutor_gender || row?.student_gender || "Any").trim(),
-    freshnessTier: (row?.freshness_tier || "").trim() || "green",
-    freq: freqBits.join(" / "),
-    agencyName: (row?.agency_name || "").trim(),
+    rateMin: typeof rateMin === "number" && Number.isFinite(rateMin) ? rateMin : null,
+    rateMax: typeof rateMax === "number" && Number.isFinite(rateMax) ? rateMax : null,
+    rateRawText: toText(row?.rate_raw_text),
+    freshnessTier: toText(row?.freshness_tier) || "green",
+    timeNotes,
+    scheduleNotes,
+    startDate: toText(row?.start_date),
+    agencyName: toText(row?.agency_name),
     learningMode,
-    updatedAt: (row?.last_seen || row?.created_at || "").trim(),
+    updatedAt: toText(row?.last_seen || row?.created_at),
   };
 }
 
@@ -220,7 +279,11 @@ function renderCards(data) {
   setResultsSummary(data.length, totalAssignments);
 
   data.forEach((job) => {
-    const levelDisplay = job.specificLevel ? `${job.level} > ${job.specificLevel}` : job.level;
+    const levelDisplay = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
+      ? job.signalsSpecificLevels.join(" / ")
+      : Array.isArray(job.signalsLevels) && job.signalsLevels.length
+        ? job.signalsLevels.join(" / ")
+        : "";
 
     const card = document.createElement("div");
     card.className = "job-card bg-white rounded-xl p-6 relative flex flex-col justify-between h-full";
@@ -248,7 +311,16 @@ function renderCards(data) {
 
     const rate = document.createElement("span");
     rate.className = "font-bold text-lg";
-    rate.textContent = typeof job.rate === "number" ? `$${job.rate}/hr` : "N/A";
+    const rateLabel = (() => {
+      if (typeof job.rateMin === "number" && Number.isFinite(job.rateMin) && typeof job.rateMax === "number" && Number.isFinite(job.rateMax)) {
+        if (Math.abs(job.rateMin - job.rateMax) < 1e-9) return `$${job.rateMin}/hr`;
+        return `$${job.rateMin}-$${job.rateMax}/hr`;
+      }
+      if (typeof job.rateMin === "number" && Number.isFinite(job.rateMin)) return `$${job.rateMin}/hr`;
+      const raw = String(job.rateRawText || "").trim();
+      return raw || "N/A";
+    })();
+    rate.textContent = rateLabel;
 
     header.appendChild(badge);
     header.appendChild(tierPill);
@@ -256,7 +328,7 @@ function renderCards(data) {
 
     const title = document.createElement("h3");
     title.className = "text-3xl brand-font leading-none mb-1";
-    title.textContent = job.subject;
+    title.textContent = job.academicDisplayText || "Tuition Assignment";
 
     const subtitle = document.createElement("p");
     subtitle.className = "text-gray-500 font-bold uppercase text-xs tracking-wider mb-6";
@@ -285,12 +357,29 @@ function renderCards(data) {
       details.appendChild(row);
     }
 
+    if (Array.isArray(job.signalsSubjects) && job.signalsSubjects.length) {
+      addDetail("fa-solid fa-book", job.signalsSubjects.slice(0, 5).join(" / "));
+    }
     addDetail("fa-solid fa-location-dot", job.location);
+    if (job.region) {
+      addDetail("fa-solid fa-map", job.region);
+    }
+    if (job.nearestMrt) {
+      const line = String(job.nearestMrtLine || "").trim();
+      const dist = typeof job.nearestMrtDistanceM === "number" && Number.isFinite(job.nearestMrtDistanceM) ? job.nearestMrtDistanceM : null;
+      const suffix = `${line ? ` (${line})` : ""}${dist != null ? ` ~${dist}m` : ""}`;
+      addDetail("fa-solid fa-train-subway", `${job.nearestMrt}${suffix}`);
+    }
     if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
       addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
     }
-    addDetail("fa-solid fa-clock", job.freq);
-    addDetail("fa-solid fa-user", `Pref: ${job.gender}`);
+    if (Array.isArray(job.scheduleNotes) && job.scheduleNotes.length) {
+      job.scheduleNotes.forEach((line) => addDetail("fa-solid fa-calendar-days", line));
+    }
+    if (job.startDate) addDetail("fa-solid fa-calendar-check", job.startDate);
+    if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
+      job.timeNotes.forEach((line) => addDetail("fa-solid fa-clock", line));
+    }
     if (job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
     if (job.agencyName) addDetail("fa-solid fa-building", job.agencyName);
     if (job.updatedAt) {
@@ -449,16 +538,16 @@ async function applyFilters() {
     const minRate = document.getElementById("filter-rate").value;
 
     const filtered = allAssignments.filter((job) => {
-      if (level && job.level !== level) return false;
-      if (specificLevel && job.specificLevel !== specificLevel) return false;
-      if (subject && job.subject !== subject) return false;
+      if (level && !(Array.isArray(job.signalsLevels) && job.signalsLevels.includes(level))) return false;
+      if (specificLevel && !(Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.includes(specificLevel))) return false;
+      if (subject && !(Array.isArray(job.signalsSubjects) && job.signalsSubjects.includes(subject))) return false;
       if (location) {
         const haystack = String(job.location || "").toLowerCase();
         const needle = String(location).toLowerCase();
         if (!haystack.includes(needle)) return false;
       }
-      if (minRate && typeof job.rate === "number" && job.rate < parseInt(minRate, 10)) return false;
-      if (minRate && typeof job.rate !== "number") return false;
+      if (minRate && typeof job.rateMin === "number" && job.rateMin < parseInt(minRate, 10)) return false;
+      if (minRate && typeof job.rateMin !== "number") return false;
       return true;
     });
 
@@ -548,23 +637,13 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     debugLog("Assignments page boot", {
       buildTime: BUILD_TIME,
       pathname: window.location.pathname,
-      supabase: getSupabaseConfigSummary(),
     });
   }
 
-  if (!isBackendEnabled() && !isSupabaseEnabled()) {
-    const cfg = getSupabaseConfigSummary();
-    if (isDebugEnabled()) debugLog("Supabase disabled (config)", cfg);
-
-    const missing = [];
-    if (!cfg.urlPresent) missing.push("VITE_SUPABASE_URL");
-    if (!cfg.anonKeyPresent) missing.push("VITE_SUPABASE_ANON_KEY");
-
-    setStatus(
-      missing.length ? `Assignments unavailable (missing ${missing.join(", ")}).` : "Assignments unavailable (Supabase not configured).",
-      "error",
-      { showRetry: true }
-    );
+  if (!isBackendEnabled()) {
+    setStatus("Assignments unavailable: website backend is not configured (VITE_BACKEND_URL missing at build time).", "error", {
+      showRetry: true,
+    });
     allAssignments = [];
     totalAssignments = 0;
     nextCursorLastSeen = null;
@@ -583,84 +662,71 @@ async function loadAssignments({ reset = false, append = false } = {}) {
 
   const isInitial = !append && allAssignments.length === 0;
   if (isInitial) {
-    setStatus(isBackendEnabled() ? "Loading assignments from backend..." : "Loading assignments from Supabase...", "info");
+    setStatus("Loading assignments from backend...", "info");
     renderSkeleton(6);
   }
   try {
-    if (isBackendEnabled()) {
-      const filters = collectFiltersFromUI();
-      const minRate = filters.minRate ? Number.parseInt(filters.minRate, 10) : null;
-      const sort = (filters.sort || "newest").trim().toLowerCase();
+    const filters = collectFiltersFromUI();
+    const minRate = filters.minRate ? Number.parseInt(filters.minRate, 10) : null;
+    const sort = (filters.sort || "newest").trim().toLowerCase();
 
-      if (!append) {
-        try {
-          // Fetch facets without self-filtering subject/specific level, so dropdowns remain useful.
-          const facetsResp = await getOpenAssignmentFacets({
-            level: filters.level,
-            location: filters.location,
-            minRate: Number.isFinite(minRate) ? minRate : null,
-          });
-          if (loadToken === activeLoadToken) {
-            lastFacets = facetsResp?.facets || null;
-            // Rebuild dropdown options based on new facets.
-            updateFilterSpecificLevels();
-            updateFilterSubjects();
-            setFacetHintVisible(Boolean(lastFacets));
-          }
-        } catch (e) {
-          if (loadToken === activeLoadToken) {
-            lastFacets = null;
-            setFacetHintVisible(false);
-          }
+    if (!append) {
+      try {
+        // Fetch facets without self-filtering subject/specific level, so dropdowns remain useful.
+        const facetsResp = await getOpenAssignmentFacets({
+          level: filters.level,
+          location: filters.location,
+          minRate: Number.isFinite(minRate) ? minRate : null,
+        });
+        if (loadToken === activeLoadToken) {
+          lastFacets = facetsResp?.facets || null;
+          // Rebuild dropdown options based on new facets.
+          updateFilterSpecificLevels();
+          updateFilterSubjects();
+          setFacetHintVisible(Boolean(lastFacets));
+        }
+      } catch (e) {
+        if (loadToken === activeLoadToken) {
+          lastFacets = null;
+          setFacetHintVisible(false);
         }
       }
-
-      const page = await listOpenAssignmentsPaged({
-        limit: 50,
-        sort,
-        cursorLastSeen: append ? nextCursorLastSeen : null,
-        cursorId: append ? nextCursorId : null,
-        cursorDistanceKm: append && sort === "distance" ? nextCursorDistanceKm : null,
-        level: filters.level,
-        specificStudentLevel: filters.specificStudentLevel,
-        subject: filters.subject,
-        location: filters.location,
-        minRate: Number.isFinite(minRate) ? minRate : null,
-      });
-
-      if (loadToken !== activeLoadToken) return;
-
-      const rows = Array.isArray(page?.items) ? page.items : [];
-      const mapped = rows.map(mapAssignmentRow);
-      allAssignments = append ? [...allAssignments, ...mapped] : mapped;
-      totalAssignments = Number.isFinite(page?.total) ? page.total : allAssignments.length;
-      nextCursorLastSeen = page?.next_cursor_last_seen || null;
-      nextCursorId = page?.next_cursor_id ?? null;
-      nextCursorDistanceKm = page?.next_cursor_distance_km ?? null;
-      const canLoadMore =
-        sort === "distance"
-          ? Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined && nextCursorDistanceKm !== null && nextCursorDistanceKm !== undefined)
-          : Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined);
-      setLoadMoreVisible(canLoadMore);
-    } else {
-      const items = await listOpenAssignments({ limit: 200 });
-      allAssignments = items.length ? items : [];
-      totalAssignments = allAssignments.length;
-      setLoadMoreVisible(false);
-      setFacetHintVisible(false);
     }
+
+    const page = await listOpenAssignmentsPaged({
+      limit: 50,
+      sort,
+      cursorLastSeen: append ? nextCursorLastSeen : null,
+      cursorId: append ? nextCursorId : null,
+      cursorDistanceKm: append && sort === "distance" ? nextCursorDistanceKm : null,
+      level: filters.level,
+      specificStudentLevel: filters.specificStudentLevel,
+      subject: filters.subject,
+      location: filters.location,
+      minRate: Number.isFinite(minRate) ? minRate : null,
+    });
+
+    if (loadToken !== activeLoadToken) return;
+
+    const rows = Array.isArray(page?.items) ? page.items : [];
+    const mapped = rows.map(mapAssignmentRow);
+    allAssignments = append ? [...allAssignments, ...mapped] : mapped;
+    totalAssignments = Number.isFinite(page?.total) ? page.total : allAssignments.length;
+    nextCursorLastSeen = page?.next_cursor_last_seen || null;
+    nextCursorId = page?.next_cursor_id ?? null;
+    nextCursorDistanceKm = page?.next_cursor_distance_km ?? null;
+    const canLoadMore =
+      sort === "distance"
+        ? Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined && nextCursorDistanceKm !== null && nextCursorDistanceKm !== undefined)
+        : Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined);
+    setLoadMoreVisible(canLoadMore);
 
     hideLoadError();
     renderCards(allAssignments);
     try {
       await trackEvent({ eventType: "assignments_view" });
     } catch {}
-    setStatus(
-      isBackendEnabled()
-        ? `Loaded ${allAssignments.length} of ${totalAssignments} assignments.`
-        : `Loaded ${allAssignments.length} assignments from Supabase.`,
-      "success"
-    );
+    setStatus(`Loaded ${allAssignments.length} of ${totalAssignments} assignments.`, "success");
   } catch (err) {
     const msg = String(err?.message || err || "");
     if (msg.includes("postal_required_for_distance")) {
@@ -672,7 +738,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       return;
     }
 
-    console.error("Failed to load assignments from Supabase.", err);
+    console.error("Failed to load assignments from backend.", err);
     const friendly = formatAssignmentsLoadError(err);
     setStatus(friendly, "error", { showRetry: true });
     allAssignments = [];
@@ -724,25 +790,19 @@ function mountDebugPanel() {
   const host = document.querySelector(".max-w-6xl") || document.body;
   if (!host || document.getElementById("debug-panel")) return;
 
-  const cfg = getSupabaseConfigSummary();
-
   const wrap = document.createElement("div");
   wrap.id = "debug-panel";
   wrap.className = "mt-6";
 
-  wrap.innerHTML = `
-    <details class="border border-gray-200 rounded-xl p-4 bg-white">
-      <summary class="cursor-pointer font-bold uppercase text-xs tracking-wide text-gray-600">Debug</summary>
-      <div class="mt-3 text-sm text-gray-700 space-y-2">
-        <div><span class="font-semibold">Build time:</span> <span class="font-mono">${BUILD_TIME || "(unknown)"}</span></div>
-        <div><span class="font-semibold">Mode:</span> <span class="font-mono">${cfg.mode || "(unknown)"}</span></div>
-        <div><span class="font-semibold">Supabase enabled:</span> <span class="font-mono">${String(cfg.enabled)}</span></div>
-        <div><span class="font-semibold">Supabase host:</span> <span class="font-mono">${cfg.urlHost || "(missing)"}</span></div>
-        <div><span class="font-semibold">Assignments table:</span> <span class="font-mono">${cfg.table || "(missing)"}</span></div>
-        <div><span class="font-semibold">Anon key:</span> <span class="font-mono">${cfg.anonKeyPreview || "(missing)"}</span></div>
-      </div>
-    </details>
-  `.trim();
+	  wrap.innerHTML = `
+	    <details class="border border-gray-200 rounded-xl p-4 bg-white">
+	      <summary class="cursor-pointer font-bold uppercase text-xs tracking-wide text-gray-600">Debug</summary>
+	      <div class="mt-3 text-sm text-gray-700 space-y-2">
+	        <div><span class="font-semibold">Build time:</span> <span class="font-mono">${BUILD_TIME || "(unknown)"}</span></div>
+	        <div><span class="font-semibold">Backend enabled:</span> <span class="font-mono">${String(isBackendEnabled())}</span></div>
+	      </div>
+	    </details>
+	  `.trim();
 
   host.appendChild(wrap);
 }

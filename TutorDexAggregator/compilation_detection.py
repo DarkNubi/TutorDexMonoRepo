@@ -21,7 +21,7 @@ def _env_int(name: str, default: int) -> int:
 
 def load_compilation_thresholds() -> dict[str, int]:
     """
-    Mirrors defaults from read_assignments.py.
+    Default thresholds used by the queue worker pipeline.
     Override via env vars if needed.
     """
     return {

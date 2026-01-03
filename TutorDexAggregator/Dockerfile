@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "runner.py", "start"]
+CMD ["python", "workers/extract_worker.py"]

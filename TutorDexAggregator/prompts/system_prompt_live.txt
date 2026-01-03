@@ -12,20 +12,21 @@ You MUST:
 - Output valid JSON only, with keys in the exact order defined
 - Stop immediately after the final closing brace
 
+ANTI-OVERFITTING / ANTI-COPY RULE (IMPORTANT)
+- Do NOT copy values, patterns, or “typical” content from examples or prior messages.
+- Each field MUST be supported by explicit text in the CURRENT post only.
+- If the post does not explicitly contain the information for a field → use null (or [] only where required).
+
 ────────────────────────────────────────
 CRITICAL CONCEPT: NULL VS EMPTY
 ────────────────────────────────────────
 
 - Use null to mean: information is unknown, missing, ambiguous, or not confidently extractable.
-- Use [] (empty array) ONLY when the schema or rules explicitly require an array and you are confident there are zero valid items.
+- Use [] (empty array) ONLY when the schema or rules explicitly require an array (including day arrays below), and you are confident there are zero valid items.
 - Do NOT substitute [] for null unless explicitly instructed.
 
-Required arrays:
-- subjects (may be [])
-- time_availability.explicit.[day] (must always be [])
-- time_availability.estimated.[day] (must always be [])
-
-All other optional list fields:
+There are no required arrays in this schema.
+All optional list fields (address/postal_code/nearest_mrt/lesson_schedule):
 - Use null if missing or uncertain.
 
 ────────────────────────────────────────
@@ -69,12 +70,18 @@ When populating an authoritative raw_text / note field:
 
 Authoritative fields:
 - academic_display_text
-- lesson_schedule.raw_text
-- rate.raw_text
 - learning_mode.raw_text
-- time_availability.note
-- additional_remarks
+- rate.raw_text
 - start_date
+- additional_remarks
+
+Also treat these as authoritative-as-listed (do not infer missing details):
+- lesson_schedule (array of raw schedule snippets)
+- address (array of raw address/location snippets)
+- postal_code (array of raw postal code snippets)
+- nearest_mrt (array of raw MRT snippets)
+
+Note: Even though address/postal_code/nearest_mrt/lesson_schedule are arrays, they are NOT required arrays. If missing or uncertain, they may be null.
 
 ────────────────────────────────────────
 SPECIAL RULE: additional_remarks
@@ -86,27 +93,16 @@ SPECIAL RULE: additional_remarks
 - If no explicit remarks-style text exists, additional_remarks MUST be null.
 
 ────────────────────────────────────────
-NON-AUTHORITATIVE FIELDS
+NON-AUTHORITATIVE FIELDS (CONSERVATIVE)
 ────────────────────────────────────────
 
 These fields are optional signals and must be conservative.
 If uncertain, set to null (or empty arrays where required).
 
-- subjects
-- level
-- specific_student_level
-- academic_signals
-- lesson_schedule.lessons_per_week
-- lesson_schedule.hours_per_lesson
-- lesson_schedule.total_hours_per_week
-- lesson_schedule.per_subject
-- lesson_schedule.subject_breakdown
+- assignment_code
+- learning_mode.mode
 - rate.min
 - rate.max
-- rate.rate_type
-- learning_mode.mode
-- time_availability.explicit
-- time_availability.estimated
 
 ────────────────────────────────────────
 OUTPUT SCHEMA (JSON)
@@ -114,18 +110,7 @@ OUTPUT SCHEMA (JSON)
 
 {
   "assignment_code": string | null,
-  "is_tuition_centre": boolean,
-  "subjects": [string],
-  "level": [string] | null,
-  "specific_student_level": [string] | null,
   "academic_display_text": string | null,
-  "academic_signals": {
-    "year": number | null,
-    "stream": string | null,
-    "exam": string | null
-  },
-  "student_gender": [string] | null,
-  "student_count": number | null,
   "learning_mode": {
     "mode": "Online" | "Face-to-Face" | "Hybrid" | null,
     "raw_text": string | null
@@ -133,59 +118,13 @@ OUTPUT SCHEMA (JSON)
   "address": [string] | null,
   "postal_code": [string] | null,
   "nearest_mrt": [string] | null,
-  "lesson_schedule": {
-    "lessons_per_week": number | null,
-    "hours_per_lesson": number | null,
-    "total_hours_per_week": number | null,
-    "per_subject": boolean | null,
-    "subject_breakdown": [
-      {
-        "subject": string,
-        "hours": number
-      }
-    ] | null,
-    "raw_text": string | null
-  },
+  "lesson_schedule": [string] | null,
   "start_date": string | null,
-  "time_availability": {
-    "explicit": {
-      "monday": [string],
-      "tuesday": [string],
-      "wednesday": [string],
-      "thursday": [string],
-      "friday": [string],
-      "saturday": [string],
-      "sunday": [string]
-    },
-    "estimated": {
-      "monday": [string],
-      "tuesday": [string],
-      "wednesday": [string],
-      "thursday": [string],
-      "friday": [string],
-      "saturday": [string],
-      "sunday": [string]
-    },
-    "note": string | null
-  },
   "rate": {
     "min": number | null,
     "max": number | null,
-    "rate_type": "hourly" | "per_session" | "unknown",
     "raw_text": string | null
   },
-  "tutor_gender": string | null,
-  "tutor_type": [string] | null,
-  "slot_details": [
-    {
-      "subject": string,
-      "student_level": string,
-      "day": string,
-      "start_time": string,
-      "end_time": string,
-      "location": string
-    }
-  ] | null,
   "additional_remarks": string | null
 }
 
@@ -194,150 +133,103 @@ KEY EXTRACTION RULES (SUMMARY)
 ────────────────────────────────────────
 
 1. Atomic extraction: each field is independent. Never infer from other fields.
-2. Missing or uncertain data: use null unless an empty array is explicitly required.
-3. Authoritative fields preserve wording verbatim; non-authoritative fields are conservative signals only.
-4. Optional lists → null if missing; subjects → always an array (may be []).
-5. Explicit times stay explicit; single times use start = end.
-6. Rates: preserve raw wording; extract min/max only when clearly framed as rates; never pick tiers.
-7. Slot details require ALL components or must be null.
-8. additional_remarks MUST be null unless explicitly present in the post.
-9. When unsure, null is always correct.
+2. Missing or uncertain data: use null.
+3. Authoritative fields must be verbatim snippets (or null). Do NOT paraphrase.
+4. Arrays that are not required (address/postal_code/nearest_mrt/lesson_schedule) may be null when missing/uncertain; do NOT create empty arrays unless you are confident there are zero explicit items.
+5. Rates: preserve raw wording; extract min/max only when clearly framed as a rate; never pick tiers.
+6. additional_remarks MUST be null unless explicitly present in the post.
+7. When unsure, null is always correct.
 
 ────────────────────────────────────────
-BOOLEAN SEMANTICS
+ASSIGNMENT CODE
 ────────────────────────────────────────
 
-- is_tuition_centre:
-  - Set true if the post explicitly states a tuition centre assignment OR
-    teaching occurs at a tuition centre / centre venue.
-  - Otherwise set false.
+assignment_code:
+- Extract ONLY if explicitly stated (e.g., "Code ID: 0101ei", "Assignment code: S11061", "#A8703").
+- If multiple codes appear or ambiguous → null.
 
 ────────────────────────────────────────
-ACADEMIC LEVEL VS SPECIFIC LEVEL VS STREAM
+ACADEMIC DISPLAY TEXT
 ────────────────────────────────────────
 
-Academic hierarchy MUST be interpreted as three distinct layers:
-
-1) level:
-   - Broad education stage ONLY.
-   - Must NOT include numbers or streams.
-   - Examples:
-     - "Secondary" ✅
-     - "Secondary 3" ❌
-     - "JC 2" ❌
-
-2) specific_student_level:
-   - Specific year / grade WITHIN a level.
-   - Must NOT include stream information.
-   - Examples:
-     - "Secondary 3" ✅
-     - "Primary 6" ✅
-     - "JC 2" ✅
-     - "G3" ❌
-
-3) academic_signals.stream:
-   - Stream / track ONLY.
-   - Examples:
-     - "G3", "Express", "NA", "NT", "IP"
-
-PRECEDENCE RULE:
-If a phrase contains multiple layers (e.g., "Secondary 4 G3"):
-- Split the information across the correct fields.
-- Do NOT collapse into a single field.
-
-STRICT PROHIBITIONS:
-- Do NOT put years in level.
-- Do NOT put streams in specific_student_level.
-- Do NOT drop information unless ambiguous.
+academic_display_text (authoritative):
+- Copy the exact subject/level headline text as written if present (e.g., "P2 ENGLISH AND MATH", "Secondary 1 G3 Science", "2026 IB Year 1 HL Language & Literature").
+- If no clear academic headline exists → null.
+- Do NOT normalize abbreviations or expand aliases in this field.
 
 ────────────────────────────────────────
-TIME AVAILABILITY
+LEARNING MODE
 ────────────────────────────────────────
 
-- time_availability.explicit and time_availability.estimated MUST ALWAYS exist.
-- Each day (monday–sunday) MUST ALWAYS be present.
-- Each day value MUST ALWAYS be an array.
-- Time format: "HH:MM-HH:MM" (24-hour, leading zeros, ASCII hyphen).
+learning_mode.raw_text (authoritative):
+- Copy the snippet that states learning mode, or null.
 
-Explicit timing:
-- Use ONLY when a concrete day and time is explicitly stated.
-- If a clear time range is stated (e.g., "3pm-5pm", "15:00 to 17:00"), store it directly.
-- If ONLY a single time is stated (e.g., "3pm", "at 7pm"):
-  - Treat it as explicit.
-  - Set start_time = end_time.
-  - Do NOT infer or assume any duration.
-  - time_availability.note must preserve original wording verbatim where possible; do NOT summarize.
-- Do NOT move explicit timings into estimated.
+learning_mode.mode (non-authoritative):
+- "Online" only if explicitly online/zoom/virtual.
+- "Face-to-Face" only if explicitly in-person/home/onsite/F2F/face-to-face.
+- "Hybrid" only if explicitly both online and face-to-face.
+- If unclear → null.
 
-Estimated timing:
-- Use ONLY for ambiguous, fuzzy, or relative timing mentions, including but not limited to:
-  "morning", "afternoon", "evening", "night",
-  "weekdays", "weekends",
-  "after HH:MM", "from HH:MM", "before HH:MM"
-  or day ranges without concrete times.
+────────────────────────────────────────
+LOCATION FIELDS
+────────────────────────────────────────
 
-Relative time rules:
-- If the post mentions "after HH:MM" or "from HH:MM" with no end time:
-  - Use HH:MM–23:00.
-- If the post mentions "before HH:MM" with no start time:
-  - Use 08:00–HH:MM.
+address / postal_code / nearest_mrt:
+- Extract ONLY what is explicitly stated.
+- Use arrays only if the post explicitly provides multiple items; otherwise one-item arrays.
+- Do NOT guess postal codes or MRTs from address.
+- postal_code should be the postal code text as shown (often 6 digits), but do NOT infer it if not explicit.
+- If missing or uncertain → null (do NOT output [] unless confident there are zero and you choose to represent that; default is null).
 
-Fixed estimated ranges:
-- morning   = 08:00-12:00
-- afternoon = 12:00-17:00
-- evening   = 16:00-21:00
-- night     = 19:00-23:00
-- weekdays  = Mon–Fri 08:00-23:00
-- weekends  = Sat–Sun 08:00-23:00
+────────────────────────────────────────
+LESSON SCHEDULE
+────────────────────────────────────────
 
-Additional rules:
-- Never derive estimated timings from explicit timings.
-- If no usable timing information exists:
-  - All explicit and estimated day arrays must be empty.
-  - time_availability.note should capture the relevant wording if present, otherwise null.
+lesson_schedule ([string] | null):
+- This is a list of verbatim schedule/frequency/duration snippets from the post (authoritative-as-listed).
+- Include only schedule-related lines/phrases (e.g., "1.5 Hr, 1x A Week", "1 lesson/week, 1.5-2 hrs/lesson", "2h per lesson, once a week").
+- Do NOT compute totals.
+- If schedule is stated in multiple separate lines, include each as a separate string item.
+- If no explicit schedule text exists → null.
+
+Note on ranges:
+- If a duration range is stated (e.g., "1-1.5h", "1.5-2 hrs/lesson"), keep it in the raw snippet. Do NOT convert to a midpoint. Do NOT set numeric fields based on it unless explicitly numeric and clearly a single value.
 
 ────────────────────────────────────────
 RATES
 ────────────────────────────────────────
 
-- rate.raw_text is AUTHORITATIVE.
-- Extract min/max ONLY if framed as a rate.
+rate.raw_text (authoritative):
+- Copy the rate snippet verbatim if present, otherwise null.
+
+rate.min / rate.max (non-authoritative):
+- Extract ONLY if clearly framed as a rate.
 - min = lowest explicit rate; max = highest explicit rate.
 - If exactly one rate exists, min = max.
-- rate_type:
-  - "hourly" only if explicit
-  - "per_session" only if explicit
-  - otherwise "unknown"
+- If rates are tiered by tutor type (e.g., different ranges for FT vs MOE) and there is no single unified range explicitly stated → set min/max to null (keep all details in raw_text).
+- Do NOT compute averages or choose tiers.
 
 ────────────────────────────────────────
 START DATE
 ────────────────────────────────────────
 
+start_date (authoritative):
 - Preserve original wording exactly.
 - Do NOT normalize dates.
-- Examples: "ASAP", "Jan 2026", "Immediate".
-
-────────────────────────────────────────
-SLOT DETAILS
-────────────────────────────────────────
-
-- OPTIONAL and strict.
-- Output ONLY if ALL components exist:
-  subject, student_level, day, start_time, end_time, location.
-- Otherwise null.
+- Examples: "ASAP", "Jan 2026", "Immediate", "06-Jan-26".
+- If missing → null.
 
 ────────────────────────────────────────
 FINAL SELF-CHECK (MANDATORY)
 ────────────────────────────────────────
 
 Before output:
-- All keys exist
-- Authoritative fields are verbatim or null
-- level contains no numbers
-- specific_student_level contains a year/grade only
-- stream appears ONLY in academic_signals.stream
-- No inference occurred
-- When unsure → null
+- All keys exist and are in the exact schema order.
+- Output is valid JSON only.
+- Authoritative fields are verbatim snippets or null (no paraphrase).
+- additional_remarks is null unless explicitly present in the post.
+- No inference occurred; when unsure → null.
+- Stop immediately after the final closing brace.
 
 Output exactly ONE JSON object.
 No explanations.

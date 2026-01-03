@@ -1,7 +1,7 @@
 """
 One-click A/B experiment runner for:
 - model comparison (LLM_API_URL / LLM_MODEL_NAME)
-- system prompt comparison (LLM_SYSTEM_PROMPT_*)
+- system prompt comparison (LLM_SYSTEM_PROMPT_TEXT / LLM_SYSTEM_PROMPT_FILE)
 - examples comparison (LLM_INCLUDE_EXAMPLES + LLM_EXAMPLES_VARIANT / LLM_EXAMPLES_DIR)
 
 Workflow:
@@ -54,7 +54,6 @@ class RunConfig:
     llm_model_name: Optional[str] = None
 
     # System prompt overrides (choose at most one style per run)
-    system_prompt_variant: Optional[str] = None
     system_prompt_file: Optional[str] = None
     system_prompt_text: Optional[str] = None
 
@@ -68,7 +67,6 @@ RUN_A = RunConfig(
     name="A",
     pipeline_version="ab_promptA_last7d",
     llm_model_name=None,  # default to env/.env if None
-    system_prompt_variant="A",
     include_examples=True,
 )
 
@@ -76,7 +74,6 @@ RUN_B = RunConfig(
     name="B",
     pipeline_version="ab_promptB_last7d",
     llm_model_name=None,
-    system_prompt_variant="B",
     include_examples=True,
 )
 
@@ -102,11 +99,8 @@ def _apply_run_env(env: Dict[str, str], run: RunConfig) -> Dict[str, str]:
         e["LLM_MODEL_NAME"] = run.llm_model_name
 
     # Clear all system prompt selectors, then apply run choice.
-    e.pop("LLM_SYSTEM_PROMPT_VARIANT", None)
     e.pop("LLM_SYSTEM_PROMPT_FILE", None)
     e.pop("LLM_SYSTEM_PROMPT_TEXT", None)
-    if run.system_prompt_variant:
-        e["LLM_SYSTEM_PROMPT_VARIANT"] = run.system_prompt_variant
     if run.system_prompt_file:
         e["LLM_SYSTEM_PROMPT_FILE"] = run.system_prompt_file
     if run.system_prompt_text:

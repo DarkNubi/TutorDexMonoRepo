@@ -10,8 +10,15 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import requests
 from urllib.parse import urlparse
 
-from logging_setup import bind_log_context, log_event, setup_logging, timed
-from supabase_env import resolve_supabase_url, running_in_docker
+try:
+    from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+except Exception:
+    from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+
+try:
+    from supabase_env import resolve_supabase_url, running_in_docker  # type: ignore
+except Exception:
+    from TutorDexAggregator.supabase_env import resolve_supabase_url, running_in_docker  # type: ignore
 
 
 setup_logging()
@@ -469,6 +476,41 @@ class SupabaseRawStore:
             except Exception as e:
                 log_event(logger, logging.DEBUG, "raw_delete_patch_failed", error=str(e))
         return patched
+
+    def get_latest_message_cursor(self, *, channel_link: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Best-effort lookup of the latest stored raw message cursor for a channel.
+
+        Returns: (message_date_iso, message_id)
+
+        Notes:
+        - This is used by automated recovery logic to pick a safe backfill starting point.
+        - It may return (None, None) when Supabase raw storage is disabled.
+        """
+        if not self.client:
+            return None, None
+        ch = str(channel_link or "").strip()
+        if not ch:
+            return None, None
+        try:
+            resp = self.client.get(
+                f"{self.cfg.messages_table}?select=message_date,message_id&channel_link=eq.{requests.utils.quote(ch, safe='')}&order=message_date.desc&limit=1",
+                timeout=20,
+            )
+        except Exception:
+            return None, None
+        if resp.status_code >= 400:
+            return None, None
+        try:
+            data = resp.json()
+        except Exception:
+            return None, None
+        if not (isinstance(data, list) and data):
+            return None, None
+        row = data[0] if isinstance(data[0], dict) else {}
+        dt = row.get("message_date")
+        mid = row.get("message_id")
+        return (str(dt).strip() if isinstance(dt, str) and dt.strip() else None, str(mid).strip() if mid is not None else None)
 
 
 def build_raw_row(

@@ -3,11 +3,9 @@
 This folder contains **manual / occasional** scripts (repair, backfill, reprocessing).
 
 Keep **production entrypoints** in the repo root:
-- `runner.py` (starts the main ingestion pipeline via `read_assignments.py`)
-- `read_assignments.py` (long-running Telegram reader → extract → persist → broadcast)
- - Queue-based pipeline (recommended for LLM outage resilience):
-   - `collector.py tail` (writes `telegram_messages_raw` + enqueues `telegram_extractions`)
-   - `workers/extract_worker.py` (claims jobs → LLM extract → persist → broadcast/DM)
+- Queue-based pipeline:
+  - `collector.py tail` (writes `telegram_messages_raw` + enqueues `telegram_extractions`)
+  - `workers/extract_worker.py` (claims jobs → LLM extract → persist → broadcast/DM)
 
 Guidelines:
 - Prefer reading from `telegram_messages_raw` for reprocessing (lossless input).
@@ -21,8 +19,8 @@ Guidelines:
   - Requires `SUPABASE_SERVICE_ROLE_KEY` and one of `SUPABASE_URL_HOST` / `SUPABASE_URL_DOCKER` / `SUPABASE_URL` in the environment.
 - `python utilities/check_compilations.py --file compilations_sample.txt`
   - Runs `compilation_detection.is_compilation` against sample messages (defaults to `compilations.jsonl` if not provided).
-- `python utilities/smoke_extract.py --text "..."` (or `--file sample.txt`)
-  - Calls LLM extract → enrichment → schema validation (no broadcast, no Supabase).
+- `python utilities/run_sample_pipeline.py --file utilities/sample_assignment_post.sample.txt --print-json`
+  - Local pipeline for a single sample post (no Supabase): normalize → LLM (or mock) → deterministic time → hard-validate → signals.
 - `python utilities/tutorcity_fetch.py --limit 50`
 - `python utilities/backfill_assignment_latlon.py --limit 500` (fill `postal_lat/postal_lon` for existing rows with `postal_code`)
   - Fetches TutorCity API (no LLM) and persists/broadcasts/DMs directly. Uses `TUTORCITY_API_URL`, `TUTORCITY_LIMIT` envs (source label is always `TutorCity`).

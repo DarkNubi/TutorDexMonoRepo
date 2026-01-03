@@ -19,7 +19,6 @@ SINCE_ISO: Optional[str] = None
 UNTIL_ISO: Optional[str] = None
 MAX_MESSAGES_PER_CHANNEL: Optional[int] = None
 BATCH_SIZE: int = 200
-HEARTBEAT_FILE: Optional[str] = None
 
 # For recovery, default is NOT to force-reparse already-ok extractions.
 FORCE_ENQUEUE: bool = False
@@ -41,7 +40,6 @@ def main() -> int:
         until=UNTIL_ISO,
         batch_size=BATCH_SIZE,
         max_messages=MAX_MESSAGES_PER_CHANNEL,
-        heartbeat_file=HEARTBEAT_FILE,
         force_enqueue=FORCE_ENQUEUE,
     )
     return int(asyncio.run(collector.run_backfill(args)))

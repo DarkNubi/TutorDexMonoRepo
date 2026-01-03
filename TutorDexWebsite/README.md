@@ -36,13 +36,12 @@ This repo includes `.github/workflows/firebase-hosting.yml` to deploy on pushes 
 
 Required GitHub repo secrets:
 - `FIREBASE_SERVICE_ACCOUNT`: JSON for a Firebase service account with Hosting deploy permissions
-- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPABASE_ASSIGNMENTS_TABLE` (optional)
-- `VITE_BACKEND_URL` (optional)
+- `VITE_BACKEND_URL` (required)
 
 Required GitHub repo variable:
 - `FIREBASE_PROJECT_ID`: your Firebase project id (set as a repo variable; does not need to be secret)
 
-Note: The `VITE_*` values are embedded into the static website at build time. If you treat your Supabase anon key / backend URL as public (typical), you can store them as repo variables instead of secrets.
+Note: The `VITE_*` values are embedded into the static website at build time. If you treat your backend URL as public (typical), you can store it as a repo variable instead of a secret.
 
 Workflow behavior:
 - `push` to `main`: deploys to the `live` channel
@@ -71,21 +70,9 @@ Common causes:
 - You're running the Hosting emulator / deploying against the **wrong Firebase project** (check `TutorDexWebsite/.firebaserc` and `firebase use`).
 - Firebase Auth isn't set up for the project yet (enable providers under Authentication → Sign-in method).
 
-## Supabase (assignments data)
+## Backend (required)
 
-The assignments list supports an optional Supabase REST backend (falls back to mock data if not configured).
-
-Vite env vars (set when building/deploying):
-- `VITE_SUPABASE_URL`: Supabase API base URL (Kong gateway), e.g. `https://<project-ref>.supabase.co` (cloud) or `https://supabase-api.example.com` (self-host)
-- `VITE_SUPABASE_ANON_KEY`: Supabase anon key (client-side)
-- `VITE_SUPABASE_ASSIGNMENTS_TABLE`: defaults to `assignments`
-
-Important: Vite injects `VITE_*` env vars at build time. After changing `TutorDexWebsite/.env`, run `npm run build` and redeploy Hosting.
-If you self-host Supabase and the website is public, treat the Supabase URL + anon key as public and enforce access using RLS (see `TutorDexAggregator/supabase_rls_policies.sql`).
-
-## Matching backend (Redis)
-
-Optional backend for saving tutor preferences (used for Bot 2 DM matching):
+This website is backend-only for data. Configure:
 - `VITE_BACKEND_URL`: e.g. `http://127.0.0.1:8000`
 
 To receive DMs, tutors must link their Telegram chat id (Profile page generates a short code; send `/link <code>` to the DM bot; see `TutorDexBackend/telegram_link_bot.py`).

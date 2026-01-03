@@ -13,18 +13,7 @@ Commission: First 2 active weeks
 Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "8408D12",
-  "is_tuition_centre": false,
-  "subjects": ["Mathematics", "Additional Mathematics", "Elementary Mathematics", "Chem/Bio"],
-  "level": ["Secondary"],
-  "specific_student_level": ["Secondary 3"],
   "academic_display_text": "Sec 3 G3 Mathematics (Additional & Elementary), Combined Science (Chem/Bio)",
-  "academic_signals": {
-    "year": null,
-    "stream": "G3",
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -32,14 +21,7 @@ JSON: {
   "address": ["Yishun"],
   "postal_code": ["769299"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 2,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": true,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 2 x 1.5h per week per subject"
-  },
+  "lesson_schedule": ["Frequency: 2 x 1.5h per week per subject"],
   "start_date": null,
   "time_availability": {
     "explicit": {
@@ -60,17 +42,13 @@ JSON: {
       "saturday": ["08:00-23:00"],
       "sunday": ["08:00-23:00"]
     },
-    "note": "Timeslots: Weekday or Weekend"
+    "note": "Timeslots:  Weekday or  Weekend"
   },
   "rate": {
     "min": 35,
     "max": 50,
-    "rate_type": "hourly",
     "raw_text": "$35 - $50/h"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Full-Time Tutor", "Part-Time Tutor"],
-  "slot_details": null,
   "additional_remarks": "Fulltime or part time tutor. Quote rate accordingly"
 }
 
@@ -90,18 +68,7 @@ Commission: First 2 active weeks
 Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "8455D11",
-  "is_tuition_centre": false,
-  "subjects": ["General Paper"],
-  "level": ["JC"],
-  "specific_student_level": ["JC 2"],
-  "academic_display_text": "JC 2 H1 General Paper",
-  "academic_signals": {
-    "year": null,
-    "stream": "H1",
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
+  "academic_display_text": "JC 2  H1 General Paper",
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -109,14 +76,7 @@ JSON: {
   "address": ["Sengkang"],
   "postal_code": ["791410"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 2,
-    "total_hours_per_week": null,
-    "per_subject": true,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 1 x 2h per week per subject"
-  },
+  "lesson_schedule": ["Frequency: 1 x 2h per week per subject"],
   "start_date": null,
   "time_availability": {
     "explicit": {
@@ -142,13 +102,9 @@ JSON: {
   "rate": {
     "min": 60,
     "max": 75,
-    "rate_type": "hourly",
     "raw_text": "$60 - $75/h"
   },
-  "tutor_gender": "Female",
-  "tutor_type": ["Full-Time Tutor", "MOE Trained Tutor"],
-  "slot_details": null,
-  "additional_remarks": "Fulltime or MOE trained tutor. Quote rate accordingly. Prefer female tutor"
+  "additional_remarks": "Fulltime or MOE trained tutor. Quote rate accordingly. Preferfemale tutor"
 }
 
   
@@ -161,24 +117,13 @@ Hourly Budget: $30 - $35/h
 Timeslots: Weekend preferred
 Remarks:
 🔹Assignment Code: 2661D06
-🔹Application Status: CLOSED
+🔹Application Status: OPEN
 - - - - - - - - - - - - - - - - - - - - - - - - - -
 Commission: First 2 active weeks 
 Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "2661D06",
-  "is_tuition_centre": false,
-  "subjects": ["Chinese"],
-  "level": ["Primary"],
-  "specific_student_level": ["Primary 6"],
-  "academic_display_text": "P6 Chinese",
-  "academic_signals": {
-    "year": null,
-    "stream": null,
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
+  "academic_display_text": "P6  Chinese",
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -186,14 +131,7 @@ JSON: {
   "address": ["Bukit Panjang", "Choa Chu Kang"],
   "postal_code": ["680144"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": true,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 1 x 1.5h per week per subject"
-  },
+  "lesson_schedule": ["Frequency: 1 x 1.5h per week per subject"],
   "start_date": null,
   "time_availability": {
     "explicit": {
@@ -219,12 +157,8 @@ JSON: {
   "rate": {
     "min": 30,
     "max": 35,
-    "rate_type": "hourly",
     "raw_text": "$30 - $35/h"
   },
-  "tutor_gender": null,
-  "tutor_type": null,
-  "slot_details": null,
   "additional_remarks": null
 }
 
@@ -241,24 +175,13 @@ Current/ex school teachers OR Full time tutors
 Tuition centre at Pandan Gardens Ayer Rajah community club.
 Commitment till year-end 2025 (can extend till end 2026) 
 🔹Assignment Code: 4335D05
-🔹Application Status: CLOSED
+🔹Application Status: OPEN
 - - - - - - - - - - - - - - - - - - - - - - - - - -
 Commission: First 2 active weeks 
 Apply Via: @TutorAnywhrBot
 JSON: {
   "assignment_code": "4335D05",
-  "is_tuition_centre": true,
-  "subjects": ["Science"],
-  "level": ["Primary"],
-  "specific_student_level": ["Primary 3", "Primary 4"],
-  "academic_display_text": "P3&4 Science",
-  "academic_signals": {
-    "year": null,
-    "stream": null,
-    "exam": null
-  },
-  "student_gender": null,
-  "student_count": null,
+  "academic_display_text": "P3&4  Science",
   "learning_mode": {
     "mode": null,
     "raw_text": null
@@ -266,14 +189,7 @@ JSON: {
   "address": ["Pandan Gardens"],
   "postal_code": ["609335"],
   "nearest_mrt": null,
-  "lesson_schedule": {
-    "lessons_per_week": 1,
-    "hours_per_lesson": 1.5,
-    "total_hours_per_week": null,
-    "per_subject": true,
-    "subject_breakdown": null,
-    "raw_text": "Frequency: 1 x 1.5h per week per subject"
-  },
+  "lesson_schedule": ["Frequency: 1 x 1.5h per week per subject"],
   "start_date": null,
   "time_availability": {
     "explicit": {
@@ -294,16 +210,12 @@ JSON: {
       "saturday": [],
       "sunday": []
     },
-    "note": "Saturdays 10.30am-12pm (Pri 3) and 3-5pm (Pri 4) preferred"
+    "note": "Saturdays 10.30am-12pm (Pri 3) and 3-5pm.(Pri 4) preferred"
   },
   "rate": {
     "min": 45,
     "max": 70,
-    "rate_type": "hourly",
     "raw_text": "$45 - $70/h"
   },
-  "tutor_gender": null,
-  "tutor_type": ["Current School Teacher", "Ex-School Teacher", "Full-Time Tutor"],
-  "slot_details": null,
   "additional_remarks": "Tuition centre at Pandan Gardens Ayer Rajah community club. Commitment till year-end 2025 (can extend till end 2026)"
 }
