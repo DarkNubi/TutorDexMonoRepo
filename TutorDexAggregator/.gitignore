@@ -21,3 +21,4 @@ monitoring/backfill_pipeline_dead_letter.jsonl
 monitoring/run_parsing_pipeline_state.json
 monitoring/apply_compilation_bumps_state.json
 TutorDexAggregator/labeling_samples/label_samples_state.json
+state/recovery_catchup_state.json
