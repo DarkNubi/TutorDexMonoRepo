@@ -1,9 +1,12 @@
 # TutorDex Aggregator — Operational Modes
 
-This folder contains “click-run” wrappers for **manual** operational modes.
+This folder documents **manual** operational modes.
+
+The pipeline entrypoints are intentionally limited to:
+- `TutorDexAggregator/collector.py` (raw ingest + enqueue)
+- `TutorDexAggregator/workers/extract_worker.py` (queue worker)
 
 Design goals:
-- Do not duplicate pipeline logic (wrappers only import and call the real modules).
 - Keep the “source of truth” in `TutorDexAggregator/collector.py` and `TutorDexAggregator/workers/extract_worker.py`.
 - Use `telegram_messages_raw` as the immutable raw event log; reprocessing is done by re-enqueuing work in `telegram_extractions`.
 
@@ -43,7 +46,7 @@ Relevant env vars (optional; defaults are safe):
 - Upserts into `telegram_messages_raw`
 - Optionally enqueues extraction jobs for the inserted message ids (default is not “force reparse”)
 
-**Runner:** `TutorDexAggregator/modes/mode2_backfill_missing_raw.py`
+**Command:** `python collector.py backfill [--since ...] [--until ...] [--channels ...] [--max-messages N] [--force-enqueue]`
 
 **Use when:**
 - Server was down and you want to re-capture the missed raw messages.
@@ -59,7 +62,7 @@ Relevant env vars (optional; defaults are safe):
   - bump `EXTRACTION_PIPELINE_VERSION` (creates a new `(raw_id, pipeline_version)` job), or
   - keep the same version but run with `force=True` (reprocess non-`ok` or reset `ok` back to `pending`)
 
-**Runner:** `TutorDexAggregator/modes/mode3_reparse_enqueue_from_raw.py`
+**Command:** `python collector.py enqueue [--since ...] [--until ...] [--channels ...] [--max-messages N] [--force]`
 
 **Use when:**
 - You updated system prompt/schema/logic and want to regenerate canonical output for historical raw messages.
@@ -70,8 +73,8 @@ This is how you “version” extraction outputs and safely reprocess from raw:
 
 - **Permanent (live Mode 1):** set `EXTRACTION_PIPELINE_VERSION` in `TutorDexAggregator/.env`, then restart the docker stack.
   - Example: `EXTRACTION_PIPELINE_VERSION=2025-12-31_v3`
-- **One-off (Mode 3 runner):** set `PIPELINE_VERSION_OVERRIDE` inside `TutorDexAggregator/modes/mode3_reparse_enqueue_from_raw.py`.
-  - Example: `PIPELINE_VERSION_OVERRIDE = "2025-12-31_v3"`
+- **One-off:** set `EXTRACTION_PIPELINE_VERSION` in your shell environment for the command you run.
+  - Example: `EXTRACTION_PIPELINE_VERSION=2025-12-31_v3 python collector.py enqueue --since ... --until ...`
 
 When you bump the version, the queue keys by `(raw_id, pipeline_version)`, so you get a clean new set of jobs without mutating the old run history.
 
@@ -86,7 +89,7 @@ When you bump the version, the queue keys by `(raw_id, pipeline_version)`, so yo
   - `EXTRACTION_WORKER_ONESHOT=1` (exit once queue is empty)
   - optional `EXTRACTION_WORKER_MAX_JOBS=N` (stop after N jobs)
 
-**Runner:** `TutorDexAggregator/modes/mode4_drain_queue_no_side_effects.py`
+**Command:** `EXTRACTION_WORKER_BROADCAST=0 EXTRACTION_WORKER_DMS=0 EXTRACTION_WORKER_ONESHOT=1 python workers/extract_worker.py`
 
 **Use when:**
 - You want to validate a reparse/re-enqueue on production data without spamming the Telegram channel / users.
@@ -131,19 +134,12 @@ Goal: “I missed Telegram messages while Mode 1 was down; recover them and extr
      - recommended: `EXTRACTION_QUEUE_ENABLED=1`
 
 2) **Mode 2: Backfill raw**
-   - Edit `TutorDexAggregator/modes/mode2_backfill_missing_raw.py` values:
-     - `SINCE_ISO = "2025-12-29T02:00:00+00:00"`
-     - `UNTIL_ISO = "2025-12-29T06:00:00+00:00"`
-     - optional: `CHANNELS = "t.me/SomeChannel,t.me/OtherChannel"` (defaults to `CHANNEL_LIST`)
-     - optional smoke run: `MAX_MESSAGES_PER_CHANNEL = 50`
-   - Run the file in VS Code.
+   - Example:
+     - `python collector.py backfill --since 2025-12-29T02:00:00+00:00 --until 2025-12-29T06:00:00+00:00 --max-messages 50`
 
 3) **Mode 4: Drain queue safely**
-   - Edit `TutorDexAggregator/modes/mode4_drain_queue_no_side_effects.py` values:
-     - `ONESHOT = True` (recommended)
-     - optional smoke run: `MAX_JOBS = 50`
-     - optional: `PIPELINE_VERSION_OVERRIDE = "..."` (only if you intentionally want a non-default version)
-   - Run the file in VS Code.
+   - Example:
+     - `EXTRACTION_WORKER_BROADCAST=0 EXTRACTION_WORKER_DMS=0 EXTRACTION_WORKER_ONESHOT=1 EXTRACTION_WORKER_MAX_JOBS=50 python workers/extract_worker.py`
    - If results look correct, run the real worker normally (Mode 1) to resume side effects.
 
 ### Scenario: Prompt/schema/model change reparse (no Telegram reads)
@@ -154,24 +150,18 @@ Goal: “I changed extraction logic; regenerate outputs for historical raw messa
    - Use a monotonic, human-readable string, e.g.
      - `2025-12-31_schema_v3`
      - `2025-12-31_prompt_v4`
-   - Either set in `TutorDexAggregator/.env` (permanent), or use the Mode 3 runner override.
+   - Either set in `TutorDexAggregator/.env` (permanent), or set `EXTRACTION_PIPELINE_VERSION=...` in your shell for a one-off run.
 
 2) **Mode 3: Enqueue from raw**
    - Ensure:
      - `SUPABASE_RAW_ENABLED=1`
      - `EXTRACTION_QUEUE_ENABLED=1`
-   - Edit `TutorDexAggregator/modes/mode3_reparse_enqueue_from_raw.py` values:
-     - `PIPELINE_VERSION_OVERRIDE = "2025-12-31_schema_v3"` (recommended)
-     - `SINCE_ISO = "2025-12-01T00:00:00+00:00"` (optional)
-     - `UNTIL_ISO = "2026-01-01T00:00:00+00:00"` (optional)
-     - optional smoke run: `MAX_MESSAGES_PER_CHANNEL = 200`
-     - keep `FORCE = True` if you want to re-enqueue even if rows already exist for the same version.
-       - If you bump the version, `FORCE` usually doesn’t matter (it’s a new key).
-   - Run the file in VS Code.
+   - Example (one-off version override):
+     - `EXTRACTION_PIPELINE_VERSION=2025-12-31_schema_v3 python collector.py enqueue --since 2025-12-01T00:00:00+00:00 --until 2026-01-01T00:00:00+00:00 --max-messages 200 --force`
 
 3) **Mode 4: Drain queue safely**
-   - Set `PIPELINE_VERSION_OVERRIDE` to match the reparse version (if you used one).
-   - Run Mode 4; start with `MAX_JOBS = 50` if you want a quick sanity run.
+   - Example:
+     - `EXTRACTION_PIPELINE_VERSION=2025-12-31_schema_v3 EXTRACTION_WORKER_BROADCAST=0 EXTRACTION_WORKER_DMS=0 EXTRACTION_WORKER_ONESHOT=1 EXTRACTION_WORKER_MAX_JOBS=50 python workers/extract_worker.py`
 
 ### Scenario: “Raw is correct, but worker was down” (enqueue-only recovery)
 
@@ -220,7 +210,7 @@ This is a concrete approach when you expect to iterate often on prompt/schema/mo
 
 1) Pick a new pipeline version:
    - Either set `EXTRACTION_PIPELINE_VERSION=...` in `TutorDexAggregator/.env` (permanent), or
-   - Set `PIPELINE_VERSION_OVERRIDE = "..."` in `TutorDexAggregator/modes/mode3_reparse_enqueue_from_raw.py` (one-off).
+   - Set `EXTRACTION_PIPELINE_VERSION=...` in your shell for a one-off run.
 2) Run **Mode 3** (enqueue from raw, bounded window first).
 3) Run **Mode 4** (drain without side effects).
 4) Promote to live by switching Mode 1 to the new version and re-enabling side effects.
@@ -245,7 +235,7 @@ You can A/B both **models** and **system prompts** by doing two runs against the
    - `LLM_SYSTEM_PROMPT_TEXT=...` (inline; convenient but harder to audit)
 4) For each run:
    - Run Mode 3 for a fixed time window.
-   - Run Mode 4 with `PIPELINE_VERSION_OVERRIDE` set to that run id.
+   - Run Mode 4 with `EXTRACTION_PIPELINE_VERSION` set to that run id.
 
 The extraction worker persists the prompt fingerprint into `telegram_extractions.meta.prompt` so you can trace and compare runs reliably.
 

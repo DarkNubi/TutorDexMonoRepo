@@ -340,7 +340,7 @@ This is the path wired by root `docker-compose.yml`:
 - service `aggregator-worker`: `python workers/extract_worker.py`
 
 #### Pipeline B (legacy, direct ingest/extract)
-There are older scripts and directories (`modes/`, `setup_service/`, etc.). They exist in repo but are not the compose default.
+There are older scripts and directories (`setup_service/`, etc.). They exist in repo but are not the compose default.
 If you intend to delete them, confirm they aren’t referenced in any cron/service.
 
 ### LLM architecture
@@ -718,6 +718,7 @@ Low-risk, high-leverage improvements:
   - required RPC functions exist
   - Redis connectivity
   - backend health endpoint
+  - Run: `python3 scripts/smoke_test.py`
 
 ---
 
