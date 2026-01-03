@@ -14,6 +14,53 @@
 --
 -- Back-compat:
 -- - Existing `p_subject` filter still works against legacy `signals_subjects` and also matches new codes.
+--
+-- IMPORTANT (PostgREST overloading):
+-- Earlier migrations defined `public.list_open_assignments`, `public.list_open_assignments_v2`, and
+-- `public.open_assignment_facets` without v2 subject params. `create or replace` does not remove other
+-- overloads with different signatures, so PostgREST may return `PGRST203` (ambiguous function) and the
+-- backend will appear to return 0 assignments.
+-- These drops remove the legacy signatures before installing the v2 versions.
+
+drop function if exists public.list_open_assignments(
+  integer,
+  timestamptz,
+  bigint,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  integer
+);
+
+drop function if exists public.list_open_assignments_v2(
+  integer,
+  text,
+  double precision,
+  double precision,
+  timestamptz,
+  bigint,
+  double precision,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  integer
+);
+
+drop function if exists public.open_assignment_facets(
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  integer
+);
 
 alter table public.assignments
   add column if not exists subjects_canonical text[] not null default '{}';

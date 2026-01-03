@@ -47,7 +47,7 @@ def _http_get(url: str, *, timeout_s: int = 10) -> Tuple[bool, str]:
     requests = _require_requests()
     try:
         resp = requests.get(url, timeout=timeout_s)
-        ok = resp.status_code < 400
+        ok = resp.status_code < 300
         return ok, f"status={resp.status_code}"
     except Exception as e:
         return False, f"error={e}"
@@ -59,7 +59,7 @@ def _supabase_rpc(supabase_url: str, supabase_key: str, fn: str, payload: Dict[s
     headers = {"apikey": supabase_key, "authorization": f"Bearer {supabase_key}", "content-type": "application/json"}
     try:
         resp = requests.post(url, json=payload, headers=headers, timeout=20)
-        ok = resp.status_code < 400
+        ok = resp.status_code < 300
         detail = f"status={resp.status_code}"
         if not ok:
             detail += f" body={resp.text[:300]}"

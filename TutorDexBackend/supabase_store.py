@@ -303,7 +303,7 @@ class SupabaseStore:
         except Exception as e:
             logger.warning("Supabase list_open_assignments rpc failed error=%s", e)
             return None
-        if resp.status_code >= 400:
+        if resp.status_code >= 300:
             logger.warning("Supabase list_open_assignments rpc status=%s body=%s", resp.status_code, resp.text[:500])
             return None
 
@@ -371,7 +371,7 @@ class SupabaseStore:
         except Exception as e:
             logger.warning("Supabase list_open_assignments_v2 rpc failed error=%s", e)
             return None
-        if resp.status_code >= 400:
+        if resp.status_code >= 300:
             logger.warning("Supabase list_open_assignments_v2 rpc status=%s body=%s", resp.status_code, resp.text[:500])
             return None
 
@@ -425,7 +425,7 @@ class SupabaseStore:
         except Exception as e:
             logger.warning("Supabase open_assignment_facets rpc failed error=%s", e)
             return None
-        if resp.status_code >= 400:
+        if resp.status_code >= 300:
             logger.warning("Supabase open_assignment_facets rpc status=%s body=%s", resp.status_code, resp.text[:500])
             return None
 

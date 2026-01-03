@@ -103,11 +103,11 @@ export function labelsForGeneralCategoryCodes(codes) {
   return uniq((codes || []).map((c) => labelForGeneralCategoryCode(c)).filter(Boolean));
 }
 
-export function canonicalSubjectsForLevel(levelCode) {
+export function canonicalSubjectsForLevel(levelCode, { includeAny = false } = {}) {
   const level = String(levelCode || "").trim();
   const byLevel = taxonomy?.mappings?.by_level_subject_key || {};
   const lvlMap = level && byLevel[level] ? byLevel[level] : null;
-  const anyMap = byLevel?.ANY || {};
+  const anyMap = includeAny ? byLevel?.ANY || {} : {};
 
   const codes = [];
   if (lvlMap) {
