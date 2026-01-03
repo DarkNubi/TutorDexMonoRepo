@@ -140,6 +140,8 @@ export async function listOpenAssignmentsPaged({
   level = null,
   specificStudentLevel = null,
   subject = null,
+  subjectGeneral = null,
+  subjectCanonical = null,
   agencyName = null,
   learningMode = null,
   location = null,
@@ -156,6 +158,8 @@ export async function listOpenAssignmentsPaged({
   if (level) params.set("level", String(level));
   if (specificStudentLevel) params.set("specific_student_level", String(specificStudentLevel));
   if (subject) params.set("subject", String(subject));
+  if (subjectGeneral) params.set("subject_general", String(subjectGeneral));
+  if (subjectCanonical) params.set("subject_canonical", String(subjectCanonical));
   if (agencyName) params.set("agency_name", String(agencyName));
   if (learningMode) params.set("learning_mode", String(learningMode));
   if (location) params.set("location", String(location));
@@ -168,6 +172,8 @@ export async function getOpenAssignmentFacets({
   level = null,
   specificStudentLevel = null,
   subject = null,
+  subjectGeneral = null,
+  subjectCanonical = null,
   agencyName = null,
   learningMode = null,
   location = null,
@@ -179,6 +185,8 @@ export async function getOpenAssignmentFacets({
   if (level) params.set("level", String(level));
   if (specificStudentLevel) params.set("specific_student_level", String(specificStudentLevel));
   if (subject) params.set("subject", String(subject));
+  if (subjectGeneral) params.set("subject_general", String(subjectGeneral));
+  if (subjectCanonical) params.set("subject_canonical", String(subjectCanonical));
   if (agencyName) params.set("agency_name", String(agencyName));
   if (learningMode) params.set("learning_mode", String(learningMode));
   if (location) params.set("location", String(location));

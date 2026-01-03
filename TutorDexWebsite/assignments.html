@@ -148,7 +148,7 @@
       </div>
 
       <div class="bg-gray-50 border border-gray-100 rounded-xl p-6 mb-10 sticky top-24 z-40 shadow-sm">
-        <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-9 gap-3">
           <div class="select-wrapper">
             <select id="filter-level" class="nike-input" onchange="updateFilterSpecificLevels(); updateFilterSubjects();">
               <option value="">All Levels</option>
@@ -175,8 +175,14 @@
           </div>
 
           <div class="select-wrapper">
-            <select id="filter-subject" class="nike-input">
-              <option value="">All Subjects</option>
+            <select id="filter-subject-general" class="nike-input">
+              <option value="">All General Subjects</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper">
+            <select id="filter-subject-canonical" class="nike-input">
+              <option value="">All Advanced Subjects</option>
             </select>
           </div>
 

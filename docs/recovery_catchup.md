@@ -39,4 +39,4 @@ Recommended defaults (all optional):
 
 - Catchup uses Telegram history reads. On very large gaps, you may still hit Telegram rate limits (FloodWait); catchup is designed to progress gradually.
 - Catchup enqueues extraction work via the existing queue RPC (`enqueue_telegram_extractions`). If you disable enqueue (`EXTRACTION_QUEUE_ENABLED=0`), catchup will still backfill raw but won’t schedule extraction.
-- If you need a manual one-off backfill/reparse, the `TutorDexAggregator/modes/` scripts still work.
+- If you need a manual one-off backfill/reparse, use `python collector.py backfill` / `python collector.py enqueue` and (for safe processing) run `python workers/extract_worker.py` with side effects disabled.

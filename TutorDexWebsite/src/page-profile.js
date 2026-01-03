@@ -1,14 +1,9 @@
-import "../subjectsData.js";
 import { getCurrentUid, getCurrentUser, waitForAuth } from "../auth.js";
 import { createTelegramLinkCode, getTutor, isBackendEnabled, trackEvent, upsertTutor } from "./backend.js";
+import { SPECIFIC_LEVELS } from "./academicEnums.js";
+import { canonicalSubjectsForLevel, canonicalizeSubjectLabels, labelForCanonicalCode } from "./taxonomy/subjectsTaxonomyV2.js";
 
-const subjectsData = window.tutorDexSubjects || window.subjectsData || {};
-const specificLevelsData = window.tutorDexSpecificLevels || {};
-
-function getSubjectsKey(level) {
-  if (level === "IGCSE" || level === "IB") return "IB/IGCSE";
-  return level;
-}
+const specificLevelsData = SPECIFIC_LEVELS || {};
 
 function selectSingle(btn, inputId) {
   const container = btn.parentElement;
@@ -51,22 +46,21 @@ function updateSubjects() {
   const specificLevel = String(document.getElementById("specific-level-select")?.value || "").trim();
   const root = document.getElementById("subject-buttons");
   const searchEl = document.getElementById("subject-search");
-  const subjectsKey = getSubjectsKey(level);
 
   if (!root) return;
 
-  function hasChip(lvl, spec, subj) {
+  function hasChip(lvl, spec, subjectCode) {
     const tray = document.getElementById("subjects-tray");
     if (!tray) return false;
     return Array.from(tray.querySelectorAll(".tray-item")).some((el) => {
       const elLvl = String(el.dataset.level || "").trim();
       const elSpec = String(el.dataset.specificLevel || "").trim();
-      const elSubj = String(el.dataset.subject || "").trim();
-      return elLvl === lvl && elSpec === spec && elSubj === subj;
+      const elCode = String(el.dataset.subjectCode || "").trim();
+      return elLvl === lvl && elSpec === spec && elCode === subjectCode;
     });
   }
 
-  function removeChip(lvl, spec, subj) {
+  function removeChip(lvl, spec, subjectCode) {
     const tray = document.getElementById("subjects-tray");
     if (!tray) return false;
     const chips = Array.from(tray.querySelectorAll(".tray-item"));
@@ -74,8 +68,8 @@ function updateSubjects() {
     for (const el of chips) {
       const elLvl = String(el.dataset.level || "").trim();
       const elSpec = String(el.dataset.specificLevel || "").trim();
-      const elSubj = String(el.dataset.subject || "").trim();
-      if (elLvl === lvl && elSpec === spec && elSubj === subj) {
+      const elCode = String(el.dataset.subjectCode || "").trim();
+      if (elLvl === lvl && elSpec === spec && elCode === subjectCode) {
         el.remove();
         removed = true;
       }
@@ -88,8 +82,8 @@ function updateSubjects() {
     .trim()
     .toLowerCase();
 
-  const all = Array.isArray(subjectsData[subjectsKey]) ? subjectsData[subjectsKey] : [];
-  const filtered = q ? all.filter((s) => String(s || "").toLowerCase().includes(q)) : all;
+  const all = level ? (canonicalSubjectsForLevel(level) || []) : [];
+  const filtered = q ? all.filter((s) => String(s?.label || "").toLowerCase().includes(q)) : all;
 
   root.innerHTML = "";
 
@@ -110,28 +104,29 @@ function updateSubjects() {
   }
 
   for (const sub of filtered) {
-    const label = String(sub || "").trim();
-    if (!label) continue;
+    const code = String(sub?.code || "").trim();
+    const label = String(sub?.label || "").trim();
+    if (!code || !label) continue;
 
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "select-btn rounded-full px-4 py-2 font-bold uppercase text-xs tracking-wide";
     btn.textContent = label;
 
-    const isSelected = hasChip(level, specificLevel, label);
+    const isSelected = hasChip(level, specificLevel, code);
     btn.classList.toggle("active", isSelected);
 
     btn.addEventListener("click", () => {
       const lvl = String(document.getElementById("level-select")?.value || "").trim();
       if (!lvl) return;
       const spec = String(document.getElementById("specific-level-select")?.value || "").trim();
-      const already = hasChip(lvl, spec, label);
+      const already = hasChip(lvl, spec, code);
       if (already) {
-        removeChip(lvl, spec, label);
+        removeChip(lvl, spec, code);
         btn.classList.remove("active");
         return;
       }
-      addChipToTray({ level: lvl, specificLevel: spec, subject: label });
+      addChipToTray({ level: lvl, specificLevel: spec, subjectCode: code, subjectLabel: label });
       btn.classList.add("active");
     });
     root.appendChild(btn);
@@ -146,19 +141,20 @@ function _updateEmptyTrayState() {
   emptyMsg.style.display = hasChips ? "none" : "block";
 }
 
-function addChipToTray({ level, specificLevel, subject }) {
+function addChipToTray({ level, specificLevel, subjectCode, subjectLabel }) {
   const tray = document.getElementById("subjects-tray");
   const emptyMsg = document.getElementById("empty-tray-msg");
   if (!tray) return;
 
   const lvl = String(level || "").trim();
-  const subj = String(subject || "").trim();
+  const code = String(subjectCode || "").trim();
+  const labelText = String(subjectLabel || "").trim() || labelForCanonicalCode(code) || code;
   const spec = String(specificLevel || "").trim();
-  if (!lvl || !subj) return;
+  if (!lvl || !code) return;
 
   if (emptyMsg) emptyMsg.style.display = "none";
 
-  const chipId = `${lvl}-${spec || "any"}-${subj}`.replace(/\s+/g, "");
+  const chipId = `${lvl}-${spec || "any"}-${code}`.replace(/\s+/g, "");
   if (document.getElementById(chipId)) return;
 
   const chip = document.createElement("div");
@@ -166,19 +162,20 @@ function addChipToTray({ level, specificLevel, subject }) {
   chip.id = chipId;
   chip.dataset.level = lvl;
   chip.dataset.specificLevel = spec;
-  chip.dataset.subject = subj;
+  chip.dataset.subjectCode = code;
+  chip.dataset.subjectLabel = labelText;
 
   const label = document.createElement("span");
   const levelTag = document.createElement("span");
   levelTag.className = "text-gray-400 font-normal mr-1";
   levelTag.textContent = lvl;
   label.appendChild(levelTag);
-  label.appendChild(document.createTextNode(spec ? ` ${spec} - ${subj}` : ` ${subj}`));
+  label.appendChild(document.createTextNode(spec ? ` ${spec} - ${labelText}` : ` ${labelText}`));
 
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "hover:text-red-400 transition ml-1";
-  removeBtn.setAttribute("aria-label", `Remove ${lvl}${spec ? ` ${spec}` : ""} ${subj}`);
+  removeBtn.setAttribute("aria-label", `Remove ${lvl}${spec ? ` ${spec}` : ""} ${labelText}`);
   removeBtn.addEventListener("click", () => {
     chip.remove();
     _updateEmptyTrayState();
@@ -262,13 +259,13 @@ function getLearningModesFromLocations() {
 
 function parseTrayPreferences() {
   const chips = Array.from(document.querySelectorAll("#subjects-tray .tray-item"));
-  const subjects = uniq(chips.map((c) => c.dataset.subject).filter(Boolean));
+  const subjects = uniq(chips.map((c) => c.dataset.subjectCode).filter(Boolean));
   const levels = uniq(chips.map((c) => c.dataset.level).filter(Boolean));
   const subjectPairs = chips
     .map((c) => ({
       level: String(c.dataset.level || "").trim(),
       specific_level: String(c.dataset.specificLevel || "").trim(),
-      subject: String(c.dataset.subject || "").trim(),
+      subject: String(c.dataset.subjectCode || "").trim(),
     }))
     .filter((x) => x.level && x.subject);
   return { subjects, levels, subjectPairs };
@@ -410,10 +407,23 @@ async function loadProfile() {
     if (tray) {
       tray.querySelectorAll(".tray-item").forEach((el) => el.remove());
       for (const pair of profile.subject_pairs) {
+        const lvl = String(pair?.level || "").trim();
+        const rawSubject = String(pair?.subject || "").trim();
+        if (!lvl || !rawSubject) continue;
+
+        let subjectCode = rawSubject;
+        const looksLikeCode = rawSubject.includes(".") && rawSubject === rawSubject.toUpperCase();
+        if (!looksLikeCode) {
+          const canon = canonicalizeSubjectLabels({ level: lvl, subjects: [rawSubject] });
+          const first = Array.isArray(canon?.subjectsCanonical) ? canon.subjectsCanonical[0] : "";
+          if (first) subjectCode = first;
+        }
+        const label = labelForCanonicalCode(subjectCode);
         addChipToTray({
-          level: pair?.level,
+          level: lvl,
           specificLevel: pair?.specific_level,
-          subject: pair?.subject,
+          subjectCode,
+          subjectLabel: label && label !== subjectCode ? label : rawSubject,
         });
       }
       _updateEmptyTrayState();

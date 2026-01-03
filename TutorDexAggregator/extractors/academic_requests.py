@@ -7,9 +7,11 @@ from typing import Any, Dict, List, Optional, Tuple
 try:
     from ..canonicalization.academic import canonicalize_level_token, canonicalize_specific_level, canonicalize_stream_token  # type: ignore
     from .subjects_matcher import SubjectMatch, extract_subjects  # type: ignore
+    from ..taxonomy.canonicalize_subjects import canonicalize_subjects as canonicalize_subjects_v2  # type: ignore
 except Exception:
     from canonicalization.academic import canonicalize_level_token, canonicalize_specific_level, canonicalize_stream_token  # type: ignore
     from extractors.subjects_matcher import SubjectMatch, extract_subjects  # type: ignore
+    from taxonomy.canonicalize_subjects import canonicalize_subjects as canonicalize_subjects_v2  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -248,6 +250,21 @@ def parse_academic_requests(
     else:
         academic_requests = None
 
+    # v2 taxonomy canonicalization (stable codes) for downstream filtering.
+    # This is intentionally conservative: if multiple levels appear, prefer the combined IB/IGCSE
+    # bucket when both appear; otherwise pass None to avoid level-specific guessing.
+    level_for_taxonomy: Optional[str] = None
+    if len(rollup_levels) == 1:
+        level_for_taxonomy = rollup_levels[0]
+    elif "IB" in rollup_levels and "IGCSE" in rollup_levels:
+        level_for_taxonomy = "IB/IGCSE"
+
+    canon_res = canonicalize_subjects_v2(level=level_for_taxonomy, subjects=rollup_subjects)
+    subjects_canonical = canon_res.get("subjects_canonical") if isinstance(canon_res, dict) else []
+    subjects_general = canon_res.get("subjects_general") if isinstance(canon_res, dict) else []
+    canonicalization_version = canon_res.get("canonicalization_version") if isinstance(canon_res, dict) else None
+    canonicalization_debug = canon_res.get("debug") if isinstance(canon_res, dict) else None
+
     evidence = {
         "source_text_chars": len(s),
         "tokens": [
@@ -262,6 +279,10 @@ def parse_academic_requests(
 
     return {
         "subjects": rollup_subjects,
+        "subjects_canonical": subjects_canonical or [],
+        "subjects_general": subjects_general or [],
+        "canonicalization_version": int(canonicalization_version) if isinstance(canonicalization_version, (int, float)) else None,
+        "canonicalization_debug": canonicalization_debug if isinstance(canonicalization_debug, dict) else None,
         "levels": rollup_levels,
         "specific_student_levels": rollup_specific,
         "streams": rollup_streams,

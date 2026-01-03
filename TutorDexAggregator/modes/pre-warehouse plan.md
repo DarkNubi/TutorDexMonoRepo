@@ -16,7 +16,7 @@ This is a concrete approach when you expect to iterate often on prompt/schema/mo
 
 1) Pick a new pipeline version:
    - Either set `EXTRACTION_PIPELINE_VERSION=...` in `TutorDexAggregator/.env` (permanent), or
-   - Set `PIPELINE_VERSION_OVERRIDE = "..."` in `TutorDexAggregator/modes/mode3_reparse_enqueue_from_raw.py` (one-off).
+   - Set `EXTRACTION_PIPELINE_VERSION=...` in your shell for a one-off run.
 2) Run **Mode 3** (enqueue from raw, bounded window first):
    - Start with a narrow window (e.g. last 7–14 days) and/or `MAX_MESSAGES_PER_CHANNEL` to iterate quickly.
 3) Run **Mode 4** (drain without side effects):

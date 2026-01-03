@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from pathlib import Path
 
 from TutorDexBackend.redis_store import TutorStore
 from TutorDexBackend.matching import match_from_payload
@@ -54,6 +55,14 @@ async def _startup_log() -> None:
     # Fail fast on dangerous misconfig in production.
     if _is_prod() and not (os.environ.get("ADMIN_API_KEY") or "").strip():
         raise RuntimeError("ADMIN_API_KEY is required when APP_ENV=prod")
+    if _is_prod() and not _auth_required():
+        raise RuntimeError("AUTH_REQUIRED must be true when APP_ENV=prod")
+    if _is_prod():
+        st = firebase_admin_status()
+        if not bool(st.get("enabled")):
+            raise RuntimeError("FIREBASE_ADMIN_ENABLED must be true when APP_ENV=prod and AUTH_REQUIRED=true")
+        if not bool(st.get("ready")):
+            raise RuntimeError(f"Firebase Admin not ready in prod (check FIREBASE_ADMIN_CREDENTIALS_PATH). status={st}")
 
     logger.info(
         "startup",
@@ -295,10 +304,49 @@ class ClickTrackRequest(BaseModel):
     meta: Optional[Dict[str, Any]] = None
 
 
+class AssignmentRow(BaseModel):
+    id: int
+    external_id: Optional[str] = None
+    message_link: Optional[str] = None
+    agency_name: Optional[str] = None
+    learning_mode: Optional[str] = None
+    assignment_code: Optional[str] = None
+    academic_display_text: Optional[str] = None
+    address: Optional[List[str]] = None
+    postal_code: Optional[List[str]] = None
+    postal_code_estimated: Optional[List[str]] = None
+    nearest_mrt: Optional[List[str]] = None
+    region: Optional[str] = None
+    nearest_mrt_computed: Optional[str] = None
+    nearest_mrt_computed_line: Optional[str] = None
+    nearest_mrt_computed_distance_m: Optional[int] = None
+    lesson_schedule: Optional[List[str]] = None
+    start_date: Optional[str] = None
+    time_availability_note: Optional[str] = None
+    rate_min: Optional[int] = None
+    rate_max: Optional[int] = None
+    rate_raw_text: Optional[str] = None
+    signals_subjects: Optional[List[str]] = None
+    signals_levels: Optional[List[str]] = None
+    signals_specific_student_levels: Optional[List[str]] = None
+    subjects_canonical: Optional[List[str]] = None
+    subjects_general: Optional[List[str]] = None
+    canonicalization_version: Optional[int] = None
+    status: Optional[str] = None
+    created_at: Optional[str] = None
+    last_seen: Optional[str] = None
+    freshness_tier: Optional[str] = None
+    distance_km: Optional[float] = None
+    distance_sort_key: Optional[float] = None
+
+    class Config:
+        extra = "allow"
+
+
 class AssignmentListResponse(BaseModel):
     ok: bool = True
     total: int = 0
-    items: List[Dict[str, Any]] = Field(default_factory=list)
+    items: List[AssignmentRow] = Field(default_factory=list)
     next_cursor_last_seen: Optional[str] = None
     next_cursor_id: Optional[int] = None
     next_cursor_distance_km: Optional[float] = None
@@ -312,6 +360,13 @@ class AssignmentFacetsResponse(BaseModel):
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {"ok": True}
+
+
+@app.get("/contracts/assignment-row.schema.json")
+def assignment_row_contract() -> Response:
+    path = (Path(__file__).resolve().parent / "contracts" / "assignment_row.schema.json").resolve()
+    body = path.read_text(encoding="utf8")
+    return Response(content=body, media_type="application/schema+json")
 
 
 @app.get("/health/redis")
@@ -402,6 +457,8 @@ def list_assignments(
     level: Optional[str] = None,
     specific_student_level: Optional[str] = None,
     subject: Optional[str] = None,
+    subject_general: Optional[str] = None,
+    subject_canonical: Optional[str] = None,
     agency_name: Optional[str] = None,
     learning_mode: Optional[str] = None,
     location: Optional[str] = None,
@@ -474,6 +531,8 @@ def list_assignments(
         level=_clean_opt_str(level),
         specific_student_level=_clean_opt_str(specific_student_level),
         subject=_clean_opt_str(subject),
+        subject_general=_clean_opt_str(subject_general),
+        subject_canonical=_clean_opt_str(subject_canonical),
         agency_name=_clean_opt_str(agency_name),
         learning_mode=_clean_opt_str(learning_mode),
         location_query=_clean_opt_str(location),
@@ -521,6 +580,8 @@ def assignment_facets(
     level: Optional[str] = None,
     specific_student_level: Optional[str] = None,
     subject: Optional[str] = None,
+    subject_general: Optional[str] = None,
+    subject_canonical: Optional[str] = None,
     agency_name: Optional[str] = None,
     learning_mode: Optional[str] = None,
     location: Optional[str] = None,
@@ -538,6 +599,8 @@ def assignment_facets(
         level=_clean_opt_str(level),
         specific_student_level=_clean_opt_str(specific_student_level),
         subject=_clean_opt_str(subject),
+        subject_general=_clean_opt_str(subject_general),
+        subject_canonical=_clean_opt_str(subject_canonical),
         agency_name=_clean_opt_str(agency_name),
         learning_mode=_clean_opt_str(learning_mode),
         location_query=_clean_opt_str(location),

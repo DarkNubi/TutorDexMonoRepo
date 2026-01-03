@@ -1,7 +1,5 @@
-import json
 import logging
 import os
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -9,7 +7,23 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger("taxonomy")
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_TAXONOMY_PATH = HERE / "subjects_taxonomy_v1.json"
+DEFAULT_TAXONOMY_PATH = HERE / "subjects_taxonomy_v2.json"
+
+# Allow importing the repo-root `shared/` python package when running from `TutorDexAggregator/`.
+try:
+    import sys
+
+    ROOT = HERE.parents[1]
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+except Exception:
+    pass
+
+try:
+    from shared.taxonomy.subjects.canonicalizer import canonicalize_subjects as _canonicalize_subjects_v2  # type: ignore
+except Exception as e:  # pragma: no cover
+    _canonicalize_subjects_v2 = None  # type: ignore
+    logger.warning("shared_taxonomy_import_failed error=%s", e)
 
 
 def _truthy(value: Optional[str]) -> bool:
@@ -56,16 +70,6 @@ def _coerce_text_list(value: Any) -> List[str]:
     return [v] if v else []
 
 
-@lru_cache(maxsize=4)
-def _load_taxonomy(path: str) -> Dict[str, Any]:
-    p = Path(path)
-    raw = p.read_text(encoding="utf-8", errors="replace")
-    data = json.loads(raw)
-    if not isinstance(data, dict):
-        raise ValueError("taxonomy must be a JSON object")
-    return data
-
-
 def _taxonomy_path() -> str:
     p = _safe_str(os.environ.get("SUBJECT_TAXONOMY_PATH"))
     if p:
@@ -73,101 +77,45 @@ def _taxonomy_path() -> str:
     return str(DEFAULT_TAXONOMY_PATH)
 
 
-def _resolve_level_key(level: Optional[str], mapping: Dict[str, Any]) -> Optional[str]:
-    lvl = _safe_str(level)
-    if not lvl:
-        return None
-    if lvl in mapping:
-        return lvl
-    if lvl in {"IGCSE", "IB"} and "IB/IGCSE" in mapping:
-        return "IB/IGCSE"
-    return None
-
-
-def _build_code_to_parent(taxonomy: Dict[str, Any]) -> Dict[str, str]:
-    out: Dict[str, str] = {}
-    for item in taxonomy.get("canonical_subjects") or []:
-        if not isinstance(item, dict):
-            continue
-        code = _safe_str(item.get("code"))
-        parent = _safe_str(item.get("parent"))
-        if code and parent:
-            out[code] = parent
-    return out
-
-
 def canonicalize_subjects(*, level: Optional[str], subjects: Any) -> Dict[str, Any]:
     """
-    Deterministically maps current LLM output (level + subjects[]) into:
+    Deterministically maps (level + subjects[]) into v2 taxonomy codes:
     - subjects_canonical: stable codes (advanced)
-    - subjects_general: parent rollups (broad)
+    - subjects_general: general category rollups (broad)
     """
     taxonomy_path = _taxonomy_path()
-    try:
-        taxonomy = _load_taxonomy(taxonomy_path)
-    except Exception as e:
+    if _canonicalize_subjects_v2 is None:
         return {
             "ok": False,
-            "error": f"taxonomy_load_failed: {e}",
+            "error": "shared_taxonomy_unavailable",
             "subjects_canonical": [],
             "subjects_general": [],
-            "canonicalization_version": 1,
+            "canonicalization_version": 2,
             "debug": {"taxonomy_path": taxonomy_path},
         }
 
-    version = taxonomy.get("version") or 1
-    mapping = ((taxonomy.get("mapping") or {}).get("by_level_subject_name_to_codes")) or {}
-    if not isinstance(mapping, dict):
-        mapping = {}
-
-    code_to_parent = _build_code_to_parent(taxonomy)
-    level_key = _resolve_level_key(level, mapping)
-    input_subjects = _coerce_text_list(subjects)
-
-    canonical: List[str] = []
-    general: List[str] = []
-    unmapped: List[str] = []
-
-    per_level = mapping.get(level_key or "") if level_key else None
-    if not isinstance(per_level, dict):
-        per_level = None
-
-    for s in input_subjects:
-        codes = None
-        if per_level is not None:
-            codes = per_level.get(s)
-        if not codes and level_key not in {None, "IB/IGCSE"} and "IB/IGCSE" in mapping:
-            # Defensive fallback for older rows where IB/IGCSE subjects were emitted under a different level.
-            ib = mapping.get("IB/IGCSE")
-            if isinstance(ib, dict):
-                codes = ib.get(s)
-
-        codes_list = _coerce_text_list(codes)
-        if not codes_list:
-            unmapped.append(s)
-            continue
-
-        for code in codes_list:
-            if code not in canonical:
-                canonical.append(code)
-            parent = code_to_parent.get(code)
-            if parent and parent not in general:
-                general.append(parent)
-
-    debug = {
-        "taxonomy_version": int(version) if isinstance(version, (int, float)) else 1,
-        "taxonomy_path": taxonomy_path,
-        "level_in": _safe_str(level),
-        "level_key": level_key,
-        "unmapped_subjects": unmapped[:25],
-    }
-
+    res = _canonicalize_subjects_v2(level=level, subjects=subjects, taxonomy_path=taxonomy_path)
+    # Keep output contract stable for callers inside the aggregator.
+    canon = _coerce_text_list(res.get("subjects_canonical"))
+    general = _coerce_text_list(res.get("subjects_general"))
+    ver = int(res.get("canonicalization_version") or 2)
+    dbg = res.get("debug") if isinstance(res.get("debug"), dict) else {}
+    ok = bool(res.get("ok"))
+    if not ok:
+        return {
+            "ok": False,
+            "error": _safe_str(res.get("error")) or "canonicalization_failed",
+            "subjects_canonical": canon,
+            "subjects_general": general,
+            "canonicalization_version": ver,
+            "debug": {"taxonomy_path": taxonomy_path, **dbg},
+        }
     return {
         "ok": True,
-        "subjects_canonical": canonical,
+        "subjects_canonical": canon,
         "subjects_general": general,
-        "canonicalization_version": int(version) if isinstance(version, (int, float)) else 1,
-        "debug": debug,
+        "canonicalization_version": ver,
+        "debug": {"taxonomy_path": taxonomy_path, **dbg},
     }
 
 
@@ -178,7 +126,7 @@ def canonicalize_subjects_for_assignment_row(row: Dict[str, Any]) -> Tuple[List[
     res = canonicalize_subjects(level=_safe_str(row.get("level")), subjects=row.get("subjects") or row.get("subject"))
     canon = _coerce_text_list(res.get("subjects_canonical"))
     general = _coerce_text_list(res.get("subjects_general"))
-    ver = int(res.get("canonicalization_version") or 1)
+    ver = int(res.get("canonicalization_version") or 2)
     dbg = res.get("debug") if isinstance(res.get("debug"), dict) else {}
     if not res.get("ok"):
         dbg = {**dbg, "ok": False, "error": _safe_str(res.get("error"))}

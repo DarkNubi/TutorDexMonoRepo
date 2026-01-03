@@ -449,6 +449,35 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     signals_academic_requests = signals_obj.get("academic_requests") if isinstance(signals_obj, dict) else None
     signals_confidence_flags = signals_obj.get("confidence_flags") if isinstance(signals_obj, dict) else None
 
+    # v2 subject taxonomy (stable codes) used for filtering/matching across the system.
+    subjects_canonical = _coerce_text_list(signals_obj.get("subjects_canonical") if isinstance(signals_obj, dict) else None)
+    subjects_general = _coerce_text_list(signals_obj.get("subjects_general") if isinstance(signals_obj, dict) else None)
+    canonicalization_version = None
+    canonicalization_debug = None
+    if isinstance(signals_obj, dict):
+        canonicalization_version = signals_obj.get("canonicalization_version")
+        canonicalization_debug = signals_obj.get("canonicalization_debug")
+
+    # TutorCity API: prefer the explicit API mappings (level label + subject labels).
+    if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api":
+        try:
+            src_mapped = meta.get("source_mapped") if isinstance(meta.get("source_mapped"), dict) else {}
+            lvl = _safe_str(src_mapped.get("level"))
+            subs = src_mapped.get("subjects") if isinstance(src_mapped, dict) else None
+            if subs is not None:
+                try:
+                    from taxonomy.canonicalize_subjects import canonicalize_subjects  # type: ignore
+                except Exception:
+                    from TutorDexAggregator.taxonomy.canonicalize_subjects import canonicalize_subjects  # type: ignore
+
+                res = canonicalize_subjects(level=lvl, subjects=subs)
+                subjects_canonical = _coerce_text_list(res.get("subjects_canonical"))
+                subjects_general = _coerce_text_list(res.get("subjects_general"))
+                canonicalization_version = res.get("canonicalization_version")
+                canonicalization_debug = res.get("debug")
+        except Exception:
+            pass
+
     postal_lat = None
     postal_lon = None
     if postal_code:
@@ -510,6 +539,10 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "signals_streams": signals_streams,
         "signals_academic_requests": signals_academic_requests,
         "signals_confidence_flags": signals_confidence_flags,
+        "subjects_canonical": subjects_canonical,
+        "subjects_general": subjects_general,
+        "canonicalization_version": int(canonicalization_version) if isinstance(canonicalization_version, (int, float)) else None,
+        "canonicalization_debug": canonicalization_debug if _truthy(os.environ.get("SUBJECT_TAXONOMY_DEBUG")) and isinstance(canonicalization_debug, dict) else None,
         "canonical_json": parsed if isinstance(parsed, dict) else None,
         "meta": meta if isinstance(meta, dict) else None,
     }
@@ -528,6 +561,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     row["signals_levels"] = row.get("signals_levels") or []
     row["signals_specific_student_levels"] = row.get("signals_specific_student_levels") or []
     row["signals_streams"] = row.get("signals_streams") or []
+    row["subjects_canonical"] = row.get("subjects_canonical") or []
+    row["subjects_general"] = row.get("subjects_general") or []
     return {k: v for k, v in row.items() if v is not None}
 
 
@@ -820,6 +855,10 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             if not ok and patch_resp.status_code == 400 and ("PGRST204" in patch_resp.text or "schema cache" in patch_resp.text):
                 patch_body.pop("postal_lat", None)
                 patch_body.pop("postal_lon", None)
+                patch_body.pop("subjects_canonical", None)
+                patch_body.pop("subjects_general", None)
+                patch_body.pop("canonicalization_version", None)
+                patch_body.pop("canonicalization_debug", None)
                 try:
                     t0 = timed()
                     patch_resp = client.patch(
@@ -872,6 +911,10 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         if not ok and insert_resp.status_code == 400 and ("PGRST204" in insert_resp.text or "schema cache" in insert_resp.text):
             row_to_insert.pop("postal_lat", None)
             row_to_insert.pop("postal_lon", None)
+            row_to_insert.pop("subjects_canonical", None)
+            row_to_insert.pop("subjects_general", None)
+            row_to_insert.pop("canonicalization_version", None)
+            row_to_insert.pop("canonicalization_debug", None)
             try:
                 t0 = timed()
                 insert_resp = client.post(
