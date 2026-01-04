@@ -94,6 +94,26 @@ When you bump the version, the queue keys by `(raw_id, pipeline_version)`, so yo
 **Use when:**
 - You want to validate a reparse/re-enqueue on production data without spamming the Telegram channel / users.
 
+## Mode 5 — Enqueue edited Telegram messages from raw (Manual)
+
+**Purpose:** Reprocess edited Telegram posts *without* re-reading Telegram.
+
+Use this when:
+- the collector was down during edits, or
+- you backfilled raw messages and want to ensure edited posts are re-extracted.
+
+**How it works (high level):**
+- Scans `public.telegram_messages_raw` for rows with `edit_date` in a window
+- Enqueues work into `public.telegram_extractions` via RPC `enqueue_telegram_extractions` with `force=true`
+
+**Command (default: uses `CHANNEL_LIST` and a persisted checkpoint):**
+- `python utilities/enqueue_edited_raws.py`
+
+**Common options:**
+- `python utilities/enqueue_edited_raws.py --since 2026-01-01T00:00:00Z --until 2026-01-02T00:00:00Z`
+- `python utilities/enqueue_edited_raws.py --channels 't.me/foo,t.me/bar' --limit-per-channel 500`
+- Dry run: `python utilities/enqueue_edited_raws.py --dry-run`
+
 ## Recommended workflow (common scenarios)
 
 ### Common prerequisites (all modes)

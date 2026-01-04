@@ -10,7 +10,7 @@ from urllib.parse import quote as _url_quote
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -108,6 +108,123 @@ def _hash_ip(ip: str) -> str:
 
 _CLICK_COOLDOWN_LOCAL: Dict[str, float] = {}
 _CLICK_COOLDOWN_LOCK = asyncio.Lock()
+
+_RATE_LIMIT_LOCAL: Dict[str, tuple[int, float]] = {}
+_RATE_LIMIT_LOCK = asyncio.Lock()
+
+_PUBLIC_CACHE_LOCAL: Dict[str, tuple[str, float]] = {}
+_PUBLIC_CACHE_LOCK = asyncio.Lock()
+
+
+def _redis_prefix() -> str:
+    return getattr(getattr(store, "cfg", None), "prefix", None) or "tutordex"
+
+
+def _public_assignments_limit_cap() -> int:
+    # Keep public listing bounded to reduce abuse/DB load.
+    return max(1, _env_int("PUBLIC_ASSIGNMENTS_LIMIT_CAP", 50))
+
+
+def _public_rpm_assignments() -> int:
+    # Requests per minute for anonymous /assignments.
+    return max(0, _env_int("PUBLIC_RPM_ASSIGNMENTS", 60))
+
+
+def _public_rpm_facets() -> int:
+    # Requests per minute for anonymous /assignments/facets.
+    return max(0, _env_int("PUBLIC_RPM_FACETS", 120))
+
+
+def _public_cache_ttl_assignments_s() -> int:
+    return max(0, _env_int("PUBLIC_CACHE_TTL_ASSIGNMENTS_SECONDS", 15))
+
+
+def _public_cache_ttl_facets_s() -> int:
+    return max(0, _env_int("PUBLIC_CACHE_TTL_FACETS_SECONDS", 30))
+
+
+def _canonical_query_string(items: List[tuple[str, str]]) -> str:
+    # Stable query ordering => stable cache keys.
+    items = [(str(k), str(v)) for k, v in (items or [])]
+    items.sort(key=lambda kv: (kv[0], kv[1]))
+    return "&".join([f"{k}={_url_quote(v)}" for k, v in items])
+
+
+def _cache_key_from_items(path: str, items: List[tuple[str, str]], *, namespace: str) -> str:
+    base = f"{path}?{_canonical_query_string(items)}"
+    h = hashlib.sha256(base.encode("utf-8")).hexdigest()[:24]
+    return f"{_redis_prefix()}:{namespace}:{h}"
+
+
+async def _public_rate_limit_or_429(request: Request, *, endpoint: str, rpm: int) -> None:
+    if rpm <= 0:
+        return
+    ip_hash = _hash_ip(_client_ip(request))
+    bucket = int(time.time() // 60)
+    key = f"{_redis_prefix()}:rl:{endpoint}:{ip_hash}:{bucket}"
+
+    try:
+        n = store.r.incr(key)
+        if int(n) == 1:
+            store.r.expire(key, 120)
+        if int(n) > int(rpm):
+            raise HTTPException(status_code=429, detail="rate_limited")
+        return
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
+    # Fallback if Redis isn't available (best-effort).
+    now = time.time()
+    async with _RATE_LIMIT_LOCK:
+        n, expires_at = _RATE_LIMIT_LOCAL.get(key, (0, 0.0))
+        if float(expires_at) <= now:
+            n, expires_at = 0, now + 120.0
+        n += 1
+        _RATE_LIMIT_LOCAL[key] = (int(n), float(expires_at))
+        if int(n) > int(rpm):
+            raise HTTPException(status_code=429, detail="rate_limited")
+
+
+async def _public_cache_get(key: str) -> Optional[Dict[str, Any]]:
+    try:
+        raw = store.r.get(key)
+        if raw:
+            return json.loads(raw)
+    except Exception:
+        pass
+
+    now = time.time()
+    async with _PUBLIC_CACHE_LOCK:
+        raw, exp = _PUBLIC_CACHE_LOCAL.get(key, ("", 0.0))
+        if raw and float(exp) > now:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return None
+        if float(exp) <= now:
+            _PUBLIC_CACHE_LOCAL.pop(key, None)
+    return None
+
+
+async def _public_cache_set(key: str, payload: Dict[str, Any], *, ttl_s: int) -> None:
+    if ttl_s <= 0:
+        return
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    try:
+        store.r.setex(key, int(ttl_s), raw)
+        return
+    except Exception:
+        pass
+
+    now = time.time()
+    async with _PUBLIC_CACHE_LOCK:
+        _PUBLIC_CACHE_LOCAL[key] = (raw, now + float(ttl_s))
+        if len(_PUBLIC_CACHE_LOCAL) > 2000:
+            for k, (_, exp) in list(_PUBLIC_CACHE_LOCAL.items())[:500]:
+                if float(exp) <= now:
+                    _PUBLIC_CACHE_LOCAL.pop(k, None)
 
 
 async def _should_increment_click(request: Request, *, external_id: str) -> bool:
@@ -520,7 +637,7 @@ def _clean_opt_str(value: Optional[str]) -> Optional[str]:
 
 
 @app.get("/assignments", response_model=AssignmentListResponse)
-def list_assignments(
+async def list_assignments(
     request: Request,
     limit: int = 50,
     sort: Optional[str] = None,
@@ -536,12 +653,11 @@ def list_assignments(
     learning_mode: Optional[str] = None,
     location: Optional[str] = None,
     min_rate: Optional[int] = None,
-) -> AssignmentListResponse:
+) -> Response:
     """
     Public listing endpoint for the website.
     Requires DB RPC `public.list_open_assignments` (see TutorDexAggregator/supabase sqls).
     """
-    _ = request
     if not sb.enabled():
         raise HTTPException(status_code=503, detail="supabase_disabled")
 
@@ -555,6 +671,13 @@ def list_assignments(
     sort_s = (sort or "newest").strip().lower()
     if sort_s not in {"newest", "distance"}:
         raise HTTPException(status_code=400, detail="invalid_sort")
+
+    # Anonymous protections: rate-limit + cap + short cache for the common "first page newest" query.
+    uid_hint = _get_uid_from_request(request)
+    is_anon = uid_hint is None
+    if is_anon:
+        await _public_rate_limit_or_429(request, endpoint="assignments", rpm=_public_rpm_assignments())
+        lim = min(lim, _public_assignments_limit_cap())
 
     if cursor_last_seen_s and cursor_id is None:
         raise HTTPException(status_code=400, detail="cursor_id_required")
@@ -571,12 +694,41 @@ def list_assignments(
     if sort_s == "distance":
         uid = _require_uid(request)
     else:
-        uid = _get_uid_from_request(request)
+        uid = uid_hint
         if uid:
             try:
                 request.state.uid = uid
             except Exception:
                 pass
+
+    cache_ttl_s = _public_cache_ttl_assignments_s() if is_anon else 0
+    cache_key = ""
+    cache_eligible = bool(
+        is_anon
+        and cache_ttl_s > 0
+        and sort_s == "newest"
+        and cursor_last_seen_s is None
+        and cursor_id is None
+        and cursor_distance_km is None
+    )
+    if cache_eligible:
+        try:
+            q_items = list(request.query_params.multi_items())
+        except Exception:
+            q_items = []
+        # Cache key should reflect the effective public cap, not the raw requested limit.
+        q_items = [(k, v) for (k, v) in q_items if str(k) != "limit"]
+        q_items.append(("limit", str(lim)))
+        cache_key = _cache_key_from_items(str(request.url.path), q_items, namespace="pubcache:assignments")
+        cached = await _public_cache_get(cache_key)
+        if cached:
+            return JSONResponse(
+                content=cached,
+                headers={
+                    "Cache-Control": f"public, max-age={int(cache_ttl_s)}",
+                    "X-Cache": "HIT",
+                },
+            )
 
     if uid:
         t = store.get_tutor(uid) or {}
@@ -640,18 +792,30 @@ def list_assignments(
             except Exception:
                 next_cursor_distance_km_out = 1e9
 
-    return AssignmentListResponse(
+    payload = AssignmentListResponse(
         ok=True,
         total=total,
         items=items,
         next_cursor_last_seen=next_cursor_last_seen_out,
         next_cursor_id=next_cursor_id_out,
         next_cursor_distance_km=next_cursor_distance_km_out,
-    )
+    ).model_dump()
+
+    if cache_eligible and cache_key:
+        await _public_cache_set(cache_key, payload, ttl_s=int(cache_ttl_s))
+        return JSONResponse(
+            content=payload,
+            headers={
+                "Cache-Control": f"public, max-age={int(cache_ttl_s)}",
+                "X-Cache": "MISS",
+            },
+        )
+
+    return JSONResponse(content=payload)
 
 
 @app.get("/assignments/facets", response_model=AssignmentFacetsResponse)
-def assignment_facets(
+async def assignment_facets(
     request: Request,
     level: Optional[str] = None,
     specific_student_level: Optional[str] = None,
@@ -662,14 +826,36 @@ def assignment_facets(
     learning_mode: Optional[str] = None,
     location: Optional[str] = None,
     min_rate: Optional[int] = None,
-) -> AssignmentFacetsResponse:
+) -> Response:
     """
     Public facets endpoint for the website.
     Requires DB RPC `public.open_assignment_facets` (see TutorDexAggregator/supabase sqls).
     """
-    _ = request
     if not sb.enabled():
         raise HTTPException(status_code=503, detail="supabase_disabled")
+
+    uid_hint = _get_uid_from_request(request)
+    is_anon = uid_hint is None
+    if is_anon:
+        await _public_rate_limit_or_429(request, endpoint="facets", rpm=_public_rpm_facets())
+
+    cache_ttl_s = _public_cache_ttl_facets_s() if is_anon else 0
+    cache_key = ""
+    if is_anon and cache_ttl_s > 0:
+        try:
+            q_items = list(request.query_params.multi_items())
+        except Exception:
+            q_items = []
+        cache_key = _cache_key_from_items(str(request.url.path), q_items, namespace="pubcache:facets")
+        cached = await _public_cache_get(cache_key)
+        if cached:
+            return JSONResponse(
+                content=cached,
+                headers={
+                    "Cache-Control": f"public, max-age={int(cache_ttl_s)}",
+                    "X-Cache": "HIT",
+                },
+            )
 
     facets = sb.open_assignment_facets(
         level=_clean_opt_str(level),
@@ -684,7 +870,18 @@ def assignment_facets(
     )
     if facets is None:
         raise HTTPException(status_code=500, detail="facets_failed")
-    return AssignmentFacetsResponse(ok=True, facets=facets)
+
+    payload = AssignmentFacetsResponse(ok=True, facets=facets).model_dump()
+    if cache_key and cache_ttl_s > 0:
+        await _public_cache_set(cache_key, payload, ttl_s=int(cache_ttl_s))
+        return JSONResponse(
+            content=payload,
+            headers={
+                "Cache-Control": f"public, max-age={int(cache_ttl_s)}",
+                "X-Cache": "MISS",
+            },
+        )
+    return JSONResponse(content=payload)
 
 
 def _auth_required() -> bool:

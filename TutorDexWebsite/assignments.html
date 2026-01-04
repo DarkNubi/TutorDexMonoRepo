@@ -88,7 +88,7 @@
       }
     </style>
   </head>
-  <body class="bg-white" data-require-auth="true">
+  <body class="bg-white" data-require-auth="false">
     <nav class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white z-50 border-b border-gray-100 transition duration-300">
       <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
         <div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold rounded-lg">TD</div>
@@ -115,11 +115,44 @@
           </div>
         </details>
 
-        <button type="button" data-auth-logout class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition">Log Out</button>
+        <a
+          href="index.html?next=assignments.html"
+          data-auth-state="signed-out"
+          class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition"
+          >Sign In</a
+        >
+        <button
+          type="button"
+          data-auth-state="signed-in"
+          data-auth-logout
+          class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition"
+        >
+          Log Out
+        </button>
       </div>
     </nav>
 
     <div class="max-w-6xl mx-auto px-6 py-10">
+      <div
+        data-auth-state="signed-out"
+        class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+      >
+        <div>
+          <div class="text-sm font-bold uppercase tracking-wide text-gray-700">Browse as Guest</div>
+          <div class="text-sm text-gray-600 mt-1">
+            Sign in to save your preferences, enable Telegram DM alerts, and unlock Nearest sorting.
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <a href="index.html?next=assignments.html" class="bg-black text-white px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition text-xs"
+            >Sign In</a
+          >
+          <a href="index.html?next=profile.html" class="bg-white border-2 border-black text-black px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:bg-black hover:text-white transition text-xs"
+            >Enable DM Alerts</a
+          >
+        </div>
+      </div>
+
       <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
         <div>
           <h1 class="text-5xl md:text-7xl leading-none">Tuition Assignments</h1>
@@ -133,17 +166,46 @@
 
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
         <p id="results-summary" class="text-sm font-medium text-gray-500">Showing 0 of 0</p>
-        <div class="flex items-center gap-3 text-[11px] font-bold uppercase text-gray-500">
-          <span class="inline-flex items-center gap-1" title="Recently seen/updated">
-            <span class="w-2 h-2 bg-green-500 rounded-full"></span>Green
-          </span>
-          <span class="inline-flex items-center gap-1" title="No bumps/updates for a while">
-            <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>Yellow
-          </span>
-          <span class="inline-flex items-center gap-1" title="Stale"> <span class="w-2 h-2 bg-orange-500 rounded-full"></span>Orange </span>
-          <span class="inline-flex items-center gap-1" title="Very stale (will expire soon)">
-            <span class="w-2 h-2 bg-red-500 rounded-full"></span>Red
-          </span>
+        <div class="flex flex-wrap items-center gap-3 justify-end">
+          <div class="flex items-center gap-3 text-[11px] font-bold uppercase text-gray-500">
+            <span class="inline-flex items-center gap-1" title="Likely still open (recent agency bump/update)">
+              <span class="w-2 h-2 bg-green-500 rounded-full"></span>Likely open
+            </span>
+            <span class="inline-flex items-center gap-1" title="Probably still open">
+              <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>Probably open
+            </span>
+            <span class="inline-flex items-center gap-1" title="Uncertain / getting stale">
+              <span class="w-2 h-2 bg-orange-500 rounded-full"></span>Uncertain
+            </span>
+            <span class="inline-flex items-center gap-1" title="Likely closed (no bump/update for a long time)">
+              <span class="w-2 h-2 bg-red-500 rounded-full"></span>Likely closed
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              id="view-toggle-full"
+              type="button"
+              class="px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold uppercase tracking-wide hover:bg-gray-50 transition"
+            >
+              Full
+            </button>
+            <button
+              id="view-toggle-compact"
+              type="button"
+              class="px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold uppercase tracking-wide hover:bg-gray-50 transition"
+            >
+              Compact
+            </button>
+            <button
+              id="clear-hidden-btn"
+              type="button"
+              class="hidden px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold uppercase tracking-wide hover:bg-gray-50 transition"
+              title="Show any assignments you hid on this device."
+            >
+              Show Hidden
+            </button>
+          </div>
         </div>
       </div>
 
@@ -199,10 +261,35 @@
           </div>
 
           <div class="select-wrapper">
-            <select id="filter-sort" class="nike-input">
-              <option value="newest" selected>Newest</option>
-              <option value="distance">Nearest</option>
-            </select>
+            <div class="flex items-stretch gap-2">
+              <select id="filter-sort" class="nike-input flex-1">
+                <option value="newest" selected>Newest</option>
+                <option value="distance">Nearest</option>
+              </select>
+              <details class="relative">
+                <summary
+                  class="h-full px-3 rounded-lg border-2 border-gray-200 bg-white text-xs font-bold uppercase tracking-wide flex items-center justify-center cursor-pointer select-none hover:bg-gray-50 transition"
+                  title="How is Open-likelihood computed?"
+                >
+                  What’s this?
+                </summary>
+                <div class="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg p-4 text-sm text-gray-700 z-50">
+                  <div class="font-bold uppercase text-xs tracking-wide text-gray-500 mb-2">Open-likelihood</div>
+                  <div class="text-sm text-gray-700">
+                    Computed from agency reposts/edits (“bumps”). It’s a best-effort guess—agencies differ and some never bump.
+                  </div>
+                  <div class="mt-3 space-y-1 text-sm">
+                    <div><span class="font-bold text-green-700">Likely open</span>: bumped recently</div>
+                    <div><span class="font-bold text-yellow-700">Probably open</span>: still fairly recent</div>
+                    <div><span class="font-bold text-orange-700">Uncertain</span>: getting stale</div>
+                    <div><span class="font-bold text-red-700">Likely closed</span>: no bump for a long time</div>
+                  </div>
+                  <div class="mt-3 text-xs text-gray-500">
+                    Tip: cards show both “Posted” and “Bumped/Updated” timestamps.
+                  </div>
+                </div>
+              </details>
+            </div>
           </div>
 
           <div>
@@ -227,6 +314,27 @@
         <p id="facet-hint" class="hidden mt-3 text-xs font-medium text-gray-500">
           Tip: Counts in dropdowns reflect all open assignments under your current filters (Level/Location/Rate), so you can switch subjects easily.
         </p>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="md:col-span-2 relative">
+            <input
+              id="subject-search"
+              type="text"
+              class="nike-input"
+              placeholder="Search subjects (e.g. Sec EMath, JC H2 Chem, IB Math AA)…"
+              autocomplete="off"
+            />
+            <div id="subject-search-results" class="hidden absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50"></div>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <a id="postal-cta" href="index.html?next=profile.html" class="text-xs font-bold underline text-gray-700 hidden">
+              Set postal code to enable Nearest
+            </a>
+            <div class="text-xs text-gray-500 font-medium">
+              Search auto-selects subject.
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="assignments-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>

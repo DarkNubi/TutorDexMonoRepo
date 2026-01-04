@@ -1,55 +1,21 @@
--- Subjects taxonomy v2 (stable canonical codes + general rollups)
+-- TutorDex: expose `source_last_seen` in website RPCs
 -- Apply in Supabase SQL Editor (public schema).
 --
--- Adds:
--- - assignments.subjects_canonical text[]
--- - assignments.subjects_general text[]
--- - assignments.canonicalization_version int
--- - assignments.canonicalization_debug jsonb (optional diagnostics)
--- - GIN indexes for fast filtering
--- - Updates RPCs:
---   - public.list_open_assignments(...)
---   - public.list_open_assignments_v2(...)
---   - public.open_assignment_facets(...)
+-- Why:
+-- Website cards show both:
+-- - Posted: `published_at`
+-- - Bumped/Updated: `source_last_seen`
 --
--- Back-compat:
--- - Existing `p_subject` filter still works against legacy `signals_subjects` and also matches new codes.
---
--- IMPORTANT (PostgREST overloading):
--- Earlier migrations defined `public.list_open_assignments`, `public.list_open_assignments_v2`, and
--- `public.open_assignment_facets` without v2 subject params. `create or replace` does not remove other
--- overloads with different signatures, so PostgREST may return `PGRST203` (ambiguous function) and the
--- backend will appear to return 0 assignments.
--- These drops remove legacy signatures before installing the v2 versions.
---
--- Additionally, Postgres does NOT allow `create or replace function ... returns table(...)`
--- to change the returned row type. When you add/remove return columns (e.g. `published_at`),
--- you must DROP the existing function first.
---
--- This DO block drops *all* overloads for these RPC names in the `public` schema so the
--- migration is idempotent across schema drift.
-do $$
-declare
-  r record;
-begin
-  for r in
-    select
-      n.nspname as schema_name,
-      p.proname as fn_name,
-      pg_get_function_identity_arguments(p.oid) as args
-    from pg_proc p
-    join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public'
-      and p.proname in ('list_open_assignments', 'list_open_assignments_v2', 'open_assignment_facets')
-  loop
-    execute format('drop function if exists %I.%I(%s);', r.schema_name, r.fn_name, r.args);
-  end loop;
-end $$;
+-- Postgres note:
+-- You cannot change the OUT/return shape of an existing function via CREATE OR REPLACE,
+-- so we DROP the current signatures first.
 
 drop function if exists public.list_open_assignments(
   integer,
   timestamptz,
   bigint,
+  text,
+  text,
   text,
   text,
   text,
@@ -73,46 +39,10 @@ drop function if exists public.list_open_assignments_v2(
   text,
   text,
   text,
-  integer
-);
-
-drop function if exists public.open_assignment_facets(
-  text,
-  text,
-  text,
-  text,
   text,
   text,
   integer
 );
-
-alter table public.assignments
-  add column if not exists subjects_canonical text[] not null default '{}';
-
-alter table public.assignments
-  add column if not exists subjects_general text[] not null default '{}';
-
-alter table public.assignments
-  add column if not exists canonicalization_version int not null default 2;
-
-alter table public.assignments
-  add column if not exists canonicalization_debug jsonb;
-
-alter table public.assignments
-  add column if not exists published_at timestamptz;
-
-alter table public.assignments
-  add column if not exists source_last_seen timestamptz;
-
-create index if not exists assignments_subjects_canonical_gin
-  on public.assignments using gin (subjects_canonical);
-
-create index if not exists assignments_subjects_general_gin
-  on public.assignments using gin (subjects_general);
-
--- --------------------------------------------------------------------------------
--- Update RPC: public.list_open_assignments (legacy newest-only)
--- --------------------------------------------------------------------------------
 
 create or replace function public.list_open_assignments(
   p_limit integer default 50,
@@ -159,6 +89,7 @@ returns table(
   status text,
   created_at timestamptz,
   published_at timestamptz,
+  source_last_seen timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   total_count bigint
@@ -240,6 +171,7 @@ select
   status,
   created_at,
   published_at,
+  source_last_seen,
   last_seen,
   freshness_tier,
   count(*) over() as total_count
@@ -248,9 +180,6 @@ order by _sort_ts desc, id desc
 limit greatest(1, least(p_limit, 200));
 $$;
 
--- --------------------------------------------------------------------------------
--- Update RPC: public.list_open_assignments_v2 (newest|distance)
--- --------------------------------------------------------------------------------
 
 create or replace function public.list_open_assignments_v2(
   p_limit integer default 50,
@@ -303,6 +232,7 @@ returns table(
   status text,
   created_at timestamptz,
   published_at timestamptz,
+  source_last_seen timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   distance_km double precision,
@@ -427,6 +357,7 @@ select
   status,
   created_at,
   published_at,
+  source_last_seen,
   last_seen,
   freshness_tier,
   distance_km,
@@ -441,168 +372,3 @@ order by
   id desc
 limit greatest(1, least(p_limit, 200));
 $$;
-
--- --------------------------------------------------------------------------------
--- Update RPC: public.open_assignment_facets
--- --------------------------------------------------------------------------------
-
-create or replace function public.open_assignment_facets(
-  p_level text default null,
-  p_specific_student_level text default null,
-  p_subject text default null,
-  p_subject_general text default null,
-  p_subject_canonical text default null,
-  p_agency_name text default null,
-  p_learning_mode text default null,
-  p_location_query text default null,
-  p_min_rate integer default null
-)
-returns jsonb
-language sql
-stable
-set search_path = public, pg_temp
-as $$
-with base as (
-  select
-    a.*,
-    lower(
-      concat_ws(
-        ' ',
-        nullif(array_to_string(a.address, ' '), ''),
-        nullif(array_to_string(a.postal_code, ' '), ''),
-        nullif(array_to_string(a.postal_code_estimated, ' '), ''),
-        nullif(array_to_string(a.nearest_mrt, ' '), '')
-      )
-    ) as _loc
-  from public.assignments a
-  where a.status = 'open'
-),
-filtered as (
-  select *
-  from base
-  where (p_level is null or p_level = any(signals_levels))
-    and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
-    and (p_subject_general is null or p_subject_general = any(subjects_general))
-    and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
-    and (
-      p_subject is null
-      or p_subject = any(signals_subjects)
-      or p_subject = any(subjects_canonical)
-      or p_subject = any(subjects_general)
-    )
-    and (p_agency_name is null or agency_name = p_agency_name)
-    and (p_learning_mode is null or learning_mode = p_learning_mode)
-    and (
-      p_location_query is null
-      or btrim(p_location_query) = ''
-      or _loc like '%' || lower(p_location_query) || '%'
-    )
-    and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
-)
-select jsonb_build_object(
-  'total', (select count(*) from filtered),
-  'levels', (
-    select coalesce(
-      jsonb_agg(jsonb_build_object('value', level, 'count', c) order by c desc, level asc),
-      '[]'::jsonb
-    )
-    from (
-      select level, count(*) as c
-      from (
-        select distinct id, unnest(signals_levels) as level
-        from filtered
-      ) d
-      where level is not null and btrim(level) <> ''
-      group by level
-    ) s
-  ),
-  'specific_levels', (
-    select coalesce(
-      jsonb_agg(jsonb_build_object('value', specific_student_level, 'count', c) order by c desc, specific_student_level asc),
-      '[]'::jsonb
-    )
-    from (
-      select specific_student_level, count(*) as c
-      from (
-        select distinct id, unnest(signals_specific_student_levels) as specific_student_level
-        from filtered
-      ) d
-      where specific_student_level is not null and btrim(specific_student_level) <> ''
-      group by specific_student_level
-    ) s
-  ),
-  -- Legacy: subject label facets from `signals_subjects` (kept for back-compat).
-  'subjects', (
-    select coalesce(
-      jsonb_agg(jsonb_build_object('value', subject, 'count', c) order by c desc, subject asc),
-      '[]'::jsonb
-    )
-    from (
-      select subject, count(*) as c
-      from (
-        select distinct id, unnest(signals_subjects) as subject
-        from filtered
-      ) d
-      where subject is not null and btrim(subject) <> ''
-      group by subject
-    ) s
-  ),
-  -- v2: general category code facets.
-  'subjects_general', (
-    select coalesce(
-      jsonb_agg(jsonb_build_object('value', subject_general, 'count', c) order by c desc, subject_general asc),
-      '[]'::jsonb
-    )
-    from (
-      select subject_general, count(*) as c
-      from (
-        select distinct id, unnest(subjects_general) as subject_general
-        from filtered
-      ) d
-      where subject_general is not null and btrim(subject_general) <> ''
-      group by subject_general
-    ) s
-  ),
-  -- v2: canonical subject code facets.
-  'subjects_canonical', (
-    select coalesce(
-      jsonb_agg(jsonb_build_object('value', subject_canonical, 'count', c) order by c desc, subject_canonical asc),
-      '[]'::jsonb
-    )
-    from (
-      select subject_canonical, count(*) as c
-      from (
-        select distinct id, unnest(subjects_canonical) as subject_canonical
-        from filtered
-      ) d
-      where subject_canonical is not null and btrim(subject_canonical) <> ''
-      group by subject_canonical
-    ) s
-  ),
-  'agencies', (
-    select coalesce(
-      jsonb_agg(jsonb_build_object('value', agency_name, 'count', c) order by c desc, agency_name asc),
-      '[]'::jsonb
-    )
-    from (
-      select agency_name, count(*) as c
-      from filtered
-      where agency_name is not null and btrim(agency_name) <> ''
-      group by agency_name
-    ) s
-  ),
-  'learning_modes', (
-    select coalesce(
-      jsonb_agg(jsonb_build_object('value', learning_mode, 'count', c) order by c desc, learning_mode asc),
-      '[]'::jsonb
-    )
-    from (
-      select learning_mode, count(*) as c
-      from filtered
-      where learning_mode is not null and btrim(learning_mode) <> ''
-      group by learning_mode
-    ) s
-  )
-);
-$$;
-

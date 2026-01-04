@@ -565,7 +565,7 @@ def _job_attempt(job: Dict[str, Any]) -> int:
 
 def _fetch_raw(url: str, key: str, raw_id: Any) -> Optional[Dict[str, Any]]:
     rid = requests.utils.quote(str(raw_id), safe="")
-    select = "id,channel_link,channel_id,message_id,message_date,raw_text,is_forward,deleted_at"
+    select = "id,channel_link,channel_id,message_id,message_date,edit_date,raw_text,is_forward,deleted_at"
     return _get_one(url, key, "telegram_messages_raw", f"select={select}&id=eq.{rid}&limit=1")
 
 
@@ -786,7 +786,10 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             "channel_username": channel_link.replace("t.me/", "") if channel_link.startswith("t.me/") else None,
             "message_id": raw.get("message_id"),
             "message_link": _build_message_link(channel_link, str(raw.get("message_id") or "")),
+            # Source publish time (original Telegram message time).
             "date": raw.get("message_date"),
+            # Source bump/edit time (when Telegram reports an edit), used for `assignments.source_last_seen`.
+            "source_last_seen": raw.get("edit_date") or raw.get("message_date"),
             "raw_text": raw_text,
             "parsed": parsed,
         }
@@ -974,8 +977,13 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             return "requeued"
 
         # 4) Broadcast/DM (best-effort)
+        #
+        # Only do side-effects for newly inserted assignments to avoid duplicate posts on
+        # reprocesses and Telegram edits (which can enqueue the same message again).
+        is_insert = bool(persist_res.get("ok")) and str(persist_res.get("action") or "").lower() == "inserted"
+
         broadcast_res: Any = None
-        if ENABLE_BROADCAST and broadcast_assignments is not None:
+        if is_insert and ENABLE_BROADCAST and broadcast_assignments is not None:
             try:
                 broadcast_assignments.send_broadcast(payload)
                 broadcast_res = {"ok": True}
@@ -983,7 +991,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 broadcast_res = {"ok": False, "error": str(e)}
 
         dm_res: Any = None
-        if ENABLE_DMS and send_dms is not None:
+        if is_insert and ENABLE_DMS and send_dms is not None:
             try:
                 dm_res = send_dms(payload)
             except Exception as e:

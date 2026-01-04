@@ -103,6 +103,7 @@ create table if not exists public.assignments (
 
   created_at timestamptz not null default now(),
   published_at timestamptz,
+  source_last_seen timestamptz,
   last_seen timestamptz not null default now(),
   bump_count int not null default 0,
   freshness_tier text not null default 'green',
@@ -118,6 +119,9 @@ alter table public.assignments
 
 alter table public.assignments
   add column if not exists published_at timestamptz;
+
+alter table public.assignments
+  add column if not exists source_last_seen timestamptz;
 
 alter table public.assignments
   add column if not exists agency_name text;
@@ -269,6 +273,17 @@ create index if not exists assignments_status_created_at_idx
 create index if not exists assignments_status_last_seen_idx
   on public.assignments (status, last_seen desc);
 
+-- Sorting + tiering support (newer migrations)
+create index if not exists assignments_source_last_seen_idx
+  on public.assignments (source_last_seen desc);
+
+create index if not exists assignments_published_at_idx
+  on public.assignments (published_at desc);
+
+create index if not exists assignments_open_published_at_idx
+  on public.assignments (published_at desc, id desc)
+  where status = 'open';
+
 create index if not exists assignments_parse_quality_score_idx
   on public.assignments (parse_quality_score desc);
 
@@ -373,6 +388,7 @@ returns table(
   status text,
   created_at timestamptz,
   published_at timestamptz,
+  source_last_seen timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   total_count bigint
@@ -454,6 +470,7 @@ select
   status,
   created_at,
   published_at,
+  source_last_seen,
   last_seen,
   freshness_tier,
   count(*) over() as total_count
@@ -515,6 +532,7 @@ returns table(
   status text,
   created_at timestamptz,
   published_at timestamptz,
+  source_last_seen timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   distance_km double precision,
@@ -639,6 +657,7 @@ select
   status,
   created_at,
   published_at,
+  source_last_seen,
   last_seen,
   freshness_tier,
   distance_km,

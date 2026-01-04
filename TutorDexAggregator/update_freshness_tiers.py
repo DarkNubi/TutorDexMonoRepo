@@ -93,11 +93,28 @@ def update_tiers(
             )
         return {"ok": ok, "status_code": resp.status_code, "updated": updated, "rows": rows}
 
-    green_q = f"{cfg.assignments_table}?status=eq.open&last_seen=gte.{_iso(green_cutoff)}"
-    yellow_q = f"{cfg.assignments_table}?status=eq.open&last_seen=lt.{_iso(green_cutoff)}&last_seen=gte.{_iso(yellow_cutoff)}"
-    orange_q = f"{cfg.assignments_table}?status=eq.open&last_seen=lt.{_iso(yellow_cutoff)}&last_seen=gte.{_iso(orange_cutoff)}"
-    red_q = f"{cfg.assignments_table}?status=eq.open&last_seen=lt.{_iso(orange_cutoff)}&last_seen=gte.{_iso(red_cutoff)}"
-    expired_q = f"{cfg.assignments_table}?status=eq.open&last_seen=lt.{_iso(expire_cutoff)}"
+    # Freshness tiers should reflect upstream bumps/edits, not when we reprocessed history.
+    # Use `source_last_seen` when present; fall back to published_at/created_at/last_seen for older rows.
+    green_q = (
+        f"{cfg.assignments_table}?status=eq.open"
+        f"&or=(source_last_seen.gte.{_iso(green_cutoff)},and(source_last_seen.is.null,published_at.gte.{_iso(green_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.gte.{_iso(green_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.is.null,last_seen.gte.{_iso(green_cutoff)}))"
+    )
+    yellow_q = (
+        f"{cfg.assignments_table}?status=eq.open"
+        f"&or=(and(source_last_seen.lt.{_iso(green_cutoff)},source_last_seen.gte.{_iso(yellow_cutoff)}),and(source_last_seen.is.null,published_at.lt.{_iso(green_cutoff)},published_at.gte.{_iso(yellow_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.lt.{_iso(green_cutoff)},created_at.gte.{_iso(yellow_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.is.null,last_seen.lt.{_iso(green_cutoff)},last_seen.gte.{_iso(yellow_cutoff)}))"
+    )
+    orange_q = (
+        f"{cfg.assignments_table}?status=eq.open"
+        f"&or=(and(source_last_seen.lt.{_iso(yellow_cutoff)},source_last_seen.gte.{_iso(orange_cutoff)}),and(source_last_seen.is.null,published_at.lt.{_iso(yellow_cutoff)},published_at.gte.{_iso(orange_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.lt.{_iso(yellow_cutoff)},created_at.gte.{_iso(orange_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.is.null,last_seen.lt.{_iso(yellow_cutoff)},last_seen.gte.{_iso(orange_cutoff)}))"
+    )
+    red_q = (
+        f"{cfg.assignments_table}?status=eq.open"
+        f"&or=(and(source_last_seen.lt.{_iso(orange_cutoff)},source_last_seen.gte.{_iso(red_cutoff)}),and(source_last_seen.is.null,published_at.lt.{_iso(orange_cutoff)},published_at.gte.{_iso(red_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.lt.{_iso(orange_cutoff)},created_at.gte.{_iso(red_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.is.null,last_seen.lt.{_iso(orange_cutoff)},last_seen.gte.{_iso(red_cutoff)}))"
+    )
+    expired_q = (
+        f"{cfg.assignments_table}?status=eq.open"
+        f"&or=(source_last_seen.lt.{_iso(expire_cutoff)},and(source_last_seen.is.null,published_at.lt.{_iso(expire_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.lt.{_iso(expire_cutoff)}),and(source_last_seen.is.null,published_at.is.null,created_at.is.null,last_seen.lt.{_iso(expire_cutoff)}))"
+    )
 
     log_event(
         logger,

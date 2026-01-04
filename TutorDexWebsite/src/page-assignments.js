@@ -16,11 +16,17 @@ import {
   labelForGeneralCategoryCode,
   labelsForCanonicalCodes,
   labelsForGeneralCategoryCodes,
+  searchCanonicalSubjects,
 } from "./taxonomy/subjectsTaxonomyV2.js";
 
 const BUILD_TIME = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
 
 const specificLevelsData = SPECIFIC_LEVELS || {};
+const FILTERS_STORAGE_KEY = "tutordex_assignments_filters_v1";
+const VIEW_MODE_STORAGE_KEY = "tutordex_assignments_view_mode_v1";
+const LAST_VISIT_STORAGE_KEY = "tutordex_assignments_last_visit_ms_v1";
+const HIDDEN_IDS_STORAGE_KEY = "tutordex_assignments_hidden_ids_v1";
+const SAVED_IDS_STORAGE_KEY = "tutordex_assignments_saved_ids_v1";
 
 // --- 3. RENDER FUNCTIONS ---
 const grid = document.getElementById("assignments-grid");
@@ -40,6 +46,14 @@ let nextCursorDistanceKm = null;
 let lastFacets = null;
 let activeLoadToken = 0;
 let hasPostalCoords = null;
+let didRestoreFiltersFromStorage = false;
+let viewMode = "full";
+let lastVisitCutoffMs = 0;
+let myTutorProfile = null;
+let hiddenIds = new Set();
+let savedIds = new Set();
+let didWriteLastVisitThisSession = false;
+let currentUid = null;
 
 function getOrCreateStatusEl() {
   const host = document.querySelector(".max-w-6xl") || document.body;
@@ -77,6 +91,53 @@ function setStatus(message, kind = "info", { showRetry = false } = {}) {
   else if (kind === "success") el.className += " text-green-600";
   else if (kind === "warning") el.className += " text-yellow-700";
   else el.className += " text-gray-500";
+}
+
+function setViewMode(next) {
+  viewMode = next === "compact" ? "compact" : "full";
+  writeViewMode(viewMode);
+  updateViewToggleUI();
+  renderCards(allAssignments);
+}
+
+function updateViewToggleUI() {
+  const fullBtn = document.getElementById("view-toggle-full");
+  const compactBtn = document.getElementById("view-toggle-compact");
+  if (fullBtn) fullBtn.classList.toggle("bg-black", viewMode === "full");
+  if (fullBtn) fullBtn.classList.toggle("text-white", viewMode === "full");
+  if (compactBtn) compactBtn.classList.toggle("bg-black", viewMode === "compact");
+  if (compactBtn) compactBtn.classList.toggle("text-white", viewMode === "compact");
+}
+
+function updateHiddenUI() {
+  const btn = document.getElementById("clear-hidden-btn");
+  if (!btn) return;
+  btn.classList.toggle("hidden", hiddenIds.size === 0);
+}
+
+async function copyToClipboard(text) {
+  const s = String(text || "").trim();
+  if (!s) return false;
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(s);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = s;
+    ta.setAttribute("readonly", "readonly");
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return Boolean(ok);
+  } catch {
+    return false;
+  }
 }
 
 function setResultsSummary(showing, total) {
@@ -142,6 +203,55 @@ function toStringList(value) {
   // If the backend stores multi-line notes in a single string, treat each line as an item.
   if (s.includes("\n")) return s.split("\n").map((x) => x.trim()).filter(Boolean);
   return [s];
+}
+
+function readIdSet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    const list = Array.isArray(parsed) ? parsed : [];
+    return new Set(list.map((x) => String(x || "").trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeIdSet(key, set) {
+  try {
+    localStorage.setItem(key, JSON.stringify(Array.from(set || []).slice(0, 5000)));
+  } catch {}
+}
+
+function readViewMode() {
+  try {
+    const raw = String(localStorage.getItem(VIEW_MODE_STORAGE_KEY) || "").trim().toLowerCase();
+    return raw === "compact" ? "compact" : "full";
+  } catch {
+    return "full";
+  }
+}
+
+function writeViewMode(mode) {
+  try {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode === "compact" ? "compact" : "full");
+  } catch {}
+}
+
+function readLastVisitMs() {
+  try {
+    const raw = localStorage.getItem(LAST_VISIT_STORAGE_KEY);
+    const n = raw ? Number.parseInt(raw, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeLastVisitMs(ms) {
+  try {
+    localStorage.setItem(LAST_VISIT_STORAGE_KEY, String(Math.max(0, Number(ms) || 0)));
+  } catch {}
 }
 
 function mapAssignmentRow(row) {
@@ -214,7 +324,9 @@ function mapAssignmentRow(row) {
     startDate: toText(row?.start_date),
     agencyName: toText(row?.agency_name),
     learningMode,
-    updatedAt: toText(row?.last_seen || row?.created_at),
+    postedAt: toText(row?.published_at || row?.created_at || row?.last_seen),
+    bumpedAt: toText(row?.source_last_seen || row?.published_at || row?.last_seen),
+    processedAt: toText(row?.last_seen),
   };
 }
 
@@ -230,6 +342,33 @@ function formatRelativeTime(isoString) {
   if (hours < 48) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function formatShortDate(isoString) {
+  const t = Date.parse(String(isoString || ""));
+  if (!Number.isFinite(t)) return "";
+  try {
+    const d = new Date(t);
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+function hasMatchForMe(job) {
+  const me = myTutorProfile;
+  if (!me) return false;
+  const mySubjects = new Set(toStringList(me.subjects));
+  const myLevels = new Set(toStringList(me.levels));
+  const mySpecific = new Set(toStringList(me.specific_student_levels || me.specificStudentLevels || []));
+
+  const subjHit =
+    Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.some((c) => mySubjects.has(String(c || "").trim()));
+  const lvlHit = Array.isArray(job.signalsLevels) && job.signalsLevels.some((l) => myLevels.has(String(l || "").trim()));
+  const specHit =
+    Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.some((l) => mySpecific.has(String(l || "").trim()));
+
+  return Boolean(subjHit || specHit || lvlHit);
 }
 
 function formatDistanceKm(km) {
@@ -274,7 +413,11 @@ function renderSkeleton(count = 6) {
 function renderCards(data) {
   grid.innerHTML = "";
 
-  if (data.length === 0) {
+  const visible = (data || []).filter((job) => job && !hiddenIds.has(String(job.id || "").trim()));
+
+  updateHiddenUI();
+
+  if (visible.length === 0) {
     noResults.classList.remove("hidden");
     countLabel.innerText = "0";
     setResultsSummary(0, totalAssignments);
@@ -283,10 +426,12 @@ function renderCards(data) {
   }
 
   noResults.classList.add("hidden");
-  countLabel.innerText = String(data.length);
-  setResultsSummary(data.length, totalAssignments);
+  countLabel.innerText = String(visible.length);
+  setResultsSummary(visible.length, totalAssignments);
 
-  data.forEach((job) => {
+  const compact = viewMode === "compact";
+
+  visible.forEach((job) => {
     const levelDisplay = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
       ? job.signalsSpecificLevels.join(" / ")
       : Array.isArray(job.signalsLevels) && job.signalsLevels.length
@@ -294,7 +439,9 @@ function renderCards(data) {
         : "";
 
     const card = document.createElement("div");
-    card.className = "job-card bg-white rounded-xl p-6 relative flex flex-col justify-between h-full";
+    card.className = compact
+      ? "job-card bg-white rounded-xl p-4 relative flex flex-col justify-between h-full"
+      : "job-card bg-white rounded-xl p-6 relative flex flex-col justify-between h-full";
 
     const top = document.createElement("div");
 
@@ -310,12 +457,41 @@ function renderCards(data) {
       .toLowerCase();
     const tierPill = document.createElement("span");
     tierPill.className = "badge";
-    tierPill.textContent = tier === "yellow" ? "Yellow" : tier === "orange" ? "Orange" : tier === "red" ? "Red" : "Green";
-    tierPill.title = "Freshness tier based on recent reposts/updates.";
+    tierPill.textContent =
+      tier === "green"
+        ? "Likely open"
+        : tier === "yellow"
+          ? "Probably open"
+          : tier === "orange"
+            ? "Uncertain"
+            : "Likely closed";
+    tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
     if (tier === "yellow") tierPill.className = "badge bg-yellow-100 text-yellow-800";
     else if (tier === "orange") tierPill.className = "badge bg-orange-100 text-orange-800";
     else if (tier === "red") tierPill.className = "badge bg-red-100 text-red-800";
     else tierPill.className = "badge bg-green-100 text-green-800";
+
+    const chips = document.createElement("div");
+    chips.className = "flex flex-wrap items-center justify-center gap-2 px-2";
+    chips.appendChild(tierPill);
+
+    const postedMs = Date.parse(String(job.postedAt || ""));
+    const isNew = Number.isFinite(postedMs) && lastVisitCutoffMs > 0 && postedMs > lastVisitCutoffMs;
+    if (isNew) {
+      const newPill = document.createElement("span");
+      newPill.className = "badge bg-blue-100 text-blue-800";
+      newPill.textContent = "New";
+      newPill.title = "Posted since your last visit.";
+      chips.appendChild(newPill);
+    }
+
+    if (hasMatchForMe(job)) {
+      const matchPill = document.createElement("span");
+      matchPill.className = "badge bg-purple-100 text-purple-800";
+      matchPill.textContent = "Matches you";
+      matchPill.title = "Matches your saved profile preferences.";
+      chips.appendChild(matchPill);
+    }
 
     const rate = document.createElement("span");
     rate.className = "font-bold text-lg";
@@ -331,11 +507,11 @@ function renderCards(data) {
     rate.textContent = rateLabel;
 
     header.appendChild(badge);
-    header.appendChild(tierPill);
+    header.appendChild(chips);
     header.appendChild(rate);
 
     const title = document.createElement("h3");
-    title.className = "text-3xl brand-font leading-none mb-1";
+    title.className = compact ? "text-2xl brand-font leading-none mb-1" : "text-3xl brand-font leading-none mb-1";
     title.textContent = job.academicDisplayText || "Tuition Assignment";
 
     const subtitle = document.createElement("p");
@@ -343,7 +519,7 @@ function renderCards(data) {
     subtitle.textContent = levelDisplay;
 
     const details = document.createElement("div");
-    details.className = "space-y-3 mb-8";
+    details.className = compact ? "space-y-2 mb-4" : "space-y-3 mb-8";
 
     function addDetail(iconClass, text) {
       const row = document.createElement("div");
@@ -374,31 +550,31 @@ function renderCards(data) {
     if (subjectBits.length) {
       addDetail("fa-solid fa-book", subjectBits.slice(0, 5).join(" / "));
     }
+
     addDetail("fa-solid fa-location-dot", job.location);
-    if (job.region) {
-      addDetail("fa-solid fa-map", job.region);
-    }
-    if (job.nearestMrt) {
+    if (!compact && job.region) addDetail("fa-solid fa-map", job.region);
+    if (!compact && job.nearestMrt) {
       const line = String(job.nearestMrtLine || "").trim();
       const dist = typeof job.nearestMrtDistanceM === "number" && Number.isFinite(job.nearestMrtDistanceM) ? job.nearestMrtDistanceM : null;
       const suffix = `${line ? ` (${line})` : ""}${dist != null ? ` ~${dist}m` : ""}`;
       addDetail("fa-solid fa-train-subway", `${job.nearestMrt}${suffix}`);
     }
-    if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
-      addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
+    if (!compact && typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
+    if (!compact && Array.isArray(job.scheduleNotes) && job.scheduleNotes.length) job.scheduleNotes.forEach((line) => addDetail("fa-solid fa-calendar-days", line));
+    if (!compact && job.startDate) addDetail("fa-solid fa-calendar-check", job.startDate);
+    if (!compact && Array.isArray(job.timeNotes) && job.timeNotes.length) job.timeNotes.forEach((line) => addDetail("fa-solid fa-clock", line));
+    if (!compact && job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
+    if (!compact && job.agencyName) addDetail("fa-solid fa-building", job.agencyName);
+
+    if (job.postedAt) {
+      const rel = formatRelativeTime(job.postedAt);
+      const d = formatShortDate(job.postedAt);
+      addDetail("fa-solid fa-calendar-day", rel ? `Posted ${rel}${d ? ` (${d})` : ""}` : d ? `Posted ${d}` : "Posted");
     }
-    if (Array.isArray(job.scheduleNotes) && job.scheduleNotes.length) {
-      job.scheduleNotes.forEach((line) => addDetail("fa-solid fa-calendar-days", line));
-    }
-    if (job.startDate) addDetail("fa-solid fa-calendar-check", job.startDate);
-    if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
-      job.timeNotes.forEach((line) => addDetail("fa-solid fa-clock", line));
-    }
-    if (job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
-    if (job.agencyName) addDetail("fa-solid fa-building", job.agencyName);
-    if (job.updatedAt) {
-      const rel = formatRelativeTime(job.updatedAt);
-      addDetail("fa-solid fa-rotate", rel ? `Updated ${rel}` : "Updated recently");
+    if (job.bumpedAt) {
+      const rel = formatRelativeTime(job.bumpedAt);
+      const d = formatShortDate(job.bumpedAt);
+      addDetail("fa-solid fa-rotate", rel ? `Bumped/Updated ${rel}${d ? ` (${d})` : ""}` : d ? `Bumped/Updated ${d}` : "Bumped/Updated");
     }
 
     top.appendChild(header);
@@ -409,15 +585,24 @@ function renderCards(data) {
     const rawMessageLink = typeof job.messageLink === "string" ? job.messageLink.trim() : "";
     const messageLink = rawMessageLink.startsWith("t.me/") ? `https://${rawMessageLink}` : rawMessageLink;
 
-    const applyBtn = document.createElement(messageLink ? "a" : "button");
-    applyBtn.className = "w-full py-4 border-2 border-black rounded-lg font-bold uppercase tracking-wide transition text-center";
-    applyBtn.textContent = messageLink ? "Apply Now" : "Link Unavailable";
+    card.appendChild(top);
+
+    const actions = document.createElement("div");
+    actions.className = "mt-3";
+
+    const primaryRow = document.createElement("div");
+    primaryRow.className = "flex gap-2";
+
+    const openBtn = document.createElement(messageLink ? "a" : "button");
+    openBtn.className =
+      "flex-1 py-3 border-2 border-black rounded-lg font-bold uppercase tracking-wide transition text-center " +
+      (messageLink ? "hover:bg-black hover:text-white" : "opacity-40 cursor-not-allowed");
+    openBtn.textContent = messageLink ? "Open original post" : "Link unavailable";
     if (messageLink) {
-      applyBtn.href = messageLink;
-      applyBtn.target = "_blank";
-      applyBtn.rel = "noopener noreferrer";
-      applyBtn.className += " hover:bg-black hover:text-white";
-      applyBtn.addEventListener("click", () => {
+      openBtn.href = messageLink;
+      openBtn.target = "_blank";
+      openBtn.rel = "noopener noreferrer";
+      openBtn.addEventListener("click", () => {
         try {
           sendClickBeacon({
             eventType: "apply_click",
@@ -429,24 +614,65 @@ function renderCards(data) {
         } catch {}
       });
     } else {
-      applyBtn.type = "button";
-      applyBtn.disabled = true;
-      applyBtn.className += " opacity-40 cursor-not-allowed";
-      applyBtn.addEventListener("click", () => {
-        try {
-          sendClickBeacon({
-            eventType: "apply_click",
-            assignmentExternalId: job.id,
-            destinationType: "telegram_message",
-            destinationUrl: "",
-            meta: { hasMessageLink: false },
-          });
-        } catch {}
-      });
+      openBtn.type = "button";
+      openBtn.disabled = true;
     }
 
-    card.appendChild(top);
-    card.appendChild(applyBtn);
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className =
+      "px-4 py-3 border-2 border-gray-200 rounded-lg font-bold uppercase tracking-wide transition text-center hover:bg-gray-50 " +
+      (messageLink ? "" : "opacity-40 cursor-not-allowed");
+    copyBtn.textContent = "Copy link";
+    copyBtn.disabled = !messageLink;
+    copyBtn.addEventListener("click", async () => {
+      if (!messageLink) return;
+      const ok = await copyToClipboard(messageLink);
+      setStatus(ok ? "Copied link." : "Could not copy link.", ok ? "success" : "error");
+      try {
+        await trackEvent({ eventType: "copy_link", assignmentExternalId: job.id, meta: { ok: Boolean(ok) } });
+      } catch {}
+    });
+
+    primaryRow.appendChild(openBtn);
+    primaryRow.appendChild(copyBtn);
+    actions.appendChild(primaryRow);
+
+    const secondaryRow = document.createElement("div");
+    secondaryRow.className = "mt-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-gray-500";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    const isSaved = savedIds.has(String(job.id || "").trim());
+    saveBtn.textContent = isSaved ? "Saved" : "Save";
+    saveBtn.className = "underline hover:text-black transition";
+    saveBtn.addEventListener("click", () => {
+      const key = String(job.id || "").trim();
+      if (!key) return;
+      if (savedIds.has(key)) savedIds.delete(key);
+      else savedIds.add(key);
+      writeIdSet(SAVED_IDS_STORAGE_KEY, savedIds);
+      renderCards(allAssignments);
+    });
+
+    const hideBtn = document.createElement("button");
+    hideBtn.type = "button";
+    hideBtn.textContent = "Hide";
+    hideBtn.className = "underline hover:text-black transition";
+    hideBtn.addEventListener("click", () => {
+      const key = String(job.id || "").trim();
+      if (!key) return;
+      hiddenIds.add(key);
+      writeIdSet(HIDDEN_IDS_STORAGE_KEY, hiddenIds);
+      renderCards(allAssignments);
+      setStatus("Hidden on this device. Use “Show Hidden” to undo.", "info");
+    });
+
+    secondaryRow.appendChild(saveBtn);
+    secondaryRow.appendChild(hideBtn);
+    actions.appendChild(secondaryRow);
+
+    card.appendChild(actions);
     grid.appendChild(card);
   });
 }
@@ -467,7 +693,176 @@ function hideLoadError() {
 }
 
 // --- 4. FILTER LOGIC ---
+function readStoredFilters() {
+  try {
+    const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredFilters(filters) {
+  try {
+    localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters || {}));
+  } catch {}
+}
+
+function snapshotFiltersForStorage() {
+  const filters = collectFiltersFromUI();
+  return {
+    v: 1,
+    level: filters.level || "",
+    specificStudentLevel: filters.specificStudentLevel || "",
+    subjectGeneral: filters.subjectGeneral || "",
+    subjectCanonical: filters.subjectCanonical || "",
+    location: filters.location || "",
+    sort: filters.sort || "newest",
+    minRate: filters.minRate || "",
+    savedAtMs: Date.now(),
+  };
+}
+
+function restoreFiltersIntoUI(stored) {
+  if (!stored || typeof stored !== "object") return false;
+  const levelEl = document.getElementById("filter-level");
+  const specificEl = document.getElementById("filter-specific-level");
+  const genEl = document.getElementById("filter-subject-general");
+  const canonEl = document.getElementById("filter-subject-canonical");
+  const locEl = document.getElementById("filter-location");
+  const sortEl = document.getElementById("filter-sort");
+  const rateEl = document.getElementById("filter-rate");
+  if (!levelEl || !specificEl || !locEl || !sortEl || !rateEl) return false;
+
+  levelEl.value = String(stored.level || "");
+  locEl.value = String(stored.location || "");
+  sortEl.value = String(stored.sort || "newest");
+  rateEl.value = String(stored.minRate || "");
+
+  // Options may not exist yet; set targets so updateFilter* can re-select after rebuild.
+  if (genEl) genEl.value = String(stored.subjectGeneral || "");
+  if (canonEl) canonEl.value = String(stored.subjectCanonical || "");
+  specificEl.value = String(stored.specificStudentLevel || "");
+
+  updateFilterSpecificLevels();
+  updateFilterSubjects();
+  return true;
+}
+
+function ensureCanonicalOption(code, label) {
+  const select = document.getElementById("filter-subject-canonical");
+  if (!select) return false;
+  const c = String(code || "").trim();
+  if (!c) return false;
+  const exists = Array.from(select.options || []).some((o) => String(o.value || "").trim() === c);
+  if (!exists) {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.text = String(label || c).trim() || c;
+    select.appendChild(opt);
+  }
+  select.value = c;
+  return true;
+}
+
+function mountSubjectSearch() {
+  const input = document.getElementById("subject-search");
+  const resultsEl = document.getElementById("subject-search-results");
+  if (!input || !resultsEl) return;
+
+  function hideResults() {
+    resultsEl.classList.add("hidden");
+    resultsEl.innerHTML = "";
+  }
+
+  function showResults(items, { query } = {}) {
+    resultsEl.innerHTML = "";
+    if (!items || !items.length) {
+      hideResults();
+      return;
+    }
+    items.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center justify-between gap-3";
+
+      const left = document.createElement("span");
+      left.className = "text-sm font-semibold text-gray-900";
+      left.textContent = String(item.label || item.code || "").trim();
+
+      const right = document.createElement("span");
+      right.className = "text-xs font-mono text-gray-500";
+      right.textContent = String(item.code || "").trim();
+
+      btn.appendChild(left);
+      btn.appendChild(right);
+      btn.addEventListener("click", () => {
+        const code = String(item.code || "").trim();
+        if (!code) return;
+        input.value = String(item.label || code).trim();
+        ensureCanonicalOption(code, item.label);
+        const generalSelect = document.getElementById("filter-subject-general");
+        if (generalSelect) generalSelect.value = "";
+        writeStoredFilters(snapshotFiltersForStorage());
+        hideResults();
+        input.blur();
+        void loadAssignments({ reset: true });
+      });
+      resultsEl.appendChild(btn);
+    });
+    resultsEl.classList.remove("hidden");
+
+    if (query) {
+      resultsEl.setAttribute("data-query", String(query));
+    }
+  }
+
+  let lastQuery = "";
+  let searchTimer = null;
+
+  function doSearch() {
+    const q = String(input.value || "").trim();
+    if (!q) {
+      lastQuery = "";
+      hideResults();
+      return;
+    }
+    if (q === lastQuery) return;
+    lastQuery = q;
+
+    const level = (document.getElementById("filter-level")?.value || "").trim() || null;
+    const items = searchCanonicalSubjects(q, { level, limit: 10 });
+    showResults(items, { query: q });
+  }
+
+  input.addEventListener("input", () => {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearch, 80);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      hideResults();
+      return;
+    }
+    if (e.key === "Enter") {
+      const first = resultsEl.querySelector("button");
+      if (first) {
+        e.preventDefault();
+        first.click();
+      }
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(() => hideResults(), 150);
+  });
+}
+
 function updateFilterSpecificLevels() {
+  const currentSelected = document.getElementById("filter-specific-level")?.value || "";
   const level = document.getElementById("filter-level").value;
   const specificSelect = document.getElementById("filter-specific-level");
   const options = specificLevelsData[level] || [];
@@ -497,6 +892,7 @@ function updateFilterSpecificLevels() {
     specificSelect.appendChild(option);
   });
 
+  if (currentSelected) specificSelect.value = currentSelected;
   specificSelect.disabled = false;
 }
 
@@ -504,6 +900,8 @@ function updateFilterSubjects() {
   const level = document.getElementById("filter-level").value;
   const generalSelect = document.getElementById("filter-subject-general");
   const canonicalSelect = document.getElementById("filter-subject-canonical");
+  const prevGeneral = generalSelect?.value || "";
+  const prevCanonical = canonicalSelect?.value || "";
 
   if (generalSelect) generalSelect.innerHTML = '<option value="">All General Subjects</option>';
   if (canonicalSelect) canonicalSelect.innerHTML = '<option value="">All Advanced Subjects</option>';
@@ -539,6 +937,32 @@ function updateFilterSubjects() {
       canonicalSelect.appendChild(option);
     });
   }
+
+  if (generalSelect && prevGeneral) {
+    if (!Array.from(generalSelect.options || []).some((o) => String(o.value || "").trim() === String(prevGeneral).trim())) {
+      const code = String(prevGeneral).trim();
+      if (code) {
+        const opt = document.createElement("option");
+        opt.value = code;
+        opt.text = labelForGeneralCategoryCode(code) || code;
+        generalSelect.appendChild(opt);
+      }
+    }
+    generalSelect.value = prevGeneral;
+  }
+
+  if (canonicalSelect && prevCanonical) {
+    if (!Array.from(canonicalSelect.options || []).some((o) => String(o.value || "").trim() === String(prevCanonical).trim())) {
+      const code = String(prevCanonical).trim();
+      if (code) {
+        const opt = document.createElement("option");
+        opt.value = code;
+        opt.text = labelForCanonicalCode(code) || code;
+        canonicalSelect.appendChild(opt);
+      }
+    }
+    canonicalSelect.value = prevCanonical;
+  }
 }
 
 function collectFiltersFromUI() {
@@ -554,6 +978,7 @@ function collectFiltersFromUI() {
 }
 
 async function applyFilters() {
+  writeStoredFilters(snapshotFiltersForStorage());
   if (!isBackendEnabled()) {
     // Legacy fallback: filter only the currently loaded in-memory list.
     const level = document.getElementById("filter-level").value;
@@ -598,6 +1023,7 @@ function clearFilters() {
   const sortEl = document.getElementById("filter-sort");
   if (sortEl) sortEl.value = "newest";
   document.getElementById("filter-rate").value = "";
+  writeStoredFilters(snapshotFiltersForStorage());
   if (!isBackendEnabled()) {
     renderCards(allAssignments);
     return;
@@ -626,9 +1052,15 @@ function applySortAvailability() {
   const option = Array.from(select.options).find((o) => o.value === "distance");
   const canSortByDistance = hasPostalCoords === true;
   if (option) option.disabled = !canSortByDistance;
-  select.title = canSortByDistance ? "" : "Set your postal code in Profile to enable Nearest sorting.";
+  select.title = canSortByDistance ? "" : "Sign in and set your postal code in Profile to enable Nearest sorting.";
   if (!canSortByDistance && select.value === "distance") {
     select.value = "newest";
+  }
+
+  const cta = document.getElementById("postal-cta");
+  if (cta) {
+    cta.classList.toggle("hidden", canSortByDistance);
+    cta.setAttribute("href", currentUid ? "profile.html" : "index.html?next=profile.html");
   }
 }
 
@@ -757,6 +1189,11 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     try {
       await trackEvent({ eventType: "assignments_view" });
     } catch {}
+
+    if (!didWriteLastVisitThisSession) {
+      didWriteLastVisitThisSession = true;
+      writeLastVisitMs(Date.now());
+    }
     setStatus(`Loaded ${allAssignments.length} of ${totalAssignments} assignments.`, "success");
   } catch (err) {
     const msg = String(err?.message || err || "");
@@ -788,9 +1225,11 @@ async function prepopulateFiltersFromProfile() {
     await waitForAuth();
     const uid = await getCurrentUid();
     if (!uid) return;
+    currentUid = uid;
 
     const profile = await getTutor(uid);
     if (!profile) return;
+    myTutorProfile = profile;
 
     const level = Array.isArray(profile.levels) ? profile.levels[0] : "";
     const subjectCanonical = Array.isArray(profile.subjects) ? profile.subjects[0] : "";
@@ -840,10 +1279,48 @@ function mountDebugPanel() {
 }
 
 window.addEventListener("load", () => {
+  viewMode = readViewMode();
+  hiddenIds = readIdSet(HIDDEN_IDS_STORAGE_KEY);
+  savedIds = readIdSet(SAVED_IDS_STORAGE_KEY);
+  lastVisitCutoffMs = readLastVisitMs();
+
+  const fullBtn = document.getElementById("view-toggle-full");
+  const compactBtn = document.getElementById("view-toggle-compact");
+  if (fullBtn) fullBtn.addEventListener("click", () => setViewMode("full"));
+  if (compactBtn) compactBtn.addEventListener("click", () => setViewMode("compact"));
+
+  const clearHiddenBtn = document.getElementById("clear-hidden-btn");
+  if (clearHiddenBtn) {
+    clearHiddenBtn.addEventListener("click", () => {
+      hiddenIds = new Set();
+      writeIdSet(HIDDEN_IDS_STORAGE_KEY, hiddenIds);
+      renderCards(allAssignments);
+      setStatus("Showing hidden assignments again.", "success");
+    });
+  }
+
+  updateViewToggleUI();
+  updateHiddenUI();
+  mountSubjectSearch();
+
   if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments({ reset: true }));
   if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => loadAssignments({ append: true }));
   const sortEl = document.getElementById("filter-sort");
-  if (sortEl) sortEl.addEventListener("change", () => loadAssignments({ reset: true }));
+  if (sortEl) {
+    sortEl.addEventListener("change", () => {
+      writeStoredFilters(snapshotFiltersForStorage());
+      loadAssignments({ reset: true });
+    });
+  }
+
+  try {
+    const stored = readStoredFilters();
+    didRestoreFiltersFromStorage = restoreFiltersIntoUI(stored);
+  } catch {
+    didRestoreFiltersFromStorage = false;
+  }
   mountDebugPanel();
-  loadAssignments({ reset: true }).then(() => prepopulateFiltersFromProfile());
+  loadAssignments({ reset: true }).then(() => {
+    if (!didRestoreFiltersFromStorage) return prepopulateFiltersFromProfile();
+  });
 });

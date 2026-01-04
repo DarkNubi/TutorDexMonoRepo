@@ -152,6 +152,29 @@ def _coerce_iso_ts(value: Any) -> Optional[str]:
     return s or None
 
 
+def _max_iso_ts(a: Optional[str], b: Optional[str]) -> Optional[str]:
+    """
+    Return the later of two ISO-ish timestamps.
+    If parsing fails, prefer a non-empty value deterministically.
+    """
+    if not a and not b:
+        return None
+    if not a:
+        return b
+    if not b:
+        return a
+    da = _parse_iso_dt(a)
+    db = _parse_iso_dt(b)
+    if da and db:
+        return a if da >= db else b
+    if da and not db:
+        return a
+    if db and not da:
+        return b
+    # Both unparseable: fall back to stable choice.
+    return b
+
+
 def _coerce_int_like(value: Any) -> Optional[int]:
     """
     Convert values like 45, 45.0, "45", "45.0" into an int.
@@ -517,6 +540,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "agency_link": agency_link,
         # Source publish time (Telegram message date, or first-seen for API sources).
         "published_at": _coerce_iso_ts(payload.get("date")),
+        # Last upstream bump/edit/repost time (Telegram edit_date or similar).
+        "source_last_seen": _coerce_iso_ts(payload.get("source_last_seen") or payload.get("date")),
         "channel_id": payload.get("channel_id"),
         "message_id": payload.get("message_id"),
         "message_link": _safe_str(payload.get("message_link")),
@@ -821,6 +846,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             existing = existing_rows[0]
             last_seen = _parse_iso_dt(existing.get("last_seen"))
             bump_count = int(existing.get("bump_count") or 0)
+            existing_source_last_seen = _safe_str(existing.get("source_last_seen"))
 
             should_bump = True
             if last_seen:
@@ -843,6 +869,12 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 patch_body["bump_count"] = bump_count + 1
 
             patch_body.update(_merge_patch_body(existing=existing, incoming_row=row))
+
+            # Keep `source_last_seen` monotonic based on upstream timestamp (do not let reprocess overwrite it).
+            incoming_source_last_seen = _safe_str(row.get("source_last_seen"))
+            patch_body["source_last_seen"] = _max_iso_ts(existing_source_last_seen, incoming_source_last_seen) or existing_source_last_seen
+            if patch_body.get("source_last_seen") is None:
+                patch_body.pop("source_last_seen", None)
 
             try:
                 t0 = timed()
@@ -870,6 +902,8 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 patch_body.pop("subjects_general", None)
                 patch_body.pop("canonicalization_version", None)
                 patch_body.pop("canonicalization_debug", None)
+                patch_body.pop("published_at", None)
+                patch_body.pop("source_last_seen", None)
                 try:
                     t0 = timed()
                     patch_resp = client.patch(
@@ -898,6 +932,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         row_to_insert = dict(row)
         row_to_insert["last_seen"] = now_iso
         row_to_insert.setdefault("published_at", now_iso)
+        row_to_insert.setdefault("source_last_seen", row_to_insert.get("published_at") or now_iso)
         row_to_insert.setdefault("bump_count", 0)
         row_to_insert.setdefault("status", "open")
 
@@ -927,6 +962,8 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             row_to_insert.pop("subjects_general", None)
             row_to_insert.pop("canonicalization_version", None)
             row_to_insert.pop("canonicalization_debug", None)
+            row_to_insert.pop("published_at", None)
+            row_to_insert.pop("source_last_seen", None)
             try:
                 t0 = timed()
                 insert_resp = client.post(

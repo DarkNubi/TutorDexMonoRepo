@@ -7,7 +7,7 @@
 > Scope: this monorepo is one system composed of three main codebases:
 > - `TutorDexAggregator` (ingest + extract + persist + broadcast/DM)
 > - `TutorDexBackend` (API, tutor profile store, matching, analytics + click tracking)
-> - `TutorDexWebsite` (static Firebase-hosted website, authenticated, uses backend)
+> - `TutorDexWebsite` (static Firebase-hosted website; assignments page is public, profile is authenticated; uses backend)
 
 ---
 
@@ -18,7 +18,7 @@ TutorDex is an automated pipeline that turns **unstructured tuition assignment p
 
 There are three user-facing “surfaces”:
 1. A **Telegram broadcast channel** (optional): formatted posts with a link to the original agency message.
-2. A **Tutor website** (static Firebase-hosted pages): authenticated tutors browse assignments and manage preferences.
+2. A **Tutor website** (static Firebase-hosted pages): tutors can browse assignments as a guest; sign-in unlocks saved preferences, Telegram DM linking, and “Nearest” sorting.
 3. A **Telegram DM bot** (optional): tutors link their chat to receive DMs; the system pushes matched assignments.
 
 ### What problem it solves
@@ -120,6 +120,10 @@ Key functions to know:
 Supabase queue tables involved:
 - `public.telegram_messages_raw`: lossless raw messages (including edits/deletes).
 - `public.telegram_extractions`: work items keyed by `(raw_id, pipeline_version)`.
+
+Edits/deletes:
+- `collector.py live` handles `MessageEdited` by upserting the raw row and force-enqueueing extraction for that message id.
+- For “collector downtime” recovery (raw has edits but no reprocess), use `TutorDexAggregator/utilities/enqueue_edited_raws.py` to enqueue edited raws by `telegram_messages_raw.edit_date` without Telegram calls.
 
 #### Non-Telegram source: TutorCity API (polled)
 - Root compose runs `tutorcity-fetch` which executes `TutorDexAggregator/utilities/tutorcity_fetch.py` on an interval (see root `docker-compose.yml`).
@@ -226,13 +230,13 @@ Used for “fallback when not configured”:
 
 ### 3.5 Backend APIs
 
-#### Website-facing endpoints (authenticated via Firebase token)
-Website calls these paths via `TutorDexWebsite/src/backend.js` (which adds `Authorization: Bearer <Firebase ID token>`):
+#### Website-facing endpoints (some public, some authenticated)
+Website calls these paths via `TutorDexWebsite/src/backend.js` (which adds `Authorization: Bearer <Firebase ID token>` when available):
 - `GET /me/tutor` → read current tutor preferences.
 - `PUT /me/tutor` → upsert tutor preferences.
 - `POST /me/telegram/link-code` → generate a short-lived link code.
-- `GET /assignments` → list open assignments (paged).
-- `GET /assignments/facets` → filter dropdown counts.
+- `GET /assignments` → list open assignments (paged). (public for `sort=newest`; `sort=distance` requires auth)
+- `GET /assignments/facets` → filter dropdown counts. (public)
 - `POST /analytics/event` → record a UI event.
 
 Auth enforcement is optional.
@@ -254,7 +258,23 @@ The website is a static Firebase-hosted app.
 
 Assignments are loaded from backend:
 - `listOpenAssignmentsPaged` in `TutorDexWebsite/src/backend.js` calls `GET /assignments?limit=...&sort=...&...`.
+- Public browsing protections (anonymous users) live in `TutorDexBackend/app.py`:
+  - rate limiting on `GET /assignments` and `GET /assignments/facets`
+  - public limit caps for `/assignments`
+  - short Redis-backed caching for common anonymous queries (facets + first page newest)
 - The assignment rows are mapped by `mapAssignmentRow(row)` in `page-assignments.js`.
+
+Assignments page UX (tutor-focused):
+- Guest browsing is enabled on `TutorDexWebsite/assignments.html` (`data-require-auth="false"`); profile remains authenticated.
+- Cards show both timestamps:
+  - `Posted ...` uses `published_at` (fallback `created_at` / `last_seen`)
+  - `Bumped/Updated ...` uses `source_last_seen` (fallbacks) which drives “Open-likelihood”
+- Filters are remembered locally (localStorage) so the page reopens “ready”.
+- Subject search (label/code contains match) auto-selects a canonical subject filter.
+- A compact/full toggle supports faster scanning; cards also support local-only Save/Hide.
+
+DB/RPC requirement:
+- The website expects `source_last_seen` to be returned by the assignment listing RPCs; apply `TutorDexAggregator/supabase sqls/2026-01-04_03_rpc_return_source_last_seen.sql` if your feed doesn’t include bump timestamps.
 
 Subjects filtering (taxonomy v2):
 - Backend supports subject filters as *codes*:

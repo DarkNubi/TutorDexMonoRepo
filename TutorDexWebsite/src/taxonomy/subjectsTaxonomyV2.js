@@ -166,3 +166,39 @@ export function canonicalizeSubjectLabels({ level, subjects } = {}) {
     debug: { levelIn: level || null, levelCode, unmapped: unmapped.slice(0, 50) },
   };
 }
+
+export function searchCanonicalSubjects(query, { level = null, limit = 8, includeHidden = false } = {}) {
+  const q = normalizeSubjectLabel(query);
+  if (!q) return [];
+
+  const max = Math.max(1, Math.min(25, Number(limit) || 8));
+
+  const candidates = (() => {
+    const lvl = String(level || "").trim();
+    if (lvl) {
+      return canonicalSubjectsForLevel(lvl, { includeAny: true, includeHidden });
+    }
+    return (taxonomy.canonical_subjects || [])
+      .map((s) => ({
+        code: String(s?.code || "").trim(),
+        label: String(s?.label || "").trim() || String(s?.code || "").trim(),
+        generalCategoryCode: String(s?.general_category_code || "").trim(),
+        uiHidden: Boolean(s?.ui_hidden),
+      }))
+      .filter((s) => s.code && (includeHidden || s.uiHidden !== true));
+  })();
+
+  const scored = [];
+  for (const s of candidates) {
+    const code = String(s?.code || "").trim();
+    const label = String(s?.label || "").trim();
+    if (!code || !label) continue;
+    const hay = `${normalizeSubjectLabel(label)} ${normalizeSubjectLabel(code)}`;
+    const idx = hay.indexOf(q);
+    if (idx === -1) continue;
+    scored.push({ code, label, generalCategoryCode: String(s?.generalCategoryCode || ""), score: idx });
+  }
+
+  scored.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
+  return scored.slice(0, max).map((s) => ({ code: s.code, label: s.label, generalCategoryCode: s.generalCategoryCode }));
+}
