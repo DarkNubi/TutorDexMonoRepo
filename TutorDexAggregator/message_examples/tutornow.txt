@@ -1,3 +1,7 @@
+# TutorNow (t.me/tutornowassignments)
+#
+# Used only when `LLM_INCLUDE_EXAMPLES=true`. Examples are formatting guidance only.
+
 Example 1:
 Raw: SEC 4 G3 COMBINED BIOLOGY - Blk 424 Tampines Street 41 520424 (MOE TEACHER)
 

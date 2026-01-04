@@ -189,11 +189,12 @@ By default it writes to `TutorDexAggregator/monitoring/telegram_message_edits.sq
 - Update freshness tiers (recommended once per hour)
   - Requires `assignments.freshness_tier` (included in `supabase_schema_full.sql`)
   - Enable writes from aggregator: set `FRESHNESS_TIER_ENABLED=true` in `TutorDexAggregator/.env`
-  - Tier update (7d -> red, no close): `python update_freshness_tiers.py --expire-action none --red-hours 168`
-  - Auto-close after 14d: `python update_freshness_tiers.py --expire-action closed --red-hours 336`
+  - Default tier thresholds: green `<24h`, yellow `<36h`, orange `<48h`, red `<72h`
+  - Default expiry cutoff: `<168h` (7d) for `status=expired` + Telegram delete (optional)
+  - Auto-expire + delete broadcast message after 7d: `python update_freshness_tiers.py --expire-action expired --expire-hours 168 --delete-expired-telegram`
   - Docker sidecar (profile `tiers`): `docker compose --profile tiers up -d freshness-tiers`
     - Interval env: `FRESHNESS_TIERS_INTERVAL_SECONDS` (default 3600)
-    - Args env: `FRESHNESS_TIERS_ARGS` (default `--expire-action closed --red-hours 336`)
+    - Args env: `FRESHNESS_TIERS_ARGS` (default `--expire-action expired --green-hours 24 --yellow-hours 36 --orange-hours 48 --red-hours 72 --expire-hours 168 --delete-expired-telegram`)
 
 
 

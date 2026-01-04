@@ -1,0 +1,185 @@
+# Tuition Jobs SG (t.me/tuition)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: 🔹Subject: P4 math (teach in tuition centre)
+🔹Location: 399 Yung Sheng Rd, Singapore 610399
+🔹Time: Start this Tuesday 5.45pm to 7.15pm (6 Jan 2026)
+🔹Rate: $30/hr
+🔹Remark:
+1.5 hour per week, 50% commission
+🔹AAB2768
+
+JSON:
+{
+"assignment_code": "AAB2768",
+"academic_display_text": "P4 math",
+"learning_mode": {
+"mode": null,
+"raw_text": "teach in tuition centre"
+},
+"address": [
+"399 Yung Sheng Rd, Singapore 610399"
+],
+"postal_code": [
+"610399"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hour per week"
+],
+"start_date": "6 Jan 2026",
+"rate": {
+"min": 30,
+"max": 30,
+"raw_text": "$30/hr"
+},
+"additional_remarks": "1.5 hour per week, 50% commission"
+}
+
+Example 2:
+Raw: 🔹Subject: Sec 4 Amath (Teach in tuition centre)
+🔹Location: 214 Bedok North Street 1 (S)460214
+🔹Time: Thurs 730-930pm
+🔹Rate: Tutor to propose
+🔹Remark:
+2 hour per week, 50% commission
+🔹AAB2770
+
+JSON:
+{
+"assignment_code": "AAB2770",
+"academic_display_text": "Sec 4 Amath",
+"learning_mode": {
+"mode": null,
+"raw_text": "Teach in tuition centre"
+},
+"address": [
+"214 Bedok North Street 1"
+],
+"postal_code": [
+"460214"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"2 hour per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to propose"
+},
+"additional_remarks": "2 hour per week, 50% commission"
+}
+
+Example 3:
+Raw: 🔹Subject: P6 math
+🔹Location: 505D Yishun Street 51 (S)764505
+🔹Time: Tutor to propose
+🔹Rate: Tutor to propose
+🔹Remark:
+1.5 hour per week, 50% commission
+🔹AAB2771
+
+JSON:
+{
+"assignment_code": "AAB2771",
+"academic_display_text": "P6 math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"505D Yishun Street 51"
+],
+"postal_code": [
+"764505"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hour per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to propose"
+},
+"additional_remarks": "1.5 hour per week, 50% commission"
+}
+
+Example 4:
+Raw: 🔹Subject: Sec 1 math (Teach in tuition centre)
+🔹Location: 399 Yung Sheng Rd, Singapore 610399
+🔹Time: Saturday 9.30am to 11am (Start on 10 Jan 2026)
+🔹Rate: $30-35/hr
+🔹Remark:
+1.5 hour per week, 50% commission. $30-35/h for 1-2 students. +$5/h for 3-4 students.
+🔹AAB2772
+
+JSON:
+{
+"assignment_code": "AAB2772",
+"academic_display_text": "Sec 1 math",
+"learning_mode": {
+"mode": null,
+"raw_text": "Teach in tuition centre"
+},
+"address": [
+"399 Yung Sheng Rd, Singapore 610399"
+],
+"postal_code": [
+"610399"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hour per week"
+],
+"start_date": "10 Jan 2026",
+"rate": {
+"min": 30,
+"max": 35,
+"raw_text": "$30-35/hr"
+},
+"additional_remarks": "1.5 hour per week, 50% commission. $30-35/h for 1-2 students. +$5/h for 3-4 students."
+}
+
+Example 5:
+Raw: 🔹Subject: P4 math and science
+🔹Location: Seaside Residences, 18 Siglap Link, Singapore 448873
+🔹Time: Tuesday after 4pm / Friday after 2pm
+🔹Rate: Tutor to propose
+🔹Remark:
+2 hour per week, 50% commission
+🔹AAB2774
+
+JSON:
+{
+"assignment_code": "AAB2774",
+"academic_display_text": "P4 math and science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Seaside Residences, 18 Siglap Link, Singapore 448873"
+],
+"postal_code": [
+"448873"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"2 hour per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to propose"
+},
+"additional_remarks": "2 hour per week, 50% commission"
+}
+

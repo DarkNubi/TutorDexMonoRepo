@@ -1,0 +1,211 @@
+# Start Tuition (t.me/starttuition)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw:
+🌟 O Level, English 🌟
+
+Location: Blk 808C Choa Chu Kang Avenue 1, near Keat Hong Shopping Centre, bus 983 984 172 991
+Schedule: Once per week, 2hrs
+Rate: Pls quote
+Other details:
+Boy.
+Prefer Sat morning around 11am. Other days/timings can be discussed.
+Need an experienced tutor who can commit till O Level 2026.
+
+Code: A64258128TJ
+⭕ Status: Open & Available
+
+JSON:
+{
+"assignment_code": "A64258128TJ",
+"academic_display_text": "O Level, English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Blk 808C Choa Chu Kang Avenue 1"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once per week, 2hrs"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Pls quote"
+},
+"additional_remarks": "Boy.\nPrefer Sat morning around 11am. Other days/timings can be discussed.\nNeed an experienced tutor who can commit till O Level 2026."
+}
+
+Example 2:
+Raw:
+🌟 Pri 6, Maths 🌟
+
+Location: The Beacon, bus 121 167 196, 8min to Outram Park MRT
+Schedule: Once per week, 1.5 hrs
+Rate: Pls quote
+Other details:
+Girl.
+Prefer current/ex MOE teacher, Full-Time tutors. Open to both male/female tutors.
+
+Code: A34258266PJ
+⭕ Status: Open & Available
+
+JSON:
+{
+"assignment_code": "A34258266PJ",
+"academic_display_text": "Pri 6, Maths",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"The Beacon"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Outram Park MRT"
+],
+"lesson_schedule": [
+"Once per week, 1.5 hrs"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Pls quote"
+},
+"additional_remarks": "Girl.\nPrefer current/ex MOE teacher, Full-Time tutors. Open to both male/female tutors."
+}
+
+Example 3:
+Raw:
+🌟 Sec 3 (2026), G3 Maths 🌟
+
+Location: Blk 407A Fernvale Road, Sengkang West, 7min to LRT, bus 50 102 163
+Schedule: Once per week, 1.5hrs
+Rate: Pls quote
+Other details:
+Indian girl.
+Prefers Thurs. Other days/timings can be discussed.
+
+Code: A74255197DF
+⭕ Status: Open & Available
+
+JSON:
+{
+"assignment_code": "A74255197DF",
+"academic_display_text": "Sec 3 (2026), G3 Maths",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Blk 407A Fernvale Road"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once per week, 1.5hrs"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Pls quote"
+},
+"additional_remarks": "Indian girl.\nPrefers Thurs. Other days/timings can be discussed."
+}
+
+Example 4:
+Raw:
+🌟 Sec 3, Maths 🌟
+
+Location: Tuition centre near Braddell MRT, bus 59 129 231 232 235
+Schedule: Once per week, 2 hrs
+Rate: 50-55/hr upwards
+Other details:
+Tuition looking for group tuition teacher. Minimum requirement: degree holder.
+Freelance, no CPF.
+Max class size: 6 students. Current size: 2
+Centre will provide all materials needed.
+Fixed timeslot: Sunday 515pm to 715pm.
+Interview needed, includes a 3min demo teach.
+
+Code: A64258884EU
+⭕ Status: Open & Available
+
+JSON:
+{
+"assignment_code": "A64258884EU",
+"academic_display_text": "Sec 3, Maths",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Tuition centre near Braddell MRT"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Braddell MRT"
+],
+"lesson_schedule": [
+"Once per week, 2 hrs"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 55,
+"raw_text": "50-55/hr upwards"
+},
+"additional_remarks": "Tuition looking for group tuition teacher. Minimum requirement: degree holder.\nFreelance, no CPF.\nMax class size: 6 students. Current size: 2\nCentre will provide all materials needed.\nFixed timeslot: Sunday 515pm to 715pm.\nInterview needed, includes a 3min demo teach."
+}
+
+Example 5:
+Raw:
+🌟 Sec 3, G3 History and/or G3 Physics and G3 Chemistry 🌟
+
+Location: Blk 227B Bartley Walk, near Bartley MRT
+Schedule: Once per week per tutor, 1.5 hrs each session
+Rate: Pls quote
+Other details:
+Chinese girl.
+Available weekend.
+Looking for experienced tutor. Please state which subjects you are applying for.
+
+Code: A94258993KC
+⭕ Status: Open & Available
+
+JSON:
+{
+"assignment_code": "A94258993KC",
+"academic_display_text": "Sec 3, G3 History and/or G3 Physics and G3 Chemistry",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Blk 227B Bartley Walk"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Bartley MRT"
+],
+"lesson_schedule": [
+"Once per week per tutor, 1.5 hrs each session"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Pls quote"
+},
+"additional_remarks": "Chinese girl.\nAvailable weekend.\nLooking for experienced tutor. Please state which subjects you are applying for."
+}

@@ -15,6 +15,7 @@ jobs:
     env:
       # Vite only injects `VITE_*` variables at build time, so they must exist in CI env.
       VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+      VITE_DM_BOT_HANDLE: ${{ vars.VITE_DM_BOT_HANDLE }}
     steps:
       - uses: actions/checkout@v4
 

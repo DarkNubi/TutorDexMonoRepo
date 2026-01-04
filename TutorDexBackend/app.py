@@ -5,6 +5,8 @@ import logging
 import asyncio
 import hashlib
 import json
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote as _url_quote
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -357,6 +359,13 @@ class AssignmentFacetsResponse(BaseModel):
     facets: Dict[str, Any] = Field(default_factory=dict)
 
 
+class MatchCountsRequest(BaseModel):
+    levels: Optional[List[str]] = None
+    subjects: Optional[List[str]] = None
+    subjects_canonical: Optional[List[str]] = None
+    subjects_general: Optional[List[str]] = None
+
+
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {"ok": True}
@@ -393,6 +402,59 @@ def health_supabase() -> Dict[str, Any]:
     except Exception as e:
         logger.warning("health_supabase_failed error=%s", e)
         return {"ok": False, "error": str(e)}
+
+
+def _pg_array_literal(items: List[str]) -> str:
+    # PostgREST array operators expect a Postgres array literal, e.g. {"Junior College","IB"}.
+    out: List[str] = []
+    for raw in items or []:
+        s = str(raw or "").strip()
+        if not s:
+            continue
+        s = s.replace("\\", "\\\\").replace('"', '\\"')
+        out.append(f'"{s}"')
+    return "{" + ",".join(out) + "}"
+
+
+def _count_from_content_range(value: Optional[str]) -> Optional[int]:
+    if not value:
+        return None
+    # Example: "0-0/1234" or "*/1234"
+    if "/" not in value:
+        return None
+    try:
+        return int(value.split("/")[-1])
+    except Exception:
+        return None
+
+
+def _count_matching_assignments(*, days: int, levels: List[str], subjects_canonical: List[str], subjects_general: List[str]) -> Optional[int]:
+    if not sb.enabled() or not sb.client:
+        return None
+
+    since = datetime.now(timezone.utc) - timedelta(days=int(days))
+    since_iso = since.isoformat()
+
+    # Count all assignments (open + closed) so this reflects historical volume for DM expectations.
+    q = f"assignments?select=id&last_seen=gte.{_url_quote(since_iso, safe='')}&limit=0"
+    if levels:
+        arr = _pg_array_literal(levels)
+        q += f"&signals_levels=ov.{_url_quote(arr, safe='')}"
+    if subjects_canonical:
+        arr = _pg_array_literal(subjects_canonical)
+        q += f"&subjects_canonical=ov.{_url_quote(arr, safe='')}"
+    if subjects_general:
+        arr = _pg_array_literal(subjects_general)
+        q += f"&subjects_general=ov.{_url_quote(arr, safe='')}"
+
+    try:
+        resp = sb.client.get(q, timeout=20, prefer="count=exact")
+    except Exception:
+        return None
+    if resp.status_code >= 300:
+        logger.warning("match_counts_query_failed status=%s body=%s", resp.status_code, resp.text[:300])
+        return None
+    return _count_from_content_range(resp.headers.get("content-range"))
 
 
 @app.get("/health/full")
@@ -765,6 +827,39 @@ def me_get_tutor(request: Request) -> Dict[str, Any]:
                 )
 
     return tutor
+
+
+@app.post("/me/assignments/match-counts")
+def me_assignment_match_counts(request: Request, req: MatchCountsRequest) -> Dict[str, Any]:
+    _ = _require_uid(request)
+    if not sb.enabled():
+        raise HTTPException(status_code=503, detail="supabase_disabled")
+
+    levels = [str(x).strip() for x in (req.levels or []) if str(x).strip()]
+    subjects_canonical = [str(x).strip() for x in (req.subjects_canonical or req.subjects or []) if str(x).strip()]
+    subjects_general = [str(x).strip() for x in (req.subjects_general or []) if str(x).strip()]
+
+    # Keep requests bounded (DoS safety + avoids giant URLs).
+    levels = levels[:50]
+    subjects_canonical = subjects_canonical[:200]
+    subjects_general = subjects_general[:50]
+
+    if not levels and not subjects_canonical and not subjects_general:
+        raise HTTPException(status_code=400, detail="empty_preferences")
+
+    counts: Dict[str, Any] = {}
+    for d in (7, 14, 30):
+        c = _count_matching_assignments(days=d, levels=levels, subjects_canonical=subjects_canonical, subjects_general=subjects_general)
+        if c is None:
+            raise HTTPException(status_code=500, detail="match_counts_failed")
+        counts[str(d)] = int(c)
+
+    return {
+        "ok": True,
+        "counts": counts,
+        "window_field": "last_seen",
+        "status_filter": "any",
+    }
 
 
 @app.put("/me/tutor")

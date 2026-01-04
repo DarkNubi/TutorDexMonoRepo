@@ -1,3 +1,7 @@
+# EliteTutor (t.me/elitetutorsg)
+#
+# Used only when `LLM_INCLUDE_EXAMPLES=true`. Examples are formatting guidance only.
+
 Example 1:
 Raw: 🌟 New Assignment Available! 🌟
 Status: 🟢 Open

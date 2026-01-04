@@ -45,6 +45,22 @@ AGENCIES_BY_CHAT: dict[str, AgencyInfo] = {
     "t.me/elitetutorsg": AgencyInfo(examples_key="elitetutorsg", display_name="EliteTutor"),
     "t.me/ftassignments": AgencyInfo(examples_key="ftassignments", display_name="FamilyTutor"),
     "t.me/tutornowassignments": AgencyInfo(examples_key="tutornow", display_name="TutorNow"),
+    "t.me/tutorsociety": AgencyInfo(examples_key="tutorsociety", display_name="Tutor Society"),
+    "t.me/pthtassignments": AgencyInfo(examples_key="pthtassignments", display_name="Premium Tutors"),
+    "t.me/eduaidtuition": AgencyInfo(examples_key="eduaidtuition", display_name="Edu Aid"),
+    "t.me/nanyangtuitionjobs": AgencyInfo(examples_key="nanyangtuitionjobs", display_name="Nanyang Learning"),
+    "t.me/tuition": AgencyInfo(examples_key="tuitionjobs_sg", display_name="Tuition Jobs SG"),
+    "t.me/ministryoftuitionsg": AgencyInfo(examples_key="ministryoftuitionsg", display_name="Ministry of Tuition"),
+    "t.me/championtutorsg": AgencyInfo(examples_key="championtutorsg", display_name="ChampionTutor"),
+    "t.me/lumielessons": AgencyInfo(examples_key="lumielessons", display_name="Lumie Lessons"),
+    "t.me/tutortrustjobs": AgencyInfo(examples_key="tutortrustjobs", display_name="TutorTrust"),
+    "t.me/learntogethersg": AgencyInfo(examples_key="learntogethersg", display_name="LearnTogether"),
+    "t.me/cocoassignments": AgencyInfo(examples_key="cocoassignments", display_name="CocoTutors"),
+    "t.me/tuittysg": AgencyInfo(examples_key="tuittysg", display_name="Tuitty"),
+    "t.me/mindworkstuitionassignment": AgencyInfo(examples_key="mindworkstuitionassignment", display_name="Mindworks Tuition"),
+    "t.me/sgtuitions": AgencyInfo(examples_key="sgtuitions", display_name="SG Tuitions"),
+    "t.me/starttuition": AgencyInfo(examples_key="starttuition", display_name="Start Tuition"),
+    "t.me/newtuitionassignments": AgencyInfo(examples_key="newtuitionassignments", display_name="Tuition Assignments SG"),
 }
 
 

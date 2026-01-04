@@ -1,0 +1,264 @@
+# Nanyang Learning (t.me/nanyangtuitionjobs)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: Looking for Private Home Tutor to teach Grade 9 Chinese ( IGCSE)- SJI International School- Park East, Jalan Tua Kong
+
+🔻 Level and Subject(s): Grade 9 Chinese ( IGCSE)- SJI International School
+🔻 Location/Area: Park East, Jalan Tua Kong
+
+🔻 Hourly Rate: $ 40-50/hr
+🔻 Lesson Per Week: Once a week, 2 hours per session
+🔻 Student‘s Gender: male
+🔻 Time: Kindly state your "Detailed" Available time slots from Monday to Sunday.
+
+🔻 Remarks: Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.
+
+📌 Click Here To See Location Map ([https://www.nanyanglearning.com/location/?q=Park+East](https://www.nanyanglearning.com/location/?q=Park+East))
+
+📲 Click “Apply Job” to submit your interest for this job. Do ensure your commitment to this location and job before submitting.
+
+Job ID: NT29398
+Date Posted: 04-Jan-2026, Sunday
+Job Status: 🟢 Available/ Open
+
+🔍 Search Jobs: #Secondary_Chinese
+
+⚠️ Agency Commission: 50% of the agreed one month course fee ( One-time).
+
+JSON:
+{
+"assignment_code": "NT29398",
+"academic_display_text": "Grade 9 Chinese ( IGCSE)- SJI International School",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Park East, Jalan Tua Kong"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 2 hours per session"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 50,
+"raw_text": "$ 40-50/hr"
+},
+"additional_remarks": "Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent."
+}
+
+Example 2:
+Raw: Looking for Pre-School/ Kindergarten Teacher to teach Nursery 2 English Phonics-  30+ Telok Blangah Rise
+
+🔻 Level and Subject(s): Nursery 2 English Phonics
+🔻 Location/Area:  30+ Telok Blangah Rise
+
+🔻 Hourly Rate: $30-$35/hr ( University undergraduate)
+🔻 Lesson Per Week: Once a week, 1 hour per session
+🔻 Student‘s Gender: male
+🔻 Time: Weekend
+
+🔻 Remarks: Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.
+
+Do elaborate your teaching experience for English Phonics.
+
+📌 Click Here To See Location Map ([https://www.nanyanglearning.com/location/?q=Telok+Blangah+Rise](https://www.nanyanglearning.com/location/?q=Telok+Blangah+Rise))
+
+📲 Click “Apply Job” to submit your interest for this job. Do ensure your commitment to this location and job before submitting.
+
+Job ID: NT29415
+Date Posted: 04-Jan-2026, Sunday
+Job Status: 🟢 Available/ Open
+
+🔍 Search Jobs: #Preschool_English
+
+⚠️ Agency Commission: 50% of the agreed one month course fee ( One-time).
+
+JSON:
+{
+"assignment_code": "NT29415",
+"academic_display_text": "Nursery 2 English Phonics",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"30+ Telok Blangah Rise"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1 hour per session"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 35,
+"raw_text": "$30-$35/hr ( University undergraduate)"
+},
+"additional_remarks": "Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.\n\nDo elaborate your teaching experience for English Phonics."
+}
+
+Example 3:
+Raw: Looking for Private Home Tutor to teach Primary 6 Chinese ( 2026)- start asap- 70 Telok Blangah Heights
+
+🔻 Level and Subject(s): Primary 6 Chinese ( 2026)- start asap
+🔻 Location/Area: 70 Telok Blangah Heights
+
+🔻 Hourly Rate: $ 45-50/hr
+🔻 Lesson Per Week: Once a week, 2 hours per session
+🔻 Student‘s Gender: Female
+🔻 Time: Kindly state your "Detailed" Available time slots from Monday to Sunday.
+
+🔻 Remarks: Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.
+
+Parent prefers to engage a Full Time Tutor/ Degree Graduate for this assignment.
+
+📌 Click Here To See Location Map ([https://www.nanyanglearning.com/location/?q=70+Telok+Blangah+Heights](https://www.nanyanglearning.com/location/?q=70+Telok+Blangah+Heights))
+
+📲 Click “Apply Job” to submit your interest for this job. Do ensure your commitment to this location and job before submitting.
+
+Job ID: NT29424
+Date Posted: 04-Jan-2026, Sunday
+Job Status: 🟢 Available/ Open
+
+🔍 Search Jobs: #Primary_Chinese
+
+⚠️ Agency Commission: 50% of the agreed one month course fee ( One-time).
+
+JSON:
+{
+"assignment_code": "NT29424",
+"academic_display_text": "Primary 6 Chinese ( 2026)- start asap",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"70 Telok Blangah Heights"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 2 hours per session"
+],
+"start_date": "start asap",
+"rate": {
+"min": 45,
+"max": 50,
+"raw_text": "$ 45-50/hr"
+},
+"additional_remarks": "Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.\n\nParent prefers to engage a Full Time Tutor/ Degree Graduate for this assignment."
+}
+
+Example 4:
+Raw: Require MOE NIE Teachers to teach Secondary 4 Pure Chemistry (2026)- The Luxurie,  Compassvale Road
+
+🔻 Level and Subject(s): Secondary 4 Pure Chemistry (2026)
+🔻 Location/Area: The Luxurie,  Compassvale Road
+
+🔻 Hourly Rate: $ 90/hr
+🔻 Lesson Per Week: Once a week, 2 hours per session . The first lesson will be 1.5 hours.
+🔻 Student‘s Gender: male
+🔻 Time: Monday after 3pm or Sunday before 12pm
+
+🔻 Remarks: Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.
+
+Parent prefers to engage an NIE School Teacher for this assignment.
+Student in PeiHua express
+
+📌 Click Here To See Location Map ([https://www.nanyanglearning.com/location/?q=The+Luxurie](https://www.nanyanglearning.com/location/?q=The+Luxurie))
+
+📲 Click “Apply Job” to submit your interest for this job. Do ensure your commitment to this location and job before submitting.
+
+Job ID: NT29513
+Date Posted: 04-Jan-2026, Sunday
+Job Status: 🟢 Available/ Open
+
+⚠️ Agency Commission: 50% of the agreed one month course fee ( One-time).
+
+JSON:
+{
+"assignment_code": "NT29513",
+"academic_display_text": "Secondary 4 Pure Chemistry (2026)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"The Luxurie,  Compassvale Road"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 2 hours per session . The first lesson will be 1.5 hours."
+],
+"start_date": null,
+"rate": {
+"min": 90,
+"max": 90,
+"raw_text": "$ 90/hr"
+},
+"additional_remarks": "Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.\n\nParent prefers to engage an NIE School Teacher for this assignment.\nStudent in PeiHua express"
+}
+
+Example 5:
+Raw: 🔔 Urgent Assignment 🔔
+
+Require MOE NIE Teachers to teach Primary 4 English (2026)- The Woodleigh Residences Bidadari Park Drive
+
+🔻 Level and Subject(s): Primary 4 English (2026)
+🔻 Location/Area: The Woodleigh Residences Bidadari Park Drive
+
+🔻 Hourly Rate: $65-70/hr
+🔻 Lesson Per Week: Once a week, 1.5 hours per session
+🔻 Student‘s Gender: Female
+🔻 Time: Kindly state your "Detailed" Available time slots from Monday to Sunday.
+
+🔻 Remarks: Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.
+
+Parent prefers to engage an NIE School Teacher for this assignment.
+
+📌 Click Here To See Location Map ([https://www.nanyanglearning.com/location/?q=The+Woodleigh+Residences](https://www.nanyanglearning.com/location/?q=The+Woodleigh+Residences))
+
+📲 Click “Apply Job” to submit your interest for this job. Do ensure your commitment to this location and job before submitting.
+
+Job ID: NT29532
+Date Posted: 04-Jan-2026, Sunday
+Job Status: 🟢 Available/ Open
+
+🔍 Search Jobs: #Primary_English
+
+⚠️ Agency Commission: 50% of the agreed one month course fee ( One-time).
+
+JSON:
+{
+"assignment_code": "NT29532",
+"academic_display_text": "Primary 4 English (2026)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"The Woodleigh Residences Bidadari Park Drive"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hours per session"
+],
+"start_date": null,
+"rate": {
+"min": 65,
+"max": 70,
+"raw_text": "$65-70/hr"
+},
+"additional_remarks": "Tutors who include their relevant teaching experience in details have higher success rate of being engaged by the parent.\n\nParent prefers to engage an NIE School Teacher for this assignment."
+}
+

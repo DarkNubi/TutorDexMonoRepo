@@ -37,6 +37,8 @@ This repo includes `.github/workflows/firebase-hosting.yml` to deploy on pushes 
 Required GitHub repo secrets:
 - `FIREBASE_SERVICE_ACCOUNT`: JSON for a Firebase service account with Hosting deploy permissions
 - `VITE_BACKEND_URL` (required)
+Optional GitHub repo variable:
+- `VITE_DM_BOT_HANDLE`: e.g. `@TutorDexSniperBot` (displayed on the Profile page)
 
 Required GitHub repo variable:
 - `FIREBASE_PROJECT_ID`: your Firebase project id (set as a repo variable; does not need to be secret)

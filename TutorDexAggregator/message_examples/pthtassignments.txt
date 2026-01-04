@@ -1,0 +1,242 @@
+# Premium Tutors (t.me/PTHTassignments)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: Secondary 4 NA English @ Clementi (#OS4AL0365)
+
+Details of assignment
+Location: 50l Faber Heights Faber Crest Singapore 129205
+Duration: 1 x 2 hours/week
+Timing: Wed Fri after 5pm
+
+Fees: $45 - $50/hour Full Time/Graduate Tutor
+
+Commission: First 2 lessons
+
+Remarks:
+
+Interested applicants, please apply via [https://forms.gle/VCuCj7Pkdm7kMRX49](https://forms.gle/VCuCj7Pkdm7kMRX49)
+
+If you have any other enquiries, you may contact us @premiumtutorsjobs
+
+Code: OS4AL0365
+
+JSON:
+{
+"assignment_code": "OS4AL0365",
+"academic_display_text": "Secondary 4 NA English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"50l Faber Heights Faber Crest Singapore 129205"
+],
+"postal_code": [
+"129205"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1 x 2 hours/week"
+],
+"start_date": null,
+"rate": {
+"min": 45,
+"max": 50,
+"raw_text": "$45 - $50/hour Full Time/Graduate Tutor"
+},
+"additional_remarks": null
+}
+
+Example 2:
+Raw: Primary 6 Math @ Bukit Panjang (#OP6HA0366)
+
+Details of assignment
+Location: 31 Bangkit Road Chestervale Singapore 679973
+Duration: 1 x 1.5 hours/week
+Timing: Mon Tues Thurs after 530pm
+
+Fees: $30 - $35/hour Part Time/Undergrad Tutor
+$40 - $50/hour Full Time/Graduate Tutor
+
+Commission: First 2 lessons
+
+Remarks:
+
+Interested applicants, please apply via [https://forms.gle/VCuCj7Pkdm7kMRX49](https://forms.gle/VCuCj7Pkdm7kMRX49)
+
+If you have any other enquiries, you may contact us @premiumtutorsjobs
+
+Code: OP6HA0366
+
+JSON:
+{
+"assignment_code": "OP6HA0366",
+"academic_display_text": "Primary 6 Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"31 Bangkit Road Chestervale Singapore 679973"
+],
+"postal_code": [
+"679973"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1 x 1.5 hours/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "$30 - $35/hour Part Time/Undergrad Tutor\n$40 - $50/hour Full Time/Graduate Tutor"
+},
+"additional_remarks": null
+}
+
+Example 3:
+Raw: Primary 2 and 3 English (Same Tutor) @ Bedok Reservoir (#OP3JO0367)
+
+Details of assignment
+Location: 766 Bedok Reservoir Road Waterfront Waves Singapore 479248
+Duration: 1 x 3 hours/week (1.5 hours/student)
+Timing: Mon Tues Thurs 530pm
+
+Fees: $50 - $70/hour Ex/Current School Teachers
+
+Commission: First 2 lessons
+
+Remarks: Students are from Yu Neng Primary School. Tutor to teach both students back to back, 1.5 hours each. Same tutor needed for all subjects.
+
+Interested applicants, please apply via [https://forms.gle/VCuCj7Pkdm7kMRX49](https://forms.gle/VCuCj7Pkdm7kMRX49)
+
+If you have any other enquiries, you may contact us @premiumtutorsjobs
+
+Code: OP3JO0367
+
+JSON:
+{
+"assignment_code": "OP3JO0367",
+"academic_display_text": "Primary 2 and 3 English (Same Tutor)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"766 Bedok Reservoir Road Waterfront Waves Singapore 479248"
+],
+"postal_code": [
+"479248"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1 x 3 hours/week (1.5 hours/student)"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 70,
+"raw_text": "$50 - $70/hour Ex/Current School Teachers"
+},
+"additional_remarks": "Students are from Yu Neng Primary School. Tutor to teach both students back to back, 1.5 hours each. Same tutor needed for all subjects."
+}
+
+Example 4:
+Raw: Primary 2 and 3 Math (Same Tutor) @ Bedok Reservoir (#OP3JO0368)
+
+Details of assignment
+Location: 766 Bedok Reservoir Road Waterfront Waves Singapore 479248
+Duration: 1 x 3 hours/week (1.5 hours/student)
+Timing: Mon Tues Thurs 530pm
+
+Fees: $50 - $70/hour Ex/Current School Teachers
+
+Commission: First 2 lessons
+
+Remarks: Students are from Yu Neng Primary School. Tutor to teach both students back to back, 1.5 hours each. Same tutor needed for all subjects.
+
+Interested applicants, please apply via [https://forms.gle/VCuCj7Pkdm7kMRX49](https://forms.gle/VCuCj7Pkdm7kMRX49)
+
+If you have any other enquiries, you may contact us @premiumtutorsjobs
+
+Code: OP3JO0368
+
+JSON:
+{
+"assignment_code": "OP3JO0368",
+"academic_display_text": "Primary 2 and 3 Math (Same Tutor)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"766 Bedok Reservoir Road Waterfront Waves Singapore 479248"
+],
+"postal_code": [
+"479248"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1 x 3 hours/week (1.5 hours/student)"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 70,
+"raw_text": "$50 - $70/hour Ex/Current School Teachers"
+},
+"additional_remarks": "Students are from Yu Neng Primary School. Tutor to teach both students back to back, 1.5 hours each. Same tutor needed for all subjects."
+}
+
+Example 5:
+Raw: Primary 6 English @ Boon Lay (#OP6GR0283)
+
+Details of assignment
+Location: 677b Jurong West Street 64 Edelweiss@jurong Singapore 642677
+Duration: 1 x 1.5 hours/week
+Timing: Friday 3pm to 7pm
+
+Fees: $40 - $50/hour Full Time/Graduate Tutor
+$60 - $80/hour Ex/Current School Teachers
+
+Commission: First 2 lessons
+
+Remarks:
+
+Interested applicants, please apply via [https://forms.gle/VCuCj7Pkdm7kMRX49](https://forms.gle/VCuCj7Pkdm7kMRX49)
+
+If you have any other enquiries, you may contact us @premiumtutorsjobs
+
+Code: OP6GR0283E
+
+JSON:
+{
+"assignment_code": "OP6GR0283E",
+"academic_display_text": "Primary 6 English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"677b Jurong West Street 64 Edelweiss@jurong Singapore 642677"
+],
+"postal_code": [
+"642677"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1 x 1.5 hours/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "$40 - $50/hour Full Time/Graduate Tutor\n$60 - $80/hour Ex/Current School Teachers"
+},
+"additional_remarks": null
+}
+

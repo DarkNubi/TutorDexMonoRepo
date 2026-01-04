@@ -58,8 +58,13 @@ class SupabaseRestClient:
     def _url(self, path: str) -> str:
         return f"{self.base}/{path.lstrip('/')}"
 
-    def get(self, path: str, *, timeout: int = 15) -> requests.Response:
-        return self.session.get(self._url(path), timeout=timeout)
+    def get(self, path: str, *, timeout: int = 15, prefer: Optional[str] = None, extra_headers: Optional[Dict[str, str]] = None) -> requests.Response:
+        headers = {}
+        if prefer:
+            headers["prefer"] = prefer
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.session.get(self._url(path), headers=headers, timeout=timeout)
 
     def post(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None, extra_headers: Optional[Dict[str, str]] = None) -> requests.Response:
         headers = {}

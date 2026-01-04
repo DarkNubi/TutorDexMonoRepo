@@ -1,0 +1,210 @@
+# Tutor Society (t.me/TutorSociety)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: 📣 Greetings, tutors! Here's a new tuition assignment for you!
+
+📌 Subject: P1 Math
+📌 Location: 127865 ([https://www.google.com/maps/search/127865](https://www.google.com/maps/search/127865)) Clementi
+📌 Day & Time: Tuesday, afternoon to evening timing can be accomodated.
+📌 Rate: Tutor to propose
+📌 Remark:
+Once a week, 1.5 hrs
+50% commission of one month
+📌 Preference: No preference
+📌 Tags: #Primary_Math #WEST_REGION
+Code: TP36683
+
+JSON:
+{
+"assignment_code": "TP36683",
+"academic_display_text": "P1 Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Clementi"
+],
+"postal_code": [
+"127865"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hrs"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to propose"
+},
+"additional_remarks": "Once a week, 1.5 hrs\n50% commission of one month"
+}
+
+Example 2:
+Raw: 📣 Greetings, tutors! Here's a new tuition assignment for you!
+
+📌 Subject: P4 Math
+📌 Location: 640914 ([https://www.google.com/maps/search/640914](https://www.google.com/maps/search/640914)) Jurong
+📌 Day & Time: Weekday 5pm onwards
+📌 Rate: Tutor to propose
+📌 Remark:
+Once a week, 1.5 hours
+50% commission of one month
+Need a teacher who is patience and know how to deal with boys
+📌 Preference: Ex/Current MOE teachers, Full-time tutor
+📌 Tags: #Primary_Math #WEST_REGION
+Code: TP36684
+
+JSON:
+{
+"assignment_code": "TP36684",
+"academic_display_text": "P4 Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Jurong"
+],
+"postal_code": [
+"640914"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hours"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to propose"
+},
+"additional_remarks": "Once a week, 1.5 hours\n50% commission of one month\nNeed a teacher who is patience and know how to deal with boys"
+}
+
+Example 3:
+Raw: 📣 Greetings, tutors! Here's a new tuition assignment for you!
+
+📌 Subject: K2 English Phonics
+📌 Location: 760724 ([https://www.google.com/maps/search/760724](https://www.google.com/maps/search/760724)) Yishun Street
+📌 Day & Time: Wed 5pm
+📌 Rate: $20-30/hr
+📌 Remark:
+Once a week, 1 hour - 1.5 hours
+50% commission of one month
+📌 Preference: No preference
+📌 Tags: #Others #NORTH_REGION
+Code: TP36685
+
+JSON:
+{
+"assignment_code": "TP36685",
+"academic_display_text": "K2 English Phonics",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Yishun Street"
+],
+"postal_code": [
+"760724"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1 hour - 1.5 hours"
+],
+"start_date": null,
+"rate": {
+"min": 20,
+"max": 30,
+"raw_text": "$20-30/hr"
+},
+"additional_remarks": "Once a week, 1 hour - 1.5 hours\n50% commission of one month"
+}
+
+Example 4:
+Raw: 📣 Greetings, tutors! This tuition assignment is still open.
+
+📌 Subject: P6 Science
+📌 Location: 821302 ([https://www.google.com/maps/search/821302](https://www.google.com/maps/search/821302)) Punggol
+📌 Day & Time: Weekdays 5pm onwards
+📌 Rate: Tutor to propose
+📌 Remark:
+Once a week, 1.5 hrs
+50% commission of one month
+📌 Preference: Full-time tutor
+📌 Tags: #Primary_Science #NORTHEAST_REGION
+Code: TP36430
+
+JSON:
+{
+"assignment_code": "TP36430",
+"academic_display_text": "P6 Science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Punggol"
+],
+"postal_code": [
+"821302"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hrs"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to propose"
+},
+"additional_remarks": "Once a week, 1.5 hrs\n50% commission of one month"
+}
+
+Example 5:
+Raw: 📣 Greetings, tutors! Here's a new tuition assignment for you!
+
+📌 Subject: P5 Math
+📌 Location: 732189 ([https://www.google.com/maps/search/732189](https://www.google.com/maps/search/732189)) Woodlands, Marsiling
+📌 Day & Time: Tuesday or Thursday 8pm
+📌 Rate: Tutor to propose
+📌 Remark:
+Once a week,1.5hrs
+50% commission of one month
+📌 Preference: No preference
+📌 Tags: #Primary_Math #NORTH_REGION
+Code: TP36686
+
+JSON:
+{
+"assignment_code": "TP36686",
+"academic_display_text": "P5 Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Woodlands, Marsiling"
+],
+"postal_code": [
+"732189"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week,1.5hrs"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to propose"
+},
+"additional_remarks": "Once a week,1.5hrs\n50% commission of one month"
+}

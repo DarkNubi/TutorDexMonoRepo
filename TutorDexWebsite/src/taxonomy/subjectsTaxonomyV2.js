@@ -27,7 +27,7 @@ for (const s of taxonomy.canonical_subjects || []) {
   const cat = String(s?.general_category_code || "").trim();
   if (!code) continue;
   CANON_BY_CODE.set(code, label || code);
-  CANON_META_BY_CODE.set(code, { code, label: label || code, generalCategoryCode: cat });
+  CANON_META_BY_CODE.set(code, { code, label: label || code, generalCategoryCode: cat, uiHidden: Boolean(s?.ui_hidden) });
 }
 
 function normalizeSubjectLabel(value) {
@@ -103,7 +103,7 @@ export function labelsForGeneralCategoryCodes(codes) {
   return uniq((codes || []).map((c) => labelForGeneralCategoryCode(c)).filter(Boolean));
 }
 
-export function canonicalSubjectsForLevel(levelCode, { includeAny = false } = {}) {
+export function canonicalSubjectsForLevel(levelCode, { includeAny = false, includeHidden = false } = {}) {
   const level = String(levelCode || "").trim();
   const byLevel = taxonomy?.mappings?.by_level_subject_key || {};
   const lvlMap = level && byLevel[level] ? byLevel[level] : null;
@@ -120,7 +120,9 @@ export function canonicalSubjectsForLevel(levelCode, { includeAny = false } = {}
   });
 
   const uniqCodes = uniq(codes).filter((c) => CANON_META_BY_CODE.has(c));
-  return uniqCodes.map((c) => CANON_META_BY_CODE.get(c));
+  return uniqCodes
+    .map((c) => CANON_META_BY_CODE.get(c))
+    .filter((s) => s && (includeHidden || s.uiHidden !== true));
 }
 
 export function canonicalizeSubjectLabels({ level, subjects } = {}) {

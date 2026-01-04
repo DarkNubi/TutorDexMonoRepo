@@ -1,0 +1,200 @@
+# Edu Aid (t.me/eduaidtuition)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: 🟡 Reposted Assignment 🟡
+
+🔹 Assignment Code: 11310
+🔹 Subject: Science
+🔹 Level: Grade 8
+🔹 Location: Summerhill, 54 Hume Avenue
+🔹 Frequency: 1.5 hours x 1 per week
+🔹 Type of Tutor: Part-time (Student), Part-time (Non-student), Full-time tutors
+🔹 Rates: Tutor to quote rates
+🔹 Time: Monday after 5.30pm & Sat 9am
+🔹 Additional Remarks: No gender preference. Student is 12/13 years old and currently studying at an international school. He has 1 small dog at home
+🔹 Commission Structure: 50% of 1st month
+
+JSON:
+{
+"assignment_code": "11310",
+"academic_display_text": "Science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Summerhill, 54 Hume Avenue"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hours x 1 per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to quote rates"
+},
+"additional_remarks": "No gender preference. Student is 12/13 years old and currently studying at an international school. He has 1 small dog at home"
+}
+
+Example 2:
+Raw: 🟡 Reposted Assignment 🟡
+
+🔹 Assignment Code: 11306
+🔹 Subject: Comb (Bio+Chem)
+🔹 Level: Sec 3Exp
+🔹 Location: Parc Life, 33 Sembawang Crescent
+🔹 Frequency: 1.5 hours x 1 per week
+🔹 Type of Tutor: Part-time (Student), Part-time (Non-student)
+🔹 Rates: $35-40/hr
+🔹 Time: Anyday 8pm (prefer weekdays)
+🔹 Additional Remarks: Requires a female tutor
+🔹 Commission Structure: 50% of 1st month
+
+JSON:
+{
+"assignment_code": "11306",
+"academic_display_text": "Comb (Bio+Chem)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Parc Life, 33 Sembawang Crescent"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hours x 1 per week"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 40,
+"raw_text": "$35-40/hr"
+},
+"additional_remarks": "Requires a female tutor"
+}
+
+Example 3:
+Raw: ⭐ New Assignment ⭐
+
+🔹 Assignment Code: 11316
+🔹 Subject: Math & Science (Tutor to teach both subjects)
+🔹 Level: P3
+🔹 Location: 109B Edgedale Plains
+🔹 Frequency: 1.5 hours x 2 per week
+🔹 Type of Tutor: Full-time tutors, Ex-MOE teachers, Current MOE teachers
+🔹 Rates: Tutor to quote rates
+🔹 Time: Mon/Tues/Wed 3pm
+🔹 Additional Remarks: Requires a female tutor
+🔹 Commission Structure: 50% of 1st month
+
+JSON:
+{
+"assignment_code": "11316",
+"academic_display_text": "Math & Science (Tutor to teach both subjects)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"109B Edgedale Plains"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hours x 2 per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to quote rates"
+},
+"additional_remarks": "Requires a female tutor"
+}
+
+Example 4:
+Raw: ⭐ New Assignment ⭐
+
+🔹 Assignment Code: 11317
+🔹 Subject: English+creative writing
+🔹 Level: P3
+🔹 Location: 109B Edgedale Plains
+🔹 Frequency: 1.5 hours x 1 per week
+🔹 Type of Tutor: Full-time tutors, Ex-MOE teachers, Current MOE teachers
+🔹 Rates: Tutor to quote rates
+🔹 Time: Mon/Tues/Wed 3pm
+🔹 Additional Remarks: Requires a female tutor
+🔹 Commission Structure: 50% of 1st month
+
+JSON:
+{
+"assignment_code": "11317",
+"academic_display_text": "English+creative writing",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"109B Edgedale Plains"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hours x 1 per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Tutor to quote rates"
+},
+"additional_remarks": "Requires a female tutor"
+}
+
+Example 5:
+Raw: ⭐ New Assignment ⭐
+
+🔹 Assignment Code: 11318
+🔹 Subject: English & Math (Tutor to teach both subjects)
+🔹 Level: P6
+🔹 Location: 274B Jurong West Street 25
+🔹 Frequency: 1.5 hours x 2 per week
+🔹 Type of Tutor: Part-time (Student), Part-time (Non-student)
+🔹 Rates: $35-45/hr
+🔹 Time: Weekdays 7pm
+🔹 Additional Remarks: No gender preference
+🔹 Commission Structure: 50% of 1st month
+
+JSON:
+{
+"assignment_code": "11318",
+"academic_display_text": "English & Math (Tutor to teach both subjects)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"274B Jurong West Street 25"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5 hours x 2 per week"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 45,
+"raw_text": "$35-45/hr"
+},
+"additional_remarks": "No gender preference"
+}
+

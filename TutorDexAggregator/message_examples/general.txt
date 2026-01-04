@@ -1,0 +1,23 @@
+# General fallback
+#
+# Used only when `LLM_INCLUDE_EXAMPLES=true`. Examples are formatting guidance only.
+
+Example 1:
+Raw:
+JSON:
+
+Example 2:
+Raw:
+JSON:
+
+Example 3:
+Raw:
+JSON:
+
+Example 4:
+Raw:
+JSON:
+
+Example 5:
+Raw:
+JSON:

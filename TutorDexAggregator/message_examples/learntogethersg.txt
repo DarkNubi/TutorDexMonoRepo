@@ -1,0 +1,220 @@
+# LearnTogether (t.me/learntogethersg)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw:
+Job no: J3392
+
+Pri 3 English, Science and Math @ Tampines Lane (Tampines MRT)
+
+Details of Job:
+Location: Tampines Lane (Tampines MRT)
+Duration: 2h per lesson, once a week
+Subject: Pri 3 English, Science and Math
+Availability: Weekdays after 3:30pm
+Fees: $25-$30/h
+Tutor Preference: Chinese, no gender preference
+
+Remarks: Looking for a tutor who can teach Pri 3 English, Science and Math. Part time tutors are welcome to apply.
+
+JSON:
+{
+"assignment_code": "J3392",
+"academic_display_text": "Pri 3 English, Science and Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Tampines Lane (Tampines MRT)"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Tampines MRT"
+],
+"lesson_schedule": [
+"2h per lesson, once a week"
+],
+"start_date": null,
+"rate": {
+"min": 25,
+"max": 30,
+"raw_text": "$25-$30/h"
+},
+"additional_remarks": "Looking for a tutor who can teach Pri 3 English, Science and Math. Part time tutors are welcome to apply."
+}
+
+Example 2:
+Raw:
+Job no: J3393
+
+K1/2 Science @ Greenleaf Place, (Holland MRT)
+
+Details of Job:
+Location: Greenleaf Place, (Holland MRT)
+Duration: 1h per lesson, once a week
+Subject: K1/2 Science
+Availability: Anyday after 3pm
+Fees: $30/h
+Tutor Preference: Female, Chinese
+
+Remarks: Looking for a Female Chinese tutor who can teach K1/2 Science.
+
+JSON:
+{
+"assignment_code": "J3393",
+"academic_display_text": "K1/2 Science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Greenleaf Place"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Holland MRT"
+],
+"lesson_schedule": [
+"1h per lesson, once a week"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 30,
+"raw_text": "$30/h"
+},
+"additional_remarks": "Looking for a Female Chinese tutor who can teach K1/2 Science."
+}
+
+Example 3:
+Raw:
+Job no: J3394
+
+Pri 3 Chinese @ Punggol Drive (near Kadaloor LRT)
+
+Details of Job:
+Location: Punggol Drive (near Kadaloor LRT)
+Duration: 1h per lesson, once a week
+Subject: Pri 3 Chinese
+Availability: Wednesday 7.30pm-8.30pm
+Fees: $40-$55/h
+Tutor Preference: Female, Chinese
+
+Remarks: Looking for a female full-time tutor who can teach Pri 3 Chinese. Preferred tutor is between 20 and 35 years old.
+
+JSON:
+{
+"assignment_code": "J3394",
+"academic_display_text": "Pri 3 Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Punggol Drive"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Kadaloor LRT"
+],
+"lesson_schedule": [
+"1h per lesson, once a week"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 55,
+"raw_text": "$40-$55/h"
+},
+"additional_remarks": "Looking for a female full-time tutor who can teach Pri 3 Chinese. Preferred tutor is between 20 and 35 years old."
+}
+
+Example 4:
+Raw:
+Job no: J3395
+
+Pri 3 Chinese @ Tampines Lane (Tampines MRT)
+
+Details of Job:
+Location: Tampines Lane (Tampines MRT)
+Duration: 1h per lesson, once a week
+Subject: Pri 3 Chinese
+Availability: Weekdays after 3:30pm
+Fees: $25-$30/h
+Tutor Preference: Chinese, no gender preference
+
+Remarks: Looking for a tutor who can teach Pri 3 Chinese. Part time tutors are welcome to apply.
+
+JSON:
+{
+"assignment_code": "J3395",
+"academic_display_text": "Pri 3 Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Tampines Lane (Tampines MRT)"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Tampines MRT"
+],
+"lesson_schedule": [
+"1h per lesson, once a week"
+],
+"start_date": null,
+"rate": {
+"min": 25,
+"max": 30,
+"raw_text": "$25-$30/h"
+},
+"additional_remarks": "Looking for a tutor who can teach Pri 3 Chinese. Part time tutors are welcome to apply."
+}
+
+Example 5:
+Raw:
+Job no: J3396
+
+Pri 5 Math and Science Olympiad @ Fernvale Link (near Layar LRT)
+
+Details of Job:
+Location: Fernvale Link (near Layar LRT)
+Duration: 1.5h per lesson, once a week
+Subject: Pri 5 Math and Science Olympiad
+Availability: Tues 3-5pm or Sat 3-5pm
+Fees: $50-$60/h
+Tutor Preference: no preference for race and gender
+
+Remarks: Looking for a tutor who can teach Pri 5 Math and Science Olympiad.
+
+JSON:
+{
+"assignment_code": "J3396",
+"academic_display_text": "Pri 5 Math and Science Olympiad",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Fernvale Link"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Layar LRT"
+],
+"lesson_schedule": [
+"1.5h per lesson, once a week"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 60,
+"raw_text": "$50-$60/h"
+},
+"additional_remarks": "Looking for a tutor who can teach Pri 5 Math and Science Olympiad."
+}
+

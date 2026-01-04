@@ -1,0 +1,205 @@
+# Lumie Lessons (t.me/lumielessons)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: [NEW]
+Sec 3 IP Chemistry and Bio  @ WATERWOODS | L6390 | L6391
+
+Address: 828751
+Duration: 1.5 hours
+
+Rate: $35-95/hr
+Preferred lesson time: wed anytime 4.30pm onwards and sun morning
+
+Remarks: female tutor and strictly F2F
+
+If interested, please PM Eira @eiralumielessons the ASSIGNMENT CODE and your TUTORING PROFILE + updated schedule and rates
+
+JSON:
+{
+"assignment_code": null,
+"academic_display_text": "Sec 3 IP Chemistry and Bio",
+"learning_mode": {
+"mode": "Face-to-Face",
+"raw_text": "strictly F2F"
+},
+"address": null,
+"postal_code": [
+"828751"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5 hours"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 95,
+"raw_text": "$35-95/hr"
+},
+"additional_remarks": "female tutor and strictly F2F"
+}
+
+Example 2:
+Raw: [REPOST]
+Sec 3 IP Chemistry and Bio  @ WATERWOODS | L6390 | L6391
+
+Address: 828751
+Duration: 1.5 hours
+
+Rate: $35-95/hr
+Preferred lesson time: wed anytime 4.30pm onwards and sun morning
+
+Remarks: female tutor and strictly F2F
+
+If interested, please PM Eira @eiralumielessons the ASSIGNMENT CODE and your TUTORING PROFILE + updated schedule and rates
+
+JSON:
+{
+"assignment_code": null,
+"academic_display_text": "Sec 3 IP Chemistry and Bio",
+"learning_mode": {
+"mode": "Face-to-Face",
+"raw_text": "strictly F2F"
+},
+"address": null,
+"postal_code": [
+"828751"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5 hours"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 95,
+"raw_text": "$35-95/hr"
+},
+"additional_remarks": "female tutor and strictly F2F"
+}
+
+Example 3:
+Raw: [REPOST]
+P4 (2026) Chinese @ (East) BLK 524C PASIR RIS STREET 51 | L6387
+
+Address: 513524
+Duration: 1.5 hours
+
+Rate: $30-35/hr
+Preferred lesson time: Tue-Fri afternoon
+
+Remarks: Parent wants a female tutor
+
+If interested, please PM Eira @eiralumielessons the ASSIGNMENT CODE and your TUTORING PROFILE + updated schedule and rates
+
+JSON:
+{
+"assignment_code": "L6387",
+"academic_display_text": "P4 (2026) Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"BLK 524C PASIR RIS STREET 51"
+],
+"postal_code": [
+"513524"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5 hours"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 35,
+"raw_text": "$30-35/hr"
+},
+"additional_remarks": "Parent wants a female tutor"
+}
+
+Example 4:
+Raw: [NEW]
+P2 (2026) Math @ (East) LOYANG RISE 271 | L6392
+
+Address: 513524
+Duration: 1.5 hours
+
+Rate: $40-70/hr
+Preferred lesson time: Mon, Tue, or Fri (flexible)
+
+Remarks: Parent prefers female FT or MOE tutor
+
+If interested, please PM Eira @eiralumielessons the ASSIGNMENT CODE and your TUTORING PROFILE + updated schedule and rates
+
+JSON:
+{
+"assignment_code": "L6392",
+"academic_display_text": "P2 (2026) Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"LOYANG RISE 271"
+],
+"postal_code": [
+"513524"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5 hours"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 70,
+"raw_text": "$40-70/hr"
+},
+"additional_remarks": "Parent prefers female FT or MOE tutor"
+}
+
+Example 5:
+Raw: [NEW]
+P5 (2026) Math @ (West) PLANTATION GRANGE, 132A Tengah Garden Avenue | L6395
+
+Address: 691132
+Duration: 1.5 hours
+
+Rate: $30-55/hr
+Preferred lesson time: Tues 7.15pm
+
+Remarks: Parent prefers female tutor
+
+If interested, please PM Eira @eiralumielessons the ASSIGNMENT CODE and your TUTORING PROFILE + updated schedule and rates
+
+JSON:
+{
+"assignment_code": "L6395",
+"academic_display_text": "P5 (2026) Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"PLANTATION GRANGE, 132A Tengah Garden Avenue"
+],
+"postal_code": [
+"691132"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5 hours"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 55,
+"raw_text": "$30-55/hr"
+},
+"additional_remarks": "Parent prefers female tutor"
+}

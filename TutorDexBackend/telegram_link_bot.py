@@ -61,15 +61,27 @@ def _parse_link_command(text: str) -> Optional[str]:
         return None
     t = str(text).strip()
     # Telegram may send commands as `/link@YourBotUsername <code>` in some contexts.
-    if not t.startswith("/link"):
-        return None
     parts = t.split()
-    if len(parts) < 2:
+    if not parts:
         return None
+
     cmd = parts[0].strip()
-    if cmd != "/link" and not cmd.startswith("/link@"):
-        return None
-    return parts[1].strip()
+    arg = parts[1].strip() if len(parts) >= 2 else ""
+
+    if cmd == "/link" or cmd.startswith("/link@"):
+        return arg or None
+
+    # Telegram deep links to bots use: https://t.me/<bot>?start=<payload>
+    # which arrives as: `/start <payload>` (or `/start@Bot <payload>`).
+    if cmd == "/start" or cmd.startswith("/start@"):
+        if not arg:
+            return None
+        a = arg.strip()
+        if a.lower().startswith("link_") and len(a) > 5:
+            return a[5:]
+        return a
+
+    return None
 
 
 def _extract_message(update: Dict[str, Any]) -> Tuple[Optional[int], Optional[str], Optional[str]]:
@@ -87,7 +99,7 @@ def main() -> None:
     setup_logging(service_name="tutordex_telegram_link_bot")
     logger = logging.getLogger("tutordex_telegram_link_bot")
 
-    p = argparse.ArgumentParser(description="Poll Telegram DM bot updates and link chat_id via /link <code>.")
+    p = argparse.ArgumentParser(description="Poll Telegram DM bot updates and link chat_id via /link <code> (or /start link_<code>).")
     p.add_argument("--token", help="Bot token (defaults to DM_BOT_TOKEN env var)")
     p.add_argument("--backend-url", help="Backend base URL (defaults to BACKEND_URL or http://127.0.0.1:8000)")
     p.add_argument("--poll-seconds", type=float, default=2.0, help="Polling interval (default 2s)")

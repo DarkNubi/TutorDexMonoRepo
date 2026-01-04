@@ -1,0 +1,203 @@
+# ChampionTutor (t.me/championtutorSG)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: 👍NEW Tuition Assignment!
+
+◾Assignment code: 2713
+◾Level: Upper Secondary 3
+◾Subject(s): Maths A,
+◾Location:
+◾Time: Mon/Tue afternoon and evening,  Wed/Thur afternoon
+◾Frequency: 1 x 1.5 hr/week
+◾Rate(in $): Experienced based
+◾Additional Remarks: Location : Clementi Ave 6 postal code 123210
+
+JSON:
+{
+"assignment_code": "2713",
+"academic_display_text": "Maths A",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Clementi Ave 6"
+],
+"postal_code": [
+"123210"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 1.5 hr/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Experienced based"
+},
+"additional_remarks": "Location : Clementi Ave 6 postal code 123210"
+}
+
+Example 2:
+Raw: 👍NEW Tuition Assignment!
+
+◾Assignment code: 2712
+◾Level: Upper Secondary 3
+◾Subject(s): English,
+◾Location:
+◾Time: Mon/Tue afternoon and evening,  Wed/Thur afternoon
+◾Frequency: 1 x 1.5 hr/week
+◾Rate(in $): Experienced based
+◾Additional Remarks: Location : Clementi Ave 6 postal code 123210
+
+JSON:
+{
+"assignment_code": "2712",
+"academic_display_text": "English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Clementi Ave 6"
+],
+"postal_code": [
+"123210"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 1.5 hr/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Experienced based"
+},
+"additional_remarks": "Location : Clementi Ave 6 postal code 123210"
+}
+
+Example 3:
+Raw: 👍NEW Tuition Assignment!
+
+◾Assignment code: 2715
+◾Level: Upper Primary 5
+◾Subject(s): English,
+◾Location:
+◾Time: Mon
+◾Frequency: 1 x 3 hr/week
+◾Rate(in $): Experience based
+◾Additional Remarks: 2 children from the same family. One is Pri 3 in 2026 and the other one is Pri 5 in 2026
+Location : Duchess Ave, postal code 269112
+1.5hr per child. 2 children 3hr. Available on Fri afternoon
+
+JSON:
+{
+"assignment_code": "2715",
+"academic_display_text": "English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Duchess Ave"
+],
+"postal_code": [
+"269112"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 3 hr/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Experience based"
+},
+"additional_remarks": "2 children from the same family. One is Pri 3 in 2026 and the other one is Pri 5 in 2026\nLocation : Duchess Ave, postal code 269112\n1.5hr per child. 2 children 3hr. Available on Fri afternoon"
+}
+
+Example 4:
+Raw: 👍NEW Tuition Assignment!
+
+◾Assignment code: 2712
+◾Level: Upper Secondary 3
+◾Subject(s): English,
+◾Location:
+◾Time: Mon/Tue afternoon and evening, Wed afternoon, Sun 7-9pm
+◾Frequency: 1 x 1.5 hr/week
+◾Rate(in $): Experienced based
+◾Additional Remarks: Location : Clementi Ave 6 postal code 123210
+
+JSON:
+{
+"assignment_code": "2712",
+"academic_display_text": "English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Clementi Ave 6"
+],
+"postal_code": [
+"123210"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 1.5 hr/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Experienced based"
+},
+"additional_remarks": "Location : Clementi Ave 6 postal code 123210"
+}
+
+Example 5:
+Raw: 👍NEW Tuition Assignment!
+
+◾Assignment code: 2715
+◾Level: Upper Primary 5
+◾Subject(s): English,
+◾Location:
+◾Time: Fri afternoon
+◾Frequency: 1 x 3 hr/week
+◾Rate(in $): Experience based
+◾Additional Remarks: 2 children from the same family. One is Pri 3 in 2026 and the other one is Pri 5 in 2026
+Location : Duchess Ave, postal code 269112
+1.5hr per child. 2 children 3hr. Available on Fri afternoon
+
+JSON:
+{
+"assignment_code": "2715",
+"academic_display_text": "English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Duchess Ave"
+],
+"postal_code": [
+"269112"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 3 hr/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "Experience based"
+},
+"additional_remarks": "2 children from the same family. One is Pri 3 in 2026 and the other one is Pri 5 in 2026\nLocation : Duchess Ave, postal code 269112\n1.5hr per child. 2 children 3hr. Available on Fri afternoon"
+}

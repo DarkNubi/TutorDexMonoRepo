@@ -1,0 +1,213 @@
+# Mindworks Tuition (t.me/MindworksTuitionAssignment)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw:
+Ref: 11689
+Level/Subject:  Sec 3 G1 Science（Bio & Physics.）
+Available Timing: Mon 5.30 to 7 pm
+Location: 20A Jalan Tua Kong Singapore 457215
+Rate: tutor to quote
+Tutor Category:  full-time female tutor or MOE teacher.
+Frequency: 1x1.5hr/week
+Gender: Female
+Remarks:
+He is ADHD ( mild ) boy.  Hypo active , lack of focus
+
+Please bid your rate wisely
+
+Please WhatsApp 刘老师 87427139
+
+JSON:
+{
+"assignment_code": "11689",
+"academic_display_text": "Sec 3 G1 Science（Bio & Physics.）",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"20A Jalan Tua Kong Singapore 457215"
+],
+"postal_code": [
+"457215"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1x1.5hr/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "tutor to quote"
+},
+"additional_remarks": "He is ADHD ( mild ) boy.  Hypo active , lack of focus"
+}
+
+Example 2:
+Raw:
+Ref: 11629
+Level/Subject: P1 PE（Physical fitness）
+Available Timing:
+Location: 28 Surrey Road (S)307762
+Rate: $quote/hr
+Tutor Category: Fulltime tutor
+Frequency: 2-3x1.5hr/week
+Gender: Any
+Please bid your rate wisely
+
+**Please WhatsApp 刘老师 87427139**
+
+JSON:
+{
+"assignment_code": "11629",
+"academic_display_text": "P1 PE（Physical fitness）",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"28 Surrey Road"
+],
+"postal_code": [
+"307762"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"2-3x1.5hr/week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "$quote/hr"
+},
+"additional_remarks": null
+}
+
+Example 3:
+Raw:
+Ref: 11630
+Level/Subject: S1 Exp Math&science
+Available Timing: tues and sat
+Location: 217b Compassvale Drive Compassvale Mast Singapore 542217
+Rate: $40-60/hr
+Tutor Category: Full time tutor
+Frequency: 1x2hr/week
+Gender: Female
+Please bid your rate wisely
+
+**Please WhatsApp 刘老师 87427139**
+
+JSON:
+{
+"assignment_code": "11630",
+"academic_display_text": "S1 Exp Math&science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"217b Compassvale Drive Compassvale Mast Singapore 542217"
+],
+"postal_code": [
+"542217"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1x2hr/week"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 60,
+"raw_text": "$40-60/hr"
+},
+"additional_remarks": null
+}
+
+Example 4:
+Raw:
+Ref: 11631
+Level/Subject: P2 English
+Available Timing: mon，tue，thur 3:30 ～ 6:30pm，sat morning
+Location: Normanton Park, 117280
+Rate: $35-50/hr
+Tutor Category: Experienced
+Frequency: 2-3x1.5hr/week
+Gender: Female
+Please bid your rate wisely
+
+**Please WhatsApp 刘老师 at 87427139**
+
+JSON:
+{
+"assignment_code": "11631",
+"academic_display_text": "P2 English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Normanton Park"
+],
+"postal_code": [
+"117280"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"2-3x1.5hr/week"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 50,
+"raw_text": "$35-50/hr"
+},
+"additional_remarks": null
+}
+
+Example 5:
+Raw:
+Ref: 11632
+Level/Subject: P2 Chinese
+Available Timing:
+Location: Normanton Park, 117280
+Rate: $35-50/hr
+Tutor Category: Experienced
+Frequency: 2-3x1.5hr/week
+Gender: Female
+Please bid your rate wisely
+
+**Please WhatsApp 刘老师 at 87427139**
+
+JSON:
+{
+"assignment_code": "11632",
+"academic_display_text": "P2 Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Normanton Park"
+],
+"postal_code": [
+"117280"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"2-3x1.5hr/week"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 50,
+"raw_text": "$35-50/hr"
+},
+"additional_remarks": null
+}
+

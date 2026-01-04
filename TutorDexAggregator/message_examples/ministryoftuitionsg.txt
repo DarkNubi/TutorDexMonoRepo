@@ -1,0 +1,200 @@
+# Ministry of Tuition (t.me/MinistryofTuitionSG)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: ⚡️P3 Higher Chinese @ Victoria Park Villas (Bukit Timah)⚡️
+Rate: $40 - $50 hr
+Duration: 1.5hr
+Frequency: 1x a week
+Preference: No preference
+Remarks: [Physical] - Tutee is P3 next year
+Code: #ASN1607
+
+If you face any issues, please contact @MOTuitionmain 🙏.
+
+Tags: #Chinese,  #P3, #Victoria Park Villas (Bukit Timah) ([https://www.google.com/maps/search/Victoria%20Park%20Villas%20(Bukit%20Timah)](https://www.google.com/maps/search/Victoria%20Park%20Villas%20%28Bukit%20Timah%29))
+
+JSON:
+{
+"assignment_code": "ASN1607",
+"academic_display_text": "P3 Higher Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": "[Physical]"
+},
+"address": [
+"Victoria Park Villas (Bukit Timah)"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5hr",
+"Frequency: 1x a week"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 50,
+"raw_text": "$40 - $50 hr"
+},
+"additional_remarks": "[Physical] - Tutee is P3 next year"
+}
+
+Example 2:
+Raw: ⚡️Sec 4 EXP Pure Physics @ 300 Beach Road - The Concourse⚡️
+Rate: $45 - $55 hr
+Duration: 1.5hr
+Frequency: 1x a week
+Preference: No preference
+Remarks: [Physical] - Urgent. Start next Monday anytime 2-5pm
+Code: #ASN1608
+
+If you face any issues, please contact @MOTuitionmain 🙏.
+
+Tags: #Physics,  #Sec4, #300 Beach Road - The Concourse ([https://www.google.com/maps/search/300%20Beach%20Road%20-%20The%20Concourse](https://www.google.com/maps/search/300%20Beach%20Road%20-%20The%20Concourse))
+
+JSON:
+{
+"assignment_code": "ASN1608",
+"academic_display_text": "Sec 4 EXP Pure Physics",
+"learning_mode": {
+"mode": null,
+"raw_text": "[Physical]"
+},
+"address": [
+"300 Beach Road - The Concourse"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5hr",
+"Frequency: 1x a week"
+],
+"start_date": "Start next Monday anytime 2-5pm",
+"rate": {
+"min": 45,
+"max": 55,
+"raw_text": "$45 - $55 hr"
+},
+"additional_remarks": "[Physical] - Urgent. Start next Monday anytime 2-5pm"
+}
+
+Example 3:
+Raw: ⚡️P4 Math @ 133 Teck Whye Lane⚡️
+Rate: $30 - $40 hr
+Duration: 1.5hr
+Frequency: 1x a week
+Preference: No preference
+Remarks: [Physical] -
+Code: #ASN1609
+
+If you face any issues, please contact @MOTuitionmain 🙏.
+
+Tags: #Math,  #P4, #133 Teck Whye Lane ([https://www.google.com/maps/search/133%20Teck%20Whye%20Lane](https://www.google.com/maps/search/133%20Teck%20Whye%20Lane))
+
+JSON:
+{
+"assignment_code": "ASN1609",
+"academic_display_text": "P4 Math",
+"learning_mode": {
+"mode": null,
+"raw_text": "[Physical]"
+},
+"address": [
+"133 Teck Whye Lane"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5hr",
+"Frequency: 1x a week"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 40,
+"raw_text": "$30 - $40 hr"
+},
+"additional_remarks": "[Physical] -"
+}
+
+Example 4:
+Raw: ⚡️P5 Foundation Math @ 133 Teck Whye Lane⚡️
+Rate: $30 - $40 hr
+Duration: 1.0hr
+Frequency: 1x a week
+Preference: No preference
+Remarks: [Physical] -
+Code: #ASN1610
+
+If you face any issues, please contact @MOTuitionmain 🙏.
+
+Tags: #Math,  #P5, #133 Teck Whye Lane ([https://www.google.com/maps/search/133%20Teck%20Whye%20Lane](https://www.google.com/maps/search/133%20Teck%20Whye%20Lane))
+
+JSON:
+{
+"assignment_code": "ASN1610",
+"academic_display_text": "P5 Foundation Math",
+"learning_mode": {
+"mode": null,
+"raw_text": "[Physical]"
+},
+"address": [
+"133 Teck Whye Lane"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.0hr",
+"Frequency: 1x a week"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 40,
+"raw_text": "$30 - $40 hr"
+},
+"additional_remarks": "[Physical] -"
+}
+
+Example 5:
+Raw: ⚡️P2 Math & English @ 13 Tampines Central 7 (Condo)⚡️
+Rate: $35 - $40 hr
+Duration: 1.5hr
+Frequency: 1x a week
+Preference: No preference
+Remarks: [Physical] - looking for tutor able to teach both subjects
+Code: #ASN1611
+
+If you face any issues, please contact @MOTuitionmain 🙏.
+
+Tags: #Math,  #English,  #P2, #13 Tampines Central 7 (Condo) ([https://www.google.com/maps/search/13%20Tampines%20Central%207%20(Condo)](https://www.google.com/maps/search/13%20Tampines%20Central%207%20%28Condo%29))
+
+JSON:
+{
+"assignment_code": "ASN1611",
+"academic_display_text": "P2 Math & English",
+"learning_mode": {
+"mode": null,
+"raw_text": "[Physical]"
+},
+"address": [
+"13 Tampines Central 7 (Condo)"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5hr",
+"Frequency: 1x a week"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 40,
+"raw_text": "$35 - $40 hr"
+},
+"additional_remarks": "[Physical] - looking for tutor able to teach both subjects"
+}
+

@@ -331,6 +331,8 @@ create or replace function public.list_open_assignments(
   p_level text default null,
   p_specific_student_level text default null,
   p_subject text default null,
+  p_subject_general text default null,
+  p_subject_canonical text default null,
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
@@ -361,6 +363,9 @@ returns table(
   signals_subjects text[],
   signals_levels text[],
   signals_specific_student_levels text[],
+  subjects_canonical text[],
+  subjects_general text[],
+  canonicalization_version int,
   status text,
   created_at timestamptz,
   last_seen timestamptz,
@@ -391,7 +396,14 @@ filtered as (
   from base
   where (p_level is null or p_level = any(signals_levels))
     and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
-    and (p_subject is null or p_subject = any(signals_subjects))
+    and (p_subject_general is null or p_subject_general = any(subjects_general))
+    and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
+    and (
+      p_subject is null
+      or p_subject = any(signals_subjects)
+      or p_subject = any(subjects_canonical)
+      or p_subject = any(subjects_general)
+    )
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -430,6 +442,9 @@ select
   signals_subjects,
   signals_levels,
   signals_specific_student_levels,
+  subjects_canonical,
+  subjects_general,
+  canonicalization_version,
   status,
   created_at,
   last_seen,
@@ -455,6 +470,8 @@ create or replace function public.list_open_assignments_v2(
   p_level text default null,
   p_specific_student_level text default null,
   p_subject text default null,
+  p_subject_general text default null,
+  p_subject_canonical text default null,
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
@@ -485,6 +502,9 @@ returns table(
   signals_subjects text[],
   signals_levels text[],
   signals_specific_student_levels text[],
+  subjects_canonical text[],
+  subjects_general text[],
+  canonicalization_version int,
   status text,
   created_at timestamptz,
   last_seen timestamptz,
@@ -517,7 +537,14 @@ filtered as (
   from base
   where (p_level is null or p_level = any(signals_levels))
     and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
-    and (p_subject is null or p_subject = any(signals_subjects))
+    and (p_subject_general is null or p_subject_general = any(subjects_general))
+    and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
+    and (
+      p_subject is null
+      or p_subject = any(signals_subjects)
+      or p_subject = any(subjects_canonical)
+      or p_subject = any(subjects_general)
+    )
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -597,6 +624,9 @@ select
   signals_subjects,
   signals_levels,
   signals_specific_student_levels,
+  subjects_canonical,
+  subjects_general,
+  canonicalization_version,
   status,
   created_at,
   last_seen,
@@ -618,6 +648,8 @@ create or replace function public.open_assignment_facets(
   p_level text default null,
   p_specific_student_level text default null,
   p_subject text default null,
+  p_subject_general text default null,
+  p_subject_canonical text default null,
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
@@ -648,7 +680,14 @@ filtered as (
   from base
   where (p_level is null or p_level = any(signals_levels))
     and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
-    and (p_subject is null or p_subject = any(signals_subjects))
+    and (p_subject_general is null or p_subject_general = any(subjects_general))
+    and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
+    and (
+      p_subject is null
+      or p_subject = any(signals_subjects)
+      or p_subject = any(subjects_canonical)
+      or p_subject = any(subjects_general)
+    )
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
@@ -690,6 +729,7 @@ select jsonb_build_object(
       group by specific_student_level
     ) s
   ),
+  -- Legacy: subject label facets from `signals_subjects` (kept for back-compat).
   'subjects', (
     select coalesce(
       jsonb_agg(jsonb_build_object('value', subject, 'count', c) order by c desc, subject asc),
@@ -703,6 +743,38 @@ select jsonb_build_object(
       ) d
       where subject is not null and btrim(subject) <> ''
       group by subject
+    ) s
+  ),
+  -- v2: general category code facets.
+  'subjects_general', (
+    select coalesce(
+      jsonb_agg(jsonb_build_object('value', subject_general, 'count', c) order by c desc, subject_general asc),
+      '[]'::jsonb
+    )
+    from (
+      select subject_general, count(*) as c
+      from (
+        select distinct id, unnest(subjects_general) as subject_general
+        from filtered
+      ) d
+      where subject_general is not null and btrim(subject_general) <> ''
+      group by subject_general
+    ) s
+  ),
+  -- v2: canonical subject code facets.
+  'subjects_canonical', (
+    select coalesce(
+      jsonb_agg(jsonb_build_object('value', subject_canonical, 'count', c) order by c desc, subject_canonical asc),
+      '[]'::jsonb
+    )
+    from (
+      select subject_canonical, count(*) as c
+      from (
+        select distinct id, unnest(subjects_canonical) as subject_canonical
+        from filtered
+      ) d
+      where subject_canonical is not null and btrim(subject_canonical) <> ''
+      group by subject_canonical
     ) s
   ),
   'agencies', (
@@ -1165,6 +1237,7 @@ create table if not exists public.broadcast_messages (
   message_html text not null,
   last_rendered_clicks integer,
   last_edited_at timestamptz,
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -1189,6 +1262,9 @@ alter table public.broadcast_messages
 
 alter table public.broadcast_messages
   add column if not exists last_edited_at timestamptz;
+
+alter table public.broadcast_messages
+  add column if not exists deleted_at timestamptz;
 
 alter table public.broadcast_messages
   add column if not exists created_at timestamptz;

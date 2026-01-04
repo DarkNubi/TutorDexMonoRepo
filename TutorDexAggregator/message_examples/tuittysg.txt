@@ -1,0 +1,219 @@
+# Tuitty (t.me/tuittysg)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: [NEW] Assignment #3517
+▪️ Subject: Math (Abacus Teacher) - FULL TIME JOB
+▪️ Level: Children aged 4-12
+▪️ Location: Upper Serangoon
+▪️ Time and day: Tuesday to Friday - 12.30pm to 9pm, Saturday to Sunday - 9am to 6.30pm, Closed on Mon & PH
+▪️ Frequency: 6 days per week / 44 hours per week
+▪️ Rate: $3000-3200 per month
+▪️ Additional Remarks: Conduct classes for up to 10 students, training will be provided. Prior experience working with children preferred.
+
+JSON:
+{
+"assignment_code": "3517",
+"academic_display_text": "Math (Abacus Teacher)",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Upper Serangoon"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"6 days per week / 44 hours per week"
+],
+"start_date": null,
+"rate": {
+"min": 3000,
+"max": 3200,
+"raw_text": "$3000-3200 per month"
+},
+"additional_remarks": "Conduct classes for up to 10 students, training will be provided. Prior experience working with children preferred."
+}
+
+Example 2:
+Raw: [NEW] Assignment #3518
+▪️ Subject: Math (Tuition Centre)
+▪️ Level: Sec 1 or Sec 4
+▪️ Location: Hougang Ave 8
+▪️ Time and day: Saturday 2pm-345pm Sec 4 G2 2026, Saturday 4pm - 545pm Sec 4 G3 2026, Sunday 2pm-345pm Sec 1 2026, Sunday 4pm - 545pm Sec 1 2026
+▪️ Frequency: 1h45mins, once a week
+▪️ Rate: $50/h
+▪️ Additional Remarks: Part time Uni undergraduate tutors and above with good teaching experience. This is a tuition centre group class assignment with about 1-3 students per class, max 6. Please state which class you can take when applying.
+
+JSON:
+{
+"assignment_code": "3518",
+"academic_display_text": "Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Hougang Ave 8"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1h45mins, once a week"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 50,
+"raw_text": "$50/h"
+},
+"additional_remarks": "Part time Uni undergraduate tutors and above with good teaching experience. This is a tuition centre group class assignment with about 1-3 students per class, max 6. Please state which class you can take when applying."
+}
+
+Example 3:
+Raw: [NEW] Assignment #3521
+▪️ Subject: Math
+▪️ Level: Sec 3NA and Sec 4 Express (2026)
+▪️ Location: Bedok North Ave 4
+▪️ Time and day: Saturday 930am-1230pm only
+▪️ Frequency: 3h once a week
+▪️ Rate: $40/h
+▪️ Additional Remarks: Female, part time Uni undergraduate tutors and above with good teaching experience. Back to back classes, 1.5h each student.
+
+JSON:
+{
+"assignment_code": "3521",
+"academic_display_text": "Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Bedok North Ave 4"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"3h once a week"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 40,
+"raw_text": "$40/h"
+},
+"additional_remarks": "Female, part time Uni undergraduate tutors and above with good teaching experience. Back to back classes, 1.5h each student."
+}
+
+Example 4:
+Raw: [NEW] Assignment #3523
+▪️ Subject: English Writing and Critical Thinking
+▪️ Level: Upper Primary and Secondary
+▪️ Location: ONLINE
+▪️ Time and day: Tuesday and Thursday 730-830pm (Secondary), and Saturday 2.30pm-330pm (Upper Primary)
+▪️ Frequency: 1h once a week
+▪️ Rate: $50-60/h
+▪️ Additional Remarks: Full time Uni graduate tutors and above with good teaching experience. This is a group class online with 10-15 students, materials provided. Need to mark homework submitted by students.
+
+JSON:
+{
+"assignment_code": "3523",
+"academic_display_text": "English Writing and Critical Thinking",
+"learning_mode": {
+"mode": "Online",
+"raw_text": "ONLINE"
+},
+"address": null,
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1h once a week"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 60,
+"raw_text": "$50-60/h"
+},
+"additional_remarks": "Full time Uni graduate tutors and above with good teaching experience. This is a group class online with 10-15 students, materials provided. Need to mark homework submitted by students."
+}
+
+Example 5:
+Raw: [NEW] Assignment #3524
+▪️ Subject: Math and Science
+▪️ Level: P4
+▪️ Location: 114 Rivervale Walk, S540114
+▪️ Time and day: Monday-Thursday 5-630pm
+▪️ Frequency: 1.5h twice a week
+▪️ Rate: $30-35/h
+▪️ Additional Remarks: Female, part time Uni undergraduate tutors and above with good teaching experience.
+
+JSON:
+{
+"assignment_code": "3524",
+"academic_display_text": "Math and Science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"114 Rivervale Walk"
+],
+"postal_code": [
+"540114"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1.5h twice a week"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 35,
+"raw_text": "$30-35/h"
+},
+"additional_remarks": "Female, part time Uni undergraduate tutors and above with good teaching experience."
+}
+
+Example 6:
+Raw: [UPDATED] Assignment #3522
+▪️ Subject: A Math
+▪️ Level: Sec 4
+▪️ Location: Lorong 1 Toa Payoh, near Caldecott MRT, S312130
+▪️ Time and day: Saturday late morning or Tuesday after 330pm
+▪️ Frequency: 2h once a week
+▪️ Rate: $50/h
+▪️ Additional Remarks: Part time Uni undergraduate tutors and above with good teaching experience.
+
+JSON:
+{
+"assignment_code": "3522",
+"academic_display_text": "A Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Lorong 1 Toa Payoh"
+],
+"postal_code": [
+"312130"
+],
+"nearest_mrt": [
+"Caldecott MRT"
+],
+"lesson_schedule": [
+"2h once a week"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 50,
+"raw_text": "$50/h"
+},
+"additional_remarks": "Part time Uni undergraduate tutors and above with good teaching experience."
+}
+

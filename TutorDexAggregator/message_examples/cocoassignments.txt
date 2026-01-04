@@ -1,0 +1,189 @@
+# CocoTutors (t.me/CocoAssignments)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: New Assignment for Sec 3 A Math (think! Topic 1 to 5) @ Yishun
+
+Assignment code: 1673, Location: 762673 (Yishun)
+
+* Level & Subject: Sec 3 A Math (think! Topic 1 to 5)
+* 1 or 2 lesson/week x 1 or 2h
+* Timeslots:
+  Special request: Private school for 1 year O level preparation. Open to online class or face to face.
+
+JSON:
+{
+"assignment_code": "1673",
+"academic_display_text": "Sec 3 A Math (think! Topic 1 to 5)",
+"learning_mode": {
+"mode": "Hybrid",
+"raw_text": "Open to online class or face to face."
+},
+"address": [
+"Yishun"
+],
+"postal_code": [
+"762673"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 or 2 lesson/week x 1 or 2h"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": null
+},
+"additional_remarks": "Private school for 1 year O level preparation. Open to online class or face to face."
+}
+
+Example 2:
+Raw: New Assignment for Y4 IP Chemistry & Biology @ Yishun
+
+Assignment code: 1674, Location: 768427 (Yishun)
+
+* Level & Subject: Y4 IP Chemistry & Biology
+* 1 lesson/week x 1.5h
+* Timeslots:
+  Special request: Full Time Tutor. Online is fine if tutor is not nearby.
+
+JSON:
+{
+"assignment_code": "1674",
+"academic_display_text": "Y4 IP Chemistry & Biology",
+"learning_mode": {
+"mode": "Online",
+"raw_text": "Online is fine if tutor is not nearby."
+},
+"address": [
+"Yishun"
+],
+"postal_code": [
+"768427"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 lesson/week x 1.5h"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": null
+},
+"additional_remarks": "Full Time Tutor. Online is fine if tutor is not nearby."
+}
+
+Example 3:
+Raw: New Assignment for P6 Science & Math @ Jurong West
+
+Assignment code: 1675, Location: 641677 (Jurong West)
+
+* Level & Subject: P6 Science & Math
+* 1 lesson/week x 1.5h
+* Timeslots: Wed or Thu after 5 pm.
+  Special request:
+
+JSON:
+{
+"assignment_code": "1675",
+"academic_display_text": "P6 Science & Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Jurong West"
+],
+"postal_code": [
+"641677"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 lesson/week x 1.5h"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": null
+},
+"additional_remarks": null
+}
+
+Example 4:
+Raw: New Assignment for P6 English @ Siglap
+
+Assignment code: 1676, Location: 455507 (Siglap)
+
+* Level & Subject: P6 English
+* 1 lesson/week x 2h
+* Timeslots: Mon, 7 to 9 pm
+  Special request: Ex/Current MOE Teacher with 5 yrs related working experience.
+
+JSON:
+{
+"assignment_code": "1676",
+"academic_display_text": "P6 English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Siglap"
+],
+"postal_code": [
+"455507"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 lesson/week x 2h"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": null
+},
+"additional_remarks": "Ex/Current MOE Teacher with 5 yrs related working experience."
+}
+
+Example 5:
+Raw: New Assignment for P4 English @ Clementi
+
+Assignment code: 1677, Location: 120309 (Clementi)
+
+* Level & Subject: P4 English
+* 1 lesson/week x 1.5h
+* Timeslots:
+  Special request: Familiar with the MOE syllabus and able to teach P1, P2 & Oral, helping improve his exam results towards PSLE.
+
+JSON:
+{
+"assignment_code": "1677",
+"academic_display_text": "P4 English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Clementi"
+],
+"postal_code": [
+"120309"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 lesson/week x 1.5h"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": null
+},
+"additional_remarks": "Familiar with the MOE syllabus and able to teach P1, P2 & Oral, helping improve his exam results towards PSLE."
+}

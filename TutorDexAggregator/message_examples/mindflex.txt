@@ -1,3 +1,7 @@
+# MindFlex (t.me/tuitionassignmentssg)
+#
+# Used only when `LLM_INCLUDE_EXAMPLES=true`. Examples are formatting guidance only.
+
 Example 1:
 Raw: Code ID: 1412wg
 (Part/Full-Time Tutor or Ex/Current MOE Teacher)

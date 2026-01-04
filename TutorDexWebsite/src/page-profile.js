@@ -1,9 +1,44 @@
 import { getCurrentUid, getCurrentUser, waitForAuth } from "../auth.js";
-import { createTelegramLinkCode, getTutor, isBackendEnabled, trackEvent, upsertTutor } from "./backend.js";
+import { createTelegramLinkCode, getRecentMatchCounts, getTutor, isBackendEnabled, trackEvent, upsertTutor } from "./backend.js";
 import { SPECIFIC_LEVELS } from "./academicEnums.js";
 import { canonicalSubjectsForLevel, canonicalizeSubjectLabels, labelForCanonicalCode } from "./taxonomy/subjectsTaxonomyV2.js";
 
 const specificLevelsData = SPECIFIC_LEVELS || {};
+const DM_BOT_HANDLE = String(import.meta.env?.VITE_DM_BOT_HANDLE ?? "@TutorDexSniperBot").trim() || "@TutorDexSniperBot";
+
+function _dmBotUsername() {
+  const h = String(DM_BOT_HANDLE || "").trim();
+  if (!h) return "TutorDexSniperBot";
+  return h.startsWith("@") ? h.slice(1) : h;
+}
+
+function _dmBotLinkUrl({ code } = {}) {
+  const user = _dmBotUsername();
+  if (!user) return "";
+  const c = String(code || "").trim();
+  if (!c) return `https://t.me/${encodeURIComponent(user)}`;
+  // Deep link uses /start payload; backend bot treats it like /link <code>.
+  return `https://t.me/${encodeURIComponent(user)}?start=${encodeURIComponent(`link_${c}`)}`;
+}
+
+function _setDmBotLinks({ code } = {}) {
+  const handle = DM_BOT_HANDLE.startsWith("@") ? DM_BOT_HANDLE : `@${DM_BOT_HANDLE}`;
+  const href = _dmBotLinkUrl({ code });
+  const a1 = document.getElementById("dm-bot-link");
+  const a2 = document.getElementById("dm-bot-link-2");
+  const open = document.getElementById("open-dm-bot");
+  for (const a of [a1, a2]) {
+    if (!a) continue;
+    a.textContent = handle;
+    a.href = _dmBotLinkUrl();
+  }
+  if (open) {
+    open.textContent = `Open ${handle}`;
+    open.href = href || _dmBotLinkUrl();
+    open.style.pointerEvents = href ? "auto" : "none";
+    open.style.opacity = href ? "1" : "0.6";
+  }
+}
 
 function selectSingle(btn, inputId) {
   const container = btn.parentElement;
@@ -455,6 +490,7 @@ async function initProfilePage() {
   const linkDisplay = document.getElementById("link-code-display");
   const linkBox = document.getElementById("link-code-box");
   const copyLinkBtn = document.getElementById("copy-link-command");
+  _setDmBotLinks();
   if (linkBtn && linkDisplay) {
     linkBtn.addEventListener("click", async () => {
       try {
@@ -474,6 +510,7 @@ async function initProfilePage() {
         }
         linkDisplay.textContent = res.code;
         if (linkBox) linkBox.classList.remove("hidden");
+        _setDmBotLinks({ code: res.code });
         setStatus("Link code generated. Send it to the DM bot.", "success");
       } catch (err) {
         console.error(err);
@@ -494,6 +531,58 @@ async function initProfilePage() {
         window.prompt("Copy this command:", cmd);
       }
     });
+  }
+
+  const matchBtn = document.getElementById("check-match-counts");
+  const matchBox = document.getElementById("match-counts-box");
+  const match7 = document.getElementById("match-count-7d");
+  const match14 = document.getElementById("match-count-14d");
+  const match30 = document.getElementById("match-count-30d");
+  const matchNote = document.getElementById("match-counts-note");
+
+  async function runMatchCount() {
+    if (!isBackendEnabled()) {
+      setStatus("Backend not configured (VITE_BACKEND_URL missing).", "error");
+      return;
+    }
+    const uid = await getCurrentUid();
+    if (!uid) {
+      setStatus("You must be signed in to check matches.", "error");
+      return;
+    }
+
+    const { subjects, levels } = parseTrayPreferences();
+    if ((!subjects || subjects.length === 0) && (!levels || levels.length === 0)) {
+      setStatus("Add at least one level/subject to check matches.", "error");
+      return;
+    }
+
+    if (matchBtn) matchBtn.disabled = true;
+    if (matchBox) matchBox.classList.remove("hidden");
+    if (match7) match7.textContent = "...";
+    if (match14) match14.textContent = "...";
+    if (match30) match30.textContent = "...";
+    if (matchNote) matchNote.textContent = " (all assignments, based on last_seen)";
+
+    try {
+      const res = await getRecentMatchCounts({ levels, subjects });
+      const c = res?.counts || {};
+      if (match7) match7.textContent = String(c?.["7"] ?? "-");
+      if (match14) match14.textContent = String(c?.["14"] ?? "-");
+      if (match30) match30.textContent = String(c?.["30"] ?? "-");
+    } catch (err) {
+      console.error(err);
+      if (matchNote) matchNote.textContent = ` (${err?.message || err})`;
+      if (match7) match7.textContent = "-";
+      if (match14) match14.textContent = "-";
+      if (match30) match30.textContent = "-";
+    } finally {
+      if (matchBtn) matchBtn.disabled = false;
+    }
+  }
+
+  if (matchBtn) {
+    matchBtn.addEventListener("click", () => void runMatchCount());
   }
 
   try {

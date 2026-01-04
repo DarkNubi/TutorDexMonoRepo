@@ -651,6 +651,10 @@ If you move signals, matching will quietly degrade (empty query → low scores).
 Matching subject semantics (taxonomy v2):
 - Backend matching prefers taxonomy v2 `subjects_canonical` when present in signals, and falls back to legacy subject labels.
 
+Matching assignment type / tutor kind (not implemented yet):
+- Tutor profiles store `assignment_types[]` (e.g. private vs tuition centre) and `tutor_kinds[]` (PT/FT/MOE/Ex-MOE), but assignments currently do not provide a reliable deterministic `type` signal into `payload.meta.signals` for scoring.
+- Recommendation: only add this as a *soft boost* once a stable assignment-side type signal exists; avoid strict filtering to prevent false negatives.
+
 ### Contract D: click tracking RPC
 - `public.increment_assignment_clicks(...)` must exist.
 - Backend calls it via `SupabaseStore.increment_assignment_clicks`.

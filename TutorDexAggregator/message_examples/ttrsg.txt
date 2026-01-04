@@ -1,3 +1,7 @@
+# TTR (t.me/tuitionassignmentsttrsg)
+#
+# Used only when `LLM_INCLUDE_EXAMPLES=true`. Examples are formatting guidance only.
+
 Example 1:
 Raw: 🌟REPOST
 S3 G3 Combined Bio + Chem (2026) #A8703

@@ -160,6 +160,24 @@
             <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Multi-Select</span>
           </div>
 
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <button
+              id="check-match-counts"
+              type="button"
+              class="px-4 py-2 border border-gray-300 rounded-lg font-bold uppercase text-xs tracking-wide hover:border-black transition"
+              title="Count open assignments in the last 7/14/30 days that match your current tray selections"
+            >
+              Check Recent Matches
+            </button>
+            <div id="match-counts-box" class="hidden text-sm text-gray-700">
+              <span class="font-semibold">Matches (last</span>
+              <span class="font-mono">7d:</span> <span id="match-count-7d" class="font-semibold">-</span>,
+              <span class="font-mono">14d:</span> <span id="match-count-14d" class="font-semibold">-</span>,
+              <span class="font-mono">30d:</span> <span id="match-count-30d" class="font-semibold">-</span>
+              <span id="match-counts-note" class="text-xs text-gray-500 ml-2"></span>
+            </div>
+          </div>
+
           <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 mb-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <select id="level-select" class="nike-input bg-white rounded-lg">
@@ -360,8 +378,9 @@
             <p id="telegram-link-status" class="text-sm font-semibold text-gray-700">Checking link status...</p>
 
             <p id="telegram-chatid-info" class="mt-1 text-xs text-gray-500 hidden">
-              To receive DMs, generate a link code and send <span class="font-mono">/link &lt;code&gt;</span> to the TutorDex DM bot. Once linked, we
-              will detect it automatically.
+              To receive DMs, generate a link code and send <span class="font-mono">/link &lt;code&gt;</span> to
+              <a id="dm-bot-link" class="font-semibold underline" href="#" target="_blank" rel="noopener noreferrer">@TutorDexSniperBot</a>. Once linked,
+              we will detect it automatically.
             </p>
 
             <div class="mt-3 flex flex-wrap items-center gap-3">
@@ -378,10 +397,22 @@
                 <button id="copy-link-command" type="button" class="text-xs font-bold uppercase underline text-gray-700 hover:text-black">
                   Copy /link
                 </button>
+                <a
+                  id="open-dm-bot"
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-xs font-bold uppercase underline text-gray-700 hover:text-black"
+                  title="Open Telegram DM bot (uses /start payload)"
+                >
+                  Open bot
+                </a>
               </div>
             </div>
             <p class="mt-2 text-xs text-gray-500">
-              After generating a code, send <span class="font-mono">/link &lt;code&gt;</span> to the TutorDex DM bot.
+              After generating a code, send <span class="font-mono">/link &lt;code&gt;</span> to
+              <a id="dm-bot-link-2" class="font-semibold underline" href="#" target="_blank" rel="noopener noreferrer">@TutorDexSniperBot</a>
+              (or click “Open bot”).
             </p>
           </div>
 

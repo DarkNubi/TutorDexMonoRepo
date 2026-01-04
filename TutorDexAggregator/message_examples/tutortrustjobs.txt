@@ -1,0 +1,224 @@
+# TutorTrust (t.me/TutorTrustJobs)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw: #C717 P1 Chinese $35/h
+Location: Bukit Panjang (S670606)
+Duration: 1.5h
+Lessons per week: 1x
+Tutoring days: Wednesday or Thursday 5pm
+
+Remarks:
+
+* Male/Female tutors accepted
+* Experienced Tutor
+
+*50% of first month's fees to agency
+
+Text assignment code to @sgtutortrust or Whatsapp 93888700 to apply!
+
+JSON:
+{
+"assignment_code": "C717",
+"academic_display_text": "P1 Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Bukit Panjang"
+],
+"postal_code": [
+"670606"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5h",
+"Lessons per week: 1x"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 35,
+"raw_text": "$35/h"
+},
+"additional_remarks": "- Male/Female tutors accepted\n- Experienced Tutor"
+}
+
+Example 2:
+Raw: #C714 P3 English & Chinese $60/1.5h
+Location: Tampines (s522879)
+Duration: 1.5h
+Lessons per week: 1
+Tutoring days: Tuesday or Wednesday 3-4:30pm
+
+Remarks
+
+* female tutor
+
+50% of first month’s fees goes to agency
+
+Text assignment code to @sgtutortrust or WhatsApp 93888700 to apply!
+
+JSON:
+{
+"assignment_code": "C714",
+"academic_display_text": "P3 English & Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Tampines"
+],
+"postal_code": [
+"522879"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5h",
+"Lessons per week: 1"
+],
+"start_date": null,
+"rate": {
+"min": 60,
+"max": 60,
+"raw_text": "$60/1.5h"
+},
+"additional_remarks": "- female tutor"
+}
+
+Example 3:
+Raw: #C713 P4 Chinese $50/h
+Location: 3 Anthony Road (s229953)
+Duration: 1.5h
+Lessons per week: 1
+Tutoring days: Weekdays (except Thursday) 5-6:30pm
+
+Remarks
+
+* female tutor
+
+50% of first month’s fees goes to agency
+
+Text assignment code to @sgtutortrust or WhatsApp 93888700 to apply!
+
+JSON:
+{
+"assignment_code": "C713",
+"academic_display_text": "P4 Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"3 Anthony Road"
+],
+"postal_code": [
+"229953"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5h",
+"Lessons per week: 1"
+],
+"start_date": null,
+"rate": {
+"min": 50,
+"max": 50,
+"raw_text": "$50/h"
+},
+"additional_remarks": "- female tutor"
+}
+
+Example 4:
+Raw: #C642 Japanese $40-60/h (Online or Physical)
+Location: 3 Anthony Road (s229953)
+Duration: 1.5h
+Lessons per week: 1x
+Tutoring days: tbc
+
+Remarks:
+
+* Adult Learner
+* Focus on Conversational Japanese (speaking skills)
+* Lessons Either Physical or Online
+
+50% of first month's fees goes to agency
+
+Text assignment code to @sgtutortrust or Whatsapp 93888700 to apply!
+
+JSON:
+{
+"assignment_code": "C642",
+"academic_display_text": "Japanese",
+"learning_mode": {
+"mode": "Hybrid",
+"raw_text": "Online or Physical"
+},
+"address": [
+"3 Anthony Road"
+],
+"postal_code": [
+"229953"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5h",
+"Lessons per week: 1x"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 60,
+"raw_text": "$40-60/h (Online or Physical)"
+},
+"additional_remarks": "- Adult Learner\n- Focus on Conversational Japanese (speaking skills)\n- Lessons Either Physical or Online"
+}
+
+Example 5:
+Raw: #C715 Sec 2  Literature,  History & Japanese  $40-60/h
+Location: Bukit Batok (s650129)
+Duration: 1.5
+Lessons per week: 1x
+Tutoring days: tbc
+
+Remarks:
+
+* male/female tutors
+* Start ASAP
+
+*50% of first month's fees goes to agency
+
+Text assignment code to @sgtutortrust or WhatsApp 93888700 to apply!
+
+JSON:
+{
+"assignment_code": "C715",
+"academic_display_text": "Sec 2 Literature, History & Japanese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Bukit Batok"
+],
+"postal_code": [
+"650129"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"Duration: 1.5",
+"Lessons per week: 1x"
+],
+"start_date": "ASAP",
+"rate": {
+"min": 40,
+"max": 60,
+"raw_text": "$40-60/h"
+},
+"additional_remarks": "- male/female tutors\n- Start ASAP"
+}
+

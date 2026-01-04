@@ -8,6 +8,7 @@ import random
 import time
 from typing import Any, Dict, Optional
 from pathlib import Path
+from datetime import datetime, timezone
 
 import requests
 import html
@@ -102,6 +103,60 @@ def _escape(text: Optional[str]) -> str:
     if not text:
         return ''
     return html.escape(str(text))
+
+
+def _coerce_hours_env(name: str, default: int) -> int:
+    try:
+        v = int(str(os.environ.get(name, "")).strip() or default)
+    except Exception:
+        v = default
+    return max(1, v)
+
+
+def _parse_payload_date(value: Any) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(value), tz=timezone.utc)
+        except Exception:
+            return None
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        # Accept ISO strings; normalize "Z" to "+00:00" for fromisoformat.
+        s2 = s.replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(s2)
+        except Exception:
+            return None
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    return None
+
+
+def _freshness_emoji(payload: Dict[str, Any]) -> str:
+    dt = _parse_payload_date(payload.get("date"))
+    if not dt:
+        return ""
+    age_h = max(0.0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds() / 3600.0)
+
+    green_h = _coerce_hours_env("FRESHNESS_GREEN_HOURS", 24)
+    yellow_h = _coerce_hours_env("FRESHNESS_YELLOW_HOURS", 36)
+    orange_h = _coerce_hours_env("FRESHNESS_ORANGE_HOURS", 48)
+    red_h = _coerce_hours_env("FRESHNESS_RED_HOURS", 72)
+
+    if age_h < green_h:
+        return "🟢"
+    if age_h < yellow_h:
+        return "🟡"
+    if age_h < orange_h:
+        return "🟠"
+    if age_h < red_h:
+        return "🔴"
+    return "🔴"
 
 
 def _flatten_text_list(value: Any) -> list[str]:
@@ -347,7 +402,9 @@ def build_message_text(
     if not agency:
         agency = str(payload.get("channel_title") or "").strip() or "Agency"
     # Header
-    header = f'⭐️<b>{agency}</b>⭐️'
+    emoji = _freshness_emoji(payload)
+    prefix = f"{emoji} " if emoji else ""
+    header = f'{prefix}⭐️<b>{agency}</b>⭐️'
     if academic_raw:
         header += f"\n<b>{academic_raw}</b>"
     else:

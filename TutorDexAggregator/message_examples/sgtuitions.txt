@@ -1,0 +1,190 @@
+# SG Tuitions (t.me/sgTuitions)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw:
+▪ Job Code: 260301CF11
+▪ Job Details:
+Info:  Sec 2 Exp Science @ 418A Fernvale Link (nearest LRT station: Layar) on Monday 8pm ONLY [1 lesson/week, 1.5 hrs/lesson]
+
+Requirement: An experienced PART-TIME or FULL-TIME tutor or an EX/CURRENT MOE teacher for this Seng Kang Secondary female student. Student works best with soft spoken tutor. Tutor to commit for at least 1 year. Start ASAP.
+
+Rate: PART-TIME $35-$45/hr, FULL-TIME $45-$60/hr, EX/CURRENT MOE $80-$100/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+JSON:
+{
+"assignment_code": "260301CF11",
+"academic_display_text": "Sec 2 Exp Science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"418A Fernvale Link"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Layar"
+],
+"lesson_schedule": [
+"1 lesson/week, 1.5 hrs/lesson"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "PART-TIME $35-$45/hr, FULL-TIME $45-$60/hr, EX/CURRENT MOE $80-$100/hr"
+},
+"additional_remarks": "Student works best with soft spoken tutor. Tutor to commit for at least 1 year."
+}
+
+Example 2:
+Raw:
+▪ Job Code: 260301W12
+▪ Job Details:
+Info: P5 Math @ 654B Jurong West Street 61 (nearest MRT station: Pioneer) on Sunday 4pm ONLY [1 lesson/week, 1.5 hrs/lesson]
+
+Requirement: An experienced PART-TIME tutor for this Frontier Primary School boy. He is coachable, but he is quite easily distracted. Tutor to commit for at least 1 year. Start ASAP.
+
+Rate: $30-$40/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+JSON:
+{
+"assignment_code": "260301W12",
+"academic_display_text": "P5 Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"654B Jurong West Street 61"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Pioneer"
+],
+"lesson_schedule": [
+"1 lesson/week, 1.5 hrs/lesson"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 30,
+"max": 40,
+"raw_text": "$30-$40/hr"
+},
+"additional_remarks": "He is coachable, but he is quite easily distracted. Tutor to commit for at least 1 year."
+}
+
+Example 3:
+Raw:
+▪ Job Code: 260301CW13
+▪ Job Details:
+Info: Sec 2 G3 Chinese @ Fernvale Close (nearest train station: Sengkang MRT then Layar LRT) on Mon-Fri evenings [1 lesson/week, 1.5 hrs/lesson]
+
+Requirement: An experienced PART-TIME or FULL-TIME tutor for this student. Start ASAP.
+
+Rate: PART-TIME $35-$45/hr.; FULL-TIME $45-$60/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+JSON:
+{
+"assignment_code": "260301CW13",
+"academic_display_text": "Sec 2 G3 Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Fernvale Close"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Sengkang MRT",
+"Layar LRT"
+],
+"lesson_schedule": [
+"1 lesson/week, 1.5 hrs/lesson"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "PART-TIME $35-$45/hr.; FULL-TIME $45-$60/hr"
+},
+"additional_remarks": null
+}
+
+Example 4:
+Raw:
+▪ Job Code: 260301CF14
+▪ Job Details:
+Info: P4 Science @ 122 Ang Mo Kio Avenue 3 (nearest MRT station: Ang Mo Kio) on Sat 11.30am-2pm or Sun 2.30pm-5pm ONLY [1 lesson/week, 2 hrs/lesson/kid]
+
+Requirement: An experienced PART-TIME tutor for this Anderson Primary School boy. Tutor to commit for at least 1 year. Start ASAP.
+
+Rate: $30-$40/hr. Justify asking hourly rate with qualification, experience, and track record. Do not over quote!
+
+JSON:
+{
+"assignment_code": "260301CF14",
+"academic_display_text": "P4 Science",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"122 Ang Mo Kio Avenue 3"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Ang Mo Kio"
+],
+"lesson_schedule": [
+"1 lesson/week, 2 hrs/lesson/kid"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 30,
+"max": 40,
+"raw_text": "$30-$40/hr"
+},
+"additional_remarks": "Tutor to commit for at least 1 year."
+}
+
+Example 5:
+Raw:
+▪ Job Code: 260301W15
+▪ Job Details:
+Info: P6 English @ 658C Punggol East (nearest LRT station: Kadaloor) on Sat 3pm onwards [1 lesson/week, 1.5 hrs/lesson]
+
+Requirement: A PART-TIME or FULL-TIME tutor for this Waterway Primary boy. Tutor will focus on all English papers except Composition, providing clear and engaging lessons. Should give consistent feedback during sessions, assign manageable homework, and be firm yet approachable. Ideally, tutor has experience with P6 students, is familiar with the PSLE format, and is up to date with the MOE syllabus. As the student may be shy with new people, tutor is encouraged to actively engage and involve the student during lessons. Start ASAP.
+
+Rate: $30-$40/hr. Do not over quote!
+
+JSON:
+{
+"assignment_code": "260301W15",
+"academic_display_text": "P6 English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"658C Punggol East"
+],
+"postal_code": null,
+"nearest_mrt": [
+"Kadaloor"
+],
+"lesson_schedule": [
+"1 lesson/week, 1.5 hrs/lesson"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 30,
+"max": 40,
+"raw_text": "$30-$40/hr"
+},
+"additional_remarks": "Tutor will focus on all English papers except Composition, providing clear and engaging lessons. Should give consistent feedback during sessions, assign manageable homework, and be firm yet approachable. Ideally, tutor has experience with P6 students, is familiar with the PSLE format, and is up to date with the MOE syllabus. As the student may be shy with new people, tutor is encouraged to actively engage and involve the student during lessons."
+}

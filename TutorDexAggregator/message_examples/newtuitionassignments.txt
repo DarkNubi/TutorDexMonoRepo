@@ -1,0 +1,199 @@
+# Tuition Assignments SG (t.me/newtuitionassignments)
+#
+# Fill this with real posts from the channel. These are used only as formatting guidance
+# when `LLM_INCLUDE_EXAMPLES=true`.
+
+Example 1:
+Raw:
+Secondary 4 G3 History Tuition Assignment East. $55/hr to $60/hr. Urgent (GC756)
+
+Assignment Code: GC756
+
+G3 Pure History Tuition Assignment East: (GC756)
+– History tutor needed for a Secondary 4 student
+– The student’s address: Jalan Angin Laut
+– Start ASAP
+– Once a week, 1.5 hours each session. $55/hr to $60/hr
+– The client prefers lessons to be on Thursdays 7pm to 8.30pm
+– Commission Structure: First 2 Lessons
+
+JSON:
+{
+"assignment_code": "GC756",
+"academic_display_text": "Secondary 4 G3 History",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Jalan Angin Laut"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hours each session"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 55,
+"max": 60,
+"raw_text": "$55/hr to $60/hr"
+},
+"additional_remarks": null
+}
+
+Example 2:
+Raw:
+Secondary 4 G3 Chinese Tuition Assignment West. $55/hr to $65/hr. Urgent (GC776)
+
+Assignment Code: GC776
+
+G3 Chinese Tuition Assignment West: (GC776)
+– Chinese language tutor needed for a Secondary 4 student
+– The student’s address: Choa Chu Kang Avenue 4
+– Start ASAP
+– Once a week, 2 hours each session. $55/hr to $65/hr
+– The client prefers lessons to be on Fridays 6.30pm to 8.30pm
+– Commission Structure: First 2 Lessons
+
+JSON:
+{
+"assignment_code": "GC776",
+"academic_display_text": "Secondary 4 G3 Chinese",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Choa Chu Kang Avenue 4"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 2 hours each session"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 55,
+"max": 65,
+"raw_text": "$55/hr to $65/hr"
+},
+"additional_remarks": null
+}
+
+Example 3:
+Raw:
+Primary 4 Malay Tuition Assignment West. $40/hr. Urgent (GC763)
+
+Assignment Code: GC763
+
+Malay Tuition Assignment West: (GC763)
+– Malay language tutor needed for a Primary 4 student
+– The student’s address: Saujana Road
+– Start ASAP
+– Once a week, 1.5 hours each session. $40/hr
+– The client prefers lessons to be on Mondays 5pm to 6.30pm
+– Commission Structure: First 2 Lessons
+
+JSON:
+{
+"assignment_code": "GC763",
+"academic_display_text": "Primary 4 Malay",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Saujana Road"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hours each session"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 40,
+"max": 40,
+"raw_text": "$40/hr"
+},
+"additional_remarks": null
+}
+
+Example 4:
+Raw:
+IP Year 1 Math Tuition Assignment North. $50/hr to $55/hr. Urgent (GC764)
+
+Assignment Code: GC764
+
+IP Math Tuition Assignment North: (GC764)
+– Math tutor needed for a IP Year 1 student
+– The student’s address: Yishun Avenue 1
+– Start ASAP
+– Once a week, 1.5 hours each session. $50/hr to $55/hr
+– The client prefers lessons to be on Wednesdays 3pm to 4.30pm
+– Commission Structure: First 2 Lessons
+
+JSON:
+{
+"assignment_code": "GC764",
+"academic_display_text": "IP Year 1 Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Yishun Avenue 1"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hours each session"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 50,
+"max": 55,
+"raw_text": "$50/hr to $55/hr"
+},
+"additional_remarks": null
+}
+
+Example 5:
+Raw:
+Secondary 4 G3 History Tuition Assignment East. $55/hr to $60/hr. Urgent (GC756)
+
+Assignment Code: GC756
+
+G3 Pure History Tuition Assignment East: (GC756)
+– History tutor needed for a Secondary 4 student
+– The student’s address: Jalan Angin Laut
+– Start ASAP
+– Once a week, 1.5 hours each session. $55/hr to $60/hr
+– The client prefers lessons to be on Thursdays 7pm to 8.30pm
+– Commission Structure: First 2 Lessons
+
+JSON:
+{
+"assignment_code": "GC756",
+"academic_display_text": "Secondary 4 G3 History",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Jalan Angin Laut"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"Once a week, 1.5 hours each session"
+],
+"start_date": "Start ASAP",
+"rate": {
+"min": 55,
+"max": 60,
+"raw_text": "$55/hr to $60/hr"
+},
+"additional_remarks": null
+}

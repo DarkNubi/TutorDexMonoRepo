@@ -16,6 +16,7 @@ create table if not exists public.broadcast_messages (
   message_html text not null,
   last_rendered_clicks integer,
   last_edited_at timestamptz,
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
