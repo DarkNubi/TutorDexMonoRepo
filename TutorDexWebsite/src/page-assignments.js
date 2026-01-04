@@ -89,10 +89,20 @@ function setStatus(message, kind = "info", { showRetry = false } = {}) {
   else el.className += " text-gray-500";
 }
 
+function updateGridLayout() {
+  if (!grid) return;
+  if (viewMode === "compact") {
+    grid.className = "grid grid-cols-1 gap-3";
+  } else {
+    grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
+  }
+}
+
 function setViewMode(next) {
   viewMode = next === "compact" ? "compact" : "full";
   writeViewMode(viewMode);
   updateViewToggleUI();
+  updateGridLayout();
   renderCards(allAssignments);
 }
 
@@ -327,6 +337,7 @@ function formatDistanceKm(km) {
 
 function renderSkeleton(count = 6) {
   grid.innerHTML = "";
+  updateGridLayout();
   noResults.classList.add("hidden");
   countLabel.innerText = "...";
   setResultsSummary(0, 0);
@@ -359,6 +370,7 @@ function renderSkeleton(count = 6) {
 
 function renderCards(data) {
   grid.innerHTML = "";
+  updateGridLayout();
 
   const visible = Array.isArray(data) ? data : [];
   if (visible.length === 0) {
@@ -376,6 +388,165 @@ function renderCards(data) {
   const compact = viewMode === "compact";
 
   visible.forEach((job) => {
+    if (compact) {
+      const rawMessageLink = typeof job.messageLink === "string" ? job.messageLink.trim() : "";
+      const messageLink = rawMessageLink.startsWith("t.me/") ? `https://${rawMessageLink}` : rawMessageLink;
+
+      const row = document.createElement(messageLink ? "a" : "div");
+      row.className =
+        "job-card bg-white rounded-xl px-4 py-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border border-gray-100";
+      if (messageLink) {
+        row.href = messageLink;
+        row.target = "_blank";
+        row.rel = "noopener noreferrer";
+        row.addEventListener("click", () => {
+          try {
+            sendClickBeacon({
+              eventType: "apply_click",
+              assignmentExternalId: job.id,
+              destinationType: "telegram_message",
+              destinationUrl: messageLink,
+              meta: { hasMessageLink: true, viewMode: "compact" },
+            });
+          } catch {}
+        });
+      } else {
+        row.className += " opacity-70";
+      }
+
+      const top = document.createElement("div");
+      top.className = "flex-1 min-w-0";
+
+      const header = document.createElement("div");
+      header.className = "flex items-start justify-between gap-3";
+
+      const left = document.createElement("div");
+      left.className = "min-w-0";
+
+      const title = document.createElement("div");
+      title.className = "text-lg font-bold leading-tight truncate";
+      title.textContent = job.academicDisplayText || "Tuition Assignment";
+
+      const levelDisplay = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
+        ? job.signalsSpecificLevels.join(" / ")
+        : Array.isArray(job.signalsLevels) && job.signalsLevels.length
+          ? job.signalsLevels.join(" / ")
+          : "";
+      if (levelDisplay) {
+        const subtitle = document.createElement("div");
+        subtitle.className = "text-[11px] font-bold uppercase tracking-wide text-gray-500 mt-1";
+        subtitle.textContent = levelDisplay;
+        left.appendChild(subtitle);
+      }
+
+      left.prepend(title);
+
+      const right = document.createElement("div");
+      right.className = "flex flex-col items-end gap-2 shrink-0";
+
+      const rate = document.createElement("div");
+      rate.className = "font-bold text-base";
+      const rateLabel = (() => {
+        if (typeof job.rateMin === "number" && Number.isFinite(job.rateMin) && typeof job.rateMax === "number" && Number.isFinite(job.rateMax)) {
+          if (Math.abs(job.rateMin - job.rateMax) < 1e-9) return `$${job.rateMin}/hr`;
+          return `$${job.rateMin}-$${job.rateMax}/hr`;
+        }
+        if (typeof job.rateMin === "number" && Number.isFinite(job.rateMin)) return `$${job.rateMin}/hr`;
+        const raw = String(job.rateRawText || "").trim();
+        return raw || "N/A";
+      })();
+      rate.textContent = rateLabel;
+
+      const chips = document.createElement("div");
+      chips.className = "flex flex-wrap items-center justify-end gap-2";
+
+      const tier = String(job?.freshnessTier || "green").trim().toLowerCase();
+      const tierPill = document.createElement("span");
+      tierPill.className = "badge";
+      tierPill.textContent =
+        tier === "green"
+          ? "Likely open"
+          : tier === "yellow"
+            ? "Probably open"
+            : tier === "orange"
+              ? "Uncertain"
+              : "Likely closed";
+      tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
+      if (tier === "yellow") tierPill.className = "badge bg-yellow-100 text-yellow-800";
+      else if (tier === "orange") tierPill.className = "badge bg-orange-100 text-orange-800";
+      else if (tier === "red") tierPill.className = "badge bg-red-100 text-red-800";
+      else tierPill.className = "badge bg-green-100 text-green-800";
+      chips.appendChild(tierPill);
+
+      const postedMs = Date.parse(String(job.postedAt || ""));
+      const isNew = Number.isFinite(postedMs) && lastVisitCutoffMs > 0 && postedMs > lastVisitCutoffMs;
+      if (isNew) {
+        const newPill = document.createElement("span");
+        newPill.className = "badge bg-blue-100 text-blue-800";
+        newPill.textContent = "New";
+        newPill.title = "Posted since your last visit.";
+        chips.appendChild(newPill);
+      }
+
+      if (hasMatchForMe(job)) {
+        const matchPill = document.createElement("span");
+        matchPill.className = "badge bg-purple-100 text-purple-800";
+        matchPill.textContent = "Matches you";
+        matchPill.title = "Matches your saved profile preferences.";
+        chips.appendChild(matchPill);
+      }
+
+      right.appendChild(rate);
+      right.appendChild(chips);
+
+      header.appendChild(left);
+      header.appendChild(right);
+      top.appendChild(header);
+
+      const meta = document.createElement("div");
+      meta.className = "mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700";
+
+      function metaItem(iconClass, text) {
+        const wrap = document.createElement("span");
+        wrap.className = "inline-flex items-center gap-2 min-w-0";
+
+        const iconWrap = document.createElement("span");
+        iconWrap.className = "w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center text-xs shrink-0";
+        const icon = document.createElement("i");
+        icon.className = iconClass;
+        iconWrap.appendChild(icon);
+
+        const label = document.createElement("span");
+        label.className = "font-medium truncate";
+        label.textContent = text;
+
+        wrap.appendChild(iconWrap);
+        wrap.appendChild(label);
+        return wrap;
+      }
+
+      meta.appendChild(metaItem("fa-solid fa-location-dot", job.location || "Unknown"));
+      const pr = job.postedAt ? formatRelativeTime(job.postedAt) : "";
+      meta.appendChild(metaItem("fa-solid fa-calendar-day", pr ? `Posted ${pr}` : "Posted"));
+      const br = job.bumpedAt ? formatRelativeTime(job.bumpedAt) : "";
+      meta.appendChild(metaItem("fa-solid fa-rotate", br ? `Bumped ${br}` : "Bumped/Updated"));
+
+      const subjectBits =
+        Array.isArray(job.subjectsCanonicalLabels) && job.subjectsCanonicalLabels.length
+          ? job.subjectsCanonicalLabels
+          : Array.isArray(job.signalsSubjects) && job.signalsSubjects.length
+            ? job.signalsSubjects
+            : [];
+      if (subjectBits.length) {
+        meta.appendChild(metaItem("fa-solid fa-book", subjectBits.slice(0, 3).join(" / ")));
+      }
+
+      top.appendChild(meta);
+      row.appendChild(top);
+      grid.appendChild(row);
+      return;
+    }
+
     const levelDisplay = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
       ? job.signalsSpecificLevels.join(" / ")
       : Array.isArray(job.signalsLevels) && job.signalsLevels.length
@@ -383,9 +554,7 @@ function renderCards(data) {
         : "";
 
     const card = document.createElement("div");
-    card.className = compact
-      ? "job-card bg-white rounded-xl p-4 relative flex flex-col justify-between h-full"
-      : "job-card bg-white rounded-xl p-6 relative flex flex-col justify-between h-full";
+    card.className = "job-card bg-white rounded-xl p-6 relative flex flex-col justify-between h-full";
 
     const top = document.createElement("div");
 
@@ -1166,6 +1335,7 @@ window.addEventListener("load", () => {
   if (compactBtn) compactBtn.addEventListener("click", () => setViewMode("compact"));
 
   updateViewToggleUI();
+  updateGridLayout();
   mountSubjectSearch();
 
   if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments({ reset: true }));
