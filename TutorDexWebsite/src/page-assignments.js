@@ -25,8 +25,6 @@ const specificLevelsData = SPECIFIC_LEVELS || {};
 const FILTERS_STORAGE_KEY = "tutordex_assignments_filters_v1";
 const VIEW_MODE_STORAGE_KEY = "tutordex_assignments_view_mode_v1";
 const LAST_VISIT_STORAGE_KEY = "tutordex_assignments_last_visit_ms_v1";
-const HIDDEN_IDS_STORAGE_KEY = "tutordex_assignments_hidden_ids_v1";
-const SAVED_IDS_STORAGE_KEY = "tutordex_assignments_saved_ids_v1";
 
 // --- 3. RENDER FUNCTIONS ---
 const grid = document.getElementById("assignments-grid");
@@ -50,8 +48,6 @@ let didRestoreFiltersFromStorage = false;
 let viewMode = "full";
 let lastVisitCutoffMs = 0;
 let myTutorProfile = null;
-let hiddenIds = new Set();
-let savedIds = new Set();
 let didWriteLastVisitThisSession = false;
 let currentUid = null;
 
@@ -107,12 +103,6 @@ function updateViewToggleUI() {
   if (fullBtn) fullBtn.classList.toggle("text-white", viewMode === "full");
   if (compactBtn) compactBtn.classList.toggle("bg-black", viewMode === "compact");
   if (compactBtn) compactBtn.classList.toggle("text-white", viewMode === "compact");
-}
-
-function updateHiddenUI() {
-  const btn = document.getElementById("clear-hidden-btn");
-  if (!btn) return;
-  btn.classList.toggle("hidden", hiddenIds.size === 0);
 }
 
 async function copyToClipboard(text) {
@@ -203,24 +193,6 @@ function toStringList(value) {
   // If the backend stores multi-line notes in a single string, treat each line as an item.
   if (s.includes("\n")) return s.split("\n").map((x) => x.trim()).filter(Boolean);
   return [s];
-}
-
-function readIdSet(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    const list = Array.isArray(parsed) ? parsed : [];
-    return new Set(list.map((x) => String(x || "").trim()).filter(Boolean));
-  } catch {
-    return new Set();
-  }
-}
-
-function writeIdSet(key, set) {
-  try {
-    localStorage.setItem(key, JSON.stringify(Array.from(set || []).slice(0, 5000)));
-  } catch {}
 }
 
 function readViewMode() {
@@ -413,10 +385,7 @@ function renderSkeleton(count = 6) {
 function renderCards(data) {
   grid.innerHTML = "";
 
-  const visible = (data || []).filter((job) => job && !hiddenIds.has(String(job.id || "").trim()));
-
-  updateHiddenUI();
-
+  const visible = Array.isArray(data) ? data : [];
   if (visible.length === 0) {
     noResults.classList.remove("hidden");
     countLabel.innerText = "0";
@@ -637,40 +606,6 @@ function renderCards(data) {
     primaryRow.appendChild(openBtn);
     primaryRow.appendChild(copyBtn);
     actions.appendChild(primaryRow);
-
-    const secondaryRow = document.createElement("div");
-    secondaryRow.className = "mt-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-gray-500";
-
-    const saveBtn = document.createElement("button");
-    saveBtn.type = "button";
-    const isSaved = savedIds.has(String(job.id || "").trim());
-    saveBtn.textContent = isSaved ? "Saved" : "Save";
-    saveBtn.className = "underline hover:text-black transition";
-    saveBtn.addEventListener("click", () => {
-      const key = String(job.id || "").trim();
-      if (!key) return;
-      if (savedIds.has(key)) savedIds.delete(key);
-      else savedIds.add(key);
-      writeIdSet(SAVED_IDS_STORAGE_KEY, savedIds);
-      renderCards(allAssignments);
-    });
-
-    const hideBtn = document.createElement("button");
-    hideBtn.type = "button";
-    hideBtn.textContent = "Hide";
-    hideBtn.className = "underline hover:text-black transition";
-    hideBtn.addEventListener("click", () => {
-      const key = String(job.id || "").trim();
-      if (!key) return;
-      hiddenIds.add(key);
-      writeIdSet(HIDDEN_IDS_STORAGE_KEY, hiddenIds);
-      renderCards(allAssignments);
-      setStatus("Hidden on this device. Use “Show Hidden” to undo.", "info");
-    });
-
-    secondaryRow.appendChild(saveBtn);
-    secondaryRow.appendChild(hideBtn);
-    actions.appendChild(secondaryRow);
 
     card.appendChild(actions);
     grid.appendChild(card);
@@ -1218,7 +1153,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
   }
 }
 
-async function prepopulateFiltersFromProfile() {
+async function loadProfileContext() {
   if (!isBackendEnabled()) return;
 
   try {
@@ -1231,27 +1166,12 @@ async function prepopulateFiltersFromProfile() {
     if (!profile) return;
     myTutorProfile = profile;
 
-    const level = Array.isArray(profile.levels) ? profile.levels[0] : "";
-    const subjectCanonical = Array.isArray(profile.subjects) ? profile.subjects[0] : "";
     const lat = profile?.postal_lat;
     const lon = profile?.postal_lon;
     hasPostalCoords = typeof lat === "number" && Number.isFinite(lat) && typeof lon === "number" && Number.isFinite(lon);
     applySortAvailability();
-
-    if (level) {
-      document.getElementById("filter-level").value = level;
-      updateFilterSpecificLevels();
-      updateFilterSubjects();
-    }
-
-    if (subjectCanonical) {
-      const el = document.getElementById("filter-subject-canonical");
-      if (el) el.value = subjectCanonical;
-    }
-
-    if (level || subjectCanonical) applyFilters();
   } catch (err) {
-    console.error("Failed to prepopulate filters from profile.", err);
+    console.error("Failed to load profile context.", err);
   }
 }
 
@@ -1280,8 +1200,6 @@ function mountDebugPanel() {
 
 window.addEventListener("load", () => {
   viewMode = readViewMode();
-  hiddenIds = readIdSet(HIDDEN_IDS_STORAGE_KEY);
-  savedIds = readIdSet(SAVED_IDS_STORAGE_KEY);
   lastVisitCutoffMs = readLastVisitMs();
 
   const fullBtn = document.getElementById("view-toggle-full");
@@ -1289,18 +1207,7 @@ window.addEventListener("load", () => {
   if (fullBtn) fullBtn.addEventListener("click", () => setViewMode("full"));
   if (compactBtn) compactBtn.addEventListener("click", () => setViewMode("compact"));
 
-  const clearHiddenBtn = document.getElementById("clear-hidden-btn");
-  if (clearHiddenBtn) {
-    clearHiddenBtn.addEventListener("click", () => {
-      hiddenIds = new Set();
-      writeIdSet(HIDDEN_IDS_STORAGE_KEY, hiddenIds);
-      renderCards(allAssignments);
-      setStatus("Showing hidden assignments again.", "success");
-    });
-  }
-
   updateViewToggleUI();
-  updateHiddenUI();
   mountSubjectSearch();
 
   if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments({ reset: true }));
@@ -1321,6 +1228,7 @@ window.addEventListener("load", () => {
   }
   mountDebugPanel();
   loadAssignments({ reset: true }).then(() => {
-    if (!didRestoreFiltersFromStorage) return prepopulateFiltersFromProfile();
+    // Load profile for "Matches you" + Nearest availability, but do not auto-apply preferences as filters.
+    void loadProfileContext();
   });
 });

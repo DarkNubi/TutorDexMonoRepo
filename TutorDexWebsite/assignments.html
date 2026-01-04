@@ -86,6 +86,15 @@
         font-weight: 700;
         text-transform: uppercase;
       }
+
+      @media (max-width: 640px) {
+        .select-wrapper::after {
+          right: 0.85rem;
+        }
+        .nike-input {
+          padding: 0.85rem 1rem;
+        }
+      }
     </style>
   </head>
   <body class="bg-white" data-require-auth="false">
@@ -164,9 +173,9 @@
         </div>
       </div>
 
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <p id="results-summary" class="text-sm font-medium text-gray-500">Showing 0 of 0</p>
-        <div class="flex flex-wrap items-center gap-3 justify-end">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 sm:justify-end">
           <div class="flex items-center gap-3 text-[11px] font-bold uppercase text-gray-500">
             <span class="inline-flex items-center gap-1" title="Likely still open (recent agency bump/update)">
               <span class="w-2 h-2 bg-green-500 rounded-full"></span>Likely open
@@ -182,7 +191,7 @@
             </span>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2 justify-end">
             <button
               id="view-toggle-full"
               type="button"
@@ -197,21 +206,13 @@
             >
               Compact
             </button>
-            <button
-              id="clear-hidden-btn"
-              type="button"
-              class="hidden px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold uppercase tracking-wide hover:bg-gray-50 transition"
-              title="Show any assignments you hid on this device."
-            >
-              Show Hidden
-            </button>
           </div>
         </div>
       </div>
 
-      <div class="bg-gray-50 border border-gray-100 rounded-xl p-6 mb-10 sticky top-24 z-40 shadow-sm">
-        <div class="grid grid-cols-2 md:grid-cols-9 gap-3">
-          <div class="select-wrapper">
+      <div class="bg-gray-50 border border-gray-100 rounded-xl p-5 sm:p-6 mb-10 sticky top-24 z-40 shadow-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+          <div class="select-wrapper lg:col-span-2">
             <select id="filter-level" class="nike-input" onchange="updateFilterSpecificLevels(); updateFilterSubjects();">
               <option value="">All Levels</option>
               <option value="Pre-School">Pre-School</option>
@@ -230,25 +231,25 @@
             </select>
           </div>
 
-          <div class="select-wrapper">
+          <div class="select-wrapper lg:col-span-2">
             <select id="filter-specific-level" class="nike-input" disabled>
               <option value="">All Specific Levels</option>
             </select>
           </div>
 
-          <div class="select-wrapper">
-            <select id="filter-subject-general" class="nike-input">
-              <option value="">All General Subjects</option>
-            </select>
-          </div>
-
-          <div class="select-wrapper">
+          <div class="select-wrapper lg:col-span-3">
             <select id="filter-subject-canonical" class="nike-input">
               <option value="">All Advanced Subjects</option>
             </select>
           </div>
 
-          <div class="select-wrapper">
+          <div class="select-wrapper lg:col-span-3">
+            <select id="filter-subject-general" class="nike-input">
+              <option value="">All General Subjects</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper lg:col-span-2">
             <select id="filter-location" class="nike-input">
               <option value="">All Locations</option>
               <option value="North">North</option>
@@ -260,8 +261,8 @@
             </select>
           </div>
 
-          <div class="select-wrapper">
-            <div class="flex items-stretch gap-2">
+          <div class="select-wrapper lg:col-span-3">
+            <div class="flex items-stretch gap-2 w-full">
               <select id="filter-sort" class="nike-input flex-1">
                 <option value="newest" selected>Newest</option>
                 <option value="distance">Nearest</option>
@@ -292,20 +293,20 @@
             </div>
           </div>
 
-          <div>
+          <div class="lg:col-span-3">
             <input type="number" id="filter-rate" placeholder="Min Rate ($/hr)" class="nike-input" />
           </div>
 
-          <div class="col-span-2 md:col-span-2 flex gap-2">
+          <div class="lg:col-span-6 flex flex-col sm:flex-row gap-2">
             <button
               onclick="applyFilters()"
-              class="flex-1 bg-black text-white rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition"
+              class="w-full sm:flex-1 bg-black text-white rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition py-3"
             >
               Filter
             </button>
             <button
               onclick="clearFilters()"
-              class="flex-1 bg-white border-2 border-black text-black rounded-lg font-bold uppercase tracking-wide hover:bg-black hover:text-white transition"
+              class="w-full sm:flex-1 bg-white border-2 border-black text-black rounded-lg font-bold uppercase tracking-wide hover:bg-black hover:text-white transition py-3"
             >
               Clear
             </button>
