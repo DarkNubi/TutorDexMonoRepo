@@ -202,3 +202,43 @@ export function searchCanonicalSubjects(query, { level = null, limit = 8, includ
   scored.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
   return scored.slice(0, max).map((s) => ({ code: s.code, label: s.label, generalCategoryCode: s.generalCategoryCode }));
 }
+
+export function generalCategoriesForLevel(levelCode, { includeAny = true, includeHidden = false } = {}) {
+  const lvl = String(levelCode || "").trim();
+  const subjects = lvl ? canonicalSubjectsForLevel(lvl, { includeAny, includeHidden }) : [];
+  const codes = uniq(subjects.map((s) => String(s?.generalCategoryCode || "").trim()).filter(Boolean));
+  return codes
+    .map((code) => ({ code, label: labelForGeneralCategoryCode(code) || code }))
+    .filter((c) => c.code && c.label);
+}
+
+export function searchSubjects(query, { level = null, limit = 10, includeHidden = false } = {}) {
+  const q = normalizeSubjectLabel(query);
+  if (!q) return [];
+
+  const max = Math.max(1, Math.min(25, Number(limit) || 10));
+  const lvl = String(level || "").trim();
+
+  const generalCandidates = (() => {
+    if (lvl) return generalCategoriesForLevel(lvl, { includeAny: true, includeHidden });
+    return generalCategoryOptions();
+  })();
+
+  const generalScored = [];
+  for (const g of generalCandidates) {
+    const code = String(g?.code || "").trim();
+    const label = String(g?.label || "").trim();
+    if (!code || !label) continue;
+    const hay = `${normalizeSubjectLabel(label)} ${normalizeSubjectLabel(code)}`;
+    const idx = hay.indexOf(q);
+    if (idx === -1) continue;
+    generalScored.push({ type: "general", code, label, score: idx });
+  }
+  generalScored.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
+
+  const canon = searchCanonicalSubjects(query, { level: lvl || null, limit: max, includeHidden });
+  const canonItems = (canon || []).map((c) => ({ type: "canonical", code: c.code, label: c.label, generalCategoryCode: c.generalCategoryCode }));
+
+  // Broad categories first (default), then specific subjects.
+  return [...generalScored.slice(0, max), ...canonItems].slice(0, max);
+}

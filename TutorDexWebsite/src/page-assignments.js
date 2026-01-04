@@ -16,7 +16,7 @@ import {
   labelForGeneralCategoryCode,
   labelsForCanonicalCodes,
   labelsForGeneralCategoryCodes,
-  searchCanonicalSubjects,
+  searchSubjects,
 } from "./taxonomy/subjectsTaxonomyV2.js";
 
 const BUILD_TIME = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
@@ -860,7 +860,8 @@ function mountSubjectSearch() {
 
       const right = document.createElement("span");
       right.className = "text-xs font-mono text-gray-500";
-      right.textContent = String(item.code || "").trim();
+      const t = String(item.type || "").trim();
+      right.textContent = t === "general" ? `BROAD · ${String(item.code || "").trim()}` : `SPEC · ${String(item.code || "").trim()}`;
 
       btn.appendChild(left);
       btn.appendChild(right);
@@ -868,9 +869,15 @@ function mountSubjectSearch() {
         const code = String(item.code || "").trim();
         if (!code) return;
         input.value = String(item.label || code).trim();
-        ensureCanonicalOption(code, item.label);
         const generalSelect = document.getElementById("filter-subject-general");
-        if (generalSelect) generalSelect.value = "";
+        const canonicalSelect = document.getElementById("filter-subject-canonical");
+        if (String(item.type || "").trim() === "general") {
+          if (generalSelect) generalSelect.value = code;
+          if (canonicalSelect) canonicalSelect.value = "";
+        } else {
+          ensureCanonicalOption(code, item.label);
+          if (generalSelect) generalSelect.value = "";
+        }
         writeStoredFilters(snapshotFiltersForStorage());
         hideResults();
         input.blur();
@@ -899,7 +906,7 @@ function mountSubjectSearch() {
     lastQuery = q;
 
     const level = (document.getElementById("filter-level")?.value || "").trim() || null;
-    const items = searchCanonicalSubjects(q, { level, limit: 10 });
+    const items = searchSubjects(q, { level, limit: 10 });
     showResults(items, { query: q });
   }
 
@@ -969,8 +976,8 @@ function updateFilterSubjects() {
   const prevGeneral = generalSelect?.value || "";
   const prevCanonical = canonicalSelect?.value || "";
 
-  if (generalSelect) generalSelect.innerHTML = '<option value="">All General Subjects</option>';
-  if (canonicalSelect) canonicalSelect.innerHTML = '<option value="">All Advanced Subjects</option>';
+  if (generalSelect) generalSelect.innerHTML = '<option value="">All Subjects (Broad)</option>';
+  if (canonicalSelect) canonicalSelect.innerHTML = '<option value="">Any Specific Syllabus</option>';
 
   // Prefer server facets when available (accurate), fallback to static list.
   const facetGeneral = Array.isArray(lastFacets?.subjects_general) ? lastFacets.subjects_general : null;
@@ -1082,9 +1089,9 @@ function clearFilters() {
   document.getElementById("filter-specific-level").innerHTML = '<option value="">All Specific Levels</option>';
   document.getElementById("filter-specific-level").disabled = true;
   const g = document.getElementById("filter-subject-general");
-  if (g) g.innerHTML = '<option value="">All General Subjects</option>';
+  if (g) g.innerHTML = '<option value="">All Subjects (Broad)</option>';
   const c = document.getElementById("filter-subject-canonical");
-  if (c) c.innerHTML = '<option value="">All Advanced Subjects</option>';
+  if (c) c.innerHTML = '<option value="">Any Specific Syllabus</option>';
   document.getElementById("filter-location").value = "";
   const sortEl = document.getElementById("filter-sort");
   if (sortEl) sortEl.value = "newest";
@@ -1341,6 +1348,19 @@ window.addEventListener("load", () => {
   updateViewToggleUI();
   updateGridLayout();
   mountSubjectSearch();
+
+  const generalSelect = document.getElementById("filter-subject-general");
+  const canonicalSelect = document.getElementById("filter-subject-canonical");
+  if (generalSelect) {
+    generalSelect.addEventListener("change", () => {
+      if (canonicalSelect) canonicalSelect.value = "";
+    });
+  }
+  if (canonicalSelect) {
+    canonicalSelect.addEventListener("change", () => {
+      if (generalSelect) generalSelect.value = "";
+    });
+  }
 
   if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments({ reset: true }));
   if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => loadAssignments({ append: true }));
