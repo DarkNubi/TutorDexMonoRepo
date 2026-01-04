@@ -105,31 +105,6 @@ function updateViewToggleUI() {
   if (compactBtn) compactBtn.classList.toggle("text-white", viewMode === "compact");
 }
 
-async function copyToClipboard(text) {
-  const s = String(text || "").trim();
-  if (!s) return false;
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(s);
-      return true;
-    }
-  } catch {}
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = s;
-    ta.setAttribute("readonly", "readonly");
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return Boolean(ok);
-  } catch {
-    return false;
-  }
-}
-
 function setResultsSummary(showing, total) {
   if (!resultsSummary) return;
   const s = Number.isFinite(showing) ? showing : 0;
@@ -560,7 +535,7 @@ function renderCards(data) {
     actions.className = "mt-3";
 
     const primaryRow = document.createElement("div");
-    primaryRow.className = "flex gap-2";
+    primaryRow.className = "flex";
 
     const openBtn = document.createElement(messageLink ? "a" : "button");
     openBtn.className =
@@ -587,24 +562,7 @@ function renderCards(data) {
       openBtn.disabled = true;
     }
 
-    const copyBtn = document.createElement("button");
-    copyBtn.type = "button";
-    copyBtn.className =
-      "px-4 py-3 border-2 border-gray-200 rounded-lg font-bold uppercase tracking-wide transition text-center hover:bg-gray-50 " +
-      (messageLink ? "" : "opacity-40 cursor-not-allowed");
-    copyBtn.textContent = "Copy link";
-    copyBtn.disabled = !messageLink;
-    copyBtn.addEventListener("click", async () => {
-      if (!messageLink) return;
-      const ok = await copyToClipboard(messageLink);
-      setStatus(ok ? "Copied link." : "Could not copy link.", ok ? "success" : "error");
-      try {
-        await trackEvent({ eventType: "copy_link", assignmentExternalId: job.id, meta: { ok: Boolean(ok) } });
-      } catch {}
-    });
-
     primaryRow.appendChild(openBtn);
-    primaryRow.appendChild(copyBtn);
     actions.appendChild(primaryRow);
 
     card.appendChild(actions);
