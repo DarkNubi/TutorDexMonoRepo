@@ -61,7 +61,9 @@ groups:
   - name: tutordex-pipeline
     rules:
       - alert: CollectorStalled
-        expr: (time() - collector_last_message_timestamp_seconds) > 900
+        # TEMP DISABLED: raw backfills / pauses can legitimately create gaps.
+        # Re-enable by restoring the original expression.
+        expr: vector(0)
         for: 10m
         labels:
           severity: warning

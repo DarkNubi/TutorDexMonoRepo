@@ -563,7 +563,11 @@ function renderCards(data) {
 
     const badge = document.createElement("span");
     badge.className = "badge bg-black text-white";
-    badge.textContent = job.id;
+    const displayId = String(job.assignmentCode || "").trim() || String(job.id || "").trim();
+    badge.textContent = displayId || "ID";
+    if (displayId && String(job.id || "").trim() && String(job.id || "").trim() !== displayId) {
+      badge.title = `Internal id: ${String(job.id || "").trim()}`;
+    }
 
     const tier = String(job?.freshnessTier || "green")
       .trim()

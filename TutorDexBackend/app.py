@@ -561,7 +561,10 @@ def _count_matching_assignments(
     since_iso = since.isoformat()
 
     # Count all assignments (open + closed) so this reflects historical volume for DM expectations.
-    q = f"assignments?select=id&last_seen=gte.{_url_quote(since_iso, safe='')}&limit=0"
+    #
+    # IMPORTANT: use `published_at` (source publish time), not `last_seen` (our processing time),
+    # otherwise backfills/reprocesses inflate recent counts.
+    q = f"assignments?select=id&published_at=gte.{_url_quote(since_iso, safe='')}&limit=0"
     if levels:
         arr = _pg_array_literal(levels)
         q += f"&signals_levels=ov.{_url_quote(arr, safe='')}"
@@ -1076,7 +1079,7 @@ def me_assignment_match_counts(request: Request, req: MatchCountsRequest) -> Dic
     return {
         "ok": True,
         "counts": counts,
-        "window_field": "last_seen",
+        "window_field": "published_at",
         "status_filter": "any",
     }
 

@@ -478,6 +478,39 @@ def fetch_api(url: str, limit: int, timeout_s: int) -> List[Dict[str, Any]]:
     return rows if isinstance(rows, list) else []
 
 
+def _row_score(row: Dict[str, Any]) -> tuple[int, int]:
+    """
+    Heuristic for picking the "best" row when TutorCity returns multiple entries
+    with the same assignment_code (which represent updates).
+
+    Returns (completeness_score, text_len_score).
+    """
+    def truthy(v: Any) -> bool:
+        if v is None:
+            return False
+        if isinstance(v, (list, tuple, set, dict)):
+            return len(v) > 0
+        return bool(str(v).strip())
+
+    score = 0
+    for k in ("subjects", "level", "year", "address", "postal_code", "availability", "hourly_rate", "additional_remarks"):
+        if truthy(row.get(k)):
+            score += 1
+
+    # Prefer richer text fields when scores tie.
+    txt = ""
+    for k in ("availability", "hourly_rate", "additional_remarks", "address"):
+        v = row.get(k)
+        if v is None:
+            continue
+        try:
+            txt += " " + str(v)
+        except Exception:
+            continue
+    txt_len = len(txt.strip())
+    return int(score), int(txt_len)
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Fetch TutorCity API and persist/broadcast without LLM")
     p.add_argument("--limit", type=int, default=None, help="Number of rows to fetch (default from env or 50)")
@@ -502,7 +535,25 @@ def main() -> None:
         print("No rows returned from API.")
         return
 
+    # TutorCity can return multiple rows for the same assignment_code. Treat later/better rows as updates.
+    best_by_code: Dict[str, Dict[str, Any]] = {}
+    order: List[str] = []
     for row in rows:
+        code = str((row or {}).get("assignment_code") or "").strip()
+        if not code:
+            continue
+        if code not in best_by_code:
+            best_by_code[code] = row
+            order.append(code)
+            continue
+        prev = best_by_code.get(code) or {}
+        if _row_score(row) >= _row_score(prev):
+            best_by_code[code] = row
+
+    for code in order:
+        row = best_by_code.get(code)
+        if not isinstance(row, dict):
+            continue
         payload = _map_row(row, source_label)
         cid = payload.get("cid")
         with bind_log_context(cid=str(cid), channel=payload.get("channel_link"), message_id=payload.get("message_id"), step="tutorcity"):

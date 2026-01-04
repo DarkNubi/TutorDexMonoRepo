@@ -6,6 +6,8 @@ from functools import lru_cache
 from typing import Any, Dict, Optional, Tuple, List
 import re
 import math
+import json
+import hashlib
 
 import requests
 from urllib.parse import urlparse
@@ -287,7 +289,7 @@ def _compute_parse_quality(row_like: Dict[str, Any]) -> int:
     return int(score)
 
 
-def _merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any]) -> Dict[str, Any]:
+def _merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any], force_upgrade: bool = False) -> Dict[str, Any]:
     """
     Conservative merge:
     - Always update latest message pointers (message_id/message_link).
@@ -297,9 +299,16 @@ def _merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any])
     old_score = existing.get("parse_quality_score")
     old_score_i = int(old_score) if isinstance(old_score, (int, float)) else _compute_parse_quality(existing)
     new_score_i = int(incoming_row.get("parse_quality_score") or 0)
-    upgrade = new_score_i > old_score_i
+    upgrade = force_upgrade or (new_score_i > old_score_i)
 
     patch: Dict[str, Any] = {}
+
+    # Status should always be updated when explicitly detected (even if overall parse quality didn't improve).
+    incoming_status = incoming_row.get("status")
+    if incoming_status is not None:
+        s = str(incoming_status).strip().lower()
+        if s in {"open", "closed"} and str(existing.get("status") or "").strip().lower() != s:
+            patch["status"] = s
 
     # Always update "latest seen" identifiers for UI linking/debugging.
     for k in ("message_id", "message_link"):
@@ -368,20 +377,6 @@ def _derive_external_id(payload: Dict[str, Any]) -> str:
     parsed = payload.get("parsed") or {}
     assignment_code = _safe_str(parsed.get("assignment_code"))
     if assignment_code:
-        # TutorCity API can return multiple rows with the same assignment_code but different subject sets.
-        # Use a composite external_id to avoid collisions.
-        if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api":
-            meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
-            signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
-            signals_obj = None
-            if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
-                signals_obj = signals_meta.get("signals")
-            subs = signals_obj.get("subjects") if isinstance(signals_obj, dict) else None
-            if isinstance(subs, (list, tuple)) and subs:
-                parts = [str(s).strip() for s in subs if str(s).strip()]
-                if parts:
-                    suffix = "+".join(sorted(set(parts)))
-                    return f"{assignment_code}:{suffix}"
         return assignment_code
 
     channel_id = payload.get("channel_id")
@@ -533,6 +528,41 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             geo_meta = {"ok": False, "error": "geo_enrichment_failed"}
 
+    # TutorCity API semantics: repeated assignment_code rows are updates, not separate assignments.
+    # Record a stable upstream fingerprint so we can detect true upstream changes without letting
+    # the poll loop continuously bump freshness.
+    try:
+        if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api" and isinstance(meta, dict):
+            src = meta.get("source_raw") if isinstance(meta.get("source_raw"), dict) else meta.get("source_mapped")
+            if isinstance(src, dict):
+                s = json.dumps(src, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                meta = dict(meta)
+                meta["tutorcity_fingerprint"] = hashlib.sha256(s.encode("utf-8")).hexdigest()
+    except Exception:
+        pass
+
+    # Telegram status detection (opt-in allowlist).
+    try:
+        from TutorDexAggregator.extractors.status_detector import detect_status, detection_meta  # type: ignore
+    except Exception:
+        try:
+            from extractors.status_detector import detect_status, detection_meta  # type: ignore
+        except Exception:
+            detect_status = None  # type: ignore
+            detection_meta = None  # type: ignore
+
+    detected_status: Optional[str] = None
+    if detect_status is not None:
+        try:
+            det = detect_status(raw_text=payload.get("raw_text"), channel_link=payload.get("channel_link"), channel_username=payload.get("channel_username"))
+        except Exception:
+            det = None
+        if det is not None:
+            detected_status = str(getattr(det, "status", "") or "").strip().lower() or None
+            if isinstance(meta, dict) and detection_meta is not None:
+                meta = dict(meta)
+                meta["status_detection"] = detection_meta(det)  # type: ignore[arg-type]
+
     row: Dict[str, Any] = {
         "external_id": _derive_external_id(payload),
         "agency_id": None,
@@ -582,6 +612,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "canonical_json": parsed if isinstance(parsed, dict) else None,
         "meta": meta if isinstance(meta, dict) else None,
     }
+    if detected_status in {"open", "closed"}:
+        row["status"] = detected_status
     if geo_meta is not None and isinstance(row.get("meta"), dict):
         try:
             row["meta"] = dict(row["meta"])
@@ -782,6 +814,8 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 "id",
                 "agency_id",
                 "external_id",
+                "published_at",
+                "source_last_seen",
                 "last_seen",
                 "bump_count",
                 "parse_quality_score",
@@ -847,6 +881,17 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             last_seen = _parse_iso_dt(existing.get("last_seen"))
             bump_count = int(existing.get("bump_count") or 0)
             existing_source_last_seen = _safe_str(existing.get("source_last_seen"))
+            source_type = str(payload.get("source_type") or "").strip().lower()
+            tutorcity_changed = False
+            if source_type == "tutorcity_api":
+                try:
+                    prev_meta = existing.get("meta") if isinstance(existing.get("meta"), dict) else None
+                    prev_fp = _safe_str(prev_meta.get("tutorcity_fingerprint")) if isinstance(prev_meta, dict) else None
+                    incoming_meta = row.get("meta") if isinstance(row.get("meta"), dict) else None
+                    incoming_fp = _safe_str(incoming_meta.get("tutorcity_fingerprint")) if isinstance(incoming_meta, dict) else None
+                    tutorcity_changed = bool(incoming_fp and incoming_fp != prev_fp)
+                except Exception:
+                    tutorcity_changed = False
 
             should_bump = True
             if last_seen:
@@ -868,11 +913,20 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             if should_bump:
                 patch_body["bump_count"] = bump_count + 1
 
-            patch_body.update(_merge_patch_body(existing=existing, incoming_row=row))
+            patch_body.update(_merge_patch_body(existing=existing, incoming_row=row, force_upgrade=bool(tutorcity_changed)))
 
-            # Keep `source_last_seen` monotonic based on upstream timestamp (do not let reprocess overwrite it).
+            # `source_last_seen` = last upstream bump/edit/repost.
+            # - For Telegram: keep monotonic based on upstream timestamp (edit_date).
+            # - For TutorCity API: only update when the upstream payload fingerprint changed (true update),
+            #   so polling doesn't continuously bump freshness.
             incoming_source_last_seen = _safe_str(row.get("source_last_seen"))
-            patch_body["source_last_seen"] = _max_iso_ts(existing_source_last_seen, incoming_source_last_seen) or existing_source_last_seen
+            if source_type == "tutorcity_api":
+                if tutorcity_changed:
+                    patch_body["source_last_seen"] = now_iso
+                else:
+                    patch_body["source_last_seen"] = existing_source_last_seen
+            else:
+                patch_body["source_last_seen"] = _max_iso_ts(existing_source_last_seen, incoming_source_last_seen) or existing_source_last_seen
             if patch_body.get("source_last_seen") is None:
                 patch_body.pop("source_last_seen", None)
 

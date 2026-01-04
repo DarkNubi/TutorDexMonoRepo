@@ -238,17 +238,7 @@ def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     parsed = payload.get("parsed") or {}
     assignment_code = _join_text(parsed.get("assignment_code"))
     if assignment_code:
-        if str(payload.get("source_type") or "").strip().lower() == "tutorcity_api":
-            meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
-            signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
-            signals_obj = None
-            if signals_meta and signals_meta.get("ok") is True and isinstance(signals_meta.get("signals"), dict):
-                signals_obj = signals_meta.get("signals")
-            subs = signals_obj.get("subjects") if isinstance(signals_obj, dict) else None
-            if isinstance(subs, (list, tuple)) and subs:
-                parts = sorted({str(s).strip() for s in subs if str(s).strip()})
-                if parts:
-                    return f"{assignment_code}:{'+'.join(parts)}"
+        # TutorCity API repeats the same assignment_code for updates. Track by assignment_code.
         return assignment_code
     channel_id = payload.get("channel_id")
     message_id = payload.get("message_id")

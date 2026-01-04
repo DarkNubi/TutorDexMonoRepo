@@ -568,11 +568,13 @@ async function initProfilePage() {
     if (match7) match7.textContent = "...";
     if (match14) match14.textContent = "...";
     if (match30) match30.textContent = "...";
-    if (matchNote) matchNote.textContent = " (all assignments, based on last_seen)";
+    if (matchNote) matchNote.textContent = " (all assignments, based on published_at)";
 
     try {
       const res = await getRecentMatchCounts({ levels, subjects, specificStudentLevels });
       const c = res?.counts || {};
+      const windowField = String(res?.window_field || "").trim();
+      if (windowField && matchNote) matchNote.textContent = ` (all assignments, based on ${windowField})`;
       if (match7) match7.textContent = String(c?.["7"] ?? "-");
       if (match14) match14.textContent = String(c?.["14"] ?? "-");
       if (match30) match30.textContent = String(c?.["30"] ?? "-");

@@ -125,6 +125,14 @@ Edits/deletes:
 - `collector.py live` handles `MessageEdited` by upserting the raw row and force-enqueueing extraction for that message id.
 - For “collector downtime” recovery (raw has edits but no reprocess), use `TutorDexAggregator/utilities/enqueue_edited_raws.py` to enqueue edited raws by `telegram_messages_raw.edit_date` without Telegram calls.
 
+Status tracking (explicit, opt-in):
+- Some agencies explicitly update posts to indicate `OPEN`/`CLOSED` (either by editing the original message or posting a “closed” notice with the same assignment code).
+- TutorDex applies deterministic status detection only for an allowlist of reliable channels:
+  - `t.me/elitetutorsg`
+  - `t.me/TutorAnywhr`
+  - `t.me/eduaidtuition`
+- Implementation: `TutorDexAggregator/extractors/status_detector.py` (writes `assignments.status` when an explicit marker is present, and stores debug info in `assignments.meta.status_detection`).
+
 #### Non-Telegram source: TutorCity API (polled)
 - Root compose runs `tutorcity-fetch` which executes `TutorDexAggregator/utilities/tutorcity_fetch.py` on an interval (see root `docker-compose.yml`).
 - This path bypasses Telegram raw tables.
@@ -132,6 +140,11 @@ Edits/deletes:
 - Important timestamp semantics:
   - `assignments.last_seen` is “last observed by our pipeline” and may update on every poll.
   - `assignments.published_at` is “source publish time / first-seen” and is used for “sort=newest” so polled API rows don’t float to the top indefinitely.
+ - TutorCity update semantics:
+   - TutorCity may return multiple rows with the same `assignment_code` across polls (and sometimes within the same response). These represent updates.
+   - TutorDex treats `assignment_code` as the stable identity for TutorCity (`external_id == assignment_code`), and overwrites the stored row when content changes.
+   - To avoid poll noise, `source_last_seen` is only advanced when the upstream payload fingerprint changes (not on every poll).
+   - If you have old composite TutorCity ids (`external_id` like `D2388:...`), use `TutorDexAggregator/supabase sqls/2026-01-04_05_tutorcity_cleanup_composite_external_ids.sql` after deploying the new code.
 
 ### 3.2 Extraction (LLM / parsing / validation)
 
