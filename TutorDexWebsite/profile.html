@@ -171,9 +171,9 @@
             </button>
             <div id="match-counts-box" class="hidden text-sm text-gray-700">
               <span class="font-semibold">Matches (last</span>
-              <span class="font-mono">7d:</span> <span id="match-count-7d" class="font-semibold">-</span>,
-              <span class="font-mono">14d:</span> <span id="match-count-14d" class="font-semibold">-</span>,
-              <span class="font-mono">30d:</span> <span id="match-count-30d" class="font-semibold">-</span>
+              <span class="font-mono">7d:</span> <span id="match-count-7d" class="font-semibold">-</span>, <span class="font-mono">14d:</span>
+              <span id="match-count-14d" class="font-semibold">-</span>, <span class="font-mono">30d:</span>
+              <span id="match-count-30d" class="font-semibold">-</span>
               <span id="match-counts-note" class="text-xs text-gray-500 ml-2"></span>
             </div>
           </div>
@@ -202,13 +202,7 @@
               </select>
 
               <div class="flex gap-3">
-                <input
-                  id="subject-search"
-                  type="text"
-                  placeholder="Search subjects..."
-                  class="nike-input bg-white rounded-lg"
-                  autocomplete="off"
-                />
+                <input id="subject-search" type="text" placeholder="Search subjects..." class="nike-input bg-white rounded-lg" autocomplete="off" />
                 <button
                   id="clear-subject-search"
                   type="button"
@@ -379,8 +373,8 @@
 
             <p id="telegram-chatid-info" class="mt-1 text-xs text-gray-500 hidden">
               To receive DMs, generate a link code and send <span class="font-mono">/link &lt;code&gt;</span> to
-              <a id="dm-bot-link" class="font-semibold underline" href="#" target="_blank" rel="noopener noreferrer">@TutorDexSniperBot</a>. Once linked,
-              we will detect it automatically.
+              <a id="dm-bot-link" class="font-semibold underline" href="#" target="_blank" rel="noopener noreferrer">@TutorDexSniperBot</a>. Once
+              linked, we will detect it automatically.
             </p>
 
             <div class="mt-3 flex flex-wrap items-center gap-3">
@@ -415,7 +409,6 @@
               (or click “Open bot”).
             </p>
           </div>
-
         </section>
 
         <p id="profile-save-status" class="text-sm font-medium text-gray-600 mb-4"></p>
@@ -438,8 +431,11 @@
       Hosting is serving `__/firebase/init.js` and Auth is enabled.
     </p>
 
+    <!-- @vite-ignore -->
     <script src="/__/firebase/10.14.1/firebase-app-compat.js"></script>
+    <!-- @vite-ignore -->
     <script src="/__/firebase/10.14.1/firebase-auth-compat.js"></script>
+    <!-- @vite-ignore -->
     <script src="/__/firebase/init.js"></script>
   </body>
 </html>

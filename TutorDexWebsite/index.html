@@ -1,369 +1,313 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tutor Dex | Singapore Tuition Assignments</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TutorDex | Singapore Tuition Assignments</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+      // Tailwind CDN theme tokens used by the React landing page.
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              border: "hsl(var(--border))",
+              card: "hsl(var(--card))",
+              muted: "hsl(var(--muted))",
+              "muted-foreground": "hsl(var(--muted-foreground))",
+            },
+          },
+        },
+      };
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, .brand-font { font-family: 'Anton', sans-serif; letter-spacing: 0.5px; }
-
-        summary::-webkit-details-marker { display: none; }
-        
-        /* Smooth fade transition */
-        .fade-in { animation: fadeIn 0.4s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Button Hover Effects */
-        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); transition: all 0.2s; }
-
-        /* Password Strength Bar Transition */
-        .strength-bar { transition: width 0.3s ease, background-color 0.3s ease; }
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --border: 214.3 31.8% 91.4%;
+        --card: 0 0% 100%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+      }
+      body {
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+      }
     </style>
-</head>
-<body class="bg-white text-gray-900 overflow-x-hidden">
+  </head>
 
-    <nav class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white z-50 border-b border-transparent transition duration-300" id="navbar">
-        <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
-             <div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold rounded-lg">TD</div>
-            <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
-        </a>
-        
-        <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
-            <a href="assignments.html" class="hover:text-gray-500 transition">Assignments</a>
-            <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
-            <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
-            <a href="profile.html" class="hover:text-gray-500 transition">Profile</a>
-        </div>
+  <body>
+    <div id="root"></div>
 
-        <div class="flex items-center gap-3 text-sm font-bold uppercase">
-            <details class="md:hidden relative">
-                <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-gray-100 transition" aria-label="Open menu">
-                    <i class="fa-solid fa-bars text-lg"></i>
-                </summary>
-                <div class="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-2">
-                    <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition">Assignments</a>
-                    <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition">Profile</a>
-                    <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Agencies</span>
-                    <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Rates</span>
-                </div>
-            </details>
+    <!-- Auth modal (same UX as legacy landing, styled to match new page) -->
+    <div
+      id="auth-view"
+      class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-title"
+      aria-hidden="true"
+    >
+      <button type="button" class="absolute inset-0 cursor-default" data-auth-close aria-label="Close"></button>
 
-            <button data-auth-state="signed-out" onclick="showAuth()" class="hover:text-gray-500 pt-2">Log In</button>
-            <button data-auth-state="signed-out" onclick="showSignUp()" class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition">Join Now</button>
-            <button data-auth-state="signed-in" data-auth-logout class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition hidden">Log Out</button>
-        </div>
-    </nav>
-
-    <section id="landing-view" class="relative w-full h-[90vh] flex items-center justify-center bg-black">
-        <img src="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=2000&auto=format&fit=crop" 
-             class="absolute inset-0 w-full h-full object-cover grayscale opacity-60" alt="Study Books">
-        
-        <div class="relative z-10 text-center text-white px-6 max-w-4xl mx-auto">
-            <h1 class="text-6xl md:text-8xl uppercase leading-none mb-6 drop-shadow-2xl">
-                All Agencies.<br>One Platform.
-            </h1>
-            
-            <p class="text-lg md:text-2xl font-medium mb-10 text-gray-200 drop-shadow-md leading-relaxed max-w-2xl mx-auto">
-                Instead of looking through tuition agencies one by one, we send all the tuition assignments from all the top agencies in Singapore to you.
-            </p>
-            
-            <button onclick="showSignUp()" class="bg-white text-black text-lg px-10 py-4 rounded-full font-bold uppercase tracking-wide hover:bg-gray-200 transition transform hover:scale-105">
-                Find Assignments
-            </button>
-        </div>
-    </section>
-
-    <div id="auth-view" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="login-title" aria-hidden="true">
-        <div class="bg-white p-8 md:p-12 w-full max-w-md rounded-2xl shadow-2xl relative fade-in">
-            <button type="button" onclick="hideAllModals()" class="absolute top-5 right-5 text-gray-400 hover:text-black transition" aria-label="Close">
-                <i class="fa-solid fa-times text-2xl"></i>
-            </button>
-
-            <div class="text-center mb-6">
-                <h2 id="login-title" class="text-4xl uppercase mb-1">Welcome Back</h2>
-                <p class="text-gray-500 font-medium text-sm">Log in to access your assignments.</p>
+      <div class="relative w-full max-w-md overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+        <div class="px-8 pt-8 pb-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="auth-title" class="text-2xl font-bold">Welcome to TutorDex</h2>
+              <p id="auth-subtitle" class="mt-1 text-sm text-blue-100">Sign in to get assignments faster.</p>
             </div>
+            <button
+              type="button"
+              data-auth-close
+              class="h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center justify-center"
+              aria-label="Close"
+            >
+              <span class="text-xl leading-none">×</span>
+            </button>
+          </div>
 
-            <button id="login-google" type="button" class="w-full border border-gray-300 rounded-lg py-3 flex items-center justify-center space-x-3 hover:bg-gray-50 transition mb-5 group">
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
-                <span class="font-bold text-gray-700 group-hover:text-black">Continue with Google</span>
+          <div class="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-white/10 p-1">
+            <button id="auth-tab-login" type="button" class="rounded-xl px-3 py-2 text-sm font-semibold bg-white text-blue-700">Sign in</button>
+            <button id="auth-tab-signup" type="button" class="rounded-xl px-3 py-2 text-sm font-semibold text-white/90 hover:bg-white/10">
+              Create account
+            </button>
+          </div>
+        </div>
+
+        <div class="px-8 py-8">
+          <div id="auth-panel-login">
+            <button
+              id="login-google"
+              type="button"
+              class="w-full rounded-2xl border border-black/10 bg-white hover:bg-black/5 transition px-4 py-3 flex items-center justify-center gap-3"
+            >
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="h-5 w-5" alt="Google" />
+              <span class="font-semibold">Continue with Google</span>
             </button>
 
-            <div class="flex items-center my-4">
-                <div class="flex-grow border-t border-gray-200"></div>
-                <span class="mx-4 text-gray-400 text-xs uppercase font-bold tracking-widest">Or</span>
-                <div class="flex-grow border-t border-gray-200"></div>
+            <div class="my-6 flex items-center gap-4">
+              <div class="h-px flex-1 bg-black/10"></div>
+              <span class="text-xs font-semibold text-muted-foreground">or</span>
+              <div class="h-px flex-1 bg-black/10"></div>
             </div>
 
             <form id="login-form" class="space-y-4">
-                <div>
-                    <input id="login-email" type="email" placeholder="Email address" required autocomplete="email"
-                           class="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:border-black focus:bg-white placeholder-gray-400 transition font-medium">
-                </div>
-                <div>
-                    <input id="login-password" type="password" placeholder="Password" required autocomplete="current-password"
-                           class="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:border-black focus:bg-white placeholder-gray-400 transition font-medium">
-                </div>
-                <p id="login-error" class="text-sm text-red-600 font-medium"></p>
-                <button type="submit" class="w-full bg-black text-white py-4 rounded-full font-bold uppercase tracking-wider btn-primary mt-2">
-                    Log In
-                </button>
+              <div>
+                <label for="login-email" class="sr-only">Email</label>
+                <input
+                  id="login-email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                  placeholder="Email"
+                  class="w-full h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                />
+              </div>
+              <div>
+                <label for="login-password" class="sr-only">Password</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  placeholder="Password"
+                  class="w-full h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                />
+              </div>
+
+              <p id="login-error" class="text-sm text-red-600 font-medium"></p>
+
+              <button
+                type="submit"
+                class="w-full h-11 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition"
+              >
+                Sign In
+              </button>
             </form>
 
-            <div class="text-center mt-6">
-                <p class="text-sm text-gray-500">Don't have an account? <button type="button" onclick="switchToSignUp()" class="font-bold text-black underline">Join Us</button></p>
-            </div>
-        </div>
-    </div>
+            <p class="mt-5 text-sm text-muted-foreground">
+              Don’t have an account?
+              <button type="button" class="font-semibold text-foreground underline" onclick="switchToSignUp()">Create one</button>
+            </p>
+          </div>
 
-    <div id="signup-view" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="signup-title" aria-hidden="true">
-        <div class="bg-white p-8 md:p-10 w-full max-w-md rounded-2xl shadow-2xl relative fade-in my-auto">
-            <button type="button" onclick="hideAllModals()" class="absolute top-5 right-5 text-gray-400 hover:text-black transition" aria-label="Close">
-                <i class="fa-solid fa-times text-2xl"></i>
+          <div id="auth-panel-signup" class="hidden">
+            <button
+              id="signup-google"
+              type="button"
+              class="w-full rounded-2xl border border-black/10 bg-white hover:bg-black/5 transition px-4 py-3 flex items-center justify-center gap-3"
+            >
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="h-5 w-5" alt="Google" />
+              <span class="font-semibold">Continue with Google</span>
             </button>
 
-            <div class="text-center mb-6">
-                <h2 id="signup-title" class="text-4xl uppercase mb-1">Join the Team</h2>
-                <p class="text-gray-500 font-medium text-sm">Create your Tutor Dex profile.</p>
+            <div class="my-6 flex items-center gap-4">
+              <div class="h-px flex-1 bg-black/10"></div>
+              <span class="text-xs font-semibold text-muted-foreground">or</span>
+              <div class="h-px flex-1 bg-black/10"></div>
             </div>
 
-            <button id="signup-google" type="button" class="w-full border border-gray-300 rounded-lg py-3 flex items-center justify-center space-x-3 hover:bg-gray-50 transition mb-5 group">
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
-                <span class="font-bold text-gray-700 group-hover:text-black">Sign up with Google</span>
-            </button>
+            <form id="signup-form" class="space-y-4">
+              <div>
+                <label for="signup-name" class="sr-only">Name</label>
+                <input
+                  id="signup-name"
+                  type="text"
+                  autocomplete="name"
+                  placeholder="Name"
+                  class="w-full h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                />
+              </div>
+              <div>
+                <label for="signup-email" class="sr-only">Email</label>
+                <input
+                  id="signup-email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                  placeholder="Email"
+                  class="w-full h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                />
+              </div>
+              <div>
+                <label for="signup-password" class="sr-only">Password</label>
+                <input
+                  id="signup-password"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                  placeholder="Password"
+                  class="w-full h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                />
+              </div>
+              <div>
+                <label for="signup-confirm" class="sr-only">Confirm password</label>
+                <input
+                  id="signup-confirm"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                  placeholder="Confirm password"
+                  class="w-full h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                />
+              </div>
 
-            <div class="flex items-center my-4">
-                <div class="flex-grow border-t border-gray-200"></div>
-                <span class="mx-4 text-gray-400 text-xs uppercase font-bold tracking-widest">Or Manual</span>
-                <div class="flex-grow border-t border-gray-200"></div>
-            </div>
+              <p id="signup-error" class="text-sm text-red-600 font-medium"></p>
 
-            <form id="signup-form" class="space-y-3">
-                <div>
-                    <input id="signup-name" type="text" placeholder="Full Name" required autocomplete="name"
-                           class="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:border-black focus:bg-white placeholder-gray-400 transition font-medium">
-                </div>
-                
-                <div>
-                    <input id="signup-email" type="email" placeholder="Email address" required autocomplete="email"
-                           class="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:border-black focus:bg-white placeholder-gray-400 transition font-medium">
-                </div>
-
-                <div>
-                    <input type="password" id="signup-password" placeholder="Password (Min 8 chars)" required autocomplete="new-password" onkeyup="checkStrength(this.value)"
-                           class="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:border-black focus:bg-white placeholder-gray-400 transition font-medium">
-                    
-                    <div class="mt-2 h-1 w-full bg-gray-200 rounded-full overflow-hidden">
-                        <div id="strength-bar" class="h-full w-0 strength-bar bg-red-500"></div>
-                    </div>
-                    <p id="strength-text" class="text-[10px] text-gray-400 mt-1 text-right">strength</p>
-                </div>
-
-                <div>
-                    <input type="password" id="signup-confirm" placeholder="Confirm Password" required autocomplete="new-password"
-                           class="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:border-black focus:bg-white placeholder-gray-400 transition font-medium">
-                </div>
-
-                <div class="text-xs text-gray-500 mt-2 text-center">
-                    By joining, you agree to our <a href="#" class="underline">Terms</a> & <a href="#" class="underline">Assignment Policy</a>.
-                </div>
-                <p id="signup-error" class="text-sm text-red-600 font-medium"></p>
-                
-                <button type="submit" class="w-full bg-black text-white py-4 rounded-full font-bold uppercase tracking-wider btn-primary mt-2">
-                    Create Account
-                </button>
+              <button
+                type="submit"
+                class="w-full h-11 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition"
+              >
+                Create account
+              </button>
             </form>
 
-            <div class="text-center mt-6">
-                <p class="text-sm text-gray-500">Already a member? <button type="button" onclick="switchToLogin()" class="font-bold text-black underline">Log In</button></p>
-            </div>
+            <p class="mt-5 text-sm text-muted-foreground">
+              Already have an account?
+              <button type="button" class="font-semibold text-foreground underline" onclick="switchToLogin()">Sign in</button>
+            </p>
+          </div>
+
+          <p class="mt-6 text-xs text-muted-foreground">By continuing, you agree to TutorDex terms. No spam.</p>
         </div>
+      </div>
     </div>
-
-    <section id="form-view" class="hidden min-h-screen bg-gray-50 pt-10 pb-20 px-4 fade-in" data-auth-state="signed-in">
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-10 border-b border-gray-200 pb-6 flex justify-between items-end">
-                <div>
-                    <h2 class="text-5xl uppercase leading-none">Tutor Profile</h2>
-                    <p class="text-gray-500 font-medium mt-2">Complete your details to receive assignments.</p>
-                </div>
-                <button type="button" data-auth-logout class="text-sm font-bold underline hover:text-gray-600 mb-1">LOG OUT</button>
-            </div>
-
-            <div class="bg-white p-12 rounded-xl shadow-sm border border-gray-200 min-h-[500px] flex flex-col items-center justify-center border-dashed border-2 border-gray-300">
-                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-6 text-gray-400">
-                    <i class="fa-solid fa-user-graduate text-2xl"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 uppercase mb-2">Profile Empty</h3>
-                <p class="text-gray-500 text-center max-w-sm">
-                    This form is currently empty. Fields for subjects, zones, and qualification documents will appear here.
-                </p>
-            </div>
-            
-            <div class="mt-8 flex justify-end">
-                <button class="bg-gray-200 text-gray-400 px-10 py-4 rounded-full font-bold uppercase tracking-wide cursor-not-allowed">
-                    Save Profile
-                </button>
-            </div>
-        </div>
-    </section>
 
     <script>
-        // DOM Elements
-        const landingView = document.getElementById('landing-view');
-        const authView = document.getElementById('auth-view');
-        const signupView = document.getElementById('signup-view');
-        const formView = document.getElementById('form-view');
-        const nav = document.getElementById('navbar');
-        let lastFocusedElement = null;
+      (function () {
+        const view = document.getElementById("auth-view");
+        const loginPanel = document.getElementById("auth-panel-login");
+        const signupPanel = document.getElementById("auth-panel-signup");
+        const tabLogin = document.getElementById("auth-tab-login");
+        const tabSignup = document.getElementById("auth-tab-signup");
+        const subtitle = document.getElementById("auth-subtitle");
 
-        const focusableSelector = [
-            'a[href]:not([tabindex="-1"])',
-            'button:not([disabled]):not([tabindex="-1"])',
-            'input:not([disabled])',
-            'select:not([disabled])',
-            'textarea:not([disabled])',
-            '[tabindex]:not([tabindex="-1"])'
-        ].join(',');
-
-        function getOpenModal() {
-            if (!authView.classList.contains('hidden')) return authView;
-            if (!signupView.classList.contains('hidden')) return signupView;
-            return null;
+        function show(el) {
+          if (!el) return;
+          el.classList.remove("hidden");
+          el.setAttribute("aria-hidden", "false");
         }
 
-        function setModalOpen(modal, open) {
-            modal.setAttribute('aria-hidden', open ? 'false' : 'true');
-            modal.classList.toggle('hidden', !open);
-
-            if (open) {
-                const focusable = modal.querySelectorAll(focusableSelector);
-                if (focusable.length > 0) focusable[0].focus();
-            }
+        function hide(el) {
+          if (!el) return;
+          el.classList.add("hidden");
+          el.setAttribute("aria-hidden", "true");
         }
 
-        // --- NAVIGATION LOGIC ---
-
-        function showAuth() {
-            lastFocusedElement = document.activeElement;
-            hideAllModals();
-            setModalOpen(authView, true);
+        function setMode(mode) {
+          const isSignup = mode === "signup";
+          if (isSignup) {
+            hide(loginPanel);
+            show(signupPanel);
+            tabSignup.classList.add("bg-white", "text-blue-700");
+            tabSignup.classList.remove("text-white/90", "hover:bg-white/10");
+            tabLogin.classList.remove("bg-white", "text-blue-700");
+            tabLogin.classList.add("text-white/90", "hover:bg-white/10");
+            if (subtitle) subtitle.textContent = "Create an account to get started.";
+          } else {
+            show(loginPanel);
+            hide(signupPanel);
+            tabLogin.classList.add("bg-white", "text-blue-700");
+            tabLogin.classList.remove("text-white/90", "hover:bg-white/10");
+            tabSignup.classList.remove("bg-white", "text-blue-700");
+            tabSignup.classList.add("text-white/90", "hover:bg-white/10");
+            if (subtitle) subtitle.textContent = "Sign in to get assignments faster.";
+          }
         }
 
-        function showSignUp() {
-            lastFocusedElement = document.activeElement;
-            hideAllModals();
-            setModalOpen(signupView, true);
-        }
+        window.hideAllModals = function () {
+          hide(view);
+        };
+        window.showAuth = function () {
+          show(view);
+          setMode("login");
+        };
+        window.showSignUp = function () {
+          show(view);
+          setMode("signup");
+        };
+        window.switchToSignUp = window.showSignUp;
+        window.switchToLogin = window.showAuth;
 
-        function hideAllModals() {
-            setModalOpen(authView, false);
-            setModalOpen(signupView, false);
-            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
-                lastFocusedElement.focus();
-            }
-            lastFocusedElement = null;
-        }
+        tabLogin?.addEventListener("click", () => window.showAuth());
+        tabSignup?.addEventListener("click", () => window.showSignUp());
 
-        function switchToSignUp() {
-            hideAllModals();
-            setTimeout(() => setModalOpen(signupView, true), 100);
-        }
-
-        function switchToLogin() {
-            hideAllModals();
-            setTimeout(() => setModalOpen(authView, true), 100);
-        }
-
-        // --- PASSWORD STRENGTH LOGIC ---
-        function checkStrength(password) {
-            const bar = document.getElementById('strength-bar');
-            const text = document.getElementById('strength-text');
-            let strength = 0;
-
-            if (password.length > 0) strength += 1;
-            if (password.length > 5) strength += 1;
-            if (password.length > 8) strength += 1;
-            if (/[A-Z]/.test(password)) strength += 1;
-            if (/[0-9]/.test(password)) strength += 1;
-
-            switch (strength) {
-                case 0:
-                    bar.style.width = '0%';
-                    bar.className = 'h-full strength-bar bg-gray-200';
-                    text.innerText = '';
-                    break;
-                case 1:
-                case 2:
-                    bar.style.width = '30%';
-                    bar.className = 'h-full strength-bar bg-red-500';
-                    text.innerText = 'Too Weak';
-                    text.style.color = '#ef4444';
-                    break;
-                case 3:
-                case 4:
-                    bar.style.width = '60%';
-                    bar.className = 'h-full strength-bar bg-yellow-500';
-                    text.innerText = 'Medium';
-                    text.style.color = '#eab308';
-                    break;
-                case 5:
-                    bar.style.width = '100%';
-                    bar.className = 'h-full strength-bar bg-green-500';
-                    text.innerText = 'Strong';
-                    text.style.color = '#22c55e';
-                    break;
-            }
-        }
-
-        // --- SUBMISSION HANDLERS ---
-        // Auth is handled by Firebase in `auth.js`.
-
-        document.addEventListener('keydown', (e) => {
-            const openModal = getOpenModal();
-            if (!openModal) return;
-
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                hideAllModals();
-                return;
-            }
-
-            if (e.key !== 'Tab') return;
-
-            const focusable = Array.from(openModal.querySelectorAll(focusableSelector)).filter(
-                (el) => !el.hasAttribute('disabled') && el.offsetParent !== null
-            );
-            if (focusable.length === 0) return;
-
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-
-            if (e.shiftKey && document.activeElement === first) {
-                e.preventDefault();
-                last.focus();
-                return;
-            }
-
-            if (!e.shiftKey && document.activeElement === last) {
-                e.preventDefault();
-                first.focus();
-            }
+        view?.querySelectorAll("[data-auth-close]")?.forEach((el) => {
+          el.addEventListener("click", () => window.hideAllModals());
         });
+
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") window.hideAllModals();
+        });
+      })();
     </script>
 
-    <p id="auth-init-error" class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-white border border-red-200 text-red-700 p-4 rounded-xl shadow-lg text-sm">
-    Authentication failed to initialize. If you're running locally, use `firebase emulators:start --only hosting`. If deployed, confirm Firebase Hosting is serving `__/firebase/init.js` and Auth is enabled.
-</p>
+    <p
+      id="auth-init-error"
+      class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-white border border-red-200 text-red-700 p-4 rounded-xl shadow-lg text-sm"
+    >
+      Authentication failed to initialize. If you're running locally, use `npm run serve:firebase` (Hosting emulator serves `__/firebase/init.js`). If
+      deployed, confirm Firebase Hosting is serving `__/firebase/init.js` and Auth is enabled.
+    </p>
 
+    <!-- Firebase Hosting auto-init (required for auth.js) -->
+    <!-- @vite-ignore -->
     <script src="/__/firebase/10.14.1/firebase-app-compat.js"></script>
+    <!-- @vite-ignore -->
     <script src="/__/firebase/10.14.1/firebase-auth-compat.js"></script>
+    <!-- @vite-ignore -->
     <script src="/__/firebase/init.js"></script>
+
+    <!-- Auth bootstrap + React landing app -->
     <script type="module" src="/src/page-index.js"></script>
-</body>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
