@@ -1,0 +1,223 @@
+# EZPZ Tuition (t.me/ezpz_tuition)
+#
+# Used only when `LLM_INCLUDE_EXAMPLES=true`. Examples are formatting guidance only.
+
+Example 1:
+Raw:
+Looking for Secondary E-Math Tutors (REPOST)
+
+Assignment Code: #A1783
+Subject: Secondary E-Math
+Preference: Female
+Location: Tengah, S692235
+Timing: Sun 12pm onwards
+Frequency: 1 x 1.5h per week
+Hourly Rate: 35-40/h
+
+Remarks: Subject: S4 NT Maths
+
+Commission Structure: First 2 weeks
+
+JSON:
+{
+"assignment_code": "A1783",
+"academic_display_text": "Secondary E-Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Tengah"
+],
+"postal_code": [
+"692235"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 1.5h per week"
+],
+"start_date": null,
+"rate": {
+"min": 35,
+"max": 40,
+"raw_text": "35-40/h"
+},
+"additional_remarks": "Subject: S4 NT Maths"
+}
+
+Example 2:
+Raw:
+Looking for Primary English Tutors
+
+Assignment Code: #A1806
+Subject: Primary English
+Preference: No
+Location: Woodlands Street 32
+Timing: P4 English - Tues 530-7pm
+Lower Pri English - Thu 530-7pm
+Frequency: 2 x 1.5h per week
+Hourly Rate: $30-35/h
+
+Remarks: Subject: Lower Pri English, P4 English
+
+Remarks: Tuition centre assignment, materials provided. Can indicate whether you are keen on 1 session or both sessions.
+
+Commission Structure: First 2 week of lessons
+
+JSON:
+{
+"assignment_code": "A1806",
+"academic_display_text": "Primary English",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Woodlands Street 32"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"2 x 1.5h per week"
+],
+"start_date": null,
+"rate": {
+"min": 30,
+"max": 35,
+"raw_text": "$30-35/h"
+},
+"additional_remarks": "Subject: Lower Pri English, P4 English\nTuition centre assignment, materials provided. Can indicate whether you are keen on 1 session or both sessions."
+}
+
+Example 3:
+Raw:
+Looking for Secondary E-Math Tutors
+
+Assignment Code: #A1807
+Subject: Secondary E-Math
+Preference: Nil
+Location: Outram, S080017
+Timing: Tutor to state
+Frequency: 1 x 1.5h per week
+Hourly Rate: $40-45/h
+
+Remarks: Subject: S1 Maths
+
+Commission Structure: First 2 weeks
+
+JSON:
+{
+"assignment_code": "A1807",
+"academic_display_text": "Secondary E-Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Outram"
+],
+"postal_code": [
+"080017"
+],
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 1.5h per week"
+],
+"start_date": null,
+"rate": {
+"min": 40,
+"max": 45,
+"raw_text": "$40-45/h"
+},
+"additional_remarks": "Subject: S1 Maths"
+}
+
+Example 4:
+Raw:
+Looking for Secondary E-Math Tutors (REPOST)
+
+Assignment Code: #A1780
+Subject: Secondary E-Math
+Preference: No
+Location: Bidadari
+Timing: Monday 5.15 to 6.45pm
+Frequency: 1 x 1.5h per week
+Hourly Rate: 50 per hr for 1-2 students
++5 for every additional student
+
+Remarks: S2 Maths
+Tuition centre assignment
+Materials provided
+Max class size of 10
+
+Commission Structure: First 2 weeks
+
+JSON:
+{
+"assignment_code": "A1780",
+"academic_display_text": "Secondary E-Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Bidadari"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 1.5h per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "50 per hr for 1-2 students +5 for every additional student"
+},
+"additional_remarks": "S2 Maths\nTuition centre assignment\nMaterials provided\nMax class size of 10"
+}
+
+Example 5:
+Raw:
+Looking for Primary Math Tutors (REPOST)
+
+Assignment Code: #A1779
+Subject: Primary Math
+Preference: No
+Location: Bidadari
+Timing: Monday 3.30-5pm
+Frequency: 1 x 1.5h per week
+Hourly Rate: 40 per hr for 1-2 students
++5 for every additional student
+
+Remarks: P4 Maths
+Tuition centre assignment
+Materials provided
+Max class size of 10
+
+Commission Structure: First 2 weeks
+
+JSON:
+{
+"assignment_code": "A1779",
+"academic_display_text": "Primary Math",
+"learning_mode": {
+"mode": null,
+"raw_text": null
+},
+"address": [
+"Bidadari"
+],
+"postal_code": null,
+"nearest_mrt": null,
+"lesson_schedule": [
+"1 x 1.5h per week"
+],
+"start_date": null,
+"rate": {
+"min": null,
+"max": null,
+"raw_text": "40 per hr for 1-2 students +5 for every additional student"
+},
+"additional_remarks": "P4 Maths\nTuition centre assignment\nMaterials provided\nMax class size of 10"
+}

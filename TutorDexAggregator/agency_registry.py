@@ -61,6 +61,7 @@ AGENCIES_BY_CHAT: dict[str, AgencyInfo] = {
     "t.me/sgtuitions": AgencyInfo(examples_key="sgtuitions", display_name="SG Tuitions"),
     "t.me/starttuition": AgencyInfo(examples_key="starttuition", display_name="Start Tuition"),
     "t.me/newtuitionassignments": AgencyInfo(examples_key="newtuitionassignments", display_name="Tuition Assignments SG"),
+    "t.me/ezpz_tuition": AgencyInfo(examples_key="ezpz_tuition", display_name="EZPZ Tuition"),
 }
 
 
