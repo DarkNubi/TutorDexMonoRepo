@@ -361,6 +361,7 @@ class AssignmentFacetsResponse(BaseModel):
 
 class MatchCountsRequest(BaseModel):
     levels: Optional[List[str]] = None
+    specific_student_levels: Optional[List[str]] = None
     subjects: Optional[List[str]] = None
     subjects_canonical: Optional[List[str]] = None
     subjects_general: Optional[List[str]] = None
@@ -428,7 +429,14 @@ def _count_from_content_range(value: Optional[str]) -> Optional[int]:
         return None
 
 
-def _count_matching_assignments(*, days: int, levels: List[str], subjects_canonical: List[str], subjects_general: List[str]) -> Optional[int]:
+def _count_matching_assignments(
+    *,
+    days: int,
+    levels: List[str],
+    specific_student_levels: List[str],
+    subjects_canonical: List[str],
+    subjects_general: List[str],
+) -> Optional[int]:
     if not sb.enabled() or not sb.client:
         return None
 
@@ -440,6 +448,9 @@ def _count_matching_assignments(*, days: int, levels: List[str], subjects_canoni
     if levels:
         arr = _pg_array_literal(levels)
         q += f"&signals_levels=ov.{_url_quote(arr, safe='')}"
+    if specific_student_levels:
+        arr = _pg_array_literal(specific_student_levels)
+        q += f"&signals_specific_student_levels=ov.{_url_quote(arr, safe='')}"
     if subjects_canonical:
         arr = _pg_array_literal(subjects_canonical)
         q += f"&subjects_canonical=ov.{_url_quote(arr, safe='')}"
@@ -610,7 +621,10 @@ def list_assignments(
     next_cursor_distance_km_out: Optional[float] = None
     if items and len(items) >= lim:
         last = items[-1] or {}
-        next_cursor_last_seen_out = _clean_opt_str(last.get("last_seen"))
+        if sort_s == "distance":
+            next_cursor_last_seen_out = _clean_opt_str(last.get("last_seen"))
+        else:
+            next_cursor_last_seen_out = _clean_opt_str(last.get("published_at") or last.get("created_at") or last.get("last_seen"))
         try:
             next_cursor_id_out = int(last.get("id")) if last.get("id") is not None else None
         except Exception:
@@ -836,20 +850,28 @@ def me_assignment_match_counts(request: Request, req: MatchCountsRequest) -> Dic
         raise HTTPException(status_code=503, detail="supabase_disabled")
 
     levels = [str(x).strip() for x in (req.levels or []) if str(x).strip()]
+    specific_student_levels = [str(x).strip() for x in (req.specific_student_levels or []) if str(x).strip()]
     subjects_canonical = [str(x).strip() for x in (req.subjects_canonical or req.subjects or []) if str(x).strip()]
     subjects_general = [str(x).strip() for x in (req.subjects_general or []) if str(x).strip()]
 
     # Keep requests bounded (DoS safety + avoids giant URLs).
     levels = levels[:50]
+    specific_student_levels = specific_student_levels[:100]
     subjects_canonical = subjects_canonical[:200]
     subjects_general = subjects_general[:50]
 
-    if not levels and not subjects_canonical and not subjects_general:
+    if not levels and not specific_student_levels and not subjects_canonical and not subjects_general:
         raise HTTPException(status_code=400, detail="empty_preferences")
 
     counts: Dict[str, Any] = {}
     for d in (7, 14, 30):
-        c = _count_matching_assignments(days=d, levels=levels, subjects_canonical=subjects_canonical, subjects_general=subjects_general)
+        c = _count_matching_assignments(
+            days=d,
+            levels=levels,
+            specific_student_levels=specific_student_levels,
+            subjects_canonical=subjects_canonical,
+            subjects_general=subjects_general,
+        )
         if c is None:
             raise HTTPException(status_code=500, detail="match_counts_failed")
         counts[str(d)] = int(c)

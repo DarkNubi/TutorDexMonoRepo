@@ -20,7 +20,31 @@
 -- `public.open_assignment_facets` without v2 subject params. `create or replace` does not remove other
 -- overloads with different signatures, so PostgREST may return `PGRST203` (ambiguous function) and the
 -- backend will appear to return 0 assignments.
--- These drops remove the legacy signatures before installing the v2 versions.
+-- These drops remove legacy signatures before installing the v2 versions.
+--
+-- Additionally, Postgres does NOT allow `create or replace function ... returns table(...)`
+-- to change the returned row type. When you add/remove return columns (e.g. `published_at`),
+-- you must DROP the existing function first.
+--
+-- This DO block drops *all* overloads for these RPC names in the `public` schema so the
+-- migration is idempotent across schema drift.
+do $$
+declare
+  r record;
+begin
+  for r in
+    select
+      n.nspname as schema_name,
+      p.proname as fn_name,
+      pg_get_function_identity_arguments(p.oid) as args
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('list_open_assignments', 'list_open_assignments_v2', 'open_assignment_facets')
+  loop
+    execute format('drop function if exists %I.%I(%s);', r.schema_name, r.fn_name, r.args);
+  end loop;
+end $$;
 
 drop function if exists public.list_open_assignments(
   integer,
@@ -73,6 +97,9 @@ alter table public.assignments
 
 alter table public.assignments
   add column if not exists canonicalization_debug jsonb;
+
+alter table public.assignments
+  add column if not exists published_at timestamptz;
 
 create index if not exists assignments_subjects_canonical_gin
   on public.assignments using gin (subjects_canonical);
@@ -128,6 +155,7 @@ returns table(
   canonicalization_version int,
   status text,
   created_at timestamptz,
+  published_at timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   total_count bigint
@@ -139,6 +167,7 @@ as $$
 with base as (
   select
     a.*,
+    coalesce(a.published_at, a.created_at, a.last_seen) as _sort_ts,
     lower(
       concat_ws(
         ' ',
@@ -174,7 +203,7 @@ filtered as (
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
     and (
       p_cursor_last_seen is null
-      or (last_seen, id) < (p_cursor_last_seen, p_cursor_id)
+      or (_sort_ts, id) < (p_cursor_last_seen, p_cursor_id)
     )
 )
 select
@@ -207,11 +236,12 @@ select
   canonicalization_version,
   status,
   created_at,
+  published_at,
   last_seen,
   freshness_tier,
   count(*) over() as total_count
 from filtered
-order by last_seen desc, id desc
+order by _sort_ts desc, id desc
 limit greatest(1, least(p_limit, 200));
 $$;
 
@@ -269,6 +299,7 @@ returns table(
   canonicalization_version int,
   status text,
   created_at timestamptz,
+  published_at timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   distance_km double precision,
@@ -282,6 +313,7 @@ as $$
 with base as (
   select
     a.*,
+    coalesce(a.published_at, a.created_at, a.last_seen) as _sort_ts,
     lower(
       concat_ws(
         ' ',
@@ -350,7 +382,7 @@ paged as (
   where (
     (coalesce(p_sort, 'newest') <> 'distance' and (
       p_cursor_last_seen is null
-      or (s.last_seen, s.id) < (p_cursor_last_seen, p_cursor_id)
+      or (s._sort_ts, s.id) < (p_cursor_last_seen, p_cursor_id)
     ))
     or
     (coalesce(p_sort, 'newest') = 'distance' and (
@@ -391,6 +423,7 @@ select
   canonicalization_version,
   status,
   created_at,
+  published_at,
   last_seen,
   freshness_tier,
   distance_km,
@@ -401,7 +434,7 @@ order by
   case when coalesce(p_sort, 'newest') = 'distance' then distance_sort_key else null end asc,
   case when coalesce(p_sort, 'newest') = 'distance' then last_seen else null end desc,
   case when coalesce(p_sort, 'newest') = 'distance' then id else null end desc,
-  last_seen desc,
+  _sort_ts desc,
   id desc
 limit greatest(1, least(p_limit, 200));
 $$;

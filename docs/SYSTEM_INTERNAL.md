@@ -124,7 +124,10 @@ Supabase queue tables involved:
 #### Non-Telegram source: TutorCity API (polled)
 - Root compose runs `tutorcity-fetch` which executes `TutorDexAggregator/utilities/tutorcity_fetch.py` on an interval (see root `docker-compose.yml`).
 - This path bypasses Telegram raw tables.
-- It still uses the same persistence + broadcasting/DM paths (inferred from the service description + environment variables in `TutorDexAggregator/.env.example`; validate in `utilities/tutorcity_fetch.py` if you change it).
+- It still uses the same persistence + broadcasting/DM paths.
+- Important timestamp semantics:
+  - `assignments.last_seen` is “last observed by our pipeline” and may update on every poll.
+  - `assignments.published_at` is “source publish time / first-seen” and is used for “sort=newest” so polled API rows don’t float to the top indefinitely.
 
 ### 3.2 Extraction (LLM / parsing / validation)
 
@@ -339,6 +342,10 @@ This is the path wired by root `docker-compose.yml`:
 - service `collector-tail`: `python collector.py live` (a first-class subcommand that runs `tail` + automated catchup)
 - service `aggregator-worker`: `python workers/extract_worker.py`
 
+#### Sidecars (scheduled)
+- `tutorcity-fetch`: polls TutorCity API and persists via `supabase_persist` (no raw Telegram tables involved).
+- `freshness-tiers`: periodically updates `assignments.freshness_tier` and can expire assignments + delete broadcast messages (see `TutorDexAggregator/update_freshness_tiers.py`).
+
 #### Pipeline B (legacy, direct ingest/extract)
 There are older scripts and directories (`setup_service/`, etc.). They exist in repo but are not the compose default.
 If you intend to delete them, confirm they aren’t referenced in any cron/service.
@@ -443,7 +450,7 @@ Two integrations exist:
 
 1) Linking tutor Telegram chat IDs
 - Website generates a short code: `POST /me/telegram/link-code`.
-- Tutor sends `/link <code>` to a Telegram bot.
+- Tutor sends `/link <code>` to a Telegram bot, or uses the website deep-link (`/start link_<code>`).
 - Poller `TutorDexBackend/telegram_link_bot.py` reads updates via Telegram Bot API `getUpdates` and calls backend `POST /telegram/claim`.
 - Backend stores `chat_id` for that tutor in Redis and optionally in Supabase preferences.
 
@@ -489,6 +496,9 @@ No SPA router; navigation is via static links.
   - facets
   - paginated list
 - Renders cards and provides filters.
+- Sort semantics:
+  - `sort=newest` orders by `assignments.published_at` (fallback `created_at`, then `last_seen`).
+  - The UI still displays “updated” time using `last_seen` / `created_at`.
 
 Subjects taxonomy v2 integration:
 - Filter dropdowns are derived from taxonomy v2 JSON (not hard-coded arrays).
@@ -498,6 +508,7 @@ Subjects taxonomy v2 integration:
 - Page script: `TutorDexWebsite/src/page-profile.js`.
 - Saves preferences to backend, including optional postal code.
 - Generates Telegram link code for DM enabling.
+- “Check recent matches” queries the backend for how many assignments (open + closed) matched the current preferences in the last 7/14/30 days.
 
 Subjects storage (important):
 - Tutor profile `subjects[]` are stored as taxonomy v2 canonical subject codes (not human labels).
@@ -697,32 +708,29 @@ Blunt list based on observed code patterns:
 
 ---
 
-## 11. Suggested Next Refactors (Optional)
+## 11. Recently Implemented Refactors (2026-01)
 
-Low-risk, high-leverage improvements:
-
-1) Make Supabase a first-class dev dependency
-- Add a documented, pinned Supabase docker-compose (even if “optional”) or a bootstrap script.
+This section tracks refactors that were previously suggested and have now been implemented.
 
 2) Collapse and deprecate legacy aggregator entrypoints
-- Keep only:
-  - `collector.py` (raw ingest)
-  - `workers/extract_worker.py` (queue worker)
-  - a small set of maintenance scripts
+- Operational modes are documented in `TutorDexAggregator/modes/MODES.md` and focus on `collector.py` + `workers/extract_worker.py`.
 
 3) Formalize API contracts
-- Generate a typed schema for assignment rows and share it between backend and website (even as a JSON schema file).
+- Shared schema: `shared/contracts/assignment_row.schema.json`
+- Synced copies:
+  - `TutorDexBackend/contracts/assignment_row.schema.json`
+  - `TutorDexWebsite/src/generated/assignment_row.schema.json`
 
 4) Tighten auth behavior in prod
-- Ensure `AUTH_REQUIRED=true` + Firebase Admin config is mandatory in production deployments.
+- Backend fails fast in `APP_ENV=prod` if auth is required but Firebase Admin config is missing/unhealthy.
 
 5) Add a “smoke test” command
-- One script that checks:
-  - Supabase connectivity
-  - required RPC functions exist
+- Script: `scripts/smoke_test.py`
+- Checks:
+  - Backend health endpoint
   - Redis connectivity
-  - backend health endpoint
-  - Run: `python3 scripts/smoke_test.py`
+  - Supabase connectivity and required RPC functions
+  - Treats HTTP 300+ as failure (important for PostgREST ambiguous RPC overloads)
 
 ---
 

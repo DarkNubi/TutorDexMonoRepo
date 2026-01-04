@@ -102,6 +102,7 @@ create table if not exists public.assignments (
   parse_quality_score int not null default 0,
 
   created_at timestamptz not null default now(),
+  published_at timestamptz,
   last_seen timestamptz not null default now(),
   bump_count int not null default 0,
   freshness_tier text not null default 'green',
@@ -114,6 +115,9 @@ alter table public.assignments
 
 alter table public.assignments
   add column if not exists external_id text;
+
+alter table public.assignments
+  add column if not exists published_at timestamptz;
 
 alter table public.assignments
   add column if not exists agency_name text;
@@ -368,6 +372,7 @@ returns table(
   canonicalization_version int,
   status text,
   created_at timestamptz,
+  published_at timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   total_count bigint
@@ -379,6 +384,7 @@ as $$
 with base as (
   select
     a.*,
+    coalesce(a.published_at, a.created_at, a.last_seen) as _sort_ts,
     lower(
       concat_ws(
         ' ',
@@ -414,7 +420,7 @@ filtered as (
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
     and (
       p_cursor_last_seen is null
-      or (last_seen, id) < (p_cursor_last_seen, p_cursor_id)
+      or (_sort_ts, id) < (p_cursor_last_seen, p_cursor_id)
     )
 )
 select
@@ -447,11 +453,12 @@ select
   canonicalization_version,
   status,
   created_at,
+  published_at,
   last_seen,
   freshness_tier,
   count(*) over() as total_count
 from filtered
-order by last_seen desc, id desc
+order by _sort_ts desc, id desc
 limit greatest(1, least(p_limit, 200));
 $$;
 
@@ -507,6 +514,7 @@ returns table(
   canonicalization_version int,
   status text,
   created_at timestamptz,
+  published_at timestamptz,
   last_seen timestamptz,
   freshness_tier text,
   distance_km double precision,
@@ -520,6 +528,7 @@ as $$
 with base as (
   select
     a.*,
+    coalesce(a.published_at, a.created_at, a.last_seen) as _sort_ts,
     lower(
       concat_ws(
         ' ',
@@ -588,7 +597,7 @@ paged as (
   where (
     (coalesce(p_sort, 'newest') <> 'distance' and (
       p_cursor_last_seen is null
-      or (s.last_seen, s.id) < (p_cursor_last_seen, p_cursor_id)
+      or (s._sort_ts, s.id) < (p_cursor_last_seen, p_cursor_id)
     ))
     or
     (coalesce(p_sort, 'newest') = 'distance' and (
@@ -629,6 +638,7 @@ select
   canonicalization_version,
   status,
   created_at,
+  published_at,
   last_seen,
   freshness_tier,
   distance_km,
@@ -639,7 +649,7 @@ order by
   case when coalesce(p_sort, 'newest') = 'distance' then distance_sort_key else null end asc,
   case when coalesce(p_sort, 'newest') = 'distance' then last_seen else null end desc,
   case when coalesce(p_sort, 'newest') = 'distance' then id else null end desc,
-  last_seen desc,
+  _sort_ts desc,
   id desc
 limit greatest(1, least(p_limit, 200));
 $$;

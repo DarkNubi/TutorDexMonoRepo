@@ -296,6 +296,7 @@ function parseTrayPreferences() {
   const chips = Array.from(document.querySelectorAll("#subjects-tray .tray-item"));
   const subjects = uniq(chips.map((c) => c.dataset.subjectCode).filter(Boolean));
   const levels = uniq(chips.map((c) => c.dataset.level).filter(Boolean));
+  const specificStudentLevels = uniq(chips.map((c) => c.dataset.specificLevel).filter(Boolean));
   const subjectPairs = chips
     .map((c) => ({
       level: String(c.dataset.level || "").trim(),
@@ -303,7 +304,7 @@ function parseTrayPreferences() {
       subject: String(c.dataset.subjectCode || "").trim(),
     }))
     .filter((x) => x.level && x.subject);
-  return { subjects, levels, subjectPairs };
+  return { subjects, levels, specificStudentLevels, subjectPairs };
 }
 
 function setStatus(message, kind = "info") {
@@ -551,9 +552,14 @@ async function initProfilePage() {
       return;
     }
 
-    const { subjects, levels } = parseTrayPreferences();
-    if ((!subjects || subjects.length === 0) && (!levels || levels.length === 0)) {
-      setStatus("Add at least one level/subject to check matches.", "error");
+    const { subjects, levels, specificStudentLevels } = parseTrayPreferences();
+    if (!subjects || subjects.length === 0) {
+      setStatus("Select at least one subject to check matches.", "error");
+      if (matchBox) matchBox.classList.remove("hidden");
+      if (match7) match7.textContent = "-";
+      if (match14) match14.textContent = "-";
+      if (match30) match30.textContent = "-";
+      if (matchNote) matchNote.textContent = " (select at least one subject)";
       return;
     }
 
@@ -565,7 +571,7 @@ async function initProfilePage() {
     if (matchNote) matchNote.textContent = " (all assignments, based on last_seen)";
 
     try {
-      const res = await getRecentMatchCounts({ levels, subjects });
+      const res = await getRecentMatchCounts({ levels, subjects, specificStudentLevels });
       const c = res?.counts || {};
       if (match7) match7.textContent = String(c?.["7"] ?? "-");
       if (match14) match14.textContent = String(c?.["14"] ?? "-");

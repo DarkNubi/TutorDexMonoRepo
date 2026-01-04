@@ -451,6 +451,8 @@ def _map_row(row: Dict[str, Any], source_label: str) -> Dict[str, Any]:
         "channel_username": "tutorcity_sg",
         "message_id": assignment_code,
         "message_link": assignment_url,
+        # TutorCity API does not provide a stable publish timestamp; treat first-seen as published.
+        # `supabase_persist` will default published_at=now on insert and won't overwrite on updates.
         "parsed": parsed,
         "raw_text": _join_text([availability, additional_remarks]) or None,
         "meta": {"signals": signals_meta, "source_raw": source_raw, "source_mapped": source_mapped},

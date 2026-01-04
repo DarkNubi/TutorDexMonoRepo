@@ -143,6 +143,15 @@ def _safe_str(value: Any) -> Optional[str]:
     return s or None
 
 
+def _coerce_iso_ts(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    s = str(value).strip()
+    return s or None
+
+
 def _coerce_int_like(value: Any) -> Optional[int]:
     """
     Convert values like 45, 45.0, "45", "45.0" into an int.
@@ -506,6 +515,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "agency_id": None,
         "agency_name": agency_name,
         "agency_link": agency_link,
+        # Source publish time (Telegram message date, or first-seen for API sources).
+        "published_at": _coerce_iso_ts(payload.get("date")),
         "channel_id": payload.get("channel_id"),
         "message_id": payload.get("message_id"),
         "message_link": _safe_str(payload.get("message_link")),
@@ -886,6 +897,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
 
         row_to_insert = dict(row)
         row_to_insert["last_seen"] = now_iso
+        row_to_insert.setdefault("published_at", now_iso)
         row_to_insert.setdefault("bump_count", 0)
         row_to_insert.setdefault("status", "open")
 

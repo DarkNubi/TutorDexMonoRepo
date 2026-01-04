@@ -28,6 +28,7 @@ export interface AssignmentRow {
   canonicalization_version?: number | null;
   status?: string | null;
   created_at?: string | null;
+  published_at?: string | null;
   last_seen?: string | null;
   freshness_tier?: string | null;
   distance_km?: number | null;

@@ -74,12 +74,13 @@ export async function createTelegramLinkCode(tutorId, { ttlSeconds = 600 } = {})
   return backendFetch("/me/telegram/link-code", { method: "POST" });
 }
 
-export async function getRecentMatchCounts({ levels, subjects, subjectsCanonical, subjectsGeneral } = {}) {
+export async function getRecentMatchCounts({ levels, subjects, subjectsCanonical, subjectsGeneral, specificStudentLevels } = {}) {
   if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
   return backendFetch("/me/assignments/match-counts", {
     method: "POST",
     body: {
       levels: Array.isArray(levels) ? levels : null,
+      specific_student_levels: Array.isArray(specificStudentLevels) ? specificStudentLevels : null,
       subjects: Array.isArray(subjects) ? subjects : null,
       subjects_canonical: Array.isArray(subjectsCanonical) ? subjectsCanonical : null,
       subjects_general: Array.isArray(subjectsGeneral) ? subjectsGeneral : null,
