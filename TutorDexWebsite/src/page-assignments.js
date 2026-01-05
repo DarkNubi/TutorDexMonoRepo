@@ -346,23 +346,23 @@ function renderSkeleton(count = 6) {
 
   for (let i = 0; i < count; i++) {
     const card = document.createElement("div");
-    card.className = "job-card bg-white rounded-xl p-6 relative flex flex-col justify-between h-full animate-pulse";
+    card.className = "job-card bg-white dark:bg-gray-800 rounded-xl p-6 relative flex flex-col justify-between h-full animate-pulse";
     card.innerHTML = `
       <div>
         <div class="flex justify-between items-start mb-4">
-          <div class="h-6 w-24 bg-gray-100 rounded-full"></div>
-          <div class="h-6 w-16 bg-gray-100 rounded-full"></div>
-          <div class="h-6 w-14 bg-gray-100 rounded"></div>
+          <div class="h-6 w-24 bg-gray-100 dark:bg-gray-700 rounded-full"></div>
+          <div class="h-6 w-16 bg-gray-100 dark:bg-gray-700 rounded-full"></div>
+          <div class="h-6 w-14 bg-gray-100 dark:bg-gray-700 rounded"></div>
         </div>
-        <div class="h-8 w-2/3 bg-gray-100 rounded mb-3"></div>
-        <div class="h-4 w-1/2 bg-gray-100 rounded mb-6"></div>
+        <div class="h-8 w-2/3 bg-gray-100 dark:bg-gray-700 rounded mb-3"></div>
+        <div class="h-4 w-1/2 bg-gray-100 dark:bg-gray-700 rounded mb-6"></div>
         <div class="space-y-3 mb-8">
-          <div class="h-4 w-5/6 bg-gray-100 rounded"></div>
-          <div class="h-4 w-4/6 bg-gray-100 rounded"></div>
-          <div class="h-4 w-3/6 bg-gray-100 rounded"></div>
+          <div class="h-4 w-5/6 bg-gray-100 dark:bg-gray-700 rounded"></div>
+          <div class="h-4 w-4/6 bg-gray-100 dark:bg-gray-700 rounded"></div>
+          <div class="h-4 w-3/6 bg-gray-100 dark:bg-gray-700 rounded"></div>
         </div>
       </div>
-      <div class="h-12 w-full bg-gray-100 rounded-lg"></div>
+      <div class="h-12 w-full bg-gray-100 dark:bg-gray-700 rounded-lg"></div>
     `.trim();
     grid.appendChild(card);
   }
@@ -394,7 +394,7 @@ function renderCards(data) {
 
       const row = document.createElement(messageLink ? "a" : "div");
       row.className =
-        "job-card bg-white rounded-xl px-4 py-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border border-gray-100";
+        "job-card bg-white dark:bg-gray-800 rounded-xl px-4 py-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border border-gray-100 dark:border-gray-700";
       if (messageLink) {
         row.href = messageLink;
         row.target = "_blank";
@@ -511,7 +511,7 @@ function renderCards(data) {
         wrap.className = "inline-flex items-center gap-2 min-w-0";
 
         const iconWrap = document.createElement("span");
-        iconWrap.className = "w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center text-xs shrink-0";
+        iconWrap.className = "w-7 h-7 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-xs shrink-0";
         const icon = document.createElement("i");
         icon.className = iconClass;
         iconWrap.appendChild(icon);
@@ -554,7 +554,7 @@ function renderCards(data) {
         : "";
 
     const card = document.createElement("div");
-    card.className = "job-card bg-white rounded-xl p-6 relative flex flex-col justify-between h-full";
+    card.className = "job-card bg-white dark:bg-gray-800 rounded-xl p-6 relative flex flex-col justify-between h-full";
 
     const top = document.createElement("div");
 
@@ -643,7 +643,7 @@ function renderCards(data) {
       row.className = "flex items-center gap-3";
 
       const iconWrap = document.createElement("div");
-      iconWrap.className = "w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-xs";
+      iconWrap.className = "w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-xs";
 
       const icon = document.createElement("i");
       icon.className = iconClass;
