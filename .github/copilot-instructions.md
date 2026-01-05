@@ -292,7 +292,7 @@ firebase deploy --only hosting
 
 ### Accessing Services
 
-- Grafana: `http://localhost:3300` (admin/admin)
+- Grafana: `http://localhost:3300` (default: admin/admin - **change in production**)
 - Prometheus: `http://localhost:9090`
 - Alertmanager: `http://localhost:9093`
 - Backend API: `http://localhost:8000/docs` (Swagger UI)
