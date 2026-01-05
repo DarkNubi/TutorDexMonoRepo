@@ -165,7 +165,7 @@ pytest tests/
 pytest tests/test_signals_builder.py
 
 # Syntax check (recommended for CI)
-python -m py_compile TutorDexAggregator/*.py TutorDexBackend/*.py
+python -m py_compile TutorDexAggregator/*.py TutorDexAggregator/workers/*.py TutorDexBackend/*.py
 ./check_python.sh
 ```
 
