@@ -207,7 +207,8 @@ def update_tiers(
                 # Call Telegram editMessageText
                 try:
                     edit_url = f"{_telegram_api_base(token)}/editMessageText"
-                    resp = requests.post(edit_url, json={"chat_id": int(chat_id), "message_id": int(message_id), "text": new_text, "parse_mode": "HTML", "disable_web_page_preview": True}, timeout=15)
+                    resp = requests.post(edit_url, json={"chat_id": int(chat_id), "message_id": int(message_id),
+                                         "text": new_text, "parse_mode": "HTML", "disable_web_page_preview": True}, timeout=15)
                 except Exception:
                     results["failed"] += 1
                     continue
@@ -223,7 +224,8 @@ def update_tiers(
 
                 # Update stored message_html in broadcast_messages for record-keeping
                 try:
-                    presp = client.patch(f"broadcast_messages?external_id=eq.{requests.utils.quote(ext, safe='')}", {"message_html": new_text}, timeout=20, prefer="return=minimal")
+                    presp = client.patch(f"broadcast_messages?external_id=eq.{requests.utils.quote(ext, safe='')}", {
+                                         "message_html": new_text}, timeout=20, prefer="return=minimal")
                     # ignore failures here; it's best-effort
                 except Exception:
                     pass
@@ -388,7 +390,8 @@ def delete_expired_broadcast_messages(
         )
         if presp.status_code >= 400:
             failed += 1
-            log_event(logger, logging.WARNING, "broadcast_messages_mark_deleted_failed", external_id=external_id, status_code=presp.status_code, body=(presp.text or "")[:300])
+            log_event(logger, logging.WARNING, "broadcast_messages_mark_deleted_failed",
+                      external_id=external_id, status_code=presp.status_code, body=(presp.text or "")[:300])
             continue
 
         deleted += 1

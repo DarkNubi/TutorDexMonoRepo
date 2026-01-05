@@ -1,12 +1,5 @@
 import { getCurrentUid, waitForAuth } from "../auth.js";
-import {
-  getOpenAssignmentFacets,
-  getTutor,
-  isBackendEnabled,
-  listOpenAssignmentsPaged,
-  sendClickBeacon,
-  trackEvent,
-} from "./backend.js";
+import { getOpenAssignmentFacets, getTutor, isBackendEnabled, listOpenAssignmentsPaged, sendClickBeacon, trackEvent } from "./backend.js";
 import { debugLog, isDebugEnabled } from "./debug.js";
 import { SPECIFIC_LEVELS } from "./academicEnums.js";
 import {
@@ -176,13 +169,19 @@ function toStringList(value) {
   }
 
   // If the backend stores multi-line notes in a single string, treat each line as an item.
-  if (s.includes("\n")) return s.split("\n").map((x) => x.trim()).filter(Boolean);
+  if (s.includes("\n"))
+    return s
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
   return [s];
 }
 
 function readViewMode() {
   try {
-    const raw = String(localStorage.getItem(VIEW_MODE_STORAGE_KEY) || "").trim().toLowerCase();
+    const raw = String(localStorage.getItem(VIEW_MODE_STORAGE_KEY) || "")
+      .trim()
+      .toLowerCase();
     return raw === "compact" ? "compact" : "full";
   } catch {
     return "full";
@@ -287,19 +286,21 @@ function mapAssignmentRow(row) {
   };
 }
 
-function formatRelativeTime(isoString) {
-  const t = Date.parse(String(isoString || ""));
-  if (!Number.isFinite(t)) return "";
-  const deltaMs = Date.now() - t;
-  if (!Number.isFinite(deltaMs)) return "";
-  const mins = Math.floor(deltaMs / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 48) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+postalCode: postal,
+  postalEstimated,
+  function formatRelativeTime(isoString) {
+    const t = Date.parse(String(isoString || ""));
+    if (!Number.isFinite(t)) return "";
+    const deltaMs = Date.now() - t;
+    if (!Number.isFinite(deltaMs)) return "";
+    const mins = Math.floor(deltaMs / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 48) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
 function formatShortDate(isoString) {
   const t = Date.parse(String(isoString || ""));
@@ -319,11 +320,9 @@ function hasMatchForMe(job) {
   const myLevels = new Set(toStringList(me.levels));
   const mySpecific = new Set(toStringList(me.specific_student_levels || me.specificStudentLevels || []));
 
-  const subjHit =
-    Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.some((c) => mySubjects.has(String(c || "").trim()));
+  const subjHit = Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.some((c) => mySubjects.has(String(c || "").trim()));
   const lvlHit = Array.isArray(job.signalsLevels) && job.signalsLevels.some((l) => myLevels.has(String(l || "").trim()));
-  const specHit =
-    Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.some((l) => mySpecific.has(String(l || "").trim()));
+  const specHit = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.some((l) => mySpecific.has(String(l || "").trim()));
 
   return Boolean(subjHit || specHit || lvlHit);
 }
@@ -427,17 +426,7 @@ function renderCards(data) {
       title.className = "text-lg font-bold leading-tight truncate";
       title.textContent = job.academicDisplayText || "Tuition Assignment";
 
-      const levelDisplay = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
-        ? job.signalsSpecificLevels.join(" / ")
-        : Array.isArray(job.signalsLevels) && job.signalsLevels.length
-          ? job.signalsLevels.join(" / ")
-          : "";
-      if (levelDisplay) {
-        const subtitle = document.createElement("div");
-        subtitle.className = "text-[11px] font-bold uppercase tracking-wide text-gray-500 mt-1";
-        subtitle.textContent = levelDisplay;
-        left.appendChild(subtitle);
-      }
+      // compact view: do not show level/subject here (academicDisplayText includes it)
 
       left.prepend(title);
 
@@ -460,17 +449,13 @@ function renderCards(data) {
       const chips = document.createElement("div");
       chips.className = "flex flex-wrap items-center justify-end gap-2";
 
-      const tier = String(job?.freshnessTier || "green").trim().toLowerCase();
+      const tier = String(job?.freshnessTier || "green")
+        .trim()
+        .toLowerCase();
       const tierPill = document.createElement("span");
       tierPill.className = "badge";
       tierPill.textContent =
-        tier === "green"
-          ? "Likely open"
-          : tier === "yellow"
-            ? "Probably open"
-            : tier === "orange"
-              ? "Uncertain"
-              : "Likely closed";
+        tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
       tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
       if (tier === "yellow") tierPill.className = "badge bg-yellow-100 text-yellow-800";
       else if (tier === "orange") tierPill.className = "badge bg-orange-100 text-orange-800";
@@ -525,20 +510,14 @@ function renderCards(data) {
         return wrap;
       }
 
-      meta.appendChild(metaItem("fa-solid fa-location-dot", job.location || "Unknown"));
-      const pr = job.postedAt ? formatRelativeTime(job.postedAt) : "";
-      meta.appendChild(metaItem("fa-solid fa-calendar-day", pr ? `Posted ${pr}` : "Posted"));
-      const br = job.bumpedAt ? formatRelativeTime(job.bumpedAt) : "";
-      meta.appendChild(metaItem("fa-solid fa-rotate", br ? `Bumped ${br}` : "Bumped/Updated"));
-
-      const subjectBits =
-        Array.isArray(job.subjectsCanonicalLabels) && job.subjectsCanonicalLabels.length
-          ? job.subjectsCanonicalLabels
-          : Array.isArray(job.signalsSubjects) && job.signalsSubjects.length
-            ? job.signalsSubjects
-            : [];
-      if (subjectBits.length) {
-        meta.appendChild(metaItem("fa-solid fa-book", subjectBits.slice(0, 3).join(" / ")));
+      // show postal (explicit or estimated), distance, and time availability in compact mode
+      const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
+      meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
+      if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
+        meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm)));
+      }
+      if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
+        meta.appendChild(metaItem("fa-solid fa-clock", job.timeNotes.join(" · ")));
       }
 
       top.appendChild(meta);
@@ -547,9 +526,10 @@ function renderCards(data) {
       return;
     }
 
-    const levelDisplay = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
-      ? job.signalsSpecificLevels.join(" / ")
-      : Array.isArray(job.signalsLevels) && job.signalsLevels.length
+    const levelDisplay =
+      Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
+        ? job.signalsSpecificLevels.join(" / ")
+        : Array.isArray(job.signalsLevels) && job.signalsLevels.length
         ? job.signalsLevels.join(" / ")
         : "";
 
@@ -574,14 +554,7 @@ function renderCards(data) {
       .toLowerCase();
     const tierPill = document.createElement("span");
     tierPill.className = "badge";
-    tierPill.textContent =
-      tier === "green"
-        ? "Likely open"
-        : tier === "yellow"
-          ? "Probably open"
-          : tier === "orange"
-            ? "Uncertain"
-            : "Likely closed";
+    tierPill.textContent = tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
     tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
     if (tier === "yellow") tierPill.className = "badge bg-yellow-100 text-yellow-800";
     else if (tier === "orange") tierPill.className = "badge bg-orange-100 text-orange-800";
@@ -662,8 +635,8 @@ function renderCards(data) {
       Array.isArray(job.subjectsCanonicalLabels) && job.subjectsCanonicalLabels.length
         ? job.subjectsCanonicalLabels
         : Array.isArray(job.signalsSubjects) && job.signalsSubjects.length
-          ? job.signalsSubjects
-          : [];
+        ? job.signalsSubjects
+        : [];
     if (subjectBits.length) {
       addDetail("fa-solid fa-book", subjectBits.slice(0, 5).join(" / "));
     }
@@ -676,8 +649,10 @@ function renderCards(data) {
       const suffix = `${line ? ` (${line})` : ""}${dist != null ? ` ~${dist}m` : ""}`;
       addDetail("fa-solid fa-train-subway", `${job.nearestMrt}${suffix}`);
     }
-    if (!compact && typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
-    if (!compact && Array.isArray(job.scheduleNotes) && job.scheduleNotes.length) job.scheduleNotes.forEach((line) => addDetail("fa-solid fa-calendar-days", line));
+    if (!compact && typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm))
+      addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
+    if (!compact && Array.isArray(job.scheduleNotes) && job.scheduleNotes.length)
+      job.scheduleNotes.forEach((line) => addDetail("fa-solid fa-calendar-days", line));
     if (!compact && job.startDate) addDetail("fa-solid fa-calendar-check", job.startDate);
     if (!compact && Array.isArray(job.timeNotes) && job.timeNotes.length) job.timeNotes.forEach((line) => addDetail("fa-solid fa-clock", line));
     if (!compact && job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
@@ -1265,7 +1240,13 @@ async function loadAssignments({ reset = false, append = false } = {}) {
     nextCursorDistanceKm = page?.next_cursor_distance_km ?? null;
     const canLoadMore =
       sort === "distance"
-        ? Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined && nextCursorDistanceKm !== null && nextCursorDistanceKm !== undefined)
+        ? Boolean(
+            nextCursorLastSeen &&
+              nextCursorId !== null &&
+              nextCursorId !== undefined &&
+              nextCursorDistanceKm !== null &&
+              nextCursorDistanceKm !== undefined
+          )
         : Boolean(nextCursorLastSeen && nextCursorId !== null && nextCursorId !== undefined);
     setLoadMoreVisible(canLoadMore);
 
@@ -1335,7 +1316,7 @@ function mountDebugPanel() {
   wrap.id = "debug-panel";
   wrap.className = "mt-6";
 
-	  wrap.innerHTML = `
+  wrap.innerHTML = `
 	    <details class="border border-gray-200 rounded-xl p-4 bg-white">
 	      <summary class="cursor-pointer font-bold uppercase text-xs tracking-wide text-gray-600">Debug</summary>
 	      <div class="mt-3 text-sm text-gray-700 space-y-2">
