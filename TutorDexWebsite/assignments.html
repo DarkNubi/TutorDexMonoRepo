@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tutor Dex | Assignments</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      };
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
@@ -13,10 +18,18 @@
         --nike-black: #111111;
         --nike-gray: #f5f5f5;
       }
+      .dark {
+        --nike-black: #f5f5f5;
+        --nike-gray: #1f2937;
+      }
       body {
         font-family: "Inter", sans-serif;
         background-color: white;
         color: var(--nike-black);
+      }
+      .dark body {
+        background-color: #111827;
+        color: #f5f5f5;
       }
       h1,
       h2,
@@ -44,8 +57,16 @@
         border-radius: 0.5rem;
         appearance: none;
       }
+      .dark .nike-input {
+        border-color: #374151;
+        background: #1f2937;
+        color: #f5f5f5;
+      }
       .nike-input:focus {
         border-color: black;
+      }
+      .dark .nike-input:focus {
+        border-color: #60a5fa;
       }
 
       /* Custom Select Arrow */
@@ -70,10 +91,18 @@
         border: 2px solid #f3f4f6;
         transition: all 0.2s ease-out;
       }
+      .dark .job-card {
+        border-color: #374151;
+        background-color: #1f2937;
+      }
       .job-card:hover {
         border-color: black;
         transform: translateY(-2px);
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+      }
+      .dark .job-card:hover {
+        border-color: #60a5fa;
+        box-shadow: 0 10px 20px rgba(96, 165, 250, 0.1);
       }
 
       /* Badge/Pill Styles */
@@ -86,6 +115,10 @@
         font-weight: 700;
         text-transform: uppercase;
       }
+      .dark .badge {
+        background-color: #374151;
+        color: #f5f5f5;
+      }
 
       @media (max-width: 640px) {
         .select-wrapper::after {
@@ -96,45 +129,67 @@
         }
       }
     </style>
+    <script>
+      // Initialize dark mode ASAP to prevent flash
+      (function() {
+        const stored = localStorage.getItem("theme");
+        // Default to dark mode
+        const shouldBeDark = stored ? stored === "dark" : true;
+        if (shouldBeDark) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
-  <body class="bg-white" data-require-auth="false">
-    <nav class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white z-50 border-b border-gray-100 transition duration-300">
+  <body class="bg-white dark:bg-gray-900" data-require-auth="false">
+    <nav class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white dark:bg-gray-800 z-50 border-b border-gray-100 dark:border-gray-700 transition duration-300">
       <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
-        <div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold rounded-lg">TD</div>
+        <div class="w-10 h-10 bg-black dark:bg-blue-500 text-white flex items-center justify-center font-bold rounded-lg">TD</div>
         <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
       </a>
 
       <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
-        <a href="assignments.html" class="text-black transition" aria-current="page">Assignments</a>
-        <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
-        <a href="#" class="text-gray-400 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
-        <a href="profile.html" class="hover:text-gray-500 transition">Profile</a>
+        <a href="assignments.html" class="text-black dark:text-white transition" aria-current="page">Assignments</a>
+        <a href="#" class="text-gray-400 dark:text-gray-500 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
+        <a href="#" class="text-gray-400 dark:text-gray-500 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
+        <a href="profile.html" class="hover:text-gray-500 dark:hover:text-gray-300 transition">Profile</a>
       </div>
 
       <div class="flex items-center gap-3 text-sm font-bold uppercase">
+        <button
+          id="theme-toggle"
+          type="button"
+          class="px-3 py-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          aria-label="Toggle theme"
+          title="Toggle dark/light mode"
+        >
+          <i id="theme-icon-sun" class="fa-solid fa-sun text-lg hidden dark:inline"></i>
+          <i id="theme-icon-moon" class="fa-solid fa-moon text-lg inline dark:hidden"></i>
+        </button>
+        
         <details class="md:hidden relative">
           <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-gray-100 transition" aria-label="Open menu">
             <i class="fa-solid fa-bars text-lg"></i>
           </summary>
-          <div class="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-2">
-            <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition" aria-current="page">Assignments</a>
-            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 transition">Profile</a>
-            <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Agencies</span>
-            <span class="block px-4 py-2 text-gray-400 cursor-not-allowed" title="Coming soon">Rates</span>
+          <div class="absolute right-0 mt-3 w-56 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-2">
+            <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition" aria-current="page">Assignments</a>
+            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">Profile</a>
+            <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Agencies</span>
+            <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Rates</span>
           </div>
         </details>
 
         <a
           href="index.html?next=assignments.html"
           data-auth-state="signed-out"
-          class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition"
+          class="bg-black dark:bg-blue-500 text-white px-5 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-blue-600 transition"
           >Sign In</a
         >
         <button
           type="button"
           data-auth-state="signed-in"
           data-auth-logout
-          class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition"
+          class="bg-black dark:bg-blue-500 text-white px-5 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-blue-600 transition"
         >
           Log Out
         </button>
@@ -380,6 +435,25 @@
     </div>
 
     <script type="module" src="/src/page-assignments.js"></script>
+    
+    <script>
+      // Theme toggle functionality
+      (function() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', function() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+              document.documentElement.classList.remove('dark');
+              localStorage.setItem('theme', 'light');
+            } else {
+              document.documentElement.classList.add('dark');
+              localStorage.setItem('theme', 'dark');
+            }
+          });
+        }
+      })();
+    </script>
 
     <p
       id="auth-init-error"

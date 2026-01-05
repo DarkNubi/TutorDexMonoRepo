@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 // Utility function
 const cn = (...classes: (string | undefined | null | false)[]) => {
@@ -170,9 +171,12 @@ const Header = () => {
                 </ul>
               </div>
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                <Button variant="outline" size="sm" onClick={openLogin} className="rounded-xl">
-                  Sign In
-                </Button>
+                <div className="flex gap-3">
+                  <ThemeToggle />
+                  <Button variant="outline" size="sm" onClick={openLogin} className="rounded-xl flex-1 sm:flex-initial">
+                    Sign In
+                  </Button>
+                </div>
                 <Button
                   size="sm"
                   onClick={openSignup}
