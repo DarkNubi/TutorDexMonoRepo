@@ -1,0 +1,28 @@
+/* Dark mode fixes for cards and components */
+
+/* Card backgrounds - target any element with these classes in dark mode */
+.dark .bg-white {
+  background-color: rgb(31, 41, 55) !important; /* gray-800 */
+}
+
+.dark .border-gray-200 {
+  border-color: rgb(55, 65, 81) !important; /* gray-700 */
+}
+
+.dark .text-gray-900 {
+  color: rgb(243, 244, 246) !important; /* gray-100 */
+}
+
+/* Hover states */
+.dark .hover\:bg-gray-50:hover {
+  background-color: rgb(55, 65, 81) !important; /* gray-700 */
+}
+
+.dark .hover\:bg-muted:hover {
+  background-color: rgb(55, 65, 81) !important; /* gray-700 */
+}
+
+/* Focus states */
+.dark .focus\:ring-blue-500:focus {
+  --tw-ring-color: rgb(59, 130, 246) !important;
+}
