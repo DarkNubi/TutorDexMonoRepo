@@ -6,7 +6,19 @@ set -e
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 
 echo "Reloading Prometheus configuration..."
-http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$PROMETHEUS_URL/-/reload")
+
+# Capture HTTP code, handling curl failures
+if ! http_code=$(curl -sf -o /dev/null -w "%{http_code}" -X POST "$PROMETHEUS_URL/-/reload" 2>/dev/null); then
+    echo "✗ Failed to connect to Prometheus at $PROMETHEUS_URL"
+    echo ""
+    echo "Possible causes:"
+    echo "  - Prometheus is not running: docker compose ps prometheus"
+    echo "  - Wrong URL (override with PROMETHEUS_URL env var)"
+    echo "  - Network issue or firewall blocking connection"
+    echo ""
+    echo "Check Prometheus logs: docker compose logs prometheus | tail -50"
+    exit 1
+fi
 
 if [ "$http_code" = "200" ]; then
     echo "✓ Prometheus configuration reloaded successfully"
@@ -23,7 +35,7 @@ if [ "$http_code" = "200" ]; then
     echo "  - See: observability/runbooks/DisablingAlerts.md"
     exit 0
 else
-    echo "✗ Failed to reload Prometheus (HTTP $http_code)"
+    echo "✗ Failed to reload Prometheus (HTTP ${http_code:-unknown})"
     echo ""
     echo "Check Prometheus logs: docker compose logs prometheus | tail -50"
     exit 1
