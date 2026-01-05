@@ -21,8 +21,8 @@ export function Button({
 
   const variantClass =
     variant === "outline"
-      ? "border border-black/15 bg-transparent hover:bg-black/5"
-      : "bg-black text-white hover:bg-black/90";
+      ? "border border-border bg-transparent hover:bg-muted"
+      : "bg-foreground text-background hover:opacity-90";
 
   const sizeClass =
     size === "sm" ? "h-9 px-4" : size === "lg" ? "h-11 px-6" : "h-10 px-5";
