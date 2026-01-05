@@ -25,6 +25,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 import type { AssignmentRow } from "@/generated/assignmentRow"
 
+import tutorDexLogoUrl from "./Tutor Dex Logo.svg"
+
 // Utility function
 const cn = (...classes: (string | undefined | null | false)[]) => {
   return classes.filter(Boolean).join(" ")
@@ -248,9 +250,11 @@ function mapRowToLandingAssignment(row: AssignmentRow): Assignment {
 const TutorDexLogo = ({ className }: { className?: string }) => {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-teal-500 flex items-center justify-center shadow-lg">
-        <BookOpen className="h-5 w-5 text-white" />
-      </div>
+      <img
+        src={tutorDexLogoUrl}
+        alt="TutorDex"
+        className="h-9 w-9 rounded-xl object-contain"
+      />
       <span className="font-bold text-xl">TutorDex</span>
     </div>
   )
@@ -869,7 +873,7 @@ export function TutorDexLanding() {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <CardTitle className="text-xl mb-1">{assignment.subject}</CardTitle>
-                          <Badge variant="secondary">{assignment.level}</Badge>
+                          <Badge className="bg-black/5 text-black dark:bg-white/10 dark:text-white">{assignment.level}</Badge>
                         </div>
                         <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300">
                           {assignment.posted || ""}
