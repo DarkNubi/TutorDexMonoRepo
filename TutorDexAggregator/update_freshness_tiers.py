@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
+import re
 
 from logging_setup import log_event, setup_logging, timed
 from supabase_persist import SupabaseRestClient, load_config_from_env
@@ -136,6 +137,109 @@ def update_tiers(
     out["yellow"] = patch_where(yellow_q, {"freshness_tier": "yellow"})
     out["orange"] = patch_where(orange_q, {"freshness_tier": "orange"})
     out["red"] = patch_where(red_q, {"freshness_tier": "red"})
+
+    # Propagate freshness changes to any previously-sent broadcast Telegram messages
+    # so that the emoji + label shown in broadcasts stays in sync.
+    def _propagate(rows: List[Dict[str, Any]], emoji: str, label: str) -> Dict[str, Any]:
+        if not rows:
+            return {"ok": True, "skipped": True, "reason": "no_rows"}
+        token = _bot_token()
+        if not token:
+            return {"ok": False, "reason": "missing_GROUP_BOT_TOKEN"}
+
+        external_ids = [str(r.get("external_id") or "").strip() for r in rows if isinstance(r, dict) and r.get("external_id")]
+        external_ids = [x for x in external_ids if x]
+        if not external_ids:
+            return {"ok": True, "skipped": True, "reason": "no_external_ids"}
+
+        results = {"updated": 0, "failed": 0, "skipped": 0}
+        # Query broadcast_messages for these external_ids
+        for ext in external_ids:
+            # Fetch broadcast message rows for this external_id
+            bqs = (
+                "broadcast_messages?select=external_id,sent_chat_id,sent_message_id,message_html,deleted_at"
+                f"&external_id=eq.{requests.utils.quote(ext, safe='')}"
+                "&deleted_at=is.null"
+                "&limit=100"
+            )
+            bresp = client.get(bqs, timeout=30)
+            if bresp.status_code >= 400:
+                results["failed"] += 1
+                continue
+            try:
+                bmsgs = bresp.json() if isinstance(bresp.json(), list) else []
+            except Exception:
+                results["failed"] += 1
+                continue
+
+            for bm in bmsgs:
+                if not isinstance(bm, dict):
+                    results["skipped"] += 1
+                    continue
+                chat_id = bm.get("sent_chat_id")
+                message_id = bm.get("sent_message_id")
+                message_html = bm.get("message_html") or ""
+                if not chat_id or not message_id:
+                    results["skipped"] += 1
+                    continue
+
+                # Replace existing freshness line if present, otherwise insert after first line
+                new_text = message_html
+                try:
+                    pattern = re.compile(r'^(?:🟢|🟡|🟠|🔴)\s.*', flags=re.M)
+                    if pattern.search(new_text):
+                        new_text = pattern.sub(f"{emoji} {label}", new_text, count=1)
+                    else:
+                        parts = new_text.splitlines()
+                        if parts:
+                            parts.insert(1, f"{emoji} {label}")
+                            new_text = "\n".join(parts)
+                        else:
+                            new_text = f"{emoji} {label}\n" + new_text
+                except Exception:
+                    results["skipped"] += 1
+                    continue
+
+                if dry_run:
+                    results["updated"] += 1
+                    continue
+
+                # Call Telegram editMessageText
+                try:
+                    edit_url = f"{_telegram_api_base(token)}/editMessageText"
+                    resp = requests.post(edit_url, json={"chat_id": int(chat_id), "message_id": int(message_id), "text": new_text, "parse_mode": "HTML", "disable_web_page_preview": True}, timeout=15)
+                except Exception:
+                    results["failed"] += 1
+                    continue
+
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"ok": False}
+
+                if resp.status_code >= 400 or not bool(data.get("ok")):
+                    results["failed"] += 1
+                    continue
+
+                # Update stored message_html in broadcast_messages for record-keeping
+                try:
+                    presp = client.patch(f"broadcast_messages?external_id=eq.{requests.utils.quote(ext, safe='')}", {"message_html": new_text}, timeout=20, prefer="return=minimal")
+                    # ignore failures here; it's best-effort
+                except Exception:
+                    pass
+
+                results["updated"] += 1
+
+        return {"ok": True, **results}
+
+    # Propagate for each tier change
+    try:
+        out["propagate_green"] = _propagate(out["green"].get("rows", []), "🟢", "Likely open")
+        out["propagate_yellow"] = _propagate(out["yellow"].get("rows", []), "🟡", "Probably open")
+        out["propagate_orange"] = _propagate(out["orange"].get("rows", []), "🟠", "Uncertain")
+        out["propagate_red"] = _propagate(out["red"].get("rows", []), "🔴", "Likely closed")
+    except Exception:
+        log_event(logger, logging.WARNING, "freshness_propagation_failed", exc_info=True)
 
     if expire_action in {"closed", "expired"}:
         out["expired"] = patch_where(expired_q, {"freshness_tier": "red", "status": expire_action})

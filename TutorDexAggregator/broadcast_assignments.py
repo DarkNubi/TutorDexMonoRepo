@@ -99,6 +99,7 @@ def _classify_broadcast_error(*, status_code: Optional[int], error: Optional[str
         return "connection"
     return "error"
 
+
 def _escape(text: Optional[str]) -> str:
     if not text:
         return ''
@@ -157,6 +158,29 @@ def _freshness_emoji(payload: Dict[str, Any]) -> str:
     if age_h < red_h:
         return "🔴"
     return "🔴"
+
+
+def _freshness_tier(payload: Dict[str, Any]) -> tuple[str, str]:
+    """Return a (emoji, label) tuple describing freshness/open-likelihood."""
+    dt = _parse_payload_date(payload.get("date"))
+    if not dt:
+        return ("", "Unknown")
+    age_h = max(0.0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds() / 3600.0)
+
+    green_h = _coerce_hours_env("FRESHNESS_GREEN_HOURS", 24)
+    yellow_h = _coerce_hours_env("FRESHNESS_YELLOW_HOURS", 36)
+    orange_h = _coerce_hours_env("FRESHNESS_ORANGE_HOURS", 48)
+    red_h = _coerce_hours_env("FRESHNESS_RED_HOURS", 72)
+
+    if age_h < green_h:
+        return ("🟢", "Likely open")
+    if age_h < yellow_h:
+        return ("🟡", "Probably open")
+    if age_h < orange_h:
+        return ("🟠", "Uncertain")
+    if age_h < red_h:
+        return ("🔴", "Likely closed")
+    return ("🔴", "Likely closed")
 
 
 def _flatten_text_list(value: Any) -> list[str]:
@@ -391,15 +415,17 @@ def build_message_text(
     agency = get_agency_display_name(chat_ref, default="")
     if not agency:
         agency = str(payload.get("channel_title") or "").strip() or "Agency"
-    # Header
-    emoji = _freshness_emoji(payload)
-    prefix = f"{emoji} " if emoji else ""
-    header = f'{prefix}⭐️<b>{agency}</b>⭐️'
+    # Primary display: academic first (what tutors see in notifications)
+    # Then a freshness line with emoji + textual tier label.
+    emoji, freshness_label = _freshness_tier(payload)
     if academic_raw:
-        header += f"\n<b>{academic_raw}</b>"
+        lines.append(f"<b>{academic_raw}</b>")
     else:
-        header += "\n<b>Tuition Assignment</b>"
-    lines.append(header)
+        lines.append("<b>Tuition Assignment</b>")
+
+    if emoji:
+        # Put emoji and human-friendly label on its own line
+        lines.append(f"{emoji} {freshness_label}")
 
     # Assignment metadata
     if assignment_code:
@@ -412,7 +438,7 @@ def build_message_text(
         lines.append(f"🚇 {nearest_mrt}")
     if postal:
         lines.append(f"Postal: {postal}")
-    if (not address and not nearest_mrt and not postal) and postal_estimated:
+    elif postal_estimated:
         lines.append(f"Postal (estimated): {postal_estimated}")
 
     if distance_km is not None:
@@ -448,12 +474,17 @@ def build_message_text(
     if remarks:
         lines.append(f"📝 {remarks}")
 
-    # Metadata
+    # Metadata: combine agency and channel into a single Source line
     channel = _escape(payload.get('channel_title') or payload.get('channel_username') or payload.get('channel_id'))
-    if channel:
+    source_parts: list[str] = []
+    if agency:
+        source_parts.append(agency)
+    if channel and channel not in source_parts:
+        source_parts.append(channel)
+    if source_parts:
         if remarks:
             lines.append("")
-        lines.append(f"🏷️ Source: {channel}")
+        lines.append(f"🏷️ Source: {' | '.join(source_parts)}")
 
     # Do not include raw text excerpt or message id in the broadcast
 
@@ -585,7 +616,8 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                         if attempt >= max_attempts:
                             raise
                         wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
-                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt, wait_s=wait_s, reason="request_exception", error=str(e))
+                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt,
+                                  wait_s=wait_s, reason="request_exception", error=str(e))
                         _sleep(wait_s)
                         continue
 
@@ -614,7 +646,8 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                         if attempt >= max_attempts:
                             break
                         wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
-                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt, wait_s=wait_s, reason="server_error", status_code=resp.status_code)
+                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt,
+                                  wait_s=wait_s, reason="server_error", status_code=resp.status_code)
                         _sleep(wait_s)
                         continue
 
@@ -638,7 +671,8 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                         pass
                     try:
                         broadcast_fail_reason_total.labels(
-                            reason=_classify_broadcast_error(status_code=int(resp.status_code), error=(j.get("description") if isinstance(j, dict) else None)),
+                            reason=_classify_broadcast_error(status_code=int(resp.status_code), error=(
+                                j.get("description") if isinstance(j, dict) else None)),
                             pipeline_version=pv,
                             schema_version=sv,
                         ).inc()
@@ -657,7 +691,8 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                             sent_chat_id = (j["result"].get("chat") or {}).get("id") if isinstance(j["result"].get("chat"), dict) else None
                             if sent_chat_id is not None and sent_message_id is not None:
                                 from click_tracking_store import upsert_broadcast_message  # local import
-                                upsert_broadcast_message(payload=payload, sent_chat_id=int(sent_chat_id), sent_message_id=int(sent_message_id), message_html=text)
+                                upsert_broadcast_message(payload=payload, sent_chat_id=int(sent_chat_id),
+                                                         sent_message_id=int(sent_message_id), message_html=text)
                     except Exception:
                         logger.debug("click_tracking_upsert_failed", exc_info=True)
                 return {'ok': resp.status_code < 400, 'response': j}
@@ -725,8 +760,8 @@ if __name__ == '__main__':
                 'lesson_schedule': ['1x a week, 1.5 hours'],
                 'start_date': 'ASAP',
                 'time_availability': {
-                    'explicit': {d: [] for d in ('monday','tuesday','wednesday','thursday','friday','saturday','sunday')},
-                    'estimated': {d: [] for d in ('monday','tuesday','wednesday','thursday','friday','saturday','sunday')},
+                    'explicit': {d: [] for d in ('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')},
+                    'estimated': {d: [] for d in ('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')},
                     'note': 'Weekdays evenings'
                 },
                 'rate': {'min': 40, 'max': 40, 'raw_text': '$40/hr'},
