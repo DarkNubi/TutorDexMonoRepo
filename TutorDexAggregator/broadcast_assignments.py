@@ -346,6 +346,23 @@ def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not message_link:
         return None
 
+    # Prefer using a callback button so Telegram clients open the URL natively
+    # while the bot receives a callback to record the click. Fallback to a
+    # direct URL button when no compact external id is available or it would
+    # exceed Telegram's callback_data size limits.
+    try:
+        # Use tracking external id (assignment_code or tg:... id) where possible.
+        ext = _derive_external_id_for_tracking(payload)
+    except Exception:
+        ext = ""
+
+    callback_prefix = "open:"
+    # Telegram limits callback_data to 64 bytes; reserve a small margin.
+    if ext and len(callback_prefix + ext) <= 60:
+        button: Dict[str, Any] = {"text": "Open original post", "callback_data": f"{callback_prefix}{ext}"}
+        return {"inline_keyboard": [[button]]}
+
+    # Fallback to direct URL button when callback_data would be too long or ext missing.
     button: Dict[str, Any] = {"text": "Open original post", "url": message_link}
     return {"inline_keyboard": [[button]]}
 
