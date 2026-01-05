@@ -61,6 +61,22 @@ Think of the system as a pipeline with two optional “sinks”:
 5) **Observability (optional, but wired in compose)**
 - Prometheus + Grafana + Loki + Alertmanager + Tempo + OTEL Collector run via root `docker-compose.yml` (see `observability/`).
 
+**Recent Code Changes (2026-01-05)**
+
+- **Backfill retries and resilience**: The recovery/catchup flow (`TutorDexAggregator/recovery/catchup.py`) now wraps per-channel backfill calls with a configurable retry loop and exponential backoff. Environment variables `RECOVERY_BACKFILL_MAX_ATTEMPTS` and `RECOVERY_BACKFILL_BASE_BACKOFF_SECONDS` control attempts and base wait. This makes automated backfills more tolerant of transient Telethon/network errors.
+
+- **Raw message idempotency confirmed**: The raw ingest path (`TutorDexAggregator/supabase_raw_persist.py`) uses PostgREST `on_conflict=channel_link,message_id` with `resolution=merge-duplicates` and the DB enforces a unique index on `(channel_link, message_id)`. Backfill overlaps are therefore safe (rows are upserted, not duplicated).
+
+- **Preserve latest message pointer**: The assignment persistence merge logic (`TutorDexAggregator/supabase_persist.py`) was changed to avoid older original posts from clobbering the stored `message_id` / `message_link`. These pointer fields are now only updated when the incoming record's source timestamp (`source_last_seen` or `published_at`) is at least as new as the stored timestamps, or when the existing pointer is absent. The rest of the conservative merge semantics (parse-quality gating, signal unioning, bump handling) remain unchanged.
+
+- **Broadcast click tracking using callback buttons**: The broadcaster (`TutorDexAggregator/broadcast_assignments.py`) now prefers inline callback buttons with `callback_data` of the form `open:<external_id>` so Telegram clients open the original URL natively while the bot receives a callback to record the click. When the `callback_data` would be too long or an external id is unavailable, the code falls back to a direct URL button. The backend already implements `/telegram/callback` and resolves the original URL and increments click counters; this change enables native UX + reliable click tracking without redirects.
+
+- **Frontend compact card tweaks**: The website compact assignment card (`TutorDexWebsite/src/page-assignments.js`) was adjusted to reduce clutter: level/subject/posted/bumped meta items were removed from the compact meta row and replaced with more actionable compact metadata — postal/postal-estimated, distance (when available), and time-availability notes. This improves at-a-glance usefulness in compact mode.
+
+- **Click tracking endpoints and cooldown**: The backend `/track` endpoint and the Telegram callback handler both use a shared cooldown helper (`_should_increment_click`) backed by Redis (with an in-memory fallback) to prevent high-frequency duplicate increments per IP. This logic is used when processing both website beacon clicks and Telegram callback clicks.
+
+- **Small resilience and observability improvements**: Minor retries, structured logs, and atomic state writes were added around recovery state updates and backfill runs to make resumable catchup more robust and observable.
+
 ---
 
 ## 2. Monorepo Overview
