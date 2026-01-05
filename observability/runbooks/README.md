@@ -7,3 +7,7 @@ General triage flow:
 2) Check `TutorDex Quality` for parse failures and missing-field spikes.
 3) Use the Logs panel (Loki) filtered by `compose_service` + `channel` + `pipeline_version`.
 
+## Operational Runbooks
+
+- **[DisablingAlerts.md](DisablingAlerts.md)** - How to disable/modify alerts and troubleshoot when changes don't take effect
+
