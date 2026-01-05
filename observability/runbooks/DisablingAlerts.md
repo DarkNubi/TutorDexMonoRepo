@@ -159,15 +159,15 @@ To re-enable a disabled alert:
 Complete verification checklist:
 
 ```bash
-# 1. Edit alert rules
-vim observability/prometheus/alert_rules.yml
+# 1. Edit alert rules (using your preferred editor)
+vim observability/prometheus/alert_rules.yml  # or nano, code, emacs, etc.
 
 # 2. Reload Prometheus
 curl -X POST http://localhost:9090/-/reload
 
 # 3. Check Prometheus picked it up (wait 15 seconds for evaluation)
 sleep 15
-curl -s http://localhost:9090/api/v1/rules | jq '.data.groups[].rules[] | select(.alert=="YourAlert")'
+curl -s http://localhost:9090/api/v1/rules | jq '.data.groups[].rules[] | select(.alert=="CollectorStalled")'
 
 # 4. Check alert state in Prometheus
 open http://localhost:9090/alerts

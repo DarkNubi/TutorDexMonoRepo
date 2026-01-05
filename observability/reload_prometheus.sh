@@ -6,9 +6,7 @@ set -e
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 
 echo "Reloading Prometheus configuration..."
-response=$(curl -s -w "\n%{http_code}" -X POST "$PROMETHEUS_URL/-/reload")
-http_code=$(echo "$response" | tail -n1)
-body=$(echo "$response" | head -n-1)
+http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$PROMETHEUS_URL/-/reload")
 
 if [ "$http_code" = "200" ]; then
     echo "✓ Prometheus configuration reloaded successfully"
@@ -26,7 +24,6 @@ if [ "$http_code" = "200" ]; then
     exit 0
 else
     echo "✗ Failed to reload Prometheus (HTTP $http_code)"
-    [ -n "$body" ] && echo "Response: $body"
     echo ""
     echo "Check Prometheus logs: docker compose logs prometheus | tail -50"
     exit 1
