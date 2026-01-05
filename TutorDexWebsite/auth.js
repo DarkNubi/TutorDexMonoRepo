@@ -232,10 +232,8 @@ function initAuth() {
       window.location.replace(dest);
     }
 
-    if (user && isIndexPage) {
-      closeIndexModalsIfAny();
-      redirectAfterAuth();
-    }
+    // Don't auto-redirect logged-in users from index page
+    // They can manually navigate using buttons/links
   });
 
   if (loginGoogleBtn) {

@@ -965,7 +965,19 @@ function updateFilterSpecificLevels() {
     specificSelect.appendChild(option);
   });
 
-  if (currentSelected) specificSelect.value = currentSelected;
+  // Preserve the previously selected specific level even if not in current facets
+  if (currentSelected) {
+    if (!Array.from(specificSelect.options || []).some((o) => String(o.value || "").trim() === String(currentSelected).trim())) {
+      const val = String(currentSelected).trim();
+      if (val) {
+        const opt = document.createElement("option");
+        opt.value = val;
+        opt.text = val;
+        specificSelect.appendChild(opt);
+      }
+    }
+    specificSelect.value = currentSelected;
+  }
   specificSelect.disabled = false;
 }
 
