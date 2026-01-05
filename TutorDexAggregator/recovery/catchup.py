@@ -279,17 +279,43 @@ async def run_catchup_until_target(
 
                 with bind_log_context(step="raw.recovery.catchup", channel=ch):
                     log_event(logger, logging.INFO, "recovery_catchup_window_start", channel=ch, since=_iso(since), until=_iso(until), run_id=run_id)
-                    res = await collector_mod.backfill_channel(  # type: ignore[attr-defined]
-                        client=recovery_client,
-                        store=store,
-                        run_id=run_id,
-                        channel_ref=ch,
-                        since=since,
-                        until=until,
-                        batch_size=200,
-                        max_messages=None,
-                        force_enqueue=False,
-                    )
+                    # Retry/backoff wrapper for backfill to tolerate transient Telethon/network errors.
+                    max_attempts = max(1, int(os.environ.get("RECOVERY_BACKFILL_MAX_ATTEMPTS", "3") or 3))
+                    base_backoff = float(os.environ.get("RECOVERY_BACKFILL_BASE_BACKOFF_SECONDS", "5.0") or 5.0)
+                    last_exc = None
+                    res = None
+                    for attempt in range(1, max_attempts + 1):
+                        try:
+                            res = await collector_mod.backfill_channel(  # type: ignore[attr-defined]
+                                client=recovery_client,
+                                store=store,
+                                run_id=run_id,
+                                channel_ref=ch,
+                                since=since,
+                                until=until,
+                                batch_size=200,
+                                max_messages=None,
+                                force_enqueue=False,
+                            )
+                            last_exc = None
+                            break
+                        except Exception as e:
+                            last_exc = e
+                            log_event(
+                                logger,
+                                logging.WARNING,
+                                "recovery_backfill_attempt_failed",
+                                channel=ch,
+                                attempt=attempt,
+                                max_attempts=max_attempts,
+                                error=str(e)[:500],
+                            )
+                            if attempt >= max_attempts:
+                                # re-raise after exhausting attempts so outer handler records the error
+                                raise
+                            # exponential backoff (jittered by small amount)
+                            wait_s = min(300.0, base_backoff * (2 ** (attempt - 1)))
+                            await asyncio_sleep(wait_s + (0.1 * attempt))
                     log_event(
                         logger,
                         logging.INFO,

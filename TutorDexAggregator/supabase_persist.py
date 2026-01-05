@@ -310,10 +310,53 @@ def _merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any],
         if s in {"open", "closed"} and str(existing.get("status") or "").strip().lower() != s:
             patch["status"] = s
 
-    # Always update "latest seen" identifiers for UI linking/debugging.
-    for k in ("message_id", "message_link"):
-        if k in incoming_row and incoming_row.get(k) is not None:
-            patch[k] = incoming_row[k]
+    # Update "latest seen" identifiers for UI linking/debugging only when
+    # the incoming record is at least as new as the existing seen timestamp,
+    # or when the existing pointer is missing. This prevents an older original
+    # post (processed after a bump/repost) from clobbering the pointer to the
+    # more recent repost/bump message.
+    try:
+        existing_source = None
+        if isinstance(existing.get("source_last_seen"), str) and existing.get("source_last_seen"):
+            existing_source = _parse_iso_dt(existing.get("source_last_seen"))
+        elif isinstance(existing.get("published_at"), str) and existing.get("published_at"):
+            existing_source = _parse_iso_dt(existing.get("published_at"))
+        elif isinstance(existing.get("last_seen"), str) and existing.get("last_seen"):
+            existing_source = _parse_iso_dt(existing.get("last_seen"))
+
+        incoming_source = None
+        if isinstance(incoming_row.get("source_last_seen"), str) and incoming_row.get("source_last_seen"):
+            incoming_source = _parse_iso_dt(incoming_row.get("source_last_seen"))
+        elif isinstance(incoming_row.get("published_at"), str) and incoming_row.get("published_at"):
+            incoming_source = _parse_iso_dt(incoming_row.get("published_at"))
+
+        for k in ("message_id", "message_link"):
+            # If existing pointer is missing, allow update.
+            existing_ptr = existing.get(k)
+            incoming_ptr = incoming_row.get(k)
+            if incoming_ptr is None:
+                continue
+            allow = False
+            if not existing_ptr:
+                allow = True
+            elif incoming_source is None and existing_source is None:
+                # Unknown timestamps, be conservative and do not overwrite.
+                allow = False
+            elif incoming_source is not None and existing_source is not None:
+                try:
+                    allow = incoming_source >= existing_source
+                except Exception:
+                    allow = False
+            elif incoming_source is not None and existing_source is None:
+                allow = True
+
+            if allow:
+                patch[k] = incoming_ptr
+    except Exception:
+        # Fallback to the previous conservative behavior on any unexpected error.
+        for k in ("message_id", "message_link"):
+            if k in incoming_row and incoming_row.get(k) is not None:
+                patch[k] = incoming_row[k]
 
     # Only update heavy/raw blobs when we're upgrading quality.
     if upgrade:
