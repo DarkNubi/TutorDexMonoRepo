@@ -167,7 +167,7 @@ curl -X POST http://localhost:9090/-/reload
 
 # 3. Check Prometheus picked it up (wait 15 seconds for evaluation)
 sleep 15
-curl -s http://localhost:9090/api/v1/rules | jq '.data.groups[].rules[] | select(.name=="YourAlert")'
+curl -s http://localhost:9090/api/v1/rules | jq '.data.groups[].rules[] | select(.alert=="YourAlert")'
 
 # 4. Check alert state in Prometheus
 open http://localhost:9090/alerts
