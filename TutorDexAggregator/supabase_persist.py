@@ -597,7 +597,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     detected_status: Optional[str] = None
     if detect_status is not None:
         try:
-            det = detect_status(raw_text=payload.get("raw_text"), channel_link=payload.get("channel_link"), channel_username=payload.get("channel_username"))
+            det = detect_status(raw_text=payload.get("raw_text"), channel_link=payload.get(
+                "channel_link"), channel_username=payload.get("channel_username"))
         except Exception:
             det = None
         if det is not None:
