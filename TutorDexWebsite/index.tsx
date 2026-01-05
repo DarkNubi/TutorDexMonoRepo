@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 
+import type { AssignmentRow } from "@/generated/assignmentRow"
+
 // Utility function
 const cn = (...classes: (string | undefined | null | false)[]) => {
   return classes.filter(Boolean).join(" ")
@@ -67,6 +69,179 @@ interface Assignment {
   timing: string
   posted: string
   agency: string
+  messageLink?: string
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function isBackendEnabled(): boolean {
+  const raw = (import.meta as unknown as { env?: Record<string, unknown> })?.env?.VITE_BACKEND_URL
+  return Boolean(String(raw ?? "").trim())
+}
+
+function backendUrl(): string {
+  const raw = (import.meta as unknown as { env?: Record<string, unknown> })?.env?.VITE_BACKEND_URL
+  return String(raw ?? "").trim().replace(/\/$/, "")
+}
+
+async function fetchAssignmentsPage({
+  limit,
+  signal,
+}: {
+  limit: number
+  signal?: AbortSignal
+}): Promise<{ items: AssignmentRow[] } | null> {
+  if (!isBackendEnabled()) return null
+  const base = backendUrl()
+  if (!base) return null
+
+  const params = new URLSearchParams()
+  params.set("limit", String(Math.max(1, Math.min(200, limit))))
+  params.set("sort", "newest")
+  const url = `${base}/assignments?${params.toString()}`
+
+  const resp = await fetch(url, { method: "GET", signal })
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "")
+    throw new Error(`Backend GET /assignments failed (${resp.status}): ${text || resp.statusText}`)
+  }
+  const data = (await resp.json().catch(() => null)) as { items?: AssignmentRow[] } | null
+  return data && Array.isArray(data.items) ? { items: data.items } : { items: [] }
+}
+
+function firstText(value: unknown): string {
+  if (value == null) return ""
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const s = firstText(item)
+      if (s) return s
+    }
+    return ""
+  }
+  if (typeof value === "string") return value.trim()
+  if (typeof value === "number" && Number.isFinite(value)) return String(value)
+  try {
+    return String(value).trim()
+  } catch {
+    return ""
+  }
+}
+
+function asTextList(value: unknown): string[] {
+  if (value == null) return []
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((v) => asTextList(v))
+      .map((s) => String(s).trim())
+      .filter(Boolean)
+  }
+  if (typeof value === "string") {
+    const s = value.trim()
+    if (!s) return []
+    if (s.startsWith("[") && s.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(s)
+        if (Array.isArray(parsed)) return parsed.map((x) => String(x ?? "").trim()).filter(Boolean)
+      } catch {
+        // ignore
+      }
+    }
+    if (s.includes("\n")) return s.split("\n").map((x) => x.trim()).filter(Boolean)
+    return [s]
+  }
+  return [String(value).trim()].filter(Boolean)
+}
+
+function parseRateNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  const s = String(value ?? "").trim()
+  if (!s) return null
+  const m = s.match(/(\d{1,4})/)
+  if (!m) return null
+  const n = Number.parseInt(m[1], 10)
+  return Number.isFinite(n) ? n : null
+}
+
+function formatRate(row: AssignmentRow): { label: string; maxRate: number | null } {
+  const min = typeof row.rate_min === "number" && Number.isFinite(row.rate_min) ? row.rate_min : parseRateNumber(row.rate_raw_text)
+  const max = typeof row.rate_max === "number" && Number.isFinite(row.rate_max) ? row.rate_max : null
+  const maxRate = max ?? min
+
+  if (typeof min === "number" && typeof max === "number") {
+    if (Math.abs(min - max) < 1e-9) return { label: `$${min}/hr`, maxRate }
+    return { label: `$${min}-${max}/hr`, maxRate }
+  }
+  if (typeof min === "number") return { label: `$${min}/hr`, maxRate }
+
+  const raw = String(row.rate_raw_text ?? "").trim()
+  return { label: raw || "N/A", maxRate }
+}
+
+function formatRelativeTime(isoString: string): string {
+  const t = Date.parse(String(isoString || ""))
+  if (!Number.isFinite(t)) return ""
+  const deltaMs = Date.now() - t
+  if (!Number.isFinite(deltaMs)) return ""
+  const mins = Math.floor(deltaMs / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 48) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+function publishedMs(row: AssignmentRow): number {
+  const iso = String(row.published_at ?? row.created_at ?? row.last_seen ?? "")
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? t : 0
+}
+
+function mapRowToLandingAssignment(row: AssignmentRow): Assignment {
+  const subjects = asTextList(row.signals_subjects)
+  const subject = subjects.slice(0, 2).join(" & ") || String(row.academic_display_text ?? "").trim() || "Tuition Assignment"
+
+  const level =
+    asTextList(row.signals_specific_student_levels).slice(0, 2).join(" / ") ||
+    asTextList(row.signals_levels).slice(0, 2).join(" / ") ||
+    ""
+
+  const address = firstText(row.address)
+  const postal = firstText(row.postal_code)
+  const mrt = firstText(row.nearest_mrt)
+  const region = firstText(row.region)
+  const location = address || mrt || postal || region || "Singapore"
+
+  const { label: rateLabel } = formatRate(row)
+
+  const schedule = asTextList(row.lesson_schedule)
+  const timeNote = asTextList(row.time_availability_note)
+  const learningMode = firstText(row.learning_mode)
+  const timing =
+    schedule[0] || timeNote[0] || (learningMode ? `${learningMode} · Flexible` : "Flexible")
+
+  const postedIso = String(row.published_at ?? row.created_at ?? row.last_seen ?? "").trim()
+  const posted = postedIso ? formatRelativeTime(postedIso) : ""
+
+  const agency = String(row.agency_name ?? "").trim() || "Partner agency"
+  const externalId = String(row.external_id ?? "").trim()
+  const internalId = row.id != null ? String(row.id).trim() : ""
+  const id = externalId || (internalId ? `DB-${internalId}` : "")
+
+  const rawLink = String(row.message_link ?? "").trim()
+  const messageLink = rawLink.startsWith("t.me/") ? `https://${rawLink}` : rawLink || undefined
+
+  return {
+    id,
+    subject,
+    level,
+    location,
+    rate: rateLabel,
+    timing,
+    posted,
+    agency,
+    messageLink,
+  }
 }
 
 // Logo Component
@@ -228,6 +403,113 @@ export function TutorDexLanding() {
     }
   ]
 
+  const [heroAssignments, setHeroAssignments] = useState<Assignment[]>(sampleAssignments.slice(0, 2))
+  const [liveAssignments, setLiveAssignments] = useState<Assignment[]>(sampleAssignments)
+  const [isLiveLoading, setIsLiveLoading] = useState<boolean>(false)
+  const [lastLiveUpdatedMs, setLastLiveUpdatedMs] = useState<number>(0)
+  const [usingMock, setUsingMock] = useState<boolean>(!isBackendEnabled())
+
+  const pollTimerRef = useRef<number | null>(null)
+  const liveAbortRef = useRef<AbortController | null>(null)
+
+  function stopPolling() {
+    if (pollTimerRef.current != null) {
+      window.clearInterval(pollTimerRef.current)
+      pollTimerRef.current = null
+    }
+    if (liveAbortRef.current) {
+      liveAbortRef.current.abort()
+      liveAbortRef.current = null
+    }
+  }
+
+  function idsOf(items: Assignment[]): string {
+    return items.map((x) => x.id).join("|")
+  }
+
+  async function refreshFromBackend({ reason }: { reason: "initial" | "poll" }): Promise<void> {
+    if (!isBackendEnabled()) {
+      setUsingMock(true)
+      return
+    }
+
+    if (liveAbortRef.current) liveAbortRef.current.abort()
+    const ctrl = new AbortController()
+    liveAbortRef.current = ctrl
+
+    if (reason === "initial") setIsLiveLoading(true)
+    try {
+      // Fetch a small window so we can compute both hero "top paying" and live "latest" without extra calls.
+      const page = await fetchAssignmentsPage({ limit: 50, signal: ctrl.signal })
+      const rows = Array.isArray(page?.items) ? page!.items : []
+      if (!rows.length) {
+        setUsingMock(true)
+        return
+      }
+
+      setUsingMock(false)
+
+      const mapped = rows.map(mapRowToLandingAssignment).filter((a) => a.id)
+      // Live: latest 3 (defensive sort by published time)
+      const latest3 = [...rows]
+        .sort((a, b) => publishedMs(b) - publishedMs(a))
+        .slice(0, 3)
+        .map(mapRowToLandingAssignment)
+        .filter((a) => a.id)
+
+      // Hero: top 2 by max rate among past 7 days
+      const cutoff = Date.now() - 7 * MS_PER_DAY
+      const scored = rows.map((r) => {
+        const { maxRate } = formatRate(r)
+        return { row: r, maxRate: maxRate ?? 0, t: publishedMs(r) }
+      })
+      const recent = scored.filter((x) => x.t >= cutoff)
+      const pool = (recent.length ? recent : scored)
+        .slice()
+        .sort((a, b) => (b.maxRate - a.maxRate) || (b.t - a.t))
+        .slice(0, 2)
+        .map((x) => mapRowToLandingAssignment(x.row))
+        .filter((a) => a.id)
+
+      setHeroAssignments((prev) => {
+        const next = pool.length ? pool : prev
+        return idsOf(prev) === idsOf(next) ? prev : next
+      })
+
+      setLiveAssignments((prev) => {
+        const next = latest3.length ? latest3 : prev
+        return idsOf(prev) === idsOf(next) ? prev : next
+      })
+
+      // Keep a reference to avoid lint complaints (and to show intent that mapped can be used later)
+      void mapped
+      setLastLiveUpdatedMs(Date.now())
+    } catch (e) {
+      // Poll failures should be silent; keep the last known data.
+      if (String((e as Error)?.name || "") !== "AbortError") {
+        setUsingMock(true)
+      }
+    } finally {
+      if (reason === "initial") setIsLiveLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    // Initial load + polling for live updates.
+    void refreshFromBackend({ reason: "initial" })
+
+    stopPolling()
+    if (isBackendEnabled()) {
+      const POLL_MS = 25_000
+      pollTimerRef.current = window.setInterval(() => {
+        void refreshFromBackend({ reason: "poll" })
+      }, POLL_MS)
+    }
+
+    return () => stopPolling()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -309,7 +591,7 @@ export function TutorDexLanding() {
               >
                 <div className="relative rounded-3xl overflow-hidden border bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-6 shadow-2xl">
                   <div className="space-y-4">
-                    {sampleAssignments.slice(0, 2).map((assignment, idx) => (
+                      {heroAssignments.slice(0, 2).map((assignment, idx) => (
                       <motion.div
                         key={assignment.id}
                         initial={{ opacity: 0, y: 20 }}
@@ -558,6 +840,15 @@ export function TutorDexLanding() {
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Real assignments from our partner agencies, updated in real-time
               </p>
+              <div className="mt-4 text-sm text-muted-foreground">
+                {usingMock
+                  ? "Showing demo data (backend not connected)."
+                  : isLiveLoading
+                    ? "Loading live assignments…"
+                    : lastLiveUpdatedMs
+                      ? `Last updated ${Math.max(0, Math.round((Date.now() - lastLiveUpdatedMs) / 1000))}s ago`
+                      : ""}
+              </div>
             </div>
 
             <motion.div
@@ -567,7 +858,7 @@ export function TutorDexLanding() {
               viewport={{ once: true }}
               className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto"
             >
-              {sampleAssignments.map((assignment, index) => (
+              {liveAssignments.slice(0, 3).map((assignment, index) => (
                 <motion.div
                   key={assignment.id}
                   variants={itemFadeIn}
@@ -581,7 +872,7 @@ export function TutorDexLanding() {
                           <Badge variant="secondary">{assignment.level}</Badge>
                         </div>
                         <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300">
-                          {assignment.posted}
+                          {assignment.posted || ""}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -600,7 +891,16 @@ export function TutorDexLanding() {
                       </div>
                       <div className="pt-3 border-t">
                         <p className="text-xs text-muted-foreground mb-3">via {assignment.agency}</p>
-                        <Button className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                        <Button
+                          className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                          onClick={() => {
+                            if (assignment.messageLink) {
+                              window.open(assignment.messageLink, "_blank", "noopener,noreferrer")
+                            } else {
+                              goAssignments()
+                            }
+                          }}
+                        >
                           Apply Now
                         </Button>
                       </div>
