@@ -374,6 +374,11 @@ def build_message_text(
     clicks: int = 0,
     distance_km: Optional[float] = None,
 ) -> str:
+    """Build formatted message text for Telegram.
+    
+    When distance_km is provided, this is treated as a DM (no freshness, distance shown).
+    When distance_km is None, this is treated as a broadcast (freshness shown, no distance).
+    """
     parsed = payload.get('parsed') or {}
     academic_raw = _escape(_join_text(parsed.get("academic_display_text")))
     assignment_code = _escape(_join_text(parsed.get('assignment_code')))
@@ -426,39 +431,28 @@ def build_message_text(
         remarks = _escape(_truncate_middle(html.unescape(remarks), max_remarks))
 
     lines = []
+    
+    # Determine if this is a DM (has distance) or broadcast
+    is_dm = distance_km is not None
 
     # Prefer a curated display name by channel ref; fall back to channel_title for non-Telegram sources.
     chat_ref = payload.get("channel_link") or payload.get("channel_username") or ""
     agency = get_agency_display_name(chat_ref, default="")
     if not agency:
         agency = str(payload.get("channel_title") or "").strip() or "Agency"
-    # Primary display: academic first (what tutors see in notifications)
-    # Then a freshness line with emoji + textual tier label.
-    emoji, freshness_label = _freshness_tier(payload)
+    
+    # 1. Academic display text (MOST IMPORTANT - shows in notification)
     if academic_raw:
         lines.append(f"<b>{academic_raw}</b>")
     else:
         lines.append("<b>Tuition Assignment</b>")
 
-    if emoji:
-        # Put emoji and human-friendly label on its own line
-        lines.append(f"{emoji} {freshness_label}")
+    # 2. Rate (HIGH PRIORITY - tutors need to know pay immediately)
+    if rate_line:
+        lines.append(f"💰 {rate_line}")
 
-    # Assignment metadata
-    if assignment_code:
-        lines.append(f"🆔 {assignment_code}")
-
-    # Location
-    if address:
-        lines.append(f"📍 {address}")
-    if nearest_mrt:
-        lines.append(f"🚇 {nearest_mrt}")
-    if postal:
-        lines.append(f"Postal: {postal}")
-    elif postal_estimated:
-        lines.append(f"Postal (estimated): {postal_estimated}")
-
-    if distance_km is not None:
+    # 3. Distance (DM ONLY - personalized info, very important)
+    if is_dm:
         try:
             km = float(distance_km)
         except Exception:
@@ -471,27 +465,43 @@ def build_message_text(
         if km is not None and km >= 0 and learning_mode != "online":
             lines.append(f"📏 Distance: ~{km:.1f} km")
 
-    # Start date
+    # 4. Location (address and MRT)
+    if address:
+        lines.append(f"📍 {address}")
+    if nearest_mrt:
+        lines.append(f"🚇 {nearest_mrt}")
+    if postal:
+        lines.append(f"Postal: {postal}")
+    elif postal_estimated:
+        lines.append(f"Postal (estimated): {postal_estimated}")
+
+    # 5. Freshness (BROADCAST ONLY - can't update DMs due to rate limits)
+    if not is_dm:
+        emoji, freshness_label = _freshness_tier(payload)
+        if emoji:
+            lines.append(f"{emoji} {freshness_label}")
+
+    # 6. Start date
     if start_date:
         lines.append(f"🗓️ {start_date}")
 
-    # Lesson schedule (raw snippets)
+    # 7. Lesson schedule (raw snippets)
     for item in lesson_schedule_lines:
         lines.append(f"📆 {item}")
 
-    # Time availability note (multi-line)
+    # 8. Time availability note (multi-line)
     for item in time_note_lines:
         lines.append(f"🕒 {item}")
 
-    # Rate
-    if rate_line:
-        lines.append(f"💰 {rate_line}")
+    # 9. Assignment code (reference for communication)
+    if assignment_code:
+        lines.append(f"🆔 {assignment_code}")
 
-    # Remarks
+    # 10. Remarks
     if remarks:
         lines.append(f"📝 {remarks}")
 
-    # Metadata: combine agency and channel into a single Source line
+    # 11. Source line (always preceded by blank line for separation)
     channel = _escape(payload.get('channel_title') or payload.get('channel_username') or payload.get('channel_id'))
     source_parts: list[str] = []
     if agency:
@@ -499,8 +509,7 @@ def build_message_text(
     if channel and channel not in source_parts:
         source_parts.append(channel)
     if source_parts:
-        if remarks:
-            lines.append("")
+        lines.append("")  # Blank line before Source
         lines.append(f"🏷️ Source: {' | '.join(source_parts)}")
 
     # Do not include raw text excerpt or message id in the broadcast
@@ -512,7 +521,9 @@ def build_message_text(
     max_len = int(os.environ.get('BROADCAST_MAX_MESSAGE_LEN', '3900'))
 
     # Try to keep within Telegram limits without breaking HTML tags.
-    prunable_prefixes = ('📝 ', '🏷️ Source: ', '🕒 ', '📆 ', '🗓️ ', '💰 ')
+    # Prune less important fields first (remarks, time notes, schedule details, source, assignment code)
+    # Keep high-priority fields: academic text, rate, location, distance, start date
+    prunable_prefixes = ('📝 ', '🏷️ Source: ', '🕒 ', '📆 ', '🆔 ')
     while True:
         candidate = '\n'.join(lines + ([footer] if footer else []))
         if len(candidate) <= max_len:
