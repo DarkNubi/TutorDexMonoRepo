@@ -1291,7 +1291,9 @@ def _verify_telegram_webhook(request: Request) -> bool:
         # No secret configured - allow requests (backward compatible)
         return True
     
-    # FastAPI converts headers to lowercase, so use lowercase key
+    # FastAPI converts headers to lowercase. Telegram sends this as
+    # "X-Telegram-Bot-Api-Secret-Token" per their webhook documentation,
+    # but we access it as lowercase per FastAPI's normalization.
     header_secret = (request.headers.get("x-telegram-bot-api-secret-token") or "").strip()
     
     return header_secret == configured_secret

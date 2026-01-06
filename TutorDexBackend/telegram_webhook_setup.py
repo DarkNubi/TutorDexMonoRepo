@@ -138,14 +138,18 @@ def set_webhook(
                 "result": result.get("result"),
             }
         else:
-            logger.error(f"Failed to set webhook: {result.get('description')}")
+            # Sanitize error message to avoid leaking sensitive information
+            error_desc = result.get("description", "Unknown error")
+            # Don't log the full error if it might contain URL/token info
+            logger.error("Failed to set webhook (see response for details)")
             return {
                 "ok": False,
-                "error": result.get("description"),
+                "error": error_desc,
             }
     except requests.RequestException as e:
-        logger.error(f"Request failed: {e}")
-        return {"ok": False, "error": str(e)}
+        # Log exception type only to avoid exposing bot token in URL errors
+        logger.error(f"Request failed: {type(e).__name__}")
+        return {"ok": False, "error": f"{type(e).__name__}: Connection error"}
 
 
 def get_webhook_info(token: str) -> Dict[str, Any]:
@@ -173,7 +177,13 @@ def get_webhook_info(token: str) -> Dict[str, Any]:
                 logger.info(f"✓ Webhook is set: {webhook_url}")
                 logger.info(f"  Pending updates: {info.get('pending_update_count', 0)}")
                 if info.get("last_error_date"):
-                    logger.warning(f"  Last error: {info.get('last_error_message')}")
+                    # Sanitize error message - it may contain infrastructure details
+                    error_msg = info.get("last_error_message", "Unknown error")
+                    # Only log if it doesn't look like it contains sensitive URLs/paths
+                    if not any(x in error_msg.lower() for x in ["http", "token", "key", "secret"]):
+                        logger.warning(f"  Last error: {error_msg}")
+                    else:
+                        logger.warning("  Last error: (see full webhook info for details)")
                 if info.get("has_custom_certificate"):
                     logger.info("  Using custom certificate")
                 allowed = info.get("allowed_updates", [])
