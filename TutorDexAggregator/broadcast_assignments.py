@@ -521,8 +521,9 @@ def build_message_text(
     max_len = int(os.environ.get('BROADCAST_MAX_MESSAGE_LEN', '3900'))
 
     # Try to keep within Telegram limits without breaking HTML tags.
-    # Prune less important fields first (remarks, time notes, schedule details, source, assignment code)
-    # Keep high-priority fields: academic text, rate, location, distance, start date
+    # Prune less important fields first (in this order):
+    # 1. Remarks (📝), 2. Source (🏷️), 3. Time notes (🕒), 4. Schedule (📆), 5. Assignment code (🆔)
+    # Non-prunable high-priority fields: academic text, rate (💰), location (📍/🚇), distance (📏), start date (🗓️)
     prunable_prefixes = ('📝 ', '🏷️ Source: ', '🕒 ', '📆 ', '🆔 ')
     while True:
         candidate = '\n'.join(lines + ([footer] if footer else []))
