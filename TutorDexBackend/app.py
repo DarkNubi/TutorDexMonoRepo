@@ -640,7 +640,7 @@ def health_webhook() -> Dict[str, Any]:
     Returns webhook information including URL, pending updates, and any errors.
     Useful for monitoring and troubleshooting inline button functionality.
     """
-    token = (os.environ.get("GROUP_BOT_TOKEN") or os.environ.get("TRACKING_EDIT_BOT_TOKEN") or "").strip()
+    token = _bot_token_for_edits()
     if not token:
         return {
             "ok": False,
