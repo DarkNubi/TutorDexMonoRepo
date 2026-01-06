@@ -60,3 +60,67 @@ To DM tutors, the backend needs their Telegram `chat_id`. A simple flow is:
 2. User messages the DM bot: `/link <code>`
 3. Run the poller to claim link codes and store chat ids:
    - `python TutorDexBackend/telegram_link_bot.py`
+
+## Telegram webhook setup (for inline buttons)
+
+Inline buttons in broadcast messages (e.g., "Open original post") require a webhook to be configured with Telegram. Without a webhook, callback queries won't be received when users click these buttons.
+
+### Prerequisites
+- Backend must be publicly accessible via HTTPS
+- `GROUP_BOT_TOKEN` must be set (the bot that posts broadcasts)
+- (Optional) `WEBHOOK_SECRET_TOKEN` for request verification
+
+### Setup steps
+
+1. **Configure environment variables** in `TutorDexBackend/.env`:
+   ```bash
+   GROUP_BOT_TOKEN=your_bot_token
+   WEBHOOK_SECRET_TOKEN=your_random_secret  # Recommended for security
+   ```
+
+2. **Set the webhook** (replace with your public domain):
+   ```bash
+   python TutorDexBackend/telegram_webhook_setup.py set --url https://yourdomain.com/telegram/callback
+   ```
+
+3. **Verify webhook is set**:
+   ```bash
+   python TutorDexBackend/telegram_webhook_setup.py info
+   ```
+
+4. **Test the inline button** by:
+   - Broadcasting a message with an inline button
+   - Clicking the button in Telegram
+   - Checking that the callback is received and processed
+
+### Webhook management
+
+```bash
+# Get current webhook status
+python TutorDexBackend/telegram_webhook_setup.py info
+
+# Delete webhook (reverts to long polling)
+python TutorDexBackend/telegram_webhook_setup.py delete
+
+# Set webhook with custom secret
+python TutorDexBackend/telegram_webhook_setup.py set \
+  --url https://yourdomain.com/telegram/callback \
+  --secret my-custom-secret
+```
+
+### Important notes
+
+- **HTTPS required**: Telegram only accepts HTTPS webhook URLs (not HTTP)
+- **Public accessibility**: Your backend must be accessible from the internet
+- **Port requirements**: Use standard ports (443 for HTTPS, or 80/88/8443)
+- **Secret token**: Highly recommended to prevent unauthorized webhook calls
+- **Endpoint**: The webhook endpoint is `/telegram/callback` (handles callback queries)
+- **Update types**: Webhook is configured to receive only `callback_query` updates
+
+### Troubleshooting
+
+1. **Check webhook status**: Use `telegram_webhook_setup.py info` to see errors
+2. **Test webhook URL**: Ensure your backend is reachable at the webhook URL
+3. **Check logs**: Backend logs will show incoming webhook requests
+4. **Verify secret**: If using `WEBHOOK_SECRET_TOKEN`, ensure it matches in both places
+5. **Firewall/proxy**: Ensure Telegram IPs can reach your backend

@@ -632,6 +632,67 @@ def health_dependencies() -> Dict[str, Any]:
     return health_full()
 
 
+@app.get("/health/webhook")
+def health_webhook() -> Dict[str, Any]:
+    """
+    Check Telegram webhook status for the broadcast bot.
+    
+    Returns webhook information including URL, pending updates, and any errors.
+    Useful for monitoring and troubleshooting inline button functionality.
+    """
+    token = (os.environ.get("GROUP_BOT_TOKEN") or os.environ.get("TRACKING_EDIT_BOT_TOKEN") or "").strip()
+    if not token:
+        return {
+            "ok": False,
+            "error": "no_bot_token",
+            "message": "GROUP_BOT_TOKEN not configured"
+        }
+    
+    import requests  # local import
+    
+    try:
+        resp = requests.get(
+            f"https://api.telegram.org/bot{token}/getWebhookInfo",
+            timeout=10
+        )
+        resp.raise_for_status()
+        result = resp.json()
+        
+        if not result.get("ok"):
+            return {
+                "ok": False,
+                "error": "telegram_api_error",
+                "description": result.get("description", "Unknown error")
+            }
+        
+        info = result.get("result", {})
+        webhook_url = info.get("url", "")
+        has_webhook = bool(webhook_url)
+        
+        # Determine health status
+        ok = has_webhook and info.get("pending_update_count", 0) < 100
+        if info.get("last_error_date"):
+            ok = False
+        
+        return {
+            "ok": ok,
+            "has_webhook": has_webhook,
+            "webhook_url": webhook_url or None,
+            "pending_updates": info.get("pending_update_count", 0),
+            "max_connections": info.get("max_connections"),
+            "allowed_updates": info.get("allowed_updates", []),
+            "last_error_date": info.get("last_error_date"),
+            "last_error_message": info.get("last_error_message"),
+            "has_custom_certificate": info.get("has_custom_certificate", False),
+        }
+    except requests.RequestException as e:
+        return {
+            "ok": False,
+            "error": "request_failed",
+            "message": str(e)
+        }
+
+
 def _clean_opt_str(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
@@ -1216,8 +1277,48 @@ def telegram_claim(request: Request, req: TelegramClaimRequest) -> Dict[str, Any
     return store.set_chat_id(tutor_id, req.chat_id, telegram_username=username)
 
 
+def _verify_telegram_webhook(request: Request) -> bool:
+    """
+    Verify Telegram webhook request using secret token.
+    
+    When a webhook is set with a secret_token, Telegram includes it in the
+    X-Telegram-Bot-Api-Secret-Token header. We verify it matches our configured secret.
+    
+    Returns True if verification passes or no secret is configured (permissive mode).
+    """
+    configured_secret = (os.environ.get("WEBHOOK_SECRET_TOKEN") or "").strip()
+    if not configured_secret:
+        # No secret configured - allow requests (backward compatible)
+        return True
+    
+    header_secret = (
+        request.headers.get("x-telegram-bot-api-secret-token")
+        or request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+        or ""
+    ).strip()
+    
+    return header_secret == configured_secret
+
+
 @app.post("/telegram/callback")
 async def telegram_callback(request: Request) -> Dict[str, Any]:
+    """
+    Handle Telegram webhook callbacks for inline button interactions.
+    
+    This endpoint receives callback queries when users click inline buttons
+    in broadcast messages. Requires a webhook to be set up with Telegram.
+    
+    Setup:
+        python TutorDexBackend/telegram_webhook_setup.py set --url https://yourdomain.com/telegram/callback
+    """
+    # Verify webhook secret token if configured
+    if not _verify_telegram_webhook(request):
+        logger.warning(
+            "telegram_callback_unauthorized",
+            extra={"client_ip": _client_ip(request)}
+        )
+        raise HTTPException(status_code=401, detail="invalid_webhook_secret")
+    
     try:
         update = await request.json()
     except Exception:
