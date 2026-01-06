@@ -1209,30 +1209,37 @@ def me_telegram_link_code(request: Request) -> Dict[str, Any]:
 
 @app.post("/track")
 async def track_click(request: Request, req: ClickTrackRequest) -> Dict[str, Any]:
-    external_id = (req.assignment_external_id or "").strip()
-    destination_url = await _resolve_original_url(
-        external_id=external_id, destination_url=req.destination_url
-    )
-
-    tracked = False
-    clicks: Optional[int] = None
-    if external_id and destination_url and sb.enabled():
-        try:
-            should_inc = await _should_increment_click(request, external_id=external_id)
-        except Exception:
-            should_inc = True
-        if should_inc:
-            clicks = sb.increment_assignment_clicks(
-                external_id=external_id, original_url=destination_url, delta=1
-            )
-            tracked = True
-
+    # CLICK TRACKING DISABLED: This endpoint now returns a no-op response
     return {
         "ok": True,
-        "tracked": tracked,
-        "clicks": int(clicks) if clicks is not None else None,
-        "external_id": external_id or None,
+        "tracked": False,
+        "clicks": None,
+        "external_id": (req.assignment_external_id or "").strip() or None,
     }
+    # external_id = (req.assignment_external_id or "").strip()
+    # destination_url = await _resolve_original_url(
+    #     external_id=external_id, destination_url=req.destination_url
+    # )
+    #
+    # tracked = False
+    # clicks: Optional[int] = None
+    # if external_id and destination_url and sb.enabled():
+    #     try:
+    #         should_inc = await _should_increment_click(request, external_id=external_id)
+    #     except Exception:
+    #         should_inc = True
+    #     if should_inc:
+    #         clicks = sb.increment_assignment_clicks(
+    #             external_id=external_id, original_url=destination_url, delta=1
+    #         )
+    #         tracked = True
+    #
+    # return {
+    #     "ok": True,
+    #     "tracked": tracked,
+    #     "clicks": int(clicks) if clicks is not None else None,
+    #     "external_id": external_id or None,
+    # }
 
 
 @app.post("/analytics/event")
@@ -1304,45 +1311,48 @@ async def telegram_callback(request: Request) -> Dict[str, Any]:
     """
     Handle Telegram webhook callbacks for inline button interactions.
     
+    CLICK TRACKING DISABLED: This endpoint now returns a no-op response.
+    
     This endpoint receives callback queries when users click inline buttons
     in broadcast messages. Requires a webhook to be set up with Telegram.
     
     Setup:
         python TutorDexBackend/telegram_webhook_setup.py set --url https://yourdomain.com/telegram/callback
     """
-    # Verify webhook secret token if configured
-    if not _verify_telegram_webhook(request):
-        logger.warning(
-            "telegram_callback_unauthorized",
-            extra={"client_ip": _client_ip(request)}
-        )
-        raise HTTPException(status_code=401, detail="invalid_webhook_secret")
-    
-    try:
-        update = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="invalid_payload")
-
-    cq = (update or {}).get("callback_query") or {}
-    data = str(cq.get("data") or "").strip()
-    if not data:
-        return {"ok": False, "reason": "no_callback"}
-
-    if not data.startswith("open:"):
-        return {"ok": False, "reason": "unsupported_callback"}
-
-    external_id = data.split(":", 1)[1].strip() if ":" in data else ""
-    original_url = await _resolve_original_url(external_id=external_id, destination_url=None)
-
-    if external_id and original_url and sb.enabled():
-        try:
-            if await _should_increment_click(request, external_id=external_id):
-                sb.increment_assignment_clicks(
-                    external_id=external_id, original_url=original_url, delta=1
-                )
-        except Exception:
-            logger.exception("telegram_callback_increment_failed", extra={"external_id": external_id})
-
-    await _telegram_answer_callback_query(callback_query_id=str(cq.get("id") or ""), url=original_url)
-
-    return {"ok": True, "external_id": external_id or None, "has_url": bool(original_url)}
+    return {"ok": True, "external_id": None, "has_url": False, "disabled": True}
+    # # Verify webhook secret token if configured
+    # if not _verify_telegram_webhook(request):
+    #     logger.warning(
+    #         "telegram_callback_unauthorized",
+    #         extra={"client_ip": _client_ip(request)}
+    #     )
+    #     raise HTTPException(status_code=401, detail="invalid_webhook_secret")
+    #
+    # try:
+    #     update = await request.json()
+    # except Exception:
+    #     raise HTTPException(status_code=400, detail="invalid_payload")
+    #
+    # cq = (update or {}).get("callback_query") or {}
+    # data = str(cq.get("data") or "").strip()
+    # if not data:
+    #     return {"ok": False, "reason": "no_callback"}
+    #
+    # if not data.startswith("open:"):
+    #     return {"ok": False, "reason": "unsupported_callback"}
+    #
+    # external_id = data.split(":", 1)[1].strip() if ":" in data else ""
+    # original_url = await _resolve_original_url(external_id=external_id, destination_url=None)
+    #
+    # if external_id and original_url and sb.enabled():
+    #     try:
+    #         if await _should_increment_click(request, external_id=external_id):
+    #             sb.increment_assignment_clicks(
+    #                 external_id=external_id, original_url=original_url, delta=1
+    #             )
+    #     except Exception:
+    #         logger.exception("telegram_callback_increment_failed", extra={"external_id": external_id})
+    #
+    # await _telegram_answer_callback_query(callback_query_id=str(cq.get("id") or ""), url=original_url)
+    #
+    # return {"ok": True, "external_id": external_id or None, "has_url": bool(original_url)}

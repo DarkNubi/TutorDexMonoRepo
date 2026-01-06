@@ -346,23 +346,26 @@ def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not message_link:
         return None
 
-    # Prefer using a callback button so Telegram clients open the URL natively
-    # while the bot receives a callback to record the click. Fallback to a
-    # direct URL button when no compact external id is available or it would
-    # exceed Telegram's callback_data size limits.
-    try:
-        # Use tracking external id (assignment_code or tg:... id) where possible.
-        ext = _derive_external_id_for_tracking(payload)
-    except Exception:
-        ext = ""
-
-    callback_prefix = "open:"
-    # Telegram limits callback_data to 64 bytes; reserve a small margin.
-    if ext and len(callback_prefix + ext) <= 60:
-        button: Dict[str, Any] = {"text": "Open original post", "callback_data": f"{callback_prefix}{ext}"}
-        return {"inline_keyboard": [[button]]}
-
-    # Fallback to direct URL button when callback_data would be too long or ext missing.
+    # CLICK TRACKING DISABLED: Always use direct URL buttons instead of callback buttons
+    # # Prefer using a callback button so Telegram clients open the URL natively
+    # # while the bot receives a callback to record the click. Fallback to a
+    # # direct URL button when no compact external id is available or it would
+    # # exceed Telegram's callback_data size limits.
+    # try:
+    #     # Use tracking external id (assignment_code or tg:... id) where possible.
+    #     ext = _derive_external_id_for_tracking(payload)
+    # except Exception:
+    #     ext = ""
+    #
+    # callback_prefix = "open:"
+    # # Telegram limits callback_data to 64 bytes; reserve a small margin.
+    # if ext and len(callback_prefix + ext) <= 60:
+    #     button: Dict[str, Any] = {"text": "Open original post", "callback_data": f"{callback_prefix}{ext}"}
+    #     return {"inline_keyboard": [[button]]}
+    #
+    # # Fallback to direct URL button when callback_data would be too long or ext missing.
+    
+    # Always use direct URL button (no click tracking)
     button: Dict[str, Any] = {"text": "Open original post", "url": message_link}
     return {"inline_keyboard": [[button]]}
 
@@ -713,17 +716,18 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
                         broadcast_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
                     except Exception:
                         pass
-                    # Best-effort: store broadcast message mapping for click tracking edits.
-                    try:
-                        if isinstance(j, dict) and isinstance(j.get("result"), dict):
-                            sent_message_id = j["result"].get("message_id")
-                            sent_chat_id = (j["result"].get("chat") or {}).get("id") if isinstance(j["result"].get("chat"), dict) else None
-                            if sent_chat_id is not None and sent_message_id is not None:
-                                from click_tracking_store import upsert_broadcast_message  # local import
-                                upsert_broadcast_message(payload=payload, sent_chat_id=int(sent_chat_id),
-                                                         sent_message_id=int(sent_message_id), message_html=text)
-                    except Exception:
-                        logger.debug("click_tracking_upsert_failed", exc_info=True)
+                    # CLICK TRACKING DISABLED: commented out broadcast message storage
+                    # # Best-effort: store broadcast message mapping for click tracking edits.
+                    # try:
+                    #     if isinstance(j, dict) and isinstance(j.get("result"), dict):
+                    #         sent_message_id = j["result"].get("message_id")
+                    #         sent_chat_id = (j["result"].get("chat") or {}).get("id") if isinstance(j["result"].get("chat"), dict) else None
+                    #         if sent_chat_id is not None and sent_message_id is not None:
+                    #             from click_tracking_store import upsert_broadcast_message  # local import
+                    #             upsert_broadcast_message(payload=payload, sent_chat_id=int(sent_chat_id),
+                    #                                      sent_message_id=int(sent_message_id), message_html=text)
+                    # except Exception:
+                    #     logger.debug("click_tracking_upsert_failed", exc_info=True)
                 return {'ok': resp.status_code < 400, 'response': j}
             except Exception as e:
                 logger.exception('Broadcast send error error=%s', e)
