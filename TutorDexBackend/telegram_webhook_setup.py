@@ -59,11 +59,12 @@ def _env(name: str, default: str = "") -> str:
 
 def get_bot_token() -> str:
     """Get bot token from environment."""
-    # Use GROUP_BOT_TOKEN for broadcast bot (or TRACKING_EDIT_BOT_TOKEN if separate)
-    token = _env("GROUP_BOT_TOKEN") or _env("TRACKING_EDIT_BOT_TOKEN")
+    # Use TRACKING_EDIT_BOT_TOKEN first (for edits), fallback to GROUP_BOT_TOKEN (for broadcasts)
+    # This matches the precedence in _bot_token_for_edits() in app.py
+    token = _env("TRACKING_EDIT_BOT_TOKEN") or _env("GROUP_BOT_TOKEN")
     if not token:
         raise ValueError(
-            "Bot token not found. Set GROUP_BOT_TOKEN environment variable.\n"
+            "Bot token not found. Set GROUP_BOT_TOKEN or TRACKING_EDIT_BOT_TOKEN environment variable.\n"
             "This should be the token of the bot that posts broadcast messages."
         )
     return token

@@ -1291,11 +1291,8 @@ def _verify_telegram_webhook(request: Request) -> bool:
         # No secret configured - allow requests (backward compatible)
         return True
     
-    header_secret = (
-        request.headers.get("x-telegram-bot-api-secret-token")
-        or request.headers.get("X-Telegram-Bot-Api-Secret-Token")
-        or ""
-    ).strip()
+    # FastAPI converts headers to lowercase, so use lowercase key
+    header_secret = (request.headers.get("x-telegram-bot-api-secret-token") or "").strip()
     
     return header_secret == configured_secret
 
