@@ -561,7 +561,7 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     # If no explicit postal code or geocoding failed, try estimated postal code
     if postal_lat is None and postal_lon is None and postal_code_estimated:
         # Try the first estimated postal code
-        estimated_codes = _coerce_text_list(postal_code_estimated) if not isinstance(postal_code_estimated, list) else postal_code_estimated
+        estimated_codes = _coerce_text_list(postal_code_estimated)
         if estimated_codes:
             first_estimated = estimated_codes[0]
             coords = _geocode_sg_postal(first_estimated)
