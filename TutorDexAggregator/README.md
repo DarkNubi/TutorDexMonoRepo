@@ -213,5 +213,5 @@ Use `observability/` (Prometheus + Alertmanager + Grafana + Loki) for metrics, a
 
 ## Notes
 
-- Postal geocoding (lat/lon) is best-effort and may be skipped when Nominatim is disabled/unavailable.
+- **Postal geocoding (lat/lon)**: Coordinates are calculated from postal codes using Nominatim geocoding service. The system first tries explicit postal codes, and if not available or geocoding fails, it falls back to estimated postal codes. When coordinates are derived from estimated postal codes, the `postal_coords_estimated` flag is set to `true`, which triggers "(estimated)" labels in the frontend distance displays.
 - Keep secrets out of git: `.env` is ignored by `TutorDexAggregator/.gitignore`.
