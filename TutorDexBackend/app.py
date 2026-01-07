@@ -457,6 +457,7 @@ class AssignmentRow(BaseModel):
     freshness_tier: Optional[str] = None
     distance_km: Optional[float] = None
     distance_sort_key: Optional[float] = None
+    postal_coords_estimated: Optional[bool] = None
 
     class Config:
         extra = "allow"
