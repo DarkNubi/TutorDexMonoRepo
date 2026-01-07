@@ -57,6 +57,20 @@ python sync_broadcast_channel.py --post-only
 python sync_broadcast_channel.py --chat-id -1001234567890
 ```
 
+**Broadcast Channel Migration**
+
+When changing to a new broadcast channel, use `migrate_broadcast_channel.py` to copy all open assignments:
+```bash
+# Preview migration
+python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222 --dry-run
+
+# Migrate (copy to new, keep old)
+python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222
+
+# Migrate and clean up old channel
+python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222 --delete-old
+```
+
 **Bot 2 (DM) + matching backend (optional)**
 - `DM_ENABLED`: `true/false` (default `false`)
 - `DM_BOT_TOKEN`: Bot token used to DM tutors
