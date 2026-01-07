@@ -87,24 +87,6 @@ def _telegram_api(method: str, token: str, **params) -> Dict[str, Any]:
         raise
 
 
-def fetch_channel_messages(chat_id: Any, token: str, *, limit: int = 100) -> List[Dict[str, Any]]:
-    """
-    Fetch recent messages from a Telegram channel.
-    
-    Note: Bot API doesn't provide a direct way to fetch all messages from a channel.
-    We can only get messages the bot sent (via getUpdates) or individual messages by ID.
-    
-    For a more complete solution, we'd need to:
-    1. Track sent messages in broadcast_messages table (which we now do)
-    2. Or use getUserProfilePhotos + iterate message IDs (unreliable)
-    
-    This function will query the broadcast_messages table instead.
-    """
-    logger.info('Fetching messages for chat_id=%s from database', chat_id)
-    # We'll fetch from broadcast_messages table instead of Telegram API
-    return []
-
-
 def fetch_broadcast_messages_from_db(chat_id: Any) -> List[Dict[str, Any]]:
     """Fetch broadcast messages from Supabase for a specific chat."""
     url = resolve_supabase_url()

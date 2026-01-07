@@ -726,19 +726,34 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     
     Args:
         payload: Assignment payload to broadcast
-        target_chats: Optional list of chat IDs to override TARGET_CHATS
+        target_chats: Optional list of chat IDs to override TARGET_CHATS.
+                     Precedence: target_chats > TARGET_CHATS > TARGET_CHAT > payload['target_chat']
     
-    Returns a dict with result info (including per-chat results if multiple targets).
+    Returns:
+        Dict with result info. Structure varies by scenario:
+        
+        Multi-channel success:
+            {'ok': bool, 'results': List[Dict], 'chats': List, 'sent_count': int, 'failed_count': int}
+        
+        Single-channel success (legacy):
+            {'ok': bool, 'response': Dict, 'status_code': int, 'chat_id': Any}
+        
+        Fallback (no bot config):
+            {'ok': bool, 'saved_to_file': str} on success
+            {'ok': False, 'error': str} on failure
     """
     cid = payload.get('cid') or '<no-cid>'
     msg_id = payload.get('message_id')
     channel_link = payload.get('channel_link') or payload.get('channel_username') or ''
     
-    # Determine target chat IDs
+    # Determine target chat IDs with clear precedence order:
+    # 1. Explicit parameter override (target_chats)
+    # 2. Configured multiple channels (TARGET_CHATS)
+    # 3. Configured single channel (TARGET_CHAT) 
+    # 4. Payload-specific override (payload['target_chat'])
     chats = target_chats if target_chats is not None else TARGET_CHATS
     if not chats and TARGET_CHAT:
         chats = [TARGET_CHAT]
-    # Support legacy single-chat override via payload
     if not chats and payload.get('target_chat'):
         chats = [payload.get('target_chat')]
 
