@@ -26,9 +26,50 @@ Reads Telegram tuition assignment posts, extracts structured display fields usin
 
 **Broadcast (optional)**
 - `GROUP_BOT_TOKEN`: Bot token used to send messages
-- `AGGREGATOR_CHANNEL_ID`: Target chat id (often starts with `-100...`)
+- `AGGREGATOR_CHANNEL_ID`: Target chat id (single channel, starts with `-100...`)
+- `AGGREGATOR_CHANNEL_IDS`: Target chat ids (multiple channels, JSON array: `["-1001234567890", "-1009876543210"]`)
 - `BOT_API_URL`: Optional override (if not set, built from `GROUP_BOT_TOKEN`)
 - `BROADCAST_FALLBACK_FILE`: Where to write JSONL if bot config is missing (default: `TutorDexAggregator/outgoing_broadcasts.jsonl`)
+- `ENABLE_BROADCAST_TRACKING`: Enable message tracking for sync/reconciliation (default: `1`)
+
+**Broadcast Channel Sync**
+
+The `sync_broadcast_channel.py` script synchronizes broadcast channels with open assignments:
+- Detects and deletes messages for expired/closed assignments
+- Detects and posts missing messages for open assignments
+- Supports multiple broadcast channels
+
+Usage:
+```bash
+# Preview changes without making them
+python sync_broadcast_channel.py --dry-run
+
+# Execute full sync (delete orphaned + post missing)
+python sync_broadcast_channel.py
+
+# Only delete orphaned messages
+python sync_broadcast_channel.py --delete-only
+
+# Only post missing assignments
+python sync_broadcast_channel.py --post-only
+
+# Sync specific channel
+python sync_broadcast_channel.py --chat-id -1001234567890
+```
+
+**Broadcast Channel Migration**
+
+When changing to a new broadcast channel, use `migrate_broadcast_channel.py` to copy all open assignments:
+```bash
+# Preview migration
+python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222 --dry-run
+
+# Migrate (copy to new, keep old)
+python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222
+
+# Migrate and clean up old channel
+python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222 --delete-old
+```
 
 **Bot 2 (DM) + matching backend (optional)**
 - `DM_ENABLED`: `true/false` (default `false`)

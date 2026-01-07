@@ -1060,6 +1060,27 @@ def main() -> None:
         },
     )
 
+    # Optional: Auto-sync broadcast channels on startup
+    sync_on_startup = str(os.environ.get("BROADCAST_SYNC_ON_STARTUP", "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    if sync_on_startup:
+        try:
+            log_event(logger, logging.INFO, "broadcast_sync_startup_begin")
+            # Dynamic import to avoid dependency issues
+            from sync_broadcast_channel import sync_channel, _parse_chat_ids, _get_bot_token
+            chat_ids = _parse_chat_ids()
+            token = _get_bot_token()
+            if chat_ids and token:
+                for chat_id in chat_ids:
+                    try:
+                        stats = sync_channel(chat_id, token, dry_run=False, delete_only=False, post_only=False)
+                        log_event(logger, logging.INFO, "broadcast_sync_startup_complete", chat_id=chat_id, **stats)
+                    except Exception as e:
+                        log_event(logger, logging.WARNING, "broadcast_sync_startup_failed", chat_id=chat_id, error=str(e))
+            else:
+                log_event(logger, logging.WARNING, "broadcast_sync_startup_skipped", reason="no_config")
+        except Exception as e:
+            log_event(logger, logging.WARNING, "broadcast_sync_startup_error", error=str(e))
+
     pipeline_version = (os.environ.get("EXTRACTION_PIPELINE_VERSION") or DEFAULT_PIPELINE_VERSION).strip() or DEFAULT_PIPELINE_VERSION
     claim_batch_size = int(os.environ.get("EXTRACTION_WORKER_BATCH", str(DEFAULT_CLAIM_BATCH_SIZE)) or DEFAULT_CLAIM_BATCH_SIZE)
     idle_sleep_s = float(os.environ.get("EXTRACTION_WORKER_IDLE_S", str(DEFAULT_IDLE_SLEEP_SECONDS)) or DEFAULT_IDLE_SLEEP_SECONDS)

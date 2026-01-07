@@ -36,10 +36,14 @@ logger = logging.getLogger('broadcast_assignments')
 BOT_API_URL = os.environ.get('BOT_API_URL') or os.environ.get('TG_BOT_API_URL')
 # tokens provided in .env: DM_BOT_TOKEN, GROUP_BOT_TOKEN
 BOT_TOKEN = os.environ.get('GROUP_BOT_TOKEN')
-# target channel: prefer explicit AGGREGATOR_CHANNEL_ID (Telegram numeric chat id)
-TARGET_CHAT = os.environ.get('AGGREGATOR_CHANNEL_ID')
+# target channel(s): prefer explicit AGGREGATOR_CHANNEL_IDS (plural, JSON list), fallback to AGGREGATOR_CHANNEL_ID (singular)
+_target_chat_single = os.environ.get('AGGREGATOR_CHANNEL_ID')
+_target_chat_multi = os.environ.get('AGGREGATOR_CHANNEL_IDS')
+TARGET_CHATS = []  # Will be populated below
 _default_fallback_file = str(HERE / 'outgoing_broadcasts.jsonl')
 FALLBACK_FILE = os.environ.get('BROADCAST_FALLBACK_FILE', _default_fallback_file)
+# Enable broadcast message tracking (for sync/reconciliation)
+ENABLE_BROADCAST_TRACKING = os.environ.get('ENABLE_BROADCAST_TRACKING', '1').strip().lower() in ('1', 'true', 'yes', 'on')
 
 # normalize TARGET_CHAT: convert t.me/username or https://t.me/username to @username
 
@@ -76,13 +80,35 @@ def _normalize_target_chat(chat: Optional[Any]) -> Optional[Any]:
     return t
 
 
-TARGET_CHAT = _normalize_target_chat(TARGET_CHAT)
+# Parse target chats: support both single and multiple channels
+if _target_chat_multi:
+    # Try to parse as JSON list
+    try:
+        parsed = json.loads(_target_chat_multi)
+        if isinstance(parsed, list):
+            TARGET_CHATS = [_normalize_target_chat(c) for c in parsed if c]
+        else:
+            TARGET_CHATS = [_normalize_target_chat(parsed)] if parsed else []
+    except Exception:
+        logger.warning('Failed to parse AGGREGATOR_CHANNEL_IDS as JSON, treating as single value')
+        TARGET_CHATS = [_normalize_target_chat(_target_chat_multi)] if _target_chat_multi else []
+elif _target_chat_single:
+    TARGET_CHATS = [_normalize_target_chat(_target_chat_single)]
+
+# Remove None values
+TARGET_CHATS = [c for c in TARGET_CHATS if c is not None]
+
+# Maintain backward compatibility: TARGET_CHAT is the first channel (or None)
+TARGET_CHAT = TARGET_CHATS[0] if TARGET_CHATS else None
 
 if not BOT_API_URL and not BOT_TOKEN:
     logger.warning('No BOT_API_URL or BOT_TOKEN set - broadcaster will write to %s instead of sending', FALLBACK_FILE)
 
 if not BOT_API_URL and BOT_TOKEN:
     BOT_API_URL = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
+
+if TARGET_CHATS:
+    logger.info('Broadcast targets configured: %s', TARGET_CHATS)
 
 
 def _classify_broadcast_error(*, status_code: Optional[int], error: Optional[str]) -> str:
@@ -564,16 +590,183 @@ def build_message_text(
         return _truncate_middle(hard, max_len)
 
 
-def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Send a broadcast to the configured Telegram channel via Bot API.
+def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv: str, sv: str) -> Dict[str, Any]:
+    """Send broadcast to a single chat. Returns result dict."""
+    body = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'HTML',
+        'disable_web_page_preview': True,
+        'disable_notification': False,
+    }
+    try:
+        reply_markup = build_inline_keyboard(payload)
+        if reply_markup:
+            body['reply_markup'] = reply_markup
+    except Exception:
+        logger.exception('callback_reply_markup_error')
+    
+    try:
+        max_attempts = max(1, int(os.environ.get("BROADCAST_MAX_ATTEMPTS", "4") or 4))
+        base_sleep_s = float(os.environ.get("BROADCAST_RETRY_BASE_SECONDS", "2.0") or 2.0)
+        max_sleep_s = float(os.environ.get("BROADCAST_RETRY_MAX_SLEEP_SECONDS", "60.0") or 60.0)
+
+        def _sleep(s: float) -> None:
+            s = max(0.0, float(s))
+            jitter = random.uniform(0.0, min(1.0, s * 0.1))
+            time.sleep(min(max_sleep_s, s + jitter))
+
+        resp = None
+        j: Any = None
+        send_ms = None
+
+        for attempt in range(1, max_attempts + 1):
+            t_send = timed()
+            try:
+                resp = requests.post(BOT_API_URL, json=body, timeout=15)
+                send_ms = round((timed() - t_send) * 1000.0, 2)
+            except requests.RequestException as e:
+                if attempt >= max_attempts:
+                    raise
+                wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
+                log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt,
+                          wait_s=wait_s, reason="request_exception", error=str(e), chat_id=chat_id)
+                _sleep(wait_s)
+                continue
+
+            try:
+                j = resp.json()
+            except Exception:
+                j = {'status_code': resp.status_code, 'text': resp.text[:500]}
+
+            if resp.status_code == 429:
+                # Telegram rate limit. If we can, retry after the requested delay.
+                retry_after = 0
+                if isinstance(j, dict):
+                    try:
+                        retry_after = int((j.get("parameters") or {}).get("retry_after") or 0)
+                    except Exception:
+                        retry_after = 0
+                retry_after = max(1, min(int(max_sleep_s), retry_after or 2))
+                log_event(logger, logging.WARNING, "broadcast_rate_limited", attempt=attempt, retry_after_s=retry_after, chat_id=chat_id)
+                if attempt >= max_attempts:
+                    break
+                _sleep(float(retry_after))
+                continue
+
+            if resp.status_code >= 500:
+                # Transient Telegram / network issues; retry with exponential backoff.
+                if attempt >= max_attempts:
+                    break
+                wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
+                log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt,
+                          wait_s=wait_s, reason="server_error", status_code=resp.status_code, chat_id=chat_id)
+                _sleep(wait_s)
+                continue
+
+            # Success or non-retryable 4xx.
+            break
+
+        if resp.status_code >= 400:
+            log_event(
+                logger,
+                logging.WARNING,
+                "broadcast_send_failed",
+                chat_id=chat_id,
+                status_code=resp.status_code,
+                send_ms=send_ms,
+                telegram_ok=bool(j.get("ok")) if isinstance(j, dict) else None,
+                telegram_error_code=j.get("error_code") if isinstance(j, dict) else None,
+                telegram_description=j.get("description")[:300] if isinstance(j, dict) and isinstance(j.get("description"), str) else None,
+            )
+            try:
+                broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
+            except Exception:
+                pass
+            try:
+                broadcast_fail_reason_total.labels(
+                    reason=_classify_broadcast_error(status_code=int(resp.status_code), error=(
+                        j.get("description") if isinstance(j, dict) else None)),
+                    pipeline_version=pv,
+                    schema_version=sv,
+                ).inc()
+            except Exception:
+                pass
+            return {'ok': False, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id}
+        else:
+            log_event(logger, logging.INFO, "broadcast_sent", chat_id=chat_id, status_code=resp.status_code, send_ms=send_ms)
+            try:
+                broadcast_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
+            except Exception:
+                pass
+            # Store broadcast message mapping for tracking/reconciliation
+            if ENABLE_BROADCAST_TRACKING:
+                try:
+                    if isinstance(j, dict) and isinstance(j.get("result"), dict):
+                        sent_message_id = j["result"].get("message_id")
+                        sent_chat_id = (j["result"].get("chat") or {}).get("id") if isinstance(j["result"].get("chat"), dict) else None
+                        if sent_chat_id is not None and sent_message_id is not None:
+                            from click_tracking_store import upsert_broadcast_message  # local import
+                            upsert_broadcast_message(payload=payload, sent_chat_id=int(sent_chat_id),
+                                                     sent_message_id=int(sent_message_id), message_html=text)
+                except Exception:
+                    logger.debug("broadcast_tracking_upsert_failed", exc_info=True, chat_id=chat_id)
+            return {'ok': True, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id, 
+                    'sent_message_id': j.get("result", {}).get("message_id") if isinstance(j, dict) else None}
+    except Exception as e:
+        logger.exception('Broadcast send error chat_id=%s error=%s', chat_id, e)
+        try:
+            broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
+        except Exception:
+            pass
+        try:
+            broadcast_fail_reason_total.labels(
+                reason=_classify_broadcast_error(status_code=None, error=str(e)),
+                pipeline_version=pv,
+                schema_version=sv,
+            ).inc()
+        except Exception:
+            pass
+        return {'ok': False, 'error': str(e), 'chat_id': chat_id}
+
+
+def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = None) -> Dict[str, Any]:
+    """Send a broadcast to the configured Telegram channel(s) via Bot API.
 
     If no bot configuration is present, write the payload to a local file for manual handling.
-    Returns a dict with result info.
+    
+    Args:
+        payload: Assignment payload to broadcast
+        target_chats: Optional list of chat IDs to override TARGET_CHATS.
+                     Precedence: target_chats > TARGET_CHATS > TARGET_CHAT > payload['target_chat']
+    
+    Returns:
+        Dict with result info. Structure varies by scenario:
+        
+        Multi-channel success:
+            {'ok': bool, 'results': List[Dict], 'chats': List, 'sent_count': int, 'failed_count': int}
+        
+        Single-channel success (legacy):
+            {'ok': bool, 'response': Dict, 'status_code': int, 'chat_id': Any}
+        
+        Fallback (no bot config):
+            {'ok': bool, 'saved_to_file': str} on success
+            {'ok': False, 'error': str} on failure
     """
     cid = payload.get('cid') or '<no-cid>'
     msg_id = payload.get('message_id')
     channel_link = payload.get('channel_link') or payload.get('channel_username') or ''
-    chat_id = TARGET_CHAT or payload.get('target_chat')
+    
+    # Determine target chat IDs with clear precedence order:
+    # 1. Explicit parameter override (target_chats)
+    # 2. Configured multiple channels (TARGET_CHATS)
+    # 3. Configured single channel (TARGET_CHAT) 
+    # 4. Payload-specific override (payload['target_chat'])
+    chats = target_chats if target_chats is not None else TARGET_CHATS
+    if not chats and TARGET_CHAT:
+        chats = [TARGET_CHAT]
+    if not chats and payload.get('target_chat'):
+        chats = [payload.get('target_chat')]
 
     v = _obs_versions()
     pv = str(payload.get("pipeline_version") or "").strip() or v.pipeline_version
@@ -622,139 +815,26 @@ def send_broadcast(payload: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             logger.exception("Failed to build broadcast summary")
 
-        if BOT_API_URL and chat_id:
-            body = {
-                'chat_id': chat_id,
-                'text': text,
-                'parse_mode': 'HTML',
-                'disable_web_page_preview': True,
-                'disable_notification': False,
+        if BOT_API_URL and chats:
+            # Send to all configured chat IDs
+            results = []
+            for chat_id in chats:
+                try:
+                    result = _send_to_single_chat(chat_id, text, payload, pv=pv, sv=sv)
+                    results.append(result)
+                except Exception as e:
+                    logger.exception('Failed to send to chat_id=%s error=%s', chat_id, e)
+                    results.append({'ok': False, 'error': str(e), 'chat_id': chat_id})
+            
+            # Return aggregated results
+            all_ok = all(r.get('ok') for r in results)
+            return {
+                'ok': all_ok,
+                'results': results,
+                'chats': chats,
+                'sent_count': sum(1 for r in results if r.get('ok')),
+                'failed_count': sum(1 for r in results if not r.get('ok')),
             }
-            try:
-                reply_markup = build_inline_keyboard(payload)
-                if reply_markup:
-                    body['reply_markup'] = reply_markup
-            except Exception:
-                logger.exception('callback_reply_markup_error')
-            try:
-                max_attempts = max(1, int(os.environ.get("BROADCAST_MAX_ATTEMPTS", "4") or 4))
-                base_sleep_s = float(os.environ.get("BROADCAST_RETRY_BASE_SECONDS", "2.0") or 2.0)
-                max_sleep_s = float(os.environ.get("BROADCAST_RETRY_MAX_SLEEP_SECONDS", "60.0") or 60.0)
-
-                def _sleep(s: float) -> None:
-                    s = max(0.0, float(s))
-                    jitter = random.uniform(0.0, min(1.0, s * 0.1))
-                    time.sleep(min(max_sleep_s, s + jitter))
-
-                resp = None
-                j: Any = None
-                send_ms = None
-
-                for attempt in range(1, max_attempts + 1):
-                    t_send = timed()
-                    try:
-                        resp = requests.post(BOT_API_URL, json=body, timeout=15)
-                        send_ms = round((timed() - t_send) * 1000.0, 2)
-                    except requests.RequestException as e:
-                        if attempt >= max_attempts:
-                            raise
-                        wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
-                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt,
-                                  wait_s=wait_s, reason="request_exception", error=str(e))
-                        _sleep(wait_s)
-                        continue
-
-                    try:
-                        j = resp.json()
-                    except Exception:
-                        j = {'status_code': resp.status_code, 'text': resp.text[:500]}
-
-                    if resp.status_code == 429:
-                        # Telegram rate limit. If we can, retry after the requested delay.
-                        retry_after = 0
-                        if isinstance(j, dict):
-                            try:
-                                retry_after = int((j.get("parameters") or {}).get("retry_after") or 0)
-                            except Exception:
-                                retry_after = 0
-                        retry_after = max(1, min(int(max_sleep_s), retry_after or 2))
-                        log_event(logger, logging.WARNING, "broadcast_rate_limited", attempt=attempt, retry_after_s=retry_after)
-                        if attempt >= max_attempts:
-                            break
-                        _sleep(float(retry_after))
-                        continue
-
-                    if resp.status_code >= 500:
-                        # Transient Telegram / network issues; retry with exponential backoff.
-                        if attempt >= max_attempts:
-                            break
-                        wait_s = min(max_sleep_s, base_sleep_s * (2 ** (attempt - 1)))
-                        log_event(logger, logging.WARNING, "broadcast_retry", attempt=attempt,
-                                  wait_s=wait_s, reason="server_error", status_code=resp.status_code)
-                        _sleep(wait_s)
-                        continue
-
-                    # Success or non-retryable 4xx.
-                    break
-
-                if resp.status_code >= 400:
-                    log_event(
-                        logger,
-                        logging.WARNING,
-                        "broadcast_send_failed",
-                        status_code=resp.status_code,
-                        send_ms=send_ms,
-                        telegram_ok=bool(j.get("ok")) if isinstance(j, dict) else None,
-                        telegram_error_code=j.get("error_code") if isinstance(j, dict) else None,
-                        telegram_description=j.get("description")[:300] if isinstance(j, dict) and isinstance(j.get("description"), str) else None,
-                    )
-                    try:
-                        broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
-                    except Exception:
-                        pass
-                    try:
-                        broadcast_fail_reason_total.labels(
-                            reason=_classify_broadcast_error(status_code=int(resp.status_code), error=(
-                                j.get("description") if isinstance(j, dict) else None)),
-                            pipeline_version=pv,
-                            schema_version=sv,
-                        ).inc()
-                    except Exception:
-                        pass
-                else:
-                    log_event(logger, logging.INFO, "broadcast_sent", status_code=resp.status_code, send_ms=send_ms)
-                    try:
-                        broadcast_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
-                    except Exception:
-                        pass
-                    # CLICK TRACKING DISABLED: commented out broadcast message storage
-                    # # Best-effort: store broadcast message mapping for click tracking edits.
-                    # try:
-                    #     if isinstance(j, dict) and isinstance(j.get("result"), dict):
-                    #         sent_message_id = j["result"].get("message_id")
-                    #         sent_chat_id = (j["result"].get("chat") or {}).get("id") if isinstance(j["result"].get("chat"), dict) else None
-                    #         if sent_chat_id is not None and sent_message_id is not None:
-                    #             from click_tracking_store import upsert_broadcast_message  # local import
-                    #             upsert_broadcast_message(payload=payload, sent_chat_id=int(sent_chat_id),
-                    #                                      sent_message_id=int(sent_message_id), message_html=text)
-                    # except Exception:
-                    #     logger.debug("click_tracking_upsert_failed", exc_info=True)
-                return {'ok': resp.status_code < 400, 'response': j}
-            except Exception as e:
-                logger.exception('Broadcast send error error=%s', e)
-                try:
-                    broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
-                except Exception:
-                    pass
-                try:
-                    broadcast_fail_reason_total.labels(
-                        reason=_classify_broadcast_error(status_code=None, error=str(e)),
-                        pipeline_version=pv,
-                        schema_version=sv,
-                    ).inc()
-                except Exception:
-                    pass
-                return {'ok': False, 'error': str(e)}
 
         # Fallback: append to local file as JSON lines
         try:
