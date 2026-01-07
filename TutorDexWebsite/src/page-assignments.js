@@ -271,6 +271,7 @@ function mapAssignmentRow(row) {
       return Number.isFinite(n) ? n : null;
     })(),
     distanceKm,
+    postalCoordsEstimated: row?.postal_coords_estimated === true,
     rateMin: typeof rateMin === "number" && Number.isFinite(rateMin) ? rateMin : null,
     rateMax: typeof rateMax === "number" && Number.isFinite(rateMax) ? rateMax : null,
     rateRawText: toText(row?.rate_raw_text),
@@ -283,12 +284,12 @@ function mapAssignmentRow(row) {
     postedAt: toText(row?.published_at || row?.created_at || row?.last_seen),
     bumpedAt: toText(row?.source_last_seen || row?.published_at || row?.last_seen),
     processedAt: toText(row?.last_seen),
+    postalCode: postal,
+    postalEstimated,
   };
 }
 
-postalCode: postal,
-  postalEstimated,
-  function formatRelativeTime(isoString) {
+function formatRelativeTime(isoString) {
     const t = Date.parse(String(isoString || ""));
     if (!Number.isFinite(t)) return "";
     const deltaMs = Date.now() - t;
@@ -327,11 +328,11 @@ function hasMatchForMe(job) {
   return Boolean(subjHit || specHit || lvlHit);
 }
 
-function formatDistanceKm(km) {
+function formatDistanceKm(km, isEstimated = false) {
   const n = typeof km === "number" ? km : Number.parseFloat(String(km || ""));
   if (!Number.isFinite(n)) return "";
-  if (n < 10) return `~${n.toFixed(1)} km`;
-  return `~${Math.round(n)} km`;
+  const distStr = n < 10 ? `~${n.toFixed(1)} km` : `~${Math.round(n)} km`;
+  return isEstimated ? `${distStr} (estimated)` : distStr;
 }
 
 function renderSkeleton(count = 6) {
@@ -514,7 +515,7 @@ function renderCards(data) {
       const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
       meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
-        meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm)));
+        meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
       }
       if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
         meta.appendChild(metaItem("fa-solid fa-clock", job.timeNotes.join(" · ")));
@@ -650,7 +651,7 @@ function renderCards(data) {
       addDetail("fa-solid fa-train-subway", `${job.nearestMrt}${suffix}`);
     }
     if (!compact && typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm))
-      addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm));
+      addDetail("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated));
     if (!compact && Array.isArray(job.scheduleNotes) && job.scheduleNotes.length)
       job.scheduleNotes.forEach((line) => addDetail("fa-solid fa-calendar-days", line));
     if (!compact && job.startDate) addDetail("fa-solid fa-calendar-check", job.startDate);

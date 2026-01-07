@@ -38,7 +38,8 @@
     "last_seen",
     "freshness_tier",
     "distance_km",
-    "distance_sort_key"
+    "distance_sort_key",
+    "postal_coords_estimated"
   ],
   "properties": {
     "id": { "type": "integer" },
@@ -74,7 +75,8 @@
     "last_seen": { "type": ["string", "null"] },
     "freshness_tier": { "type": ["string", "null"] },
     "distance_km": { "type": ["number", "null"] },
-    "distance_sort_key": { "type": ["number", "null"] }
+    "distance_sort_key": { "type": ["number", "null"] },
+    "postal_coords_estimated": { "type": ["boolean", "null"] }
   }
 }
 

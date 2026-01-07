@@ -550,10 +550,24 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     postal_lat = None
     postal_lon = None
+    postal_coords_estimated = False
+    
+    # First, try explicit postal code
     if postal_code:
         coords = _geocode_sg_postal(postal_code)
         if coords:
             postal_lat, postal_lon = coords
+    
+    # If no explicit postal code or geocoding failed, try estimated postal code
+    if postal_lat is None and postal_lon is None and postal_code_estimated:
+        # Try the first estimated postal code
+        estimated_codes = _coerce_text_list(postal_code_estimated) if not isinstance(postal_code_estimated, list) else postal_code_estimated
+        if estimated_codes:
+            first_estimated = estimated_codes[0]
+            coords = _geocode_sg_postal(first_estimated)
+            if coords:
+                postal_lat, postal_lon = coords
+                postal_coords_estimated = True
 
     region = None
     nearest_mrt_computed = None
@@ -629,6 +643,7 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "postal_code_estimated": postal_code_estimated,
         "postal_lat": postal_lat,
         "postal_lon": postal_lon,
+        "postal_coords_estimated": postal_coords_estimated,
         "nearest_mrt": nearest_mrt,
         "region": region,
         "nearest_mrt_computed": nearest_mrt_computed,

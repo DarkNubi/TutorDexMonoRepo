@@ -33,6 +33,7 @@ export interface AssignmentRow {
   freshness_tier?: string | null;
   distance_km?: number | null;
   distance_sort_key?: number | null;
+  postal_coords_estimated?: boolean | null;
   [k: string]: unknown;
 }
 
