@@ -193,6 +193,8 @@ function initAuth() {
       setText(signupError, "");
       await auth.signInWithPopup(googleProvider);
       closeIndexModalsIfAny();
+      // Redirect after successful Google sign-in (consistent with email/password flow)
+      redirectAfterAuth();
     } catch (err) {
       const message = err?.message || "Google sign-in failed.";
       const hint = getHelpfulAuthHint(err?.code);
