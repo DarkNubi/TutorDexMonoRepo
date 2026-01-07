@@ -376,11 +376,19 @@ def build_message_text(
     include_clicks: bool = True,
     clicks: int = 0,
     distance_km: Optional[float] = None,
+    postal_coords_estimated: bool = False,
 ) -> str:
     """Build formatted message text for Telegram.
     
     When distance_km is provided, this is treated as a DM (no freshness, distance shown).
     When distance_km is None, this is treated as a broadcast (freshness shown, no distance).
+    
+    Args:
+        payload: Assignment payload
+        include_clicks: Whether to include click count (deprecated, unused)
+        clicks: Number of clicks (deprecated, unused)
+        distance_km: Distance to assignment location in kilometers (for DMs)
+        postal_coords_estimated: Whether the distance is calculated from estimated postal code
     """
     parsed = payload.get('parsed') or {}
     academic_raw = _escape(_join_text(parsed.get("academic_display_text")))
@@ -466,7 +474,10 @@ def build_message_text(
         else:
             learning_mode = str(lm or "").strip().lower()
         if km is not None and km >= 0 and learning_mode != "online":
-            lines.append(f"📏 Distance: ~{km:.1f} km")
+            distance_text = f"~{km:.1f} km"
+            if postal_coords_estimated:
+                distance_text += " (estimated)"
+            lines.append(f"📏 Distance: {distance_text}")
 
     # 4. Location (address and MRT)
     if address:

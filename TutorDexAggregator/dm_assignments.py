@@ -75,18 +75,24 @@ def _learning_mode_is_online_only(payload: Dict[str, Any]) -> bool:
     return lm == "online"
 
 
-def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional[float], Optional[float], bool]:
+    """
+    Get or geocode assignment coordinates.
+    Returns (lat, lon, is_estimated) tuple.
+    is_estimated is True when coordinates came from postal_code_estimated.
+    """
     parsed = payload.get("parsed") or {}
     if not isinstance(parsed, dict):
-        return None, None
+        return None, None, False
 
     lat = _safe_float(parsed.get("postal_lat"))
     lon = _safe_float(parsed.get("postal_lon"))
+    coords_estimated = parsed.get("postal_coords_estimated", False)
     if lat is not None and lon is not None:
-        return lat, lon
+        return lat, lon, bool(coords_estimated)
 
     if _learning_mode_is_online_only(payload):
-        return None, None
+        return None, None, False
 
     try:
         from supabase_persist import _geocode_sg_postal  # best-effort + cached
@@ -94,23 +100,39 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
         _geocode_sg_postal = None
 
     if not _geocode_sg_postal:
-        return None, None
+        return None, None, False
 
+    # Try explicit postal code first
     postal_code = parsed.get("postal_code")
     if isinstance(postal_code, list) and postal_code:
         postal_code = postal_code[0]
-    if not postal_code:
-        return None, None
+    
+    if postal_code:
+        coords = _geocode_sg_postal(str(postal_code))
+        if coords:
+            lat, lon = coords
+            parsed["postal_lat"] = float(lat)
+            parsed["postal_lon"] = float(lon)
+            parsed["postal_coords_estimated"] = False
+            payload["parsed"] = parsed
+            return float(lat), float(lon), False
+    
+    # If explicit failed, try estimated postal code
+    postal_code_estimated = parsed.get("postal_code_estimated")
+    if isinstance(postal_code_estimated, list) and postal_code_estimated:
+        postal_code_estimated = postal_code_estimated[0]
+    
+    if postal_code_estimated:
+        coords = _geocode_sg_postal(str(postal_code_estimated))
+        if coords:
+            lat, lon = coords
+            parsed["postal_lat"] = float(lat)
+            parsed["postal_lon"] = float(lon)
+            parsed["postal_coords_estimated"] = True
+            payload["parsed"] = parsed
+            return float(lat), float(lon), True
 
-    coords = _geocode_sg_postal(str(postal_code))
-    if not coords:
-        return None, None
-
-    lat, lon = coords
-    parsed["postal_lat"] = float(lat)
-    parsed["postal_lon"] = float(lon)
-    payload["parsed"] = parsed
-    return float(lat), float(lon)
+    return None, None, False
 
 
 def fetch_matching_results(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -238,13 +260,23 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
 
         sent = 0
         failures = 0
+        # Get the postal_coords_estimated flag from payload
+        parsed = payload.get("parsed") or {}
+        postal_coords_estimated = parsed.get("postal_coords_estimated", False)
+        
         for match in matches:
             chat_id = str(match.get("chat_id") or "").strip()
             if not chat_id:
                 continue
 
             distance_km = match.get("distance_km")
-            text = build_message_text(payload, include_clicks=False, clicks=0, distance_km=_safe_float(distance_km))
+            text = build_message_text(
+                payload, 
+                include_clicks=False, 
+                clicks=0, 
+                distance_km=_safe_float(distance_km),
+                postal_coords_estimated=bool(postal_coords_estimated)
+            )
             log_event(logger, logging.DEBUG, "dm_send_attempt", chat_id=chat_id)
             res = _telegram_send_message(chat_id, text, reply_markup=reply_markup)
             status = res.get("status_code") or 0
