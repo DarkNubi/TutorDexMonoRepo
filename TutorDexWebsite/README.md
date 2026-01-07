@@ -55,6 +55,23 @@ This site uses Firebase Auth via Firebase Hosting auto-init (`/__ /firebase/init
 - Email/password sign up + sign in (no email verification)
 - Google sign-in (popup)
 
+### Authentication Flow Behavior
+
+**On successful login/signup:**
+- All authentication methods (email/password, Google) redirect to `assignments.html` by default
+- If a `?next=` parameter is present (e.g., `index.html?next=assignments.html`), user is redirected to that page after authentication
+- This provides a consistent, predictable post-login experience
+
+**When visiting the landing page (index.html):**
+- Logged-out users: See "Sign In" and "Join TutorDex" buttons
+- Logged-in users: See "Go to Assignments" button instead
+- No automatic redirect occurs - users stay on the landing page and can explore
+- This prevents confusion and gives users control over navigation
+
+**Protected pages:**
+- Pages with `data-require-auth="true"` automatically redirect unauthenticated users to the login page
+- After successful login, users are redirected back to the protected page they were trying to access
+
 ### One-time Firebase Console setup
 
 Firebase Console → Build → Authentication → Sign-in method:

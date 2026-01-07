@@ -352,11 +352,30 @@ const Header = () => {
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
                 <div className="flex gap-3">
                   <ThemeToggle />
-                  <Button variant="outline" size="sm" onClick={openLogin} className="rounded-xl flex-1 sm:flex-initial">
+                  {/* Signed out: Show sign in button */}
+                  <Button 
+                    data-auth-state="signed-out"
+                    variant="outline" 
+                    size="sm" 
+                    onClick={openLogin} 
+                    className="rounded-xl flex-1 sm:flex-initial"
+                  >
                     Sign In
                   </Button>
+                  {/* Signed in: Show Go to Assignments button */}
+                  <Button 
+                    data-auth-state="signed-in"
+                    variant="outline" 
+                    size="sm" 
+                    onClick={goAssignments} 
+                    className="rounded-xl flex-1 sm:flex-initial"
+                  >
+                    Go to Assignments
+                  </Button>
                 </div>
+                {/* Signed out: Show join button */}
                 <Button
+                  data-auth-state="signed-out"
                   size="sm"
                   onClick={openSignup}
                   className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
@@ -568,6 +587,7 @@ export function TutorDexLanding() {
                   className="flex flex-col gap-3 sm:flex-row"
                 >
                   <Button
+                    data-auth-state="signed-out"
                     size="lg"
                     onClick={openSignup}
                     className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 group shadow-lg shadow-blue-500/25"
@@ -955,11 +975,21 @@ export function TutorDexLanding() {
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <Button
+                data-auth-state="signed-out"
                 size="lg"
                 onClick={openSignup}
                 className="rounded-xl bg-white text-blue-600 hover:bg-blue-50 shadow-xl"
               >
                 Join TutorDex Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button
+                data-auth-state="signed-in"
+                size="lg"
+                onClick={goAssignments}
+                className="rounded-xl bg-white text-blue-600 hover:bg-blue-50 shadow-xl"
+              >
+                Go to Assignments
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button
