@@ -67,9 +67,12 @@ def _parse_chat_ids() -> List[Any]:
     return [single] if single else []
 
 
-def _get_bot_token() -> Optional[str]:
-    """Get bot token from environment."""
-    return os.environ.get('GROUP_BOT_TOKEN')
+def _get_bot_token() -> str:
+    """Get bot token from environment. Raises if not found."""
+    token = os.environ.get('GROUP_BOT_TOKEN')
+    if not token:
+        raise RuntimeError('GROUP_BOT_TOKEN not configured')
+    return token
 
 
 def _telegram_api(method: str, token: str, **params) -> Dict[str, Any]:

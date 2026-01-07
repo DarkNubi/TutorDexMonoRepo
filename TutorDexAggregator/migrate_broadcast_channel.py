@@ -49,10 +49,10 @@ logger = logging.getLogger('migrate_broadcast_channel')
 
 
 def _get_bot_token() -> str:
-    """Get bot token from environment."""
+    """Get bot token from environment. Raises if not found."""
     token = os.environ.get('GROUP_BOT_TOKEN')
     if not token:
-        raise RuntimeError('GROUP_BOT_TOKEN not set')
+        raise RuntimeError('GROUP_BOT_TOKEN not configured')
     return token
 
 
