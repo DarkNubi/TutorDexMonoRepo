@@ -368,7 +368,7 @@ const Header = () => {
                     variant="outline" 
                     size="sm" 
                     onClick={goAssignments} 
-                    className="rounded-xl flex-1 sm:flex-initial hidden"
+                    className="rounded-xl flex-1 sm:flex-initial"
                   >
                     Go to Assignments
                   </Button>
@@ -587,6 +587,7 @@ export function TutorDexLanding() {
                   className="flex flex-col gap-3 sm:flex-row"
                 >
                   <Button
+                    data-auth-state="signed-out"
                     size="lg"
                     onClick={openSignup}
                     className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 group shadow-lg shadow-blue-500/25"
@@ -974,11 +975,21 @@ export function TutorDexLanding() {
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <Button
+                data-auth-state="signed-out"
                 size="lg"
                 onClick={openSignup}
                 className="rounded-xl bg-white text-blue-600 hover:bg-blue-50 shadow-xl"
               >
                 Join TutorDex Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button
+                data-auth-state="signed-in"
+                size="lg"
+                onClick={goAssignments}
+                className="rounded-xl bg-white text-blue-600 hover:bg-blue-50 shadow-xl"
+              >
+                Go to Assignments
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button
