@@ -8,6 +8,7 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 
 - **[QUICK_START.md](QUICK_START.md)** - 🚀 New here? Start with this quick guide
 - **[CAPABILITIES.md](CAPABILITIES.md)** - Complete guide: What the observability stack currently does and what else it can do
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and data flow diagrams
 - **[FAQ.md](FAQ.md)** - Answers to common questions about alerts, reloading configuration, and troubleshooting
 - **[CARDINALITY.md](CARDINALITY.md)** - Metrics and log cardinality rules for performance
 - **[runbooks/](runbooks/)** - Alert-specific troubleshooting guides
