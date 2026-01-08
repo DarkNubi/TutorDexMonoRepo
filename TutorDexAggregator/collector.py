@@ -30,6 +30,7 @@ from telethon.errors import FloodWaitError, SlowModeWaitError, FloodError
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from observability_http import start_observability_http_server
 from otel import setup_otel
+from sentry_init import setup_sentry
 from observability_metrics import (
     collector_errors_total,
     collector_last_message_timestamp_seconds,
@@ -47,6 +48,7 @@ except Exception:
 setup_logging()
 logger = logging.getLogger("collector")
 _V = set_version_metrics(component="collector")
+setup_sentry(service_name=os.environ.get("SENTRY_SERVICE_NAME") or "tutordex-collector")
 setup_otel(service_name=os.environ.get("OTEL_SERVICE_NAME") or "tutordex-collector")
 _DEFAULT_LOG_CTX = bind_log_context(component="collector", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version)
 _DEFAULT_LOG_CTX.__enter__()

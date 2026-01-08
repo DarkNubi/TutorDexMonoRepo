@@ -317,6 +317,129 @@ services:
     depends_on:
       - tempo
 
+  # ===========================
+  # Sentry (Self-Hosted Error Tracking)
+  # ===========================
+
+  sentry-postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: sentry
+      POSTGRES_PASSWORD: sentry
+      POSTGRES_DB: sentry
+    volumes:
+      - sentry_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - tutordex
+
+  sentry-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - tutordex
+    volumes:
+      - sentry_redis_data:/data
+
+  sentry-clickhouse:
+    image: clickhouse/clickhouse-server:23-alpine
+    environment:
+      CLICKHOUSE_DB: sentry
+    volumes:
+      - sentry_clickhouse_data:/var/lib/clickhouse
+    restart: unless-stopped
+    networks:
+      - tutordex
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  sentry-zookeeper:
+    image: zookeeper:3.8
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    volumes:
+      - sentry_zookeeper_data:/data
+      - sentry_zookeeper_logs:/datalog
+    restart: unless-stopped
+    networks:
+      - tutordex
+
+  sentry:
+    image: sentry:24.1.5
+    environment:
+      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY:-!!!CHANGE-ME-IN-PRODUCTION!!!}
+      SENTRY_POSTGRES_HOST: sentry-postgres
+      SENTRY_POSTGRES_PORT: 5432
+      SENTRY_DB_NAME: sentry
+      SENTRY_DB_USER: sentry
+      SENTRY_DB_PASSWORD: sentry
+      SENTRY_REDIS_HOST: sentry-redis
+      SENTRY_REDIS_PORT: 6379
+      SENTRY_CLICKHOUSE_HOST: sentry-clickhouse
+      SNUBA_CLICKHOUSE_HOST: sentry-clickhouse:9000
+      SENTRY_EVENT_RETENTION_DAYS: 30
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - sentry_data:/data
+    restart: unless-stopped
+    networks:
+      - tutordex
+    depends_on:
+      - sentry-postgres
+      - sentry-redis
+      - sentry-clickhouse
+      - sentry-zookeeper
+
+  sentry-worker:
+    image: sentry:24.1.5
+    command: run worker
+    environment:
+      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY:-!!!CHANGE-ME-IN-PRODUCTION!!!}
+      SENTRY_POSTGRES_HOST: sentry-postgres
+      SENTRY_POSTGRES_PORT: 5432
+      SENTRY_DB_NAME: sentry
+      SENTRY_DB_USER: sentry
+      SENTRY_DB_PASSWORD: sentry
+      SENTRY_REDIS_HOST: sentry-redis
+      SENTRY_REDIS_PORT: 6379
+      SENTRY_CLICKHOUSE_HOST: sentry-clickhouse
+      SNUBA_CLICKHOUSE_HOST: sentry-clickhouse:9000
+    volumes:
+      - sentry_data:/data
+    restart: unless-stopped
+    networks:
+      - tutordex
+    depends_on:
+      - sentry-postgres
+      - sentry-redis
+      - sentry-clickhouse
+
+  sentry-cron:
+    image: sentry:24.1.5
+    command: run cron
+    environment:
+      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY:-!!!CHANGE-ME-IN-PRODUCTION!!!}
+      SENTRY_POSTGRES_HOST: sentry-postgres
+      SENTRY_POSTGRES_PORT: 5432
+      SENTRY_DB_NAME: sentry
+      SENTRY_DB_USER: sentry
+      SENTRY_DB_PASSWORD: sentry
+      SENTRY_REDIS_HOST: sentry-redis
+      SENTRY_REDIS_PORT: 6379
+      SENTRY_CLICKHOUSE_HOST: sentry-clickhouse
+      SNUBA_CLICKHOUSE_HOST: sentry-clickhouse:9000
+    volumes:
+      - sentry_data:/data
+    restart: unless-stopped
+    networks:
+      - tutordex
+    depends_on:
+      - sentry-postgres
+      - sentry-redis
+
 networks:
   tutordex:
     name: tutordex
@@ -333,3 +456,9 @@ volumes:
   grafana_data:
   redis_data:
   tempo_data:
+  sentry_postgres_data:
+  sentry_redis_data:
+  sentry_clickhouse_data:
+  sentry_zookeeper_data:
+  sentry_zookeeper_logs:
+  sentry_data:
