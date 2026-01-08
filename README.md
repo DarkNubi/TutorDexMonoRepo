@@ -53,10 +53,12 @@ We've completed a comprehensive project review and identified the next three str
 - [TutorDexBackend](TutorDexBackend/README.md) - FastAPI matching engine and API
 - [TutorDexWebsite](TutorDexWebsite/README.md) - React + Firebase website
 - [Observability](observability/README.md) - Prometheus, Grafana, Loki stack
+- [Duplicate Detection](docs/DUPLICATE_DETECTION_SUMMARY.md) - Cross-agency duplicate assignment handling
 
 **Strategic Context:**
 - [Strategic Vision](TutorDex%20background%20info.txt) - Business goals and monetization strategy
 - [Observability Status](TODO_OBSERVABILITY.md) - Monitoring and analytics capabilities
+- [Duplicate Detection Plan](docs/DUPLICATE_DETECTION.md) - Comprehensive plan for handling duplicate assignments
 
 ---
 
