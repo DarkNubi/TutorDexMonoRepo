@@ -13,10 +13,6 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 - **[CARDINALITY.md](CARDINALITY.md)** - Metrics and log cardinality rules for performance
 - **[runbooks/](runbooks/)** - Alert-specific troubleshooting guides
 
----
-
----
-
 ## Start everything
 
 - `docker compose up -d --build`
@@ -40,16 +36,6 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 - Logs: services emit structured JSON logs to stdout; Promtail ships them to Loki; Grafana queries Loki.
 - Alerts: Prometheus evaluates rules; Alertmanager routes alerts to Telegram via `alertmanager-telegram`.
 - Traces (optional): Tempo + OTEL collector are running; app tracing is enabled only if you install OTEL SDKs and set `OTEL_ENABLED=1`.
-
-## Quick sanity check
-
-- `./observability/doctor.sh`
-
-- **[QUICK_START.md](QUICK_START.md)** - 🚀 New here? Start with this quick guide
-- **[CAPABILITIES.md](CAPABILITIES.md)** - Complete guide: What the observability stack currently does and what else it can do
-- **[FAQ.md](FAQ.md)** - Answers to common questions about alerts, reloading configuration, and troubleshooting
-- **[CARDINALITY.md](CARDINALITY.md)** - Metrics and log cardinality rules for performance
-- **[runbooks/](runbooks/)** - Alert-specific troubleshooting guides
 
 ## Quick sanity check
 

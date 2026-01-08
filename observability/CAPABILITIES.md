@@ -61,7 +61,7 @@ Your stack monitors critical conditions and sends **Telegram notifications** via
 #### Deadman Alert (1)
 - **Watchdog**: Always-firing test alert (validates alerting pipeline every 24h)
 
-#### Pipeline Alerts (7)
+#### Pipeline Alerts (9)
 - **CollectorStalled**: No messages for 10+ minutes (currently disabled)
 - **QueueBacklogGrowingNoThroughput**: Queue growing with zero worker throughput (critical)
 - **QueueOldestPendingTooOld**: Jobs waiting 30+ minutes (warning)
@@ -72,7 +72,7 @@ Your stack monitors critical conditions and sends **Telegram notifications** via
 - **DMFailureSpike**: DM failure rate > 0.2/s for 5+ minutes
 - **DMRateLimited**: Telegram rate limits detected for 2+ minutes
 
-#### Quality Alerts (2)
+#### Quality Alerts (3)
 - **ParseFailureSpike**: Parse failures > 0.5/s for 5+ minutes
 - **ParseErrorFractionHigh**: Parse error rate > 20% for 10+ minutes
 - **MissingSubjectsHigh**: Missing subjects > 0.2/s for 15+ minutes
