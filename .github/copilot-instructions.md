@@ -14,7 +14,7 @@ This is a **monorepo** containing three main components:
 
 Additional components:
 - **shared/** - Shared Python modules for contracts and taxonomy
-- **observability/** - Prometheus, Grafana, Loki, Alertmanager stack
+-- **observability/** - Prometheus, Grafana, Alertmanager (Loki/Tempo/OTEL not included by default)
 - **tests/** - Repository-level test suite
 - **scripts/** - Utility scripts for validation and deployment
 

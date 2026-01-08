@@ -10,7 +10,7 @@ Meaning: no messages were observed for a channel for too long.
 
 What to check:
 - `TutorDex Overview` → "Collector: seconds since last message" (which channels).
-- Loki logs for `compose_service="collector-tail"` and that `channel`.
+- Logs: use `docker compose logs collector-tail` and search for events related to the channel, or reintroduce Loki/Promtail for centralized log search.
 - Telethon session/auth issues, channel access removed, Telegram rate limits.
 
 Mitigation:

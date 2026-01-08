@@ -6,8 +6,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROMETHEUS_PORT="${PROMETHEUS_PORT:-9090}"
 GRAFANA_PORT="${GRAFANA_PORT:-3300}"
 ALERTMANAGER_PORT="${ALERTMANAGER_PORT:-9093}"
-LOKI_PORT="${LOKI_PORT:-3100}"
-TEMPO_PORT="${TEMPO_PORT:-3200}"
 
 echo "TutorDex doctor"
 echo "- root: ${ROOT_DIR}"
@@ -28,8 +26,6 @@ check() {
 check "Prometheus" "http://127.0.0.1:${PROMETHEUS_PORT}/-/ready"
 check "Alertmanager" "http://127.0.0.1:${ALERTMANAGER_PORT}/-/ready"
 check "Grafana" "http://127.0.0.1:${GRAFANA_PORT}/api/health"
-check "Loki" "http://127.0.0.1:${LOKI_PORT}/ready"
-check "Tempo" "http://127.0.0.1:${TEMPO_PORT}/ready"
 
 echo
 echo "Prometheus targets (quick):"

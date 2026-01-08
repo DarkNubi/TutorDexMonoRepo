@@ -53,7 +53,7 @@ This document provides a visual overview of how the TutorDex observability stack
             │ Alert Rules                   │ Structured Logs
             ▼                               ▼
 ┌────────────────────────┐      ┌────────────────────────┐
-│    Alertmanager        │      │         Loki           │
+│    Alertmanager        │      │         Loki (optional) │
 │    (Port 9093)         │      │      (Port 3100)       │
 │                        │      │                        │
 │  Alert Routing:        │      │  Log Storage:          │
@@ -152,7 +152,7 @@ Service → /metrics endpoint → Prometheus (scrape) → Recording Rules →
 ### Logs Pipeline
 ```
 Service → stdout (JSON logs) → Docker → Promtail (collect) → 
-  → Loki (index & store) → Grafana (query & visualize)
+   → Loki (optional index & store) → Grafana (query & visualize)
 ```
 
 ### Traces Pipeline (Optional)
@@ -195,7 +195,7 @@ Prometheus (evaluate rules) → Alertmanager (route & group) →
 
 6. You investigate using runbook
    ├─ Check Grafana: TutorDex Overview dashboard
-   ├─ Check logs: Loki query {compose_service="aggregator-worker"}
+   ├─ Check logs: use `docker compose logs aggregator-worker` (or Loki query if you have Loki deployed)
    └─ Fix issue (restart worker, check LLM, etc.)
 
 7. Prometheus detects: throughput > 0

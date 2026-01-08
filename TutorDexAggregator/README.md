@@ -181,7 +181,7 @@ Progress:
     - If you also run scripts with Windows Python, set `SUPABASE_URL_HOST=...` to a host-reachable Supabase REST URL/port.
   - Host llama server: keep `LLM_API_URL=http://host.docker.internal:1234`.
   - DM/backend matching uses the internal service `backend:8000` (already set in `.env`).
-  - Mounts `./logs` for persistence (optional; container logs are shipped via Loki when using `observability/`).
+  - Mounts `./logs` for persistence (optional). Services emit structured JSON to stdout; log aggregation via Loki is not included by default.
   - TutorCity API fetcher (no LLM): `tutorcity-fetch` polls `TUTORCITY_API_URL` on an interval and persists/broadcasts/DMs directly (source label is always `TutorCity`).
 - Legacy per-folder compose (optional): `docker compose -f docker-compose.roles.yml up --build`
   - Same services as above; use only if you need to run the aggregator stack separately.
@@ -241,7 +241,7 @@ By default it writes to `TutorDexAggregator/monitoring/telegram_message_edits.sq
 
 ## Monitoring & alerting (recommended)
 
-Use `observability/` (Prometheus + Alertmanager + Grafana + Loki) for metrics, alerts, and logs.
+Use `observability/` (Prometheus + Alertmanager + Grafana) for metrics and alerts. Log aggregation via Loki has been removed from the default stack.
 
 ## Production notes (small checklist)
 

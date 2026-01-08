@@ -98,26 +98,15 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "loki", "uid": "loki" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
       "id": 7,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
       "targets": [
-        {
-          "expr": "{compose_service=~\"collector-tail|aggregator-worker|backend\"}",
-          "refId": "A"
-        }
+        { "expr": "sum by (compose_service) (rate(worker_parse_failure_total[5m]))", "legendFormat": "{{compose_service}}", "refId": "A" }
       ],
-      "title": "Logs (collector/worker/backend)",
-      "type": "logs"
+      "title": "Failures by service (metric)",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",

@@ -15,7 +15,6 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-aggregator-worker"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -37,7 +36,6 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-collector"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -54,14 +52,17 @@ services:
     depends_on:
       - redis
     ports:
-      - "127.0.0.1:8000:8000"
+      - "0.0.0.0:8000:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`backend.tutordex.local`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     volumes:
       - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
     environment:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-backend"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -79,7 +80,6 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-telegram-link-bot"
     command: ["python", "telegram_link_bot.py", "--poll-seconds", "2"]
     restart: unless-stopped
@@ -124,7 +124,6 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-freshness-tiers"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -153,7 +152,6 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-tutorcity-fetch"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -174,7 +172,11 @@ services:
       - ./observability/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+      - "0.0.0.0:${PROMETHEUS_PORT:-9090}:9090"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.tutordex.local`)"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
     networks:
       - tutordex
     depends_on:
@@ -190,11 +192,15 @@ services:
       - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
     ports:
-      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+      - "0.0.0.0:${ALERTMANAGER_PORT:-9093}:9093"
     networks:
       - tutordex
     depends_on:
       - alertmanager-telegram
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.tutordex.local`)"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
 
   alertmanager-telegram:
     build: ./observability/alertmanager-telegram
@@ -203,32 +209,8 @@ services:
     networks:
       - tutordex
 
-  loki:
-    image: grafana/loki:2.9.4
-    pull_policy: always
-    command: ["-config.file=/etc/loki/loki-config.yml"]
-    volumes:
-      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
-      - loki_data:/loki
-    ports:
-      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
-    networks:
-      - tutordex
 
-  promtail:
-    image: grafana/promtail:2.9.4
-    pull_policy: always
-    command: ["-config.file=/etc/promtail/promtail-config.yml"]
-    environment:
-      DOCKER_API_VERSION: "1.44"
-    volumes:
-      - ./observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - tutordex
-    depends_on:
-      - loki
+  # promtail removed (not needed without Loki)
 
   grafana:
     image: grafana/grafana:10.4.2
@@ -243,12 +225,15 @@ services:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - "127.0.0.1:${GRAFANA_PORT:-3300}:3000"
+      - "0.0.0.0:${GRAFANA_PORT:-3300}:3000"
     networks:
       - tutordex
     depends_on:
       - prometheus
-      - loki
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.tutordex.local`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
@@ -271,6 +256,10 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - tutordex
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cadvisor.rule=Host(`cadvisor.tutordex.local`)"
+      - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
@@ -302,153 +291,33 @@ services:
     networks:
       - tutordex
 
-  tempo:
-    image: grafana/tempo:2.4.1
-    pull_policy: always
-    command: ["-config.file=/etc/tempo/tempo.yml"]
-    restart: unless-stopped
-    volumes:
-      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
-      - tempo_data:/var/tempo
-    ports:
-      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
-    networks:
-      - tutordex
+  
 
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.96.0
-    pull_policy: always
-    command: ["--config=/etc/otelcol/config.yml"]
+  # otel-collector removed
+
+  traefik:
+    image: traefik:v2.10
     restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--providers.file.watch=true"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--log.level=INFO"
+    ports:
+      - "0.0.0.0:8082:80"
+      - "0.0.0.0:8081:8080" # dashboard bound to 0.0.0.0 (host port chosen to avoid conflicts)
     volumes:
-      - ./observability/otel-collector/config.yml:/etc/otelcol/config.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - tutordex
-    depends_on:
-      - tempo
 
   # ===========================
   # Sentry (Self-Hosted Error Tracking)
   # ===========================
 
-  sentry-postgres:
-    image: postgres:14-alpine
-    environment:
-      POSTGRES_USER: sentry
-      POSTGRES_PASSWORD: sentry
-      POSTGRES_DB: sentry
-    volumes:
-      - sentry_postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - tutordex
-
-  sentry-redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    networks:
-      - tutordex
-    volumes:
-      - sentry_redis_data:/data
-
-  sentry-clickhouse:
-    image: clickhouse/clickhouse-server:23-alpine
-    environment:
-      CLICKHOUSE_DB: sentry
-    volumes:
-      - sentry_clickhouse_data:/var/lib/clickhouse
-    restart: unless-stopped
-    networks:
-      - tutordex
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-
-  sentry-zookeeper:
-    image: zookeeper:3.8
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-    volumes:
-      - sentry_zookeeper_data:/data
-      - sentry_zookeeper_logs:/datalog
-    restart: unless-stopped
-    networks:
-      - tutordex
-
-  sentry:
-    image: sentry:24.1.5
-    environment:
-      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY:-!!!CHANGE-ME-IN-PRODUCTION!!!}
-      SENTRY_POSTGRES_HOST: sentry-postgres
-      SENTRY_POSTGRES_PORT: 5432
-      SENTRY_DB_NAME: sentry
-      SENTRY_DB_USER: sentry
-      SENTRY_DB_PASSWORD: sentry
-      SENTRY_REDIS_HOST: sentry-redis
-      SENTRY_REDIS_PORT: 6379
-      SENTRY_CLICKHOUSE_HOST: sentry-clickhouse
-      SNUBA_CLICKHOUSE_HOST: sentry-clickhouse:9000
-      SENTRY_EVENT_RETENTION_DAYS: 30
-    ports:
-      - "127.0.0.1:9000:9000"
-    volumes:
-      - sentry_data:/data
-    restart: unless-stopped
-    networks:
-      - tutordex
-    depends_on:
-      - sentry-postgres
-      - sentry-redis
-      - sentry-clickhouse
-      - sentry-zookeeper
-
-  sentry-worker:
-    image: sentry:24.1.5
-    command: run worker
-    environment:
-      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY:-!!!CHANGE-ME-IN-PRODUCTION!!!}
-      SENTRY_POSTGRES_HOST: sentry-postgres
-      SENTRY_POSTGRES_PORT: 5432
-      SENTRY_DB_NAME: sentry
-      SENTRY_DB_USER: sentry
-      SENTRY_DB_PASSWORD: sentry
-      SENTRY_REDIS_HOST: sentry-redis
-      SENTRY_REDIS_PORT: 6379
-      SENTRY_CLICKHOUSE_HOST: sentry-clickhouse
-      SNUBA_CLICKHOUSE_HOST: sentry-clickhouse:9000
-    volumes:
-      - sentry_data:/data
-    restart: unless-stopped
-    networks:
-      - tutordex
-    depends_on:
-      - sentry-postgres
-      - sentry-redis
-      - sentry-clickhouse
-
-  sentry-cron:
-    image: sentry:24.1.5
-    command: run cron
-    environment:
-      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY:-!!!CHANGE-ME-IN-PRODUCTION!!!}
-      SENTRY_POSTGRES_HOST: sentry-postgres
-      SENTRY_POSTGRES_PORT: 5432
-      SENTRY_DB_NAME: sentry
-      SENTRY_DB_USER: sentry
-      SENTRY_DB_PASSWORD: sentry
-      SENTRY_REDIS_HOST: sentry-redis
-      SENTRY_REDIS_PORT: 6379
-      SENTRY_CLICKHOUSE_HOST: sentry-clickhouse
-      SNUBA_CLICKHOUSE_HOST: sentry-clickhouse:9000
-    volumes:
-      - sentry_data:/data
-    restart: unless-stopped
-    networks:
-      - tutordex
-    depends_on:
-      - sentry-postgres
-      - sentry-redis
+  # Sentry removed: using cloud-hosted Sentry instead of self-hosting
 
 networks:
   tutordex:
@@ -462,13 +331,5 @@ volumes:
   telegram_link_bot_state:
   prometheus_data:
   alertmanager_data:
-  loki_data:
   grafana_data:
   redis_data:
-  tempo_data:
-  sentry_postgres_data:
-  sentry_redis_data:
-  sentry_clickhouse_data:
-  sentry_zookeeper_data:
-  sentry_zookeeper_logs:
-  sentry_data:

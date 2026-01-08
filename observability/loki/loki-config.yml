@@ -1,37 +1,5 @@
-auth_enabled: false
 
-server:
-  http_listen_port: 3100
-
-common:
-  path_prefix: /loki
-  replication_factor: 1
-  ring:
-    kvstore:
-      store: inmemory
-
-schema_config:
-  configs:
-    - from: 2024-01-01
-      store: boltdb-shipper
-      object_store: filesystem
-      schema: v13
-      index:
-        prefix: index_
-        period: 24h
-
-storage_config:
-  boltdb_shipper:
-    active_index_directory: /loki/index
-    cache_location: /loki/index_cache
-    shared_store: filesystem
-  filesystem:
-    directory: /loki/chunks
-
-limits_config:
-  retention_period: 336h
-
-compactor:
-  working_directory: /loki/compactor
-  shared_store: filesystem
+# Loki config removed — Loki is not included in the default local stack.
+# If you need Loki, restore this file from a backup or re-run the observability
+# scaffolding with Loki/Promtail enabled.
 

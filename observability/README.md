@@ -1,4 +1,4 @@
-# Observability (Prometheus + Grafana + Loki + Alertmanager + Sentry)
+# Observability (Prometheus + Grafana + Alertmanager + Sentry)
 
 This repo runs observability **fully in Docker** via the root `docker-compose.yml`.
 
@@ -23,9 +23,7 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 - Grafana: `http://localhost:3300`
 - Prometheus: `http://localhost:9090`
 - Alertmanager: `http://localhost:9093`
-- Loki: `http://localhost:3100`
-- Tempo (traces backend): `http://localhost:3200`
-- **Sentry**: `http://localhost:9000` (requires initialization - see `sentry/README.md`)
+-- **Sentry**: Use Sentry Cloud (set `SENTRY_DSN` in your service envs)
 
 ## Grafana login
 
@@ -41,10 +39,10 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 ## What's wired
 
 - Metrics: services expose `/metrics` internally; Prometheus scrapes them.
-- Logs: services emit structured JSON logs to stdout; Promtail ships them to Loki; Grafana queries Loki.
-- Alerts: Prometheus evaluates rules; Alertmanager routes alerts to Telegram via `alertmanager-telegram`.
-- Traces (optional): Tempo + OTEL collector are running; app tracing is enabled only if you install OTEL SDKs and set `OTEL_ENABLED=1`.
-- **Error tracking**: Sentry self-hosted for exception capture, performance monitoring, and profiling. Enable by setting `SENTRY_DSN` after initialization (see `sentry/README.md`).
+-- Logs: services emit structured JSON logs to stdout. (Log aggregation via Loki has been removed.)
+-- Alerts: Prometheus evaluates rules; Alertmanager routes alerts to Telegram via `alertmanager-telegram`.
+-- Traces: OTEL collector and Tempo are not included in the default stack. Enable tracing by integrating a hosted tracing backend and setting the corresponding OTEL environment variables.
+-- **Error tracking**: Use Sentry Cloud by providing `SENTRY_DSN` in your service environment.
 
 ## Quick sanity check
 

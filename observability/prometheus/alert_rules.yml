@@ -35,7 +35,7 @@ groups:
           runbook: "observability/runbooks/HostDiskLow.md"
 
       - alert: ContainerRestarted
-        expr: changes(container_start_time_seconds{container_label_com_docker_compose_service=~"collector-tail|aggregator-worker|backend|prometheus|alertmanager|loki|grafana"}[15m]) > 0
+        expr: changes(container_start_time_seconds{container_label_com_docker_compose_service=~"collector-tail|aggregator-worker|backend|prometheus|alertmanager|grafana"}[15m]) > 0
         for: 0m
         labels:
           severity: warning

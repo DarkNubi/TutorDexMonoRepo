@@ -51,23 +51,15 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "loki", "uid": "loki" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 14 },
       "id": 5,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
       "targets": [
-        { "expr": "{compose_service=~\"aggregator-worker\"} |= \"validation_failed\" or {compose_service=~\"aggregator-worker\"} |= \"llm_extract_failed\"", "refId": "A" }
+        { "expr": "rate(worker_parse_failure_total[5m])", "legendFormat": "parse_fail/s", "refId": "A" }
       ],
-      "title": "Recent worker failures (logs)",
-      "type": "logs"
+      "title": "Recent worker failures (metric)",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",

@@ -2,6 +2,8 @@
 
 This document provides a comprehensive overview of what your observability stack currently does and what additional capabilities are available or can be enabled.
 
+> NOTE: The default local stack no longer includes Loki (logs), Tempo (traces), or the OTEL Collector. Metrics (Prometheus) and dashboards (Grafana) remain available. Add those components back if you need centralized logs or tracing.
+
 ---
 
 ## What Your Observability Stack Currently Does
@@ -82,15 +84,9 @@ Your stack monitors critical conditions and sends **Telegram notifications** via
 - **Warning alerts**: Repeat every 6 hours
 - **Watchdog**: Repeats every 24 hours
 
-### 4. **Log Aggregation & Search (Loki + Promtail)**
+### 4. **Log Aggregation & Search (optional — Loki / Promtail)**
 
-Your stack collects **structured JSON logs** from all services:
-
-- **Automatic collection**: Promtail scrapes Docker container logs
-- **Structured parsing**: Extracts JSON fields (timestamp, level, message, context)
-- **Label-based filtering**: Query by `compose_service`, `component`, `channel`, `pipeline_version`
-- **Low-cardinality design**: High-cardinality IDs (assignment_id, message_id) stored as queryable fields, not labels
-- **Time-series correlation**: Link logs to metrics via Grafana
+Centralized log aggregation via Loki/Promtail is optional and not included in the default local stack. Services emit structured JSON logs to stdout; to inspect logs locally use `docker compose logs <service>`. If you need centralized log search, reintroduce Loki/Promtail and configure the Grafana datasource accordingly.
 
 ### 5. **Visual Dashboards (8 Grafana Dashboards)**
 
@@ -159,14 +155,11 @@ Your stack provides **pre-built operational and business dashboards**:
 - Log panel integration (operational dashboards)
 - Metric drill-down
 
-### 6. **Distributed Tracing (Tempo + OpenTelemetry)**
+### 6. **Distributed Tracing (optional — Tempo / OpenTelemetry)**
 
-Your stack has **optional tracing infrastructure** ready to use:
+Distributed tracing is optional and the Tempo/OTEL Collector components are not included in the default local stack. The codebase includes `otel.py` hooks in Aggregator and Backend to emit traces if you enable tracing and configure a hosted OTLP/Tempo backend.
 
-- **Tempo**: Trace storage backend running
-- **OTEL Collector**: Receives traces via OTLP (gRPC/HTTP)
-- **Application hooks**: `otel.py` modules in Aggregator and Backend
-- **Currently disabled by default**: Enable with `OTEL_ENABLED=1`
+To enable tracing with a hosted OTLP backend, set `OTEL_ENABLED=1` and `OTEL_EXPORTER_OTLP_ENDPOINT` to your ingestion endpoint. If you want a local tracing backend, reintroduce the OTEL Collector and Tempo services and update the Grafana datasource.
 
 ### 7. **Service Health Endpoints**
 

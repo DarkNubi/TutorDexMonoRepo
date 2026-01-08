@@ -59,7 +59,8 @@ Think of the system as a pipeline with two optional “sinks”:
 - Optional DMs: Aggregator calls backend matching endpoint to determine recipient chat_ids and sends DMs (`TutorDexAggregator/dm_assignments.py`).
 
 5) **Observability (optional, but wired in compose)**
-- Prometheus + Grafana + Loki + Alertmanager + Tempo + OTEL Collector run via root `docker-compose.yml` (see `observability/`).
+- Prometheus + Grafana + Alertmanager run via root `docker-compose.yml` (see `observability/`).
+- Note: Loki (logs), Tempo (traces) and the OTEL Collector have been removed from the default local stack; add them back if you need centralized logs or tracing.
 
 **Recent Code Changes (2026-01-05)**
 
@@ -85,10 +86,10 @@ Think of the system as a pipeline with two optional “sinks”:
 - `TutorDexAggregator/`: ingestion, extraction, persistence, Telegram broadcast/DM, and most “business logic”.
 - `TutorDexBackend/`: FastAPI service providing website APIs, matching, click tracking, and Supabase-facing user/event persistence.
 - `TutorDexWebsite/`: static multi-page site built with Vite; Firebase Hosting + Firebase Auth.
-- `observability/`: Prometheus/Grafana/Loki/Alertmanager/Tempo/OTEL collector configs.
+ - `observability/`: Prometheus/Grafana/Alertmanager configs (Loki/Tempo/OTEL removed from default local stack).
 - `docs/`: internal docs; some are used by pipeline logic (e.g., time availability doc references).
 - `tests/`: Python tests, primarily around normalization/validation/signals.
-- Root `docker-compose.yml`: runs the entire system (aggregator collector + worker + backend + link bot + redis + full observability stack).
+ - Root `docker-compose.yml`: runs the entire system (aggregator collector + worker + backend + link bot + redis) and a minimal observability stack (Prometheus, Grafana, Alertmanager).
 
 ### How the three projects relate
 - Aggregator produces the data. The Backend and Website do not ingest from Telegram.
@@ -594,7 +595,7 @@ Services:
 - `backend` (FastAPI)
 - `telegram-link-bot` (Telegram poller)
 - `redis`
-- Observability stack: `prometheus`, `grafana`, `loki`, `promtail`, `alertmanager`, `tempo`, `otel-collector`, etc.
+ - Observability stack: `prometheus`, `grafana`, `alertmanager` (Loki/Promtail/Tempo/OTEL removed from default local stack).
 
 ### Environments (dev / prod)
 There is not a rigid environment abstraction. Reality is env vars + docker compose.

@@ -1,0 +1,57 @@
+http:
+  routers:
+    grafana:
+      entryPoints:
+        - web
+      rule: Host(`grafana.tutordex.local`)
+      service: grafana
+
+    prometheus:
+      entryPoints:
+        - web
+      rule: Host(`prometheus.tutordex.local`)
+      service: prometheus
+
+    alertmanager:
+      entryPoints:
+        - web
+      rule: Host(`alertmanager.tutordex.local`)
+      service: alertmanager
+
+    backend:
+      entryPoints:
+        - web
+      rule: Host(`backend.tutordex.local`)
+      service: backend
+
+    cadvisor:
+      entryPoints:
+        - web
+      rule: Host(`cadvisor.tutordex.local`)
+      service: cadvisor
+
+  services:
+    grafana:
+      loadBalancer:
+        servers:
+          - url: http://grafana:3000
+
+    prometheus:
+      loadBalancer:
+        servers:
+          - url: http://prometheus:9090
+
+    alertmanager:
+      loadBalancer:
+        servers:
+          - url: http://alertmanager:9093
+
+    backend:
+      loadBalancer:
+        servers:
+          - url: http://backend:8000
+
+    cadvisor:
+      loadBalancer:
+        servers:
+          - url: http://cadvisor:8080

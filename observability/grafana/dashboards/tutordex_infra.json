@@ -12,7 +12,7 @@
       "id": 1,
       "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
       "targets": [
-        { "expr": "up{job=~\"tutordex_collector|tutordex_worker|tutordex_backend|prometheus|loki|cadvisor|node_exporter|blackbox_http\"}", "legendFormat": "{{job}} {{instance}}", "refId": "A" }
+        { "expr": "up{job=~\"tutordex_collector|tutordex_worker|tutordex_backend|prometheus|cadvisor|node_exporter|blackbox_http\"}", "legendFormat": "{{job}} {{instance}}", "refId": "A" }
       ],
       "title": "Scrape health (up)",
       "type": "timeseries"

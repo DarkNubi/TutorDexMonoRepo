@@ -20,7 +20,7 @@ docker compose up -d --build
 
 | Service | URL | Login | Purpose |
 |---------|-----|-------|---------|
-| **Grafana** | http://localhost:3300 | admin/admin | Dashboards, alerts, logs |
+| **Grafana** | http://localhost:3300 | admin/admin | Dashboards, alerts |
 | **Prometheus** | http://localhost:9090 | None | Metrics and alert rules |
 | **Alertmanager** | http://localhost:9093 | None | Alert management |
 | **Sentry** | http://localhost:9000 | See setup | Error tracking, performance monitoring |
@@ -47,14 +47,9 @@ Navigate to **Dashboards** → **Browse** to find:
 - **TutorDex Data Quality & Completeness** - Field completeness, quality trends
 - **TutorDex Channel Performance** - Channel comparison, top performers
 
-### 2. **Live Logs** (Grafana → Explore → Loki)
+### 2. **Logs**
 
-```
-# Example queries
-{compose_service="collector-tail"}
-{compose_service="aggregator-worker", level="error"}
-{compose_service="backend"} |= "health"
-```
+Log aggregation via Loki/Promtail has been removed from the default stack. Services still emit structured JSON to stdout; use `docker compose logs <service>` or integrate a hosted logging solution.
 
 ### 3. **Prometheus Alerts** (http://localhost:9090/alerts)
 
@@ -82,10 +77,8 @@ See active alerts and create silences during maintenance.
 
 ### "I want to see what the collector is doing"
 
-1. Grafana → Explore → Loki
-2. Query: `{compose_service="collector-tail"}`
-3. Time range: Last 1 hour
-4. Look for `messages_seen`, `messages_upserted` events
+1. Use `docker compose logs collector-tail` or view container logs in your terminal
+2. Look for `messages_seen`, `messages_upserted` events
 
 ### "I want to see LLM performance"
 
@@ -179,10 +172,9 @@ See [FAQ.md](FAQ.md) for detailed explanation.
 - Check: http://localhost:9090/targets (all should be UP)
 - Fix: `docker compose restart prometheus`
 
-**"No logs in Loki"**
-- Check: `docker compose ps promtail`
-- Check: `docker compose logs promtail | tail -20`
-- Fix: `docker compose restart promtail`
+**"No logs available"**
+- Use `docker compose logs <service>` to view logs for a given service.
+- If you need centralized logs, consider adding a hosted log aggregator or reintroducing Loki/Promtail.
 
 **"Alerts not sending to Telegram"**
 - Check: `docker compose ps alertmanager alertmanager-telegram`
@@ -199,7 +191,7 @@ See [FAQ.md](FAQ.md) for detailed explanation.
 ## 🎓 Next Steps
 
 1. **Set up Sentry**: See `observability/sentry/README.md` for initialization ✨ **NEW**
-2. **Enable tracing**: Set `OTEL_ENABLED=1` in `.env` files for distributed tracing
+2. **Enable tracing**: The default local stack does not include an OTEL collector or Tempo. To enable tracing, set `OTEL_ENABLED=1` and configure a hosted OTLP/Tempo backend.
 3. **Customize dashboards**: Edit JSON files or use Grafana UI
 4. **Add custom alerts**: Edit `observability/prometheus/alert_rules.yml`
 5. **Implement analytics**: See [TODO_OBSERVABILITY.md](../TODO_OBSERVABILITY.md) section "Supabase product analytics"
