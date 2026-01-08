@@ -117,6 +117,8 @@ ENABLE_POSTAL_CODE_ESTIMATED = DEFAULT_ENABLE_POSTAL_CODE_ESTIMATED
 setup_logging()
 logger = logging.getLogger("extract_worker")
 _V = set_version_metrics(component="worker")
+from sentry_init import setup_sentry  # noqa: E402
+setup_sentry(service_name=os.environ.get("SENTRY_SERVICE_NAME") or "tutordex-aggregator-worker")
 setup_otel(service_name=os.environ.get("OTEL_SERVICE_NAME") or "tutordex-aggregator-worker")
 _DEFAULT_LOG_CTX = bind_log_context(component="worker", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version)
 

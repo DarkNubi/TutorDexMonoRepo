@@ -23,10 +23,12 @@ from TutorDexBackend.logging_setup import setup_logging
 from TutorDexBackend.geocoding import geocode_sg_postal_code, normalize_sg_postal_code
 from TutorDexBackend.metrics import metrics_payload, observe_request
 from TutorDexBackend.otel import setup_otel
+from TutorDexBackend.sentry_init import setup_sentry
 
 
 setup_logging()
 logger = logging.getLogger("tutordex_backend")
+setup_sentry(service_name="tutordex-backend")
 setup_otel()
 
 app = FastAPI(title="TutorDex Backend", version="0.1.0")

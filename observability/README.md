@@ -1,6 +1,18 @@
-# Observability (Prometheus + Grafana + Loki + Alertmanager)
+# Observability (Prometheus + Grafana + Loki + Alertmanager + Sentry)
 
 This repo runs observability **fully in Docker** via the root `docker-compose.yml`.
+
+---
+
+## 📖 Documentation
+
+- **[QUICK_START.md](QUICK_START.md)** - 🚀 New here? Start with this quick guide
+- **[CAPABILITIES.md](CAPABILITIES.md)** - Complete guide: What the observability stack currently does and what else it can do
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and data flow diagrams
+- **[FAQ.md](FAQ.md)** - Answers to common questions about alerts, reloading configuration, and troubleshooting
+- **[CARDINALITY.md](CARDINALITY.md)** - Metrics and log cardinality rules for performance
+- **[runbooks/](runbooks/)** - Alert-specific troubleshooting guides
+- **[sentry/README.md](sentry/README.md)** - Sentry self-hosted setup guide
 
 ## Start everything
 
@@ -13,30 +25,32 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 - Alertmanager: `http://localhost:9093`
 - Loki: `http://localhost:3100`
 - Tempo (traces backend): `http://localhost:3200`
+- **Sentry**: `http://localhost:9000` (requires initialization - see `sentry/README.md`)
 
 ## Grafana login
 
 - User: `admin` (override with `GRAFANA_ADMIN_USER`)
 - Password: `admin` (override with `GRAFANA_ADMIN_PASSWORD`)
 
-## What’s wired
+## Sentry login (after initialization)
+
+- Email: `admin@tutordex.local` (or your configured email)
+- Password: `admin` (or your configured password)
+- **Change credentials after first login!**
+
+## What's wired
 
 - Metrics: services expose `/metrics` internally; Prometheus scrapes them.
 - Logs: services emit structured JSON logs to stdout; Promtail ships them to Loki; Grafana queries Loki.
 - Alerts: Prometheus evaluates rules; Alertmanager routes alerts to Telegram via `alertmanager-telegram`.
 - Traces (optional): Tempo + OTEL collector are running; app tracing is enabled only if you install OTEL SDKs and set `OTEL_ENABLED=1`.
+- **Error tracking**: Sentry self-hosted for exception capture, performance monitoring, and profiling. Enable by setting `SENTRY_DSN` after initialization (see `sentry/README.md`).
 
 ## Quick sanity check
 
 - `./observability/doctor.sh`
 
-## Common Questions
-
-See [FAQ.md](FAQ.md) for answers to common questions about alerts, reloading configuration, and troubleshooting.
-
-## Cardinality rules
-
-See `observability/CARDINALITY.md`.
+---
 
 ## Reloading Alert Rules
 
