@@ -92,9 +92,11 @@ Your stack collects **structured JSON logs** from all services:
 - **Low-cardinality design**: High-cardinality IDs (assignment_id, message_id) stored as queryable fields, not labels
 - **Time-series correlation**: Link logs to metrics via Grafana
 
-### 5. **Visual Dashboards (4 Grafana Dashboards)**
+### 5. **Visual Dashboards (8 Grafana Dashboards)**
 
-Your stack provides **pre-built operational dashboards**:
+Your stack provides **pre-built operational and business dashboards**:
+
+#### Operational Dashboards
 
 1. **TutorDex Overview** (`tutordex_overview.json`)
    - High-level system health
@@ -120,10 +122,41 @@ Your stack provides **pre-built operational dashboards**:
    - Missing field tracking
    - Assignment quality issues
 
+#### Business Metrics Dashboards ✨ **NEW**
+
+5. **TutorDex Business Metrics** (`tutordex_business.json`)
+   - Assignment creation rate (hourly/daily)
+   - Parse success & error rates
+   - Broadcast & DM delivery stats
+   - Message → Assignment conversion
+   - 24h volume statistics
+
+6. **TutorDex Matching & Notifications** (`tutordex_matching.json`)
+   - Tutors matched per assignment
+   - Notification delivery by channel
+   - DM rate limiting incidents
+   - Failure analysis by reason
+   - Total notifications delivered
+
+7. **TutorDex Data Quality & Completeness** (`tutordex_data_quality.json`)
+   - Missing fields by type
+   - Overall completeness score
+   - Quality inconsistencies
+   - Parse failures by reason & channel
+   - Quality trends over time
+
+8. **TutorDex Channel Performance** (`tutordex_channels.json`)
+   - Message rate by channel
+   - Parse success rate by channel
+   - Channel staleness monitoring
+   - Message → Assignment conversion
+   - Top performing channels
+
 **Dashboard Features**:
-- Time-range selection
-- Variable filters (pipeline_version, channel)
-- Log panel integration
+- Time-range selection (default: 24h)
+- 30-second auto-refresh
+- Multiple visualization types (timeseries, gauges, stats, bar gauges)
+- Log panel integration (operational dashboards)
 - Metric drill-down
 
 ### 6. **Distributed Tracing (Tempo + OpenTelemetry)**
@@ -404,17 +437,18 @@ Based on your current setup and TODO_OBSERVABILITY.md:
 1. **Enable distributed tracing** (`OTEL_ENABLED=1`) for better debugging
 2. **Configure Sentry** ✅ **NOW DEPLOYED** - Initialize and create projects (see `observability/sentry/README.md`)
 3. **Implement user analytics events** in the website (assignment_view, apply_click)
-4. **Create business metric dashboards** (assignments/day, match rates, tutor engagement)
+4. ~~**Create business metric dashboards**~~ ✅ **COMPLETE** - 4 new dashboards deployed
 
 ### Medium Priority (Do This Quarter)
-5. **Add custom alerts** for business metrics (low match rate, high no-reply rate)
-6. **Extend Blackbox monitoring** to include multi-step user journeys
-7. **Set up alert silences** for planned maintenance windows
-8. **Add long-term storage** (Thanos or VictoriaMetrics) for historical analysis
+5. **Add custom alerts** for business metrics (low match rate, high no-reply rate, channel staleness)
+6. **Set up baseline thresholds** for business metrics based on historical data
+7. **Extend Blackbox monitoring** to include multi-step user journeys
+8. **Set up alert silences** for planned maintenance windows
+9. **Add long-term storage** (Thanos or VictoriaMetrics) for historical analysis
 
 ### Low Priority (Future)
-9. **Add anomaly detection** for unusual patterns
-10. **Implement continuous profiling** for performance optimization
+10. **Add anomaly detection** for unusual patterns in business metrics
+11. **Implement continuous profiling** for performance optimization
 11. **Add geographic probes** for multi-region monitoring
 12. **Create capacity planning dashboards** for infrastructure scaling
 
@@ -449,7 +483,7 @@ Based on your current setup and TODO_OBSERVABILITY.md:
 - ✅ Full metrics collection (50+ metrics)
 - ✅ Automated alerting (17 alerts with Telegram notifications)
 - ✅ Log aggregation (structured JSON logs)
-- ✅ Visual dashboards (4 pre-built dashboards)
+- ✅ Visual dashboards (8 dashboards: 4 operational + 4 business metrics)
 - ✅ Health monitoring (service probes)
 - ✅ Operational runbooks (20 documents)
 - ✅ **Self-hosted Sentry** (error tracking, performance monitoring, profiling)
@@ -457,14 +491,14 @@ Based on your current setup and TODO_OBSERVABILITY.md:
 **Ready to enable (just flip a switch):**
 - 🎯 Distributed tracing (set OTEL_ENABLED=1)
 - 🎯 Sentry error tracking (set SENTRY_DSN after initialization)
-- 🎯 Custom dashboards (edit JSON or use UI)
+- 🎯 Custom dashboards (edit JSON or use Grafana UI)
 - 🎯 Additional alert channels (email, PagerDuty, Slack)
 
 **Recommended additions (requires integration work):**
 - 📈 User analytics event tracking
 - 🐛 ~~Sentry error tracking~~ ✅ **NOW DEPLOYED**
-- 📊 Business metric dashboards
+- 📊 ~~Business metric dashboards~~ ✅ **NOW DEPLOYED**
 - 🔮 Anomaly detection
 - 💾 Long-term metrics storage
 
-Your current stack provides **excellent visibility** into system health, performance, and quality. The infrastructure is solid and extensible—you can add new capabilities incrementally as needs arise.
+Your current stack provides **excellent visibility** into system health, performance, quality, and business metrics. The infrastructure is solid and extensible—you can add new capabilities incrementally as needs arise.

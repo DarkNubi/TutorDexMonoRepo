@@ -35,10 +35,17 @@ docker compose up -d --build
 
 Navigate to **Dashboards** → **Browse** to find:
 
+#### Operational Dashboards
 - **TutorDex Overview** - Start here! High-level system health
 - **TutorDex Infra** - Container resources, host metrics
 - **TutorDex LLM + Supabase** - AI and database performance
 - **TutorDex Quality** - Parse errors, data quality issues
+
+#### Business Metrics Dashboards ✨ **NEW**
+- **TutorDex Business Metrics** - Assignment creation, delivery stats, conversion rates
+- **TutorDex Matching & Notifications** - Tutor matching efficiency, DM delivery
+- **TutorDex Data Quality & Completeness** - Field completeness, quality trends
+- **TutorDex Channel Performance** - Channel comparison, top performers
 
 ### 2. **Live Logs** (Grafana → Explore → Loki)
 
