@@ -300,28 +300,45 @@ modules:
         - "success"
 ```
 
-### 8. **Error Tracking (Mentioned in TODO_OBSERVABILITY.md)**
+### 8. **Error Tracking with Sentry** ✅ **NOW DEPLOYED**
 
-**Not currently integrated**: Sentry for exception tracking.
+**Self-hosted Sentry is now integrated** for comprehensive error tracking.
 
 **What it provides**:
-- Automatic exception capture
-- Stack traces with context
+- Automatic exception capture with full stack traces
 - Error grouping and deduplication
 - Release tracking and regression detection
 - User impact analysis
-- Performance monitoring
+- Performance monitoring (transactions and profiles)
+- FastAPI integration for automatic request tracking
+- Custom error filtering and context enrichment
 
-**How to add**:
-```python
-# In TutorDexBackend/app.py
-import sentry_sdk
-sentry_sdk.init(
-    dsn="YOUR_DSN",
-    environment="production",
-    traces_sample_rate=0.1,
-)
-```
+**Services deployed**:
+- **sentry**: Web UI and API (http://localhost:9000)
+- **sentry-postgres**: Metadata storage
+- **sentry-redis**: Caching and queues
+- **sentry-clickhouse**: High-performance event storage
+- **sentry-worker**: Background task processor
+- **sentry-cron**: Scheduled tasks
+
+**Already configured in**:
+- ✅ TutorDexBackend (FastAPI integration)
+- ✅ TutorDexAggregator Collector
+- ✅ TutorDexAggregator Worker
+
+**How to use**:
+1. Start services: `docker compose up -d`
+2. Initialize Sentry: See `observability/sentry/README.md`
+3. Create projects and get DSN
+4. Set `SENTRY_DSN` in `.env` files
+5. Restart applications
+
+**Configuration**:
+See `.env.example` files for:
+- `SENTRY_DSN`: Project DSN from Sentry UI
+- `SENTRY_ENVIRONMENT`: production/staging/development
+- `SENTRY_TRACES_SAMPLE_RATE`: Performance monitoring sample rate (default 0.1 = 10%)
+- `SENTRY_PROFILES_SAMPLE_RATE`: Profiling sample rate (default 0.1 = 10%)
 
 ### 9. **User Analytics (Mentioned in TODO_OBSERVABILITY.md)**
 
@@ -385,8 +402,8 @@ Based on your current setup and TODO_OBSERVABILITY.md:
 
 ### High Priority (Do Soon)
 1. **Enable distributed tracing** (`OTEL_ENABLED=1`) for better debugging
-2. **Implement user analytics events** in the website (assignment_view, apply_click)
-3. **Add Sentry** for better exception tracking and release monitoring
+2. **Configure Sentry** ✅ **NOW DEPLOYED** - Initialize and create projects (see `observability/sentry/README.md`)
+3. **Implement user analytics events** in the website (assignment_view, apply_click)
 4. **Create business metric dashboards** (assignments/day, match rates, tutor engagement)
 
 ### Medium Priority (Do This Quarter)
@@ -435,15 +452,17 @@ Based on your current setup and TODO_OBSERVABILITY.md:
 - ✅ Visual dashboards (4 pre-built dashboards)
 - ✅ Health monitoring (service probes)
 - ✅ Operational runbooks (20 documents)
+- ✅ **Self-hosted Sentry** (error tracking, performance monitoring, profiling)
 
 **Ready to enable (just flip a switch):**
 - 🎯 Distributed tracing (set OTEL_ENABLED=1)
+- 🎯 Sentry error tracking (set SENTRY_DSN after initialization)
 - 🎯 Custom dashboards (edit JSON or use UI)
 - 🎯 Additional alert channels (email, PagerDuty, Slack)
 
 **Recommended additions (requires integration work):**
 - 📈 User analytics event tracking
-- 🐛 Sentry error tracking
+- 🐛 ~~Sentry error tracking~~ ✅ **NOW DEPLOYED**
 - 📊 Business metric dashboards
 - 🔮 Anomaly detection
 - 💾 Long-term metrics storage

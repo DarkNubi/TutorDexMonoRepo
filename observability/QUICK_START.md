@@ -23,6 +23,9 @@ docker compose up -d --build
 | **Grafana** | http://localhost:3300 | admin/admin | Dashboards, alerts, logs |
 | **Prometheus** | http://localhost:9090 | None | Metrics and alert rules |
 | **Alertmanager** | http://localhost:9093 | None | Alert management |
+| **Sentry** | http://localhost:9000 | See setup | Error tracking, performance monitoring |
+
+**Note**: Sentry requires initialization on first start. See `observability/sentry/README.md` for setup.
 
 ---
 
@@ -179,14 +182,19 @@ See [FAQ.md](FAQ.md) for detailed explanation.
 - Check: `docker compose logs alertmanager-telegram | tail -20`
 - Verify: Telegram bot token and chat ID are correct in `.env`
 
+**"Sentry not accessible"**
+- Check: `docker compose ps sentry sentry-postgres sentry-redis`
+- Initialize: See `observability/sentry/README.md` for first-time setup
+- Fix: `docker compose restart sentry`
+
 ---
 
 ## 🎓 Next Steps
 
-1. **Enable tracing**: Set `OTEL_ENABLED=1` in `.env` files for distributed tracing
-2. **Customize dashboards**: Edit JSON files or use Grafana UI
-3. **Add custom alerts**: Edit `observability/prometheus/alert_rules.yml`
-4. **Add Sentry**: See [CAPABILITIES.md](CAPABILITIES.md) section "Error Tracking"
+1. **Set up Sentry**: See `observability/sentry/README.md` for initialization ✨ **NEW**
+2. **Enable tracing**: Set `OTEL_ENABLED=1` in `.env` files for distributed tracing
+3. **Customize dashboards**: Edit JSON files or use Grafana UI
+4. **Add custom alerts**: Edit `observability/prometheus/alert_rules.yml`
 5. **Implement analytics**: See [TODO_OBSERVABILITY.md](../TODO_OBSERVABILITY.md) section "Supabase product analytics"
 
 ---

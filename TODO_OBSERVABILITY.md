@@ -4,12 +4,15 @@
 
 Keep the current Telegram-based monitor for small scale. When usage grows, move toward standard observability tooling:
 
-## Sentry (error tracking) ⏳ TODO
-- ⏳ Add Sentry SDK to `TutorDexBackend` (FastAPI) for exception + performance monitoring.
-- ⏳ Configure environments (`dev`/`staging`/`prod`) and release versioning.
-- ⏳ Add alert routing (email/Telegram/Slack) for high error rate / regressions.
+## Sentry (error tracking) ✅ DEPLOYED
+- ✅ Self-hosted Sentry infrastructure deployed (7 services: web, worker, cron, postgres, redis, clickhouse, zookeeper)
+- ✅ Sentry SDK added to `TutorDexBackend` (FastAPI integration) and `TutorDexAggregator`
+- ✅ Configuration added to all `.env.example` files
+- ⏳ Initialize Sentry (create database, admin user, projects)
+- ⏳ Configure DSN in application `.env` files
+- ⏳ Set up alert routing (Sentry has built-in email/Slack/PagerDuty integrations)
 
-**Status**: Not yet implemented. See [observability/CAPABILITIES.md](observability/CAPABILITIES.md) section "Error Tracking" for implementation guide.
+**Status**: Infrastructure deployed, ready for initialization. See [observability/sentry/README.md](observability/sentry/README.md) for setup instructions.
 
 ## Prometheus + Grafana (metrics + dashboards) ✅ COMPLETE
 - ✅ Expose metrics endpoints:
