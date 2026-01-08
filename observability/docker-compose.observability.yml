@@ -1,3 +1,11 @@
+# Legacy / standalone observability compose file.
+#
+# IMPORTANT:
+# - The main observability stack is already included in the repo root `docker-compose.yml` under the `tutordex` project.
+# - Running this file separately (from `observability/`) creates a SECOND compose project named `observability`, resulting in duplicate Grafana/Prometheus/Loki/etc.
+#
+# Prefer: from repo root, run `docker compose up -d --build` (and optionally `docker compose pull` first to refresh images).
+
 services:
   prometheus:
     image: prom/prometheus:v2.50.1

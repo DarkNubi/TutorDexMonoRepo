@@ -32,7 +32,6 @@ scrape_configs:
       - targets:
           - http://collector-tail:9001/health/collector
           - http://aggregator-worker:9002/health/worker
-          - http://backend:8000/health/backend
           - http://backend:8000/health/dependencies
     relabel_configs:
       - source_labels: [__address__]

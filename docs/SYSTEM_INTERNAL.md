@@ -649,6 +649,11 @@ Current reality:
 
 4) Start the stack:
 - From repo root: `docker compose up -d --build`
+  - This brings up BOTH the main TutorDex services and the observability stack under the `tutordex` compose project.
+  - Note: observability services like Grafana/Prometheus/Loki/Tempo/Promtail/Otel Collector are `image:` services, so `--build` does not rebuild them. To refresh them, run `docker compose pull` first (or use `docker compose up -d --build --pull always`).
+
+Avoid:
+- Running `observability/docker-compose.observability.yml` standalone; it creates a second compose project named `observability` and duplicates the monitoring stack.
 
 5) Website local preview:
 - From `TutorDexWebsite/`: `npm i` then `npm run serve:firebase`.

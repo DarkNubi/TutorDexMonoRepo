@@ -119,6 +119,145 @@ logger = logging.getLogger("extract_worker")
 _V = set_version_metrics(component="worker")
 setup_otel(service_name=os.environ.get("OTEL_SERVICE_NAME") or "tutordex-aggregator-worker")
 _DEFAULT_LOG_CTX = bind_log_context(component="worker", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version)
+
+
+def _skipped_messages_chat_id() -> Optional[str]:
+    v = (os.environ.get("SKIPPED_MESSAGES_CHAT_ID") or "").strip()
+    return v or None
+
+
+def _skipped_messages_thread_id() -> Optional[int]:
+    v = (os.environ.get("SKIPPED_MESSAGES_THREAD_ID") or "").strip()
+    if not v:
+        return None
+    try:
+        return int(v)
+    except Exception:
+        return None
+
+
+def _skipped_messages_bot_token() -> Optional[str]:
+    # Prefer the broadcast/group bot for channel forwarding; fallback to DM bot.
+    return (os.environ.get("GROUP_BOT_TOKEN") or os.environ.get("DM_BOT_TOKEN") or "").strip() or None
+
+
+def _telegram_bot_api_base() -> Optional[str]:
+    # Allow override, but default to standard Telegram Bot API.
+    return (os.environ.get("BOT_API_URL") or os.environ.get("TG_BOT_API_URL") or "").strip() or None
+
+
+def _telegram_send_message(*, to_chat_id: str, text: str, thread_id: Optional[int] = None) -> Dict[str, Any]:
+    token = _skipped_messages_bot_token()
+    base = _telegram_bot_api_base()
+    if not token and not base:
+        return {"ok": False, "error": "no_bot_token_or_api_url"}
+
+    url = base
+    if not url and token:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+    elif url and not url.endswith("/sendMessage"):
+        url = url.rstrip("/") + "/sendMessage"
+
+    try:
+        body: Dict[str, Any] = {
+            "chat_id": to_chat_id,
+            "text": text,
+            "disable_web_page_preview": True,
+            "disable_notification": True,
+        }
+        if thread_id is not None:
+            body["message_thread_id"] = int(thread_id)
+        resp = requests.post(
+            url,
+            json=body,
+            timeout=10,
+        )
+        return {"ok": resp.status_code < 400, "status_code": resp.status_code, "body": (resp.text or "")[:500]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def _chunk_text(text: str, *, max_len: int) -> List[str]:
+    t = str(text or "")
+    if not t:
+        return [""]
+    if max_len <= 0:
+        return [t]
+    return [t[i: i + max_len] for i in range(0, len(t), max_len)]
+
+
+def _try_report_failed_message(*, raw: Dict[str, Any], channel_link: str, error_summary: str, stage: str) -> None:
+    to_chat_id = _skipped_messages_chat_id()
+    if not to_chat_id:
+        return
+
+    thread_id = _skipped_messages_thread_id()
+
+    msg_id = raw.get("message_id")
+    link = _build_message_link(channel_link, str(msg_id or "")) or ""
+    raw_text = str(raw.get("raw_text") or "").strip()
+
+    # Telegram sendMessage hard limit is 4096 chars. Keep a conservative ceiling.
+    max_msg_len = 3600
+    header = (
+        "TutorDex: extraction failed\n"
+        f"stage={stage}\n"
+        f"channel={channel_link}\n"
+        + (f"message_id={msg_id}\n" if msg_id is not None else "")
+        + (f"link={link}\n" if link else "")
+        + f"error={str(error_summary or '')[:800]}\n"
+        "\n"
+        "raw_text:\n"
+    )
+
+    # First message includes header + the first chunk of raw text.
+    try:
+        first_budget = max(200, max_msg_len - len(header))
+        raw_chunks = _chunk_text(raw_text, max_len=first_budget)
+        first = header + (raw_chunks[0] if raw_chunks else "")
+        res0 = _telegram_send_message(to_chat_id=to_chat_id, text=first, thread_id=thread_id)
+        log_event(
+            logger,
+            logging.INFO,
+            "failed_message_triage_sent",
+            ok=bool(res0.get("ok")),
+            stage=stage,
+            channel=channel_link,
+            message_id=str(msg_id),
+            part=1,
+            parts=max(1, len(raw_chunks)),
+            thread_id=thread_id,
+            res=res0,
+        )
+    except Exception:
+        return
+
+    # Remaining raw text chunks (if any): send as additional messages.
+    if raw_chunks and len(raw_chunks) > 1:
+        for idx, chunk in enumerate(raw_chunks[1:], start=2):
+            try:
+                part_prefix = f"TutorDex: failed raw_text (part {idx}/{len(raw_chunks)})\n"
+                budget = max(50, max_msg_len - len(part_prefix))
+                for sub in _chunk_text(chunk, max_len=budget):
+                    resi = _telegram_send_message(to_chat_id=to_chat_id, text=part_prefix + sub, thread_id=thread_id)
+                    log_event(
+                        logger,
+                        logging.INFO,
+                        "failed_message_triage_sent",
+                        ok=bool(resi.get("ok")),
+                        stage=stage,
+                        channel=channel_link,
+                        message_id=str(msg_id),
+                        part=idx,
+                        parts=len(raw_chunks),
+                        thread_id=thread_id,
+                        res=resi,
+                    )
+            except Exception:
+                # best-effort; do not fail the worker
+                pass
+
+
 _DEFAULT_LOG_CTX.__enter__()
 
 _CHANNEL_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -473,7 +612,8 @@ def _requeue_stale_processing(url: str, key: str, *, older_than_s: int) -> Optio
     body = {
         "status": "pending",
         "updated_at": _utc_now_iso(),
-        "meta": requests.utils.requote_uri("jsonb_set(coalesce(meta,'{}'::jsonb), '{attempt}', to_jsonb(coalesce((meta->>'attempt')::int,0)+1))"),  # type: ignore
+        # type: ignore
+        "meta": requests.utils.requote_uri("jsonb_set(coalesce(meta,'{}'::jsonb), '{attempt}', to_jsonb(coalesce((meta->>'attempt')::int,0)+1))"),
     }
     # PostgREST cannot accept jsonb_set via JSON body; use RPC-less patch is tricky. Use RPC endpoint via prefer=return=representation with raw SQL via /rest/v1/ (not supported).
     # Simpler approach: fetch stale ids then patch individually.
@@ -667,7 +807,8 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
         except Exception:
             pass
         if not raw:
-            _mark_extraction(url, key, extraction_id, status="failed", error={"error": "raw_missing"}, meta_patch=_with_prompt({"ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(url, key, extraction_id, status="failed", error={"error": "raw_missing"}, meta_patch=_with_prompt(
+                {"ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             try:
                 worker_parse_failure_total.labels(
                     channel=channel_link, reason="raw_missing", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version
@@ -703,12 +844,14 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             return "skipped"
 
         if bool(raw.get("is_forward")):
-            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt({"reason": "forward", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt(
+                {"reason": "forward", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             return "skipped"
 
         raw_text = str(raw.get("raw_text") or "").strip()
         if not raw_text:
-            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt({"reason": "empty_text", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
+            _mark_extraction(url, key, extraction_id, status="skipped", meta_patch=_with_prompt(
+                {"reason": "empty_text", "ts": _utc_now_iso()}), existing_meta=existing_meta, llm_model=llm_model)
             return "skipped"
 
         normalized_text = normalize_text(raw_text)
@@ -742,7 +885,8 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             t_llm0 = time.perf_counter()
             parsed = extract_assignment_with_model(llm_input, chat=channel_link, cid=cid)
             try:
-                worker_llm_call_latency_seconds.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(time.perf_counter() - t_llm0)
+                worker_llm_call_latency_seconds.labels(pipeline_version=_V.pipeline_version,
+                                                       schema_version=_V.schema_version).observe(time.perf_counter() - t_llm0)
                 worker_job_stage_latency_seconds.labels(stage="llm", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
                     max(0.0, time.perf_counter() - t_llm0)
                 )
@@ -770,10 +914,12 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 extraction_id,
                 status="failed",
                 error={"error": str(e)},
-                meta_patch=_with_prompt({"stage": "llm", "ts": _utc_now_iso(), "normalization": norm_meta, "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw"}),
+                meta_patch=_with_prompt({"stage": "llm", "ts": _utc_now_iso(), "normalization": norm_meta,
+                                        "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw"}),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
+            _try_report_failed_message(raw=raw, channel_link=channel_link, error_summary=str(e), stage="llm")
             return "failed"
 
         payload: Dict[str, Any] = {
@@ -926,6 +1072,8 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
+            _try_report_failed_message(raw=raw, channel_link=channel_link,
+                                       error_summary=f"validation_failed: {str(schema_errors)[:500]}", stage="validation")
             return "failed"
 
         # 3) Persist assignment row
@@ -933,7 +1081,8 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
         t_persist0 = time.perf_counter()
         try:
             try:
-                worker_supabase_requests_total.labels(operation="persist", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                worker_supabase_requests_total.labels(operation="persist", pipeline_version=_V.pipeline_version,
+                                                      schema_version=_V.schema_version).inc()
             except Exception:
                 pass
             r = persist_assignment_to_supabase(payload)
@@ -1011,7 +1160,8 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
         }
 
         ok = bool(persist_res.get("ok"))
-        _mark_extraction(url, key, extraction_id, status="ok" if ok else "failed", canonical_json=payload.get("parsed"), meta_patch=_with_prompt(meta), existing_meta=existing_meta, llm_model=llm_model)
+        _mark_extraction(url, key, extraction_id, status="ok" if ok else "failed", canonical_json=payload.get(
+            "parsed"), meta_patch=_with_prompt(meta), existing_meta=existing_meta, llm_model=llm_model)
         try:
             sigs = None
             if isinstance(signals_meta, dict) and isinstance(signals_meta.get("signals"), dict):
@@ -1030,6 +1180,8 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 ).inc()
             except Exception:
                 pass
+            _try_report_failed_message(raw=raw, channel_link=channel_link,
+                                       error_summary=f"persist_failed_final: {json.dumps(persist_res, ensure_ascii=False)[:500]}", stage="persist")
         else:
             try:
                 worker_parse_success_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
@@ -1087,14 +1239,19 @@ def main() -> None:
     max_attempts = int(os.environ.get("EXTRACTION_MAX_ATTEMPTS", str(DEFAULT_MAX_ATTEMPTS)) or DEFAULT_MAX_ATTEMPTS)
     backoff_base_s = float(os.environ.get("EXTRACTION_BACKOFF_BASE_S", str(DEFAULT_BACKOFF_BASE_S)) or DEFAULT_BACKOFF_BASE_S)
     backoff_max_s = float(os.environ.get("EXTRACTION_BACKOFF_MAX_S", str(DEFAULT_BACKOFF_MAX_S)) or DEFAULT_BACKOFF_MAX_S)
-    stale_processing_s = int(os.environ.get("EXTRACTION_STALE_PROCESSING_SECONDS", str(DEFAULT_STALE_PROCESSING_SECONDS)) or DEFAULT_STALE_PROCESSING_SECONDS)
+    stale_processing_s = int(os.environ.get("EXTRACTION_STALE_PROCESSING_SECONDS", str(
+        DEFAULT_STALE_PROCESSING_SECONDS)) or DEFAULT_STALE_PROCESSING_SECONDS)
 
-    enable_broadcast = str(os.environ.get("EXTRACTION_WORKER_BROADCAST", "1" if DEFAULT_ENABLE_BROADCAST else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    enable_broadcast = str(os.environ.get("EXTRACTION_WORKER_BROADCAST", "1" if DEFAULT_ENABLE_BROADCAST else "0")
+                           ).strip().lower() in {"1", "true", "yes", "y", "on"}
     enable_dms = str(os.environ.get("EXTRACTION_WORKER_DMS", "1" if DEFAULT_ENABLE_DMS else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
-    use_norm = str(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM", "1" if DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    use_norm = str(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM", "1" if DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM else "0")
+                   ).strip().lower() in {"1", "true", "yes", "y", "on"}
     hard_mode = (os.environ.get("HARD_VALIDATE_MODE") or DEFAULT_HARD_VALIDATE_MODE).strip()
-    enable_signals = str(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS", "1" if DEFAULT_ENABLE_DETERMINISTIC_SIGNALS else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
-    use_det_time = str(os.environ.get("USE_DETERMINISTIC_TIME", "1" if DEFAULT_USE_DETERMINISTIC_TIME else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    enable_signals = str(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS", "1" if DEFAULT_ENABLE_DETERMINISTIC_SIGNALS else "0")
+                         ).strip().lower() in {"1", "true", "yes", "y", "on"}
+    use_det_time = str(os.environ.get("USE_DETERMINISTIC_TIME", "1" if DEFAULT_USE_DETERMINISTIC_TIME else "0")
+                       ).strip().lower() in {"1", "true", "yes", "y", "on"}
 
     oneshot = str(os.environ.get("EXTRACTION_WORKER_ONESHOT", "")).strip().lower() in {"1", "true", "yes", "y", "on"}
     max_jobs = int(os.environ.get("EXTRACTION_WORKER_MAX_JOBS") or "0")
@@ -1204,7 +1361,8 @@ def main() -> None:
                         dt_ms = int(dt_s * 1000)
                         try:
                             worker_job_latency_seconds.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(dt_s)
-                            worker_jobs_processed_total.labels(status=str(status), pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                            worker_jobs_processed_total.labels(status=str(status), pipeline_version=_V.pipeline_version,
+                                                               schema_version=_V.schema_version).inc()
                         except Exception:
                             pass
                         logger.info("job_end extraction_id=%s dt_ms=%s", extraction_id, dt_ms)
@@ -1213,12 +1371,14 @@ def main() -> None:
                         dt_ms = int(dt_s * 1000)
                         try:
                             worker_job_latency_seconds.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(dt_s)
-                            worker_jobs_processed_total.labels(status="error", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                            worker_jobs_processed_total.labels(status="error", pipeline_version=_V.pipeline_version,
+                                                               schema_version=_V.schema_version).inc()
                         except Exception:
                             pass
                         logger.warning("job_error extraction_id=%s dt_ms=%s error=%s", extraction_id, dt_ms, str(e))
                     if max_jobs and processed >= max_jobs:
-                        log_event(logger, logging.INFO, "worker_max_jobs_reached", processed=processed, max_jobs=max_jobs, pipeline_version=pipeline_version)
+                        log_event(logger, logging.INFO, "worker_max_jobs_reached", processed=processed,
+                                  max_jobs=max_jobs, pipeline_version=pipeline_version)
                         return
         except KeyboardInterrupt:
             log_event(logger, logging.INFO, "worker_interrupted")

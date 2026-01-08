@@ -11,6 +11,7 @@ import {
   labelsForGeneralCategoryCodes,
   searchSubjects,
 } from "./taxonomy/subjectsTaxonomyV2.js";
+import { matchesFilters } from "./lib/filterUtils.js";
 
 const BUILD_TIME = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
 
@@ -43,6 +44,16 @@ let lastVisitCutoffMs = 0;
 let myTutorProfile = null;
 let didWriteLastVisitThisSession = false;
 let currentUid = null;
+
+// Lightweight DOM cache helper to reduce repeated queries and guard existence.
+const _elCache = new Map();
+function $id(id) {
+  if (!_elCache.has(id)) _elCache.set(id, document.getElementById(id));
+  return _elCache.get(id);
+}
+
+// Pending selections preserved across async facet refreshes
+const pendingFilters = { level: null, specificStudentLevel: null, subjectGeneral: null, subjectCanonical: null };
 
 function getOrCreateStatusEl() {
   const host = document.querySelector(".max-w-6xl") || document.body;
@@ -290,18 +301,18 @@ function mapAssignmentRow(row) {
 }
 
 function formatRelativeTime(isoString) {
-    const t = Date.parse(String(isoString || ""));
-    if (!Number.isFinite(t)) return "";
-    const deltaMs = Date.now() - t;
-    if (!Number.isFinite(deltaMs)) return "";
-    const mins = Math.floor(deltaMs / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 48) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
+  const t = Date.parse(String(isoString || ""));
+  if (!Number.isFinite(t)) return "";
+  const deltaMs = Date.now() - t;
+  if (!Number.isFinite(deltaMs)) return "";
+  const mins = Math.floor(deltaMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 function formatShortDate(isoString) {
   const t = Date.parse(String(isoString || ""));
@@ -326,6 +337,20 @@ function hasMatchForMe(job) {
   const specHit = Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.some((l) => mySpecific.has(String(l || "").trim()));
 
   return Boolean(subjHit || specHit || lvlHit);
+}
+
+function matchDetails(job) {
+  const me = myTutorProfile;
+  if (!me) return [];
+  const mySubjects = new Set(toStringList(me.subjects));
+  const myLevels = new Set(toStringList(me.levels));
+  const mySpecific = new Set(toStringList(me.specific_student_levels || me.specificStudentLevels || []));
+  const out = [];
+  if (Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.some((c) => mySubjects.has(String(c || "").trim()))) out.push("Subject");
+  if (Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.some((l) => mySpecific.has(String(l || "").trim())))
+    out.push("Specific level");
+  if (Array.isArray(job.signalsLevels) && job.signalsLevels.some((l) => myLevels.has(String(l || "").trim()))) out.push("Level");
+  return out;
 }
 
 function formatDistanceKm(km, isEstimated = false) {
@@ -478,7 +503,9 @@ function renderCards(data) {
         const matchPill = document.createElement("span");
         matchPill.className = "badge bg-purple-100 text-purple-800";
         matchPill.textContent = "Matches you";
-        matchPill.title = "Matches your saved profile preferences.";
+        const details = matchDetails(job);
+        matchPill.title =
+          details && details.length ? `Matches your saved profile preferences: ${details.join(", ")}` : "Matches your saved profile preferences.";
         chips.appendChild(matchPill);
       }
 
@@ -777,24 +804,32 @@ function restoreFiltersIntoUI(stored) {
   const sortEl = document.getElementById("filter-sort");
   const rateEl = document.getElementById("filter-rate");
   if (!levelEl || !specificEl || !locEl || !sortEl || !rateEl) return false;
+  // Handle versioning of stored snapshot
+  const v = Number.isFinite(Number(stored.v)) ? Number(stored.v) : 1;
+  if (v !== 1) {
+    // Unknown format - ignore for safety
+    return false;
+  }
 
   levelEl.value = String(stored.level || "");
   locEl.value = String(stored.location || "");
   sortEl.value = String(stored.sort || "newest");
   rateEl.value = String(stored.minRate || "");
 
-  // Options may not exist yet; set targets so updateFilter* can re-select after rebuild.
-  if (genEl) genEl.value = String(stored.subjectGeneral || "");
-  if (canonEl) canonEl.value = String(stored.subjectCanonical || "");
-  specificEl.value = String(stored.specificStudentLevel || "");
+  // Options may not exist yet; set pending targets so updateFilter* can re-select after rebuild.
+  if (genEl) pendingFilters.subjectGeneral = String(stored.subjectGeneral || "").trim() || null;
+  if (canonEl) pendingFilters.subjectCanonical = String(stored.subjectCanonical || "").trim() || null;
+  pendingFilters.specificStudentLevel = String(stored.specificStudentLevel || "").trim() || null;
+  pendingFilters.level = String(stored.level || "").trim() || null;
 
+  // Trigger UI rebuilds which will pick up pendingFilters when facets arrive
   updateFilterSpecificLevels();
   updateFilterSubjects();
   return true;
 }
 
 function ensureCanonicalOption(code, label) {
-  const select = document.getElementById("filter-subject-canonical");
+  const select = $id("filter-subject-canonical");
   if (!select) return false;
   const c = String(code || "").trim();
   if (!c) return false;
@@ -829,6 +864,8 @@ function mountSubjectSearch() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center justify-between gap-3";
+      btn.setAttribute("role", "option");
+      btn.tabIndex = 0;
 
       const left = document.createElement("span");
       left.className = "text-sm font-semibold text-gray-900";
@@ -862,6 +899,22 @@ function mountSubjectSearch() {
       resultsEl.appendChild(btn);
     });
     resultsEl.classList.remove("hidden");
+
+    // Accessibility: expose as listbox + basic keyboard navigation
+    resultsEl.setAttribute("role", "listbox");
+    resultsEl.querySelectorAll("button[role=option]").forEach((b) => {
+      b.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          const nxt = b.nextElementSibling;
+          if (nxt && nxt.focus) nxt.focus();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          const prev = b.previousElementSibling;
+          if (prev && prev.focus) prev.focus();
+        }
+      });
+    });
 
     if (query) {
       resultsEl.setAttribute("data-query", String(query));
@@ -911,9 +964,11 @@ function mountSubjectSearch() {
 }
 
 function updateFilterSpecificLevels() {
-  const currentSelected = document.getElementById("filter-specific-level")?.value || "";
-  const level = document.getElementById("filter-level").value;
-  const specificSelect = document.getElementById("filter-specific-level");
+  const specificSelect = $id("filter-specific-level");
+  const levelEl = $id("filter-level");
+  if (!specificSelect || !levelEl) return;
+  const currentSelected = specificSelect.value || "";
+  const level = String(levelEl.value || "").trim();
   const options = specificLevelsData[level] || [];
 
   specificSelect.innerHTML = '<option value="">All Specific Levels</option>';
@@ -955,12 +1010,34 @@ function updateFilterSpecificLevels() {
     specificSelect.value = currentSelected;
   }
   specificSelect.disabled = false;
+
+  // Re-apply any pending selection restored earlier if facets arrived late
+  if (pendingFilters.specificStudentLevel) {
+    const v = String(pendingFilters.specificStudentLevel || "").trim();
+    if (v) {
+      let appended = false;
+      if (!Array.from(specificSelect.options || []).some((o) => String(o.value || "").trim() === v)) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.text = v;
+        specificSelect.appendChild(opt);
+        appended = true;
+      }
+      specificSelect.value = v;
+      if (appended) {
+        try {
+          trackEvent({ eventType: "facets_mismatch", facet: "specific_levels", value: v, note: "restored_from_storage_not_in_facets" });
+        } catch {}
+      }
+    }
+    pendingFilters.specificStudentLevel = null;
+  }
 }
 
 function updateFilterSubjects() {
-  const level = document.getElementById("filter-level").value;
-  const generalSelect = document.getElementById("filter-subject-general");
-  const canonicalSelect = document.getElementById("filter-subject-canonical");
+  const level = String($id("filter-level")?.value || "").trim();
+  const generalSelect = $id("filter-subject-general");
+  const canonicalSelect = $id("filter-subject-canonical");
   const prevGeneral = generalSelect?.value || "";
   const prevCanonical = canonicalSelect?.value || "";
 
@@ -1024,6 +1101,44 @@ function updateFilterSubjects() {
     }
     canonicalSelect.value = prevCanonical;
   }
+
+  // Reapply any pending selections that were stored while facets were loading
+  if (pendingFilters.subjectGeneral && generalSelect) {
+    const v = String(pendingFilters.subjectGeneral || "").trim();
+    if (v) {
+      let appended = false;
+      if (!Array.from(generalSelect.options || []).some((o) => String(o.value || "").trim() === v)) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.text = labelForGeneralCategoryCode(v) || v;
+        generalSelect.appendChild(opt);
+        appended = true;
+      }
+      generalSelect.value = v;
+      if (appended) {
+        try {
+          trackEvent({ eventType: "facets_mismatch", facet: "subjects_general", value: v, note: "restored_from_storage_not_in_facets" });
+        } catch {}
+      }
+    }
+    pendingFilters.subjectGeneral = null;
+  }
+
+  if (pendingFilters.subjectCanonical && canonicalSelect) {
+    const v = String(pendingFilters.subjectCanonical || "").trim();
+    if (v) {
+      // If the option is not present, we'll track that we had to append it.
+      const exists = Array.from(canonicalSelect.options || []).some((o) => String(o.value || "").trim() === v);
+      ensureCanonicalOption(v, labelForCanonicalCode(v));
+      canonicalSelect.value = v;
+      if (!exists) {
+        try {
+          trackEvent({ eventType: "facets_mismatch", facet: "subjects_canonical", value: v, note: "restored_from_storage_not_in_facets" });
+        } catch {}
+      }
+    }
+    pendingFilters.subjectCanonical = null;
+  }
 }
 
 function collectFiltersFromUI() {
@@ -1038,6 +1153,9 @@ function collectFiltersFromUI() {
   };
 }
 
+// Centralized helper to check if a job matches a filters object.
+// `matchesFilters` is implemented in `src/lib/filterUtils.js` and imported above.
+
 async function applyFilters() {
   writeStoredFilters(snapshotFiltersForStorage());
   if (!isBackendEnabled()) {
@@ -1048,22 +1166,8 @@ async function applyFilters() {
     const subjectCanonical = document.getElementById("filter-subject-canonical").value;
     const location = document.getElementById("filter-location").value;
     const minRate = document.getElementById("filter-rate").value;
-
-    const filtered = allAssignments.filter((job) => {
-      if (level && !(Array.isArray(job.signalsLevels) && job.signalsLevels.includes(level))) return false;
-      if (specificLevel && !(Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.includes(specificLevel))) return false;
-      if (subjectGeneral && !(Array.isArray(job.subjectsGeneral) && job.subjectsGeneral.includes(subjectGeneral))) return false;
-      if (subjectCanonical && !(Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.includes(subjectCanonical))) return false;
-      if (location) {
-        const haystack = String(job.location || "").toLowerCase();
-        const needle = String(location).toLowerCase();
-        if (!haystack.includes(needle)) return false;
-      }
-      if (minRate && typeof job.rateMin === "number" && job.rateMin < parseInt(minRate, 10)) return false;
-      if (minRate && typeof job.rateMin !== "number") return false;
-      return true;
-    });
-
+    const filters = collectFiltersFromUI();
+    const filtered = allAssignments.filter((job) => matchesFilters(job, filters));
     renderCards(filtered);
     return;
   }
@@ -1377,4 +1481,26 @@ window.addEventListener("load", () => {
     // Load profile for "Matches you" + Nearest availability, but do not auto-apply preferences as filters.
     void loadProfileContext();
   });
+
+  // Advanced subjects toggle: toggle the specific syllabus details panel
+  try {
+    const advBtn = document.getElementById("toggle-advanced-subjects");
+    const details = document.getElementById("specific-syllabus-details");
+    const canonicalSelect = $id("filter-subject-canonical");
+    if (advBtn && details) {
+      advBtn.addEventListener("click", () => {
+        const open = details.hasAttribute("open");
+        if (open) details.removeAttribute("open");
+        else {
+          details.setAttribute("open", "");
+          // focus the select for keyboard users
+          setTimeout(() => {
+            try {
+              if (canonicalSelect && canonicalSelect.focus) canonicalSelect.focus();
+            } catch {}
+          }, 50);
+        }
+      });
+    }
+  } catch (e) {}
 });

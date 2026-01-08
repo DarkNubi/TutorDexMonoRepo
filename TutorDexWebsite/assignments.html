@@ -344,18 +344,24 @@
           </div>
 
           <div class="lg:col-span-3">
-            <details class="bg-white border-2 border-gray-200 rounded-lg px-3 py-2">
-              <summary class="cursor-pointer select-none flex items-center justify-between gap-3">
-                <span class="text-xs font-bold uppercase tracking-wide text-gray-600">Specific syllabus (optional)</span>
-                <i class="fa-solid fa-chevron-down text-xs text-gray-400"></i>
-              </summary>
-              <div class="mt-2 select-wrapper">
-                <select id="filter-subject-canonical" class="nike-input" title="More specific subject codes">
-                  <option value="">Any Specific Syllabus</option>
-                </select>
-              </div>
-              <div class="mt-2 text-xs text-gray-500 font-medium">Broad = more matches. Specific = precision.</div>
-            </details>
+            <div class="flex items-start gap-3">
+              <details id="specific-syllabus-details" class="bg-white border-2 border-gray-200 rounded-lg px-3 py-2 w-full">
+                <summary class="cursor-pointer select-none flex items-center justify-between gap-3">
+                  <span class="text-xs font-bold uppercase tracking-wide text-gray-600">Specific syllabus (optional)</span>
+                  <i class="fa-solid fa-chevron-down text-xs text-gray-400"></i>
+                </summary>
+                <div class="mt-2 select-wrapper">
+                  <select id="filter-subject-canonical" class="nike-input" title="More specific subject codes">
+                    <option value="">Any Specific Syllabus</option>
+                  </select>
+                </div>
+                <div class="mt-2 text-xs text-gray-500 font-medium">
+                  Broad = more matches. Specific = precision. Tip: use broad categories if you're unsure; use specific syllabus codes for tighter
+                  matches.
+                </div>
+              </details>
+              <button id="toggle-advanced-subjects" type="button" class="text-xs underline mt-2">Advanced subjects</button>
+            </div>
           </div>
 
           <div class="select-wrapper lg:col-span-2">
@@ -420,7 +426,9 @@
             <a id="postal-cta" href="index.html?next=profile.html" class="text-xs font-bold underline text-gray-700 hidden">
               Set postal code to enable Nearest
             </a>
-            <div class="text-xs text-gray-500 font-medium">Search selects broad subjects by default.</div>
+            <div class="text-xs text-gray-500 font-medium">
+              Search selects broad subjects by default. Use the specific syllabus panel for exact syllabus filters.
+            </div>
           </div>
         </div>
       </div>

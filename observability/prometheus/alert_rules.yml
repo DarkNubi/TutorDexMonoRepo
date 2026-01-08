@@ -63,7 +63,8 @@ groups:
       - alert: CollectorStalled
         # TEMP DISABLED: raw backfills / pauses can legitimately create gaps.
         # Re-enable by restoring the original expression.
-        expr: vector(0)
+        # NOTE: `vector(0)` is still a non-empty vector and will fire. Use a false comparison instead.
+        expr: vector(0) == 1
         for: 10m
         labels:
           severity: warning

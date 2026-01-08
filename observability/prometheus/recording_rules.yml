@@ -23,11 +23,13 @@ groups:
       - record: tutordex:worker:parse_error_fraction
         expr: |
           (
-            sum(rate(worker_parse_failure_total[10m]))
+            (sum(rate(worker_parse_failure_total[10m])) or vector(0))
           )
           /
           clamp_min(
-            sum(rate(worker_parse_failure_total[10m])) + sum(rate(worker_parse_success_total[10m])),
+            (sum(rate(worker_parse_failure_total[10m])) or vector(0))
+            +
+            (sum(rate(worker_parse_success_total[10m])) or vector(0)),
             0.000001
           )
 

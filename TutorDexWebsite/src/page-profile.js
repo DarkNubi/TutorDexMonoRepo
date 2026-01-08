@@ -1,10 +1,18 @@
 import { getCurrentUid, getCurrentUser, waitForAuth } from "../auth.js";
 import { createTelegramLinkCode, getRecentMatchCounts, getTutor, isBackendEnabled, trackEvent, upsertTutor } from "./backend.js";
 import { SPECIFIC_LEVELS } from "./academicEnums.js";
-import { canonicalSubjectsForLevel, canonicalizeSubjectLabels, labelForCanonicalCode } from "./taxonomy/subjectsTaxonomyV2.js";
+import { canonicalSubjectsForLevel, labelForCanonicalCode } from "./taxonomy/subjectsTaxonomyV2.js";
+import { canonicalizePair } from "./lib/filterUtils.js";
 
 const specificLevelsData = SPECIFIC_LEVELS || {};
 const DM_BOT_HANDLE = String(import.meta.env?.VITE_DM_BOT_HANDLE ?? "@TutorDexSniperBot").trim() || "@TutorDexSniperBot";
+
+// DOM cache helper
+const _elCache_pf = new Map();
+function $idpf(id) {
+  if (!_elCache_pf.has(id)) _elCache_pf.set(id, document.getElementById(id));
+  return _elCache_pf.get(id);
+}
 
 function _dmBotUsername() {
   const h = String(DM_BOT_HANDLE || "").trim();
@@ -117,8 +125,14 @@ function updateSubjects() {
     .trim()
     .toLowerCase();
 
-  const all = level ? (canonicalSubjectsForLevel(level) || []) : [];
-  const filtered = q ? all.filter((s) => String(s?.label || "").toLowerCase().includes(q)) : all;
+  const all = level ? canonicalSubjectsForLevel(level) || [] : [];
+  const filtered = q
+    ? all.filter((s) =>
+        String(s?.label || "")
+          .toLowerCase()
+          .includes(q)
+      )
+    : all;
 
   root.innerHTML = "";
 
@@ -146,6 +160,8 @@ function updateSubjects() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "select-btn rounded-full px-4 py-2 font-bold uppercase text-xs tracking-wide";
+    btn.setAttribute("role", "option");
+    btn.tabIndex = 0;
     btn.textContent = label;
 
     const isSelected = hasChip(level, specificLevel, code);
@@ -199,6 +215,11 @@ function addChipToTray({ level, specificLevel, subjectCode, subjectLabel }) {
   chip.dataset.specificLevel = spec;
   chip.dataset.subjectCode = code;
   chip.dataset.subjectLabel = labelText;
+  // Accessibility: mark tray as a list and chips as listitems
+  const trayEl = document.getElementById("subjects-tray");
+  if (trayEl && !trayEl.hasAttribute("role")) trayEl.setAttribute("role", "list");
+  chip.setAttribute("role", "listitem");
+  chip.tabIndex = 0;
 
   const label = document.createElement("span");
   const levelTag = document.createElement("span");
@@ -353,11 +374,30 @@ async function saveProfile() {
     return;
   }
 
+  // Canonicalize subject pairs where necessary before saving
+  const canonicalPairs = [];
+  for (const p of subjectPairs || []) {
+    const lvl = String(p.level || "").trim();
+    let subj = String(p.subject || "").trim();
+    const spec = String(p.specific_level || "").trim();
+    // Heuristic: if it looks like a canonical code (contains a dot and uppercase), keep as-is
+    const looksLikeCode = subj.includes(".") && subj === subj.toUpperCase();
+    if (!looksLikeCode) {
+      try {
+        const first = canonicalizePair(lvl, subj);
+        if (first) subj = first;
+      } catch {
+        // fallback: keep original
+      }
+    }
+    if (lvl && subj) canonicalPairs.push({ level: lvl, specific_level: spec || null, subject: subj });
+  }
+
   setStatus("Saving profile...", "info");
   await upsertTutor(uid, {
     subjects,
     levels,
-    subject_pairs: subjectPairs,
+    subject_pairs: canonicalPairs,
     assignment_types: assignmentTypes,
     tutor_kinds: tutorKinds,
     learning_modes: learningModes,
@@ -450,8 +490,7 @@ async function loadProfile() {
         let subjectCode = rawSubject;
         const looksLikeCode = rawSubject.includes(".") && rawSubject === rawSubject.toUpperCase();
         if (!looksLikeCode) {
-          const canon = canonicalizeSubjectLabels({ level: lvl, subjects: [rawSubject] });
-          const first = Array.isArray(canon?.subjectsCanonical) ? canon.subjectsCanonical[0] : "";
+          const first = canonicalizePair(lvl, rawSubject);
           if (first) subjectCode = first;
         }
         const label = labelForCanonicalCode(subjectCode);
@@ -663,6 +702,46 @@ async function initProfilePage() {
           if (String(el.dataset.level || "").trim() === level) el.remove();
         });
         _updateEmptyTrayState();
+      });
+    }
+
+    // Bulk presets: apply preset bundles to the subjects tray
+    const presetSelect = document.getElementById("subject-preset-select");
+    const applyPresetBtn = document.getElementById("apply-subject-preset");
+    if (applyPresetBtn && presetSelect) {
+      applyPresetBtn.addEventListener("click", () => {
+        const preset = String(presetSelect.value || "").trim();
+        const level = String(document.getElementById("level-select")?.value || "").trim();
+        if (!preset) return;
+        if (!level) {
+          setStatus("Pick a level first to apply a preset.", "error");
+          return;
+        }
+        let codes = [];
+        if (preset === "level-all") {
+          codes = canonicalSubjectsForLevel(level)
+            .map((s) => String(s?.code || "").trim())
+            .filter(Boolean);
+        } else if (preset === "secondary-math") {
+          const all = canonicalSubjectsForLevel("Secondary");
+          codes = (all || [])
+            .filter((s) =>
+              String(s.label || "")
+                .toLowerCase()
+                .includes("math")
+            )
+            .map((s) => String(s.code || "").trim());
+        }
+        if (!codes.length) {
+          setStatus("No subjects found for this preset.", "error");
+          return;
+        }
+        for (const code of codes) {
+          const label = labelForCanonicalCode(code) || code;
+          addChipToTray({ level, specificLevel: "", subjectCode: code, subjectLabel: label });
+        }
+        _updateEmptyTrayState();
+        setStatus("Preset applied.", "success");
       });
     }
 
