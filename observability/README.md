@@ -30,13 +30,12 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 
 - `./observability/doctor.sh`
 
-## Common Questions
+## Documentation
 
-See [FAQ.md](FAQ.md) for answers to common questions about alerts, reloading configuration, and troubleshooting.
-
-## Cardinality rules
-
-See `observability/CARDINALITY.md`.
+- **[CAPABILITIES.md](CAPABILITIES.md)** - Complete guide: What the observability stack currently does and what else it can do
+- **[FAQ.md](FAQ.md)** - Answers to common questions about alerts, reloading configuration, and troubleshooting
+- **[CARDINALITY.md](CARDINALITY.md)** - Metrics and log cardinality rules for performance
+- **[runbooks/](runbooks/)** - Alert-specific troubleshooting guides
 
 ## Reloading Alert Rules
 

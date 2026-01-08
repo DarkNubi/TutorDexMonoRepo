@@ -1,25 +1,37 @@
 # TutorDex Observability TODOs (Post-Beta)
 
+> **📊 NEW:** For a complete overview of what your observability stack currently does and what else it can do, see **[observability/CAPABILITIES.md](observability/CAPABILITIES.md)**
+
 Keep the current Telegram-based monitor for small scale. When usage grows, move toward standard observability tooling:
 
-## Sentry (error tracking)
-- Add Sentry SDK to `TutorDexBackend` (FastAPI) for exception + performance monitoring.
-- Configure environments (`dev`/`staging`/`prod`) and release versioning.
-- Add alert routing (email/Telegram/Slack) for high error rate / regressions.
+## Sentry (error tracking) ⏳ TODO
+- ⏳ Add Sentry SDK to `TutorDexBackend` (FastAPI) for exception + performance monitoring.
+- ⏳ Configure environments (`dev`/`staging`/`prod`) and release versioning.
+- ⏳ Add alert routing (email/Telegram/Slack) for high error rate / regressions.
 
-## Prometheus + Grafana (metrics + dashboards)
-- Expose metrics endpoints:
-  - Backend: request count/latency/error rate, Redis ops latency/errors, Supabase ops latency/errors.
-  - Aggregator: messages processed, skipped by reason, LLM latency, Supabase latency, Telegram send latency, DM send latency, rate-limit counts.
-- Deploy Prometheus to scrape metrics and define alert rules.
-- Deploy Grafana dashboards (SLO-style views + ops debugging).
+**Status**: Not yet implemented. See [observability/CAPABILITIES.md](observability/CAPABILITIES.md) section "Error Tracking" for implementation guide.
 
-## Loki (logs)
-- Ship logs to Loki (Grafana Agent / Promtail).
-- Add log panels and log-to-metrics correlations (e.g., `llm_extract_failed` spikes).
+## Prometheus + Grafana (metrics + dashboards) ✅ COMPLETE
+- ✅ Expose metrics endpoints:
+  - ✅ Backend: request count/latency/error rate, Redis ops latency/errors, Supabase ops latency/errors.
+  - ✅ Aggregator: messages processed, skipped by reason, LLM latency, Supabase latency, Telegram send latency, DM send latency, rate-limit counts.
+- ✅ Deploy Prometheus to scrape metrics and define alert rules.
+- ✅ Deploy Grafana dashboards (SLO-style views + ops debugging).
 
-## Tracing (optional)
-- Add OpenTelemetry tracing to correlate website/back-end requests and background jobs.
+**Status**: Fully operational with 50+ metrics, 17 alerts, 4 dashboards. See [observability/CAPABILITIES.md](observability/CAPABILITIES.md) for details.
+
+## Loki (logs) ✅ COMPLETE
+- ✅ Ship logs to Loki (Grafana Agent / Promtail).
+- ✅ Add log panels and log-to-metrics correlations (e.g., `llm_extract_failed` spikes).
+
+**Status**: Fully operational with structured JSON log collection from all services. Integrated into Grafana dashboards.
+
+## Tracing (optional) ⚡ READY TO ENABLE
+- ✅ Infrastructure deployed: Tempo + OpenTelemetry collector running
+- ✅ Application hooks: `otel.py` modules in Aggregator and Backend
+- ⏳ Enable with: Set `OTEL_ENABLED=1` in `.env` files
+
+**Status**: Infrastructure ready, just flip the switch. See [observability/CAPABILITIES.md](observability/CAPABILITIES.md) section "Enable Distributed Tracing".
 
 ---
 
@@ -264,3 +276,5 @@ order by 1 desc;
 - Emit `preferences_update` whenever `/me/tutor` is saved (include `meta.changed` keys).
 - Add tutor-side reporting UI that emits: `assignment_filled_report`, `assignment_no_reply`, `assignment_scam_report`.
 - If/when you can map DM recipients to `user_id`, emit `notify_sent` and `notify_click` for true notification funnel metrics.
+
+**Status**: Table schema exists, event emission not yet implemented. See [observability/CAPABILITIES.md](observability/CAPABILITIES.md) section "User Analytics" for details.
