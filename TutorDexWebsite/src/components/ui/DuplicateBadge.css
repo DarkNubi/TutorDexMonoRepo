@@ -1,0 +1,44 @@
+.duplicate-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff3cd;
+  border-left: 3px solid #ffc107;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #856404;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.duplicate-badge:hover {
+  background: #ffe8a1;
+}
+
+.duplicate-badge-icon {
+  flex-shrink: 0;
+  color: #ffc107;
+}
+
+.duplicate-badge-text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.duplicate-badge-button {
+  background: #ffc107;
+  color: #000;
+  border: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.duplicate-badge-button:hover {
+  background: #ffb300;
+}
