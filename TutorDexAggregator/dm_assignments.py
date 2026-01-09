@@ -39,9 +39,179 @@ DM_ENABLED = _truthy(os.environ.get("DM_ENABLED")) and bool(DM_BOT_TOKEN and TUT
 DM_MAX_RECIPIENTS = int(os.environ.get("DM_MAX_RECIPIENTS") or "50")
 DM_FALLBACK_FILE = os.environ.get("DM_FALLBACK_FILE") or str(HERE / "outgoing_dm.jsonl")
 
+# Adaptive threshold settings
+DM_USE_ADAPTIVE_THRESHOLD = _truthy(os.environ.get("DM_USE_ADAPTIVE_THRESHOLD", "true"))
+DM_RATING_LOOKBACK_DAYS = int(os.environ.get("DM_RATING_LOOKBACK_DAYS") or "7")
+DM_RATING_AVG_RATE_LOOKBACK_DAYS = int(os.environ.get("DM_RATING_AVG_RATE_LOOKBACK_DAYS") or "30")
+
 
 if not DM_BOT_API_URL and DM_BOT_TOKEN:
     DM_BOT_API_URL = f"https://api.telegram.org/bot{DM_BOT_TOKEN}/sendMessage"
+
+
+def _calculate_match_ratings(
+    matches: List[Dict[str, Any]],
+    payload: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """
+    Calculate assignment rating for each match.
+    
+    Returns matches enriched with 'rating' field based on:
+    - Base matching score
+    - Distance to assignment  
+    - Assignment rate vs tutor's historical average
+    
+    Requires backend with rating calculation support.
+    """
+    try:
+        from TutorDexBackend.assignment_rating import calculate_assignment_rating
+        from TutorDexBackend.supabase_store import SupabaseStore
+    except Exception:
+        # If imports fail, return matches unchanged (backward compatibility)
+        logger.debug("Rating calculation not available, using base scores only")
+        return matches
+    
+    # Get assignment rates from payload
+    parsed = payload.get("parsed") or {}
+    assignment_rate_min = _safe_int(parsed.get("rate_min"))
+    assignment_rate_max = _safe_int(parsed.get("rate_max"))
+    
+    # Get supabase connection for historical rate lookups
+    sb = None
+    try:
+        sb = SupabaseStore()
+        if not sb.enabled():
+            sb = None
+    except Exception:
+        sb = None
+    
+    enriched_matches = []
+    for match in matches:
+        # Get tutor's average rate from history if available
+        tutor_avg_rate = None
+        tutor_id = match.get("tutor_id")
+        if sb and tutor_id:
+            try:
+                from TutorDexBackend.supabase_store import SupabaseStore
+                # Get user_id from firebase_uid
+                user_id = sb.upsert_user(firebase_uid=str(tutor_id), email=None, name=None)
+                if user_id:
+                    tutor_avg_rate = sb.get_tutor_avg_rate(
+                        user_id=user_id,
+                        lookback_days=DM_RATING_AVG_RATE_LOOKBACK_DAYS
+                    )
+            except Exception as e:
+                logger.debug(f"Could not get tutor avg rate for {tutor_id}: {e}")
+        
+        # Calculate rating
+        rating = calculate_assignment_rating(
+            base_score=match.get("score", 0),
+            distance_km=match.get("distance_km"),
+            assignment_rate_min=assignment_rate_min,
+            assignment_rate_max=assignment_rate_max,
+            tutor_avg_rate=tutor_avg_rate,
+        )
+        
+        # Add rating to match
+        match_with_rating = dict(match)
+        match_with_rating["rating"] = rating
+        match_with_rating["tutor_avg_rate"] = tutor_avg_rate
+        enriched_matches.append(match_with_rating)
+    
+    return enriched_matches
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _filter_by_adaptive_threshold(
+    matches: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    Filter matches by adaptive threshold per tutor.
+    
+    For each tutor, looks up their:
+    - desired_assignments_per_day preference
+    - historical assignment rating threshold
+    
+    Only sends assignments above the tutor's personal threshold.
+    """
+    if not DM_USE_ADAPTIVE_THRESHOLD:
+        # Disabled - return all matches
+        return matches
+    
+    try:
+        from TutorDexBackend.supabase_store import SupabaseStore
+        from TutorDexBackend.redis_store import TutorStore
+    except Exception:
+        logger.debug("Adaptive threshold not available, using all matches")
+        return matches
+    
+    sb = None
+    redis_store = None
+    try:
+        sb = SupabaseStore()
+        if not sb.enabled():
+            sb = None
+        redis_store = TutorStore()
+    except Exception:
+        logger.debug("Could not initialize stores for adaptive threshold")
+        return matches
+    
+    filtered = []
+    for match in matches:
+        tutor_id = match.get("tutor_id")
+        rating = match.get("rating")
+        
+        if not tutor_id or rating is None:
+            # No tutor ID or rating - include match (backward compat)
+            filtered.append(match)
+            continue
+        
+        # Get tutor's desired assignments per day
+        desired_per_day = 10  # default
+        try:
+            if redis_store:
+                tutor = redis_store.get_tutor(str(tutor_id))
+                if tutor:
+                    desired_per_day = tutor.get("desired_assignments_per_day", 10)
+        except Exception as e:
+            logger.debug(f"Could not get tutor preferences for {tutor_id}: {e}")
+        
+        # Get adaptive threshold from database
+        threshold = None
+        if sb:
+            try:
+                user_id = sb.upsert_user(firebase_uid=str(tutor_id), email=None, name=None)
+                if user_id:
+                    threshold = sb.get_tutor_rating_threshold(
+                        user_id=user_id,
+                        desired_per_day=desired_per_day,
+                        lookback_days=DM_RATING_LOOKBACK_DAYS,
+                    )
+            except Exception as e:
+                logger.debug(f"Could not get threshold for {tutor_id}: {e}")
+        
+        # If no threshold available (new tutor or no history), include the match
+        if threshold is None:
+            filtered.append(match)
+            logger.debug(f"Including {tutor_id} - no threshold available (new tutor)")
+            continue
+        
+        # Filter by threshold
+        if rating >= threshold:
+            filtered.append(match)
+            logger.debug(f"Including {tutor_id} - rating {rating:.2f} >= threshold {threshold:.2f}")
+        else:
+            logger.debug(f"Filtering out {tutor_id} - rating {rating:.2f} < threshold {threshold:.2f}")
+    
+    return filtered
 
 
 def _coerce_chat_ids(value: Any) -> List[str]:
@@ -308,11 +478,30 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 pass
             return {"ok": False, "error": str(e)}
-
+        
+        initial_match_count = len(matches)
+        
+        # Calculate assignment ratings for each match
+        matches = _calculate_match_ratings(matches, payload)
+        
+        # Apply adaptive threshold filtering
+        matches = _filter_by_adaptive_threshold(matches)
+        
+        # Apply hard cap on recipients
         matches = matches[:DM_MAX_RECIPIENTS]
+        
+        filtered_count = initial_match_count - len(matches)
+        if filtered_count > 0:
+            log_event(logger, logging.INFO, "dm_adaptive_filter", 
+                     initial_matches=initial_match_count, 
+                     filtered_out=filtered_count, 
+                     remaining=len(matches))
+        
         if not matches:
-            log_event(logger, logging.INFO, "dm_no_matches")
-            return {"ok": True, "sent": 0, "matched": 0}
+            log_event(logger, logging.INFO, "dm_no_matches", 
+                     initial_matches=initial_match_count,
+                     after_filtering=len(matches))
+            return {"ok": True, "sent": 0, "matched": 0, "initial_matched": initial_match_count}
 
         reply_markup = None
         try:
@@ -384,6 +573,33 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 dm_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
                 pass
+            
+            # Record assignment rating for this tutor (for adaptive threshold calculation)
+            try:
+                from TutorDexBackend.supabase_store import SupabaseStore
+                sb_record = SupabaseStore()
+                if sb_record.enabled():
+                    tutor_id = match.get("tutor_id")
+                    rating = match.get("rating")
+                    if tutor_id and rating is not None:
+                        # Get assignment internal ID from parsed data
+                        assignment_db_id = parsed.get("id")  # Internal DB ID
+                        if assignment_db_id:
+                            user_id = sb_record.upsert_user(firebase_uid=str(tutor_id), email=None, name=None)
+                            if user_id:
+                                sb_record.record_assignment_rating(
+                                    user_id=user_id,
+                                    assignment_id=int(assignment_db_id),
+                                    rating_score=float(rating),
+                                    distance_km=match.get("distance_km"),
+                                    rate_min=match.get("rate_min"),
+                                    rate_max=match.get("rate_max"),
+                                    match_score=match.get("score", 0),
+                                )
+            except Exception as e:
+                # Don't fail DM if rating recording fails
+                logger.debug(f"Could not record assignment rating: {e}")
+            
             time.sleep(0.05)
 
         fallback_written = False
@@ -414,9 +630,16 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             logger,
             logging.INFO,
             "dm_summary",
+            initial_matched=initial_match_count,
             matched=len(matches),
             sent=sent,
             failures=failures,
             fallback_written=fallback_written,
         )
-        return {"ok": failures == 0, "matched": len(matches), "sent": sent, "failures": failures}
+        return {
+            "ok": failures == 0, 
+            "initial_matched": initial_match_count,
+            "matched": len(matches), 
+            "sent": sent, 
+            "failures": failures,
+        }
