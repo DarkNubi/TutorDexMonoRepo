@@ -130,6 +130,9 @@ class MatchResult:
     score: int
     reasons: List[str]
     distance_km: Optional[float] = None
+    rating: Optional[float] = None  # Overall assignment rating for this tutor
+    rate_min: Optional[int] = None
+    rate_max: Optional[int] = None
 
 
 def score_tutor(tutor: Dict[str, Any], query: Dict[str, Any]) -> Tuple[int, List[str]]:
@@ -172,6 +175,12 @@ def score_tutor(tutor: Dict[str, Any], query: Dict[str, Any]) -> Tuple[int, List
 
 
 def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[MatchResult]:
+    """
+    Match tutors to an assignment payload.
+    
+    Returns matches with rating information for adaptive threshold filtering.
+    The caller can filter by rating threshold rather than using min_score.
+    """
     query = _payload_to_query(payload)
     min_score = _env_int("MATCH_MIN_SCORE", 3)
 
@@ -181,6 +190,11 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
         and assignment_lat is not None
         and assignment_lon is not None
     )
+    
+    # Extract rate information from payload
+    parsed = payload.get("parsed") or {}
+    rate_min = _safe_int(parsed.get("rate_min"))
+    rate_max = _safe_int(parsed.get("rate_max"))
 
     results: List[MatchResult] = []
     for tutor_id in store.list_tutor_ids():
@@ -209,8 +223,20 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
                     score=score,
                     reasons=reasons,
                     distance_km=distance_km,
+                    rating=None,  # Will be calculated by caller if needed
+                    rate_min=rate_min,
+                    rate_max=rate_max,
                 )
             )
 
     results.sort(key=lambda r: (r.score, r.tutor_id), reverse=True)
     return results
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None

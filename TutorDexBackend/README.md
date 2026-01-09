@@ -21,11 +21,19 @@ Minimal FastAPI service that stores tutor preferences in Redis and returns match
 
 ## Environment variables
 
+**Core Settings:**
 - `REDIS_URL`: `redis://redis:6379/0` (docker compose) or `redis://localhost:6379/0` (host)
 - `REDIS_PREFIX`: key prefix (default `tutordex`)
-- `MATCH_MIN_SCORE`: minimum score to include (default `3`)
+- `MATCH_MIN_SCORE`: minimum base score to include (default `3`)
 - `CORS_ALLOW_ORIGINS`: `*` or comma-separated origins (default `*`)
 - `ADMIN_API_KEY`: if set, requires `x-api-key` on bot/admin endpoints
+
+**Assignment Rating System** (see [docs/assignment_rating_system.md](../docs/assignment_rating_system.md)):
+- `DM_USE_ADAPTIVE_THRESHOLD`: enable adaptive threshold (default `true`)
+- `DM_RATING_LOOKBACK_DAYS`: days of history for threshold calculation (default `7`)
+- `DM_RATING_AVG_RATE_LOOKBACK_DAYS`: days for avg rate calculation (default `30`)
+- `RATING_DISTANCE_*`: distance scoring tiers and bonuses (see docs)
+- `RATING_RATE_*`: rate scoring thresholds and bonuses (see docs)
 
 ## Logging
 

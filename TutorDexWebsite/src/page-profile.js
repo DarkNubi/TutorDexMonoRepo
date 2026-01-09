@@ -393,6 +393,16 @@ async function saveProfile() {
     if (lvl && subj) canonicalPairs.push({ level: lvl, specific_level: spec || null, subject: subj });
   }
 
+  // Get desired assignments per day
+  const desiredPerDayEl = document.getElementById("desired-assignments-per-day");
+  let desiredPerDay = 10;  // Default
+  if (desiredPerDayEl) {
+    const val = parseInt(desiredPerDayEl.value, 10);
+    if (!isNaN(val) && val >= 1 && val <= 50) {
+      desiredPerDay = val;
+    }
+  }
+
   setStatus("Saving profile...", "info");
   await upsertTutor(uid, {
     subjects,
@@ -404,6 +414,7 @@ async function saveProfile() {
     teaching_locations: teachingLocations,
     postal_code: postalNormalized,
     contact_phone: contactPhone || null,
+    desired_assignments_per_day: desiredPerDay,
   });
   try {
     await trackEvent({ eventType: "profile_save" });
@@ -476,6 +487,13 @@ async function loadProfile() {
   const postalEl = document.getElementById("tutor-postal-code");
   if (postalEl && typeof profile.postal_code === "string") {
     postalEl.value = profile.postal_code;
+  }
+
+  const desiredPerDayEl = document.getElementById("desired-assignments-per-day");
+  if (desiredPerDayEl && typeof profile.desired_assignments_per_day === "number") {
+    desiredPerDayEl.value = String(profile.desired_assignments_per_day);
+  } else if (desiredPerDayEl) {
+    desiredPerDayEl.value = "10";  // Default value
   }
 
   if (Array.isArray(profile.subject_pairs) && profile.subject_pairs.length) {

@@ -159,7 +159,7 @@ class SupabaseStore:
             # Backward-compatible retry when DB schema hasn't been migrated yet.
             if resp.status_code == 400 and ("PGRST204" in resp.text or "schema cache" in resp.text):
                 retry_body = dict(body)
-                for k in ("postal_code", "postal_lat", "postal_lon"):
+                for k in ("postal_code", "postal_lat", "postal_lon", "desired_assignments_per_day"):
                     retry_body.pop(k, None)
                 if retry_body != body:
                     try:
@@ -182,7 +182,7 @@ class SupabaseStore:
         if not self.client:
             return None
         base = f"user_preferences?user_id=eq.{int(user_id)}&limit=1"
-        q1 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,postal_code,postal_lat,postal_lon,updated_at"
+        q1 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,postal_code,postal_lat,postal_lon,desired_assignments_per_day,updated_at"
         r = self.client.get(q1, timeout=15)
         if r.status_code == 400 and ("PGRST204" in r.text or "schema cache" in r.text):
             q2 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,updated_at"
@@ -528,4 +528,124 @@ class SupabaseStore:
             logger.warning("Supabase broadcast_messages patch failed external_id=%s error=%s", ext, e)
             return False
         return resp.status_code < 400
+
+    def record_assignment_rating(
+        self,
+        *,
+        user_id: int,
+        assignment_id: int,
+        rating_score: float,
+        distance_km: Optional[float] = None,
+        rate_min: Optional[int] = None,
+        rate_max: Optional[int] = None,
+        match_score: int,
+    ) -> bool:
+        """
+        Record that an assignment was sent to a tutor with a specific rating.
+        Used for calculating adaptive thresholds.
+        """
+        if not self.client:
+            return False
+        
+        row = {
+            "user_id": int(user_id),
+            "assignment_id": int(assignment_id),
+            "rating_score": float(rating_score),
+            "match_score": int(match_score),
+            "sent_at": _utc_now_iso(),
+        }
+        if distance_km is not None:
+            row["distance_km"] = float(distance_km)
+        if rate_min is not None:
+            row["rate_min"] = int(rate_min)
+        if rate_max is not None:
+            row["rate_max"] = int(rate_max)
+        
+        try:
+            resp = self.client.post(
+                "tutor_assignment_ratings",
+                [row],
+                timeout=20,
+                prefer="return=minimal",
+            )
+        except Exception as e:
+            logger.warning("Supabase record_assignment_rating failed user_id=%s assignment_id=%s error=%s", user_id, assignment_id, e)
+            return False
+        
+        if resp.status_code >= 400:
+            logger.warning("Supabase record_assignment_rating status=%s body=%s", resp.status_code, resp.text[:500])
+            return False
+        
+        return True
+
+    def get_tutor_rating_threshold(
+        self, *, user_id: int, desired_per_day: int = 10, lookback_days: int = 7
+    ) -> Optional[float]:
+        """
+        Get the adaptive rating threshold for a tutor using the DB function.
+        Returns None if the function fails or doesn't exist yet.
+        """
+        if not self.client:
+            return None
+        
+        body = {
+            "p_user_id": int(user_id),
+            "p_desired_per_day": int(desired_per_day),
+            "p_lookback_days": int(lookback_days),
+        }
+        
+        try:
+            resp = self.client.post("rpc/calculate_tutor_rating_threshold", body, timeout=15)
+        except Exception as e:
+            logger.debug("Supabase get_tutor_rating_threshold rpc failed user_id=%s error=%s", user_id, e)
+            return None
+        
+        if resp.status_code >= 400:
+            logger.debug("Supabase get_tutor_rating_threshold rpc status=%s body=%s", resp.status_code, resp.text[:300])
+            return None
+        
+        try:
+            data = resp.json()
+            if isinstance(data, (int, float)):
+                return float(data)
+            if isinstance(data, list) and data and isinstance(data[0], (int, float)):
+                return float(data[0])
+        except Exception:
+            pass
+        
+        return None
+
+    def get_tutor_avg_rate(self, *, user_id: int, lookback_days: int = 30) -> Optional[float]:
+        """
+        Get the tutor's average rate from past assignments using the DB function.
+        Returns None if the function fails or doesn't exist yet.
+        """
+        if not self.client:
+            return None
+        
+        body = {
+            "p_user_id": int(user_id),
+            "p_lookback_days": int(lookback_days),
+        }
+        
+        try:
+            resp = self.client.post("rpc/get_tutor_avg_rate", body, timeout=15)
+        except Exception as e:
+            logger.debug("Supabase get_tutor_avg_rate rpc failed user_id=%s error=%s", user_id, e)
+            return None
+        
+        if resp.status_code >= 400:
+            logger.debug("Supabase get_tutor_avg_rate rpc status=%s body=%s", resp.status_code, resp.text[:300])
+            return None
+        
+        try:
+            data = resp.json()
+            if isinstance(data, (int, float)):
+                return float(data)
+            if isinstance(data, list) and data and isinstance(data[0], (int, float)):
+                return float(data[0])
+        except Exception:
+            pass
+        
+        return None
 
