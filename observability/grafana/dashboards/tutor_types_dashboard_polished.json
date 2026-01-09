@@ -1,0 +1,103 @@
+{
+  "id": null,
+  "uid": "tutor-types-polished",
+  "title": "Tutor Types - Extraction Overview",
+  "tags": ["tutor_types", "aggregator", "extraction"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 2,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "id": 1,
+      "title": "Total Tutor Types Extracted (last 5m)",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 3},
+      "targets": [
+        {"expr": "increase(worker_tutor_types_extracted_total[5m])", "refId": "A"}
+      ],
+      "format": "short",
+      "sparkline": {"show": true}
+    },
+    {
+      "type": "graph",
+      "id": 2,
+      "title": "Tutor Types Extracted over time (per channel)",
+      "gridPos": {"x": 6, "y": 0, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "sum by(channel)(rate(worker_tutor_types_extracted_total[5m]))", "legendFormat": "{{channel}}", "refId": "A"}
+      ],
+      "lines": true,
+      "linewidth": 2
+    },
+    {
+      "type": "graph",
+      "id": 3,
+      "title": "Low Confidence Ratio (low_conf / extracted)",
+      "gridPos": {"x": 0, "y": 3, "w": 9, "h": 6},
+      "targets": [
+        {
+          "expr": "(sum(rate(worker_tutor_types_low_confidence_total[5m])) or 0) / (sum(rate(worker_tutor_types_extracted_total[5m])) or 1)",
+          "legendFormat": "low_conf_ratio",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [{"format": "percent"}, {"format": "short"}],
+      "lines": true
+    },
+    {
+      "type": "graph",
+      "id": 4,
+      "title": "Unmapped Ratio (unmapped / extracted)",
+      "gridPos": {"x": 9, "y": 3, "w": 9, "h": 6},
+      "targets": [
+        {
+          "expr": "(sum(rate(worker_tutor_types_unmapped_total[5m])) or 0) / (sum(rate(worker_tutor_types_extracted_total[5m])) or 1)",
+          "legendFormat": "unmapped_ratio",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [{"format": "percent"}, {"format": "short"}],
+      "lines": true
+    },
+    {
+      "type": "table",
+      "id": 5,
+      "title": "Extracted Counts by Pipeline / Schema (last 1h)",
+      "gridPos": {"x": 0, "y": 9, "w": 9, "h": 6},
+      "targets": [
+        {
+          "expr": "sum by(pipeline_version, schema_version, channel)(increase(worker_tutor_types_extracted_total[1h]))",
+          "refId": "A"
+        }
+      ],
+      "transform": "timeseries_aggregations"
+    },
+    {
+      "type": "stat",
+      "id": 6,
+      "title": "Low Confidence (last 1h)",
+      "gridPos": {"x": 9, "y": 9, "w": 6, "h": 3},
+      "targets": [{"expr": "increase(worker_tutor_types_low_confidence_total[1h])", "refId": "A"}],
+      "sparkline": {"show": true}
+    },
+    {
+      "type": "stat",
+      "id": 7,
+      "title": "Unmapped (last 1h)",
+      "gridPos": {"x": 15, "y": 9, "w": 6, "h": 3},
+      "targets": [{"expr": "increase(worker_tutor_types_unmapped_total[1h])", "refId": "A"}],
+      "sparkline": {"show": true}
+    },
+    {
+      "type": "graph",
+      "id": 8,
+      "title": "Extraction Rate (per minute)",
+      "gridPos": {"x": 9, "y": 12, "w": 12, "h": 6},
+      "targets": [{"expr": "sum(rate(worker_tutor_types_extracted_total[1m]))", "refId": "A"}],
+      "lines": true
+    }
+  ],
+  "templating": {"list": []},
+  "annotations": {"list": []}
+}

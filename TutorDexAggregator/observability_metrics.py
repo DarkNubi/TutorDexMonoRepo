@@ -181,6 +181,28 @@ worker_requeued_stale_jobs_total = Counter(
     ["pipeline_version", "schema_version"],
 )
 
+
+# ----------------------------
+# Tutor types extraction metrics
+# ----------------------------
+worker_tutor_types_extracted_total = Counter(
+    "worker_tutor_types_extracted_total",
+    "Tutor type mentions extracted by deterministic extractor.",
+    ["channel", "pipeline_version", "schema_version"],
+)
+
+worker_tutor_types_low_confidence_total = Counter(
+    "worker_tutor_types_low_confidence_total",
+    "Tutor type extractions below confidence threshold.",
+    ["channel", "pipeline_version", "schema_version"],
+)
+
+worker_tutor_types_unmapped_total = Counter(
+    "worker_tutor_types_unmapped_total",
+    "Tutor type mentions that could not be mapped to canonical type.",
+    ["channel", "pipeline_version", "schema_version"],
+)
+
 assignment_quality_missing_field_total = Counter(
     "assignment_quality_missing_field_total",
     "Parsed assignments missing important fields (quality signal, not a hard failure).",

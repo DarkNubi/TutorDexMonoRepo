@@ -508,6 +508,87 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     rate_min = _coerce_int_like(rate.get("min"))
     rate_max = _coerce_int_like(rate.get("max"))
     rate_raw_text = _safe_str(rate.get("raw_text"))
+    # New: per-type tutor types and rate breakdown (optional)
+    # Prefer deterministic signals (rule-based extractor) provided in `meta.signals` over LLM `parsed` outputs.
+    tutor_types = parsed.get("tutor_types") if isinstance(parsed, dict) else None
+    rate_breakdown = parsed.get("rate_breakdown") if isinstance(parsed, dict) else None
+    # If signals_obj contains deterministic detections, prefer those.
+    try:
+        if isinstance(signals_obj, dict):
+            sig_tt = signals_obj.get("tutor_types")
+            sig_rb = signals_obj.get("rate_breakdown")
+            if sig_tt:
+                tutor_types = sig_tt
+            if sig_rb:
+                rate_breakdown = sig_rb
+    except Exception:
+        pass
+
+    # Sanitize tutor_types: ensure list of dicts with canonical, original, agency, confidence(float)
+    def _sanitize_tutor_types(tt: Any):
+        if not tt:
+            return None
+        if not isinstance(tt, (list, tuple)):
+            return None
+        out = []
+        for item in tt:
+            if not isinstance(item, dict):
+                continue
+            canonical = _safe_str(item.get("canonical") or item.get("canonical_name") or item.get("canonical"))
+            original = _safe_str(item.get("original") or item.get("label") or item.get("raw"))
+            agency = _safe_str(item.get("agency"))
+            conf = None
+            try:
+                if item.get("confidence") is not None:
+                    conf = float(item.get("confidence"))
+            except Exception:
+                conf = None
+            out.append({
+                "canonical": canonical or (None if canonical == "" else None),
+                "original": original,
+                "agency": agency,
+                "confidence": conf,
+            })
+        return out or None
+
+    def _sanitize_rate_breakdown(rb: Any):
+        if not rb:
+            return None
+        if not isinstance(rb, dict):
+            return None
+        out = {}
+        for k, v in rb.items():
+            if not isinstance(v, dict):
+                continue
+            try:
+                min_v = _coerce_int_like(v.get("min"))
+            except Exception:
+                min_v = None
+            try:
+                max_v = _coerce_int_like(v.get("max"))
+            except Exception:
+                max_v = None
+            currency = _safe_str(v.get("currency"))
+            unit = _safe_str(v.get("unit"))
+            original_text = _safe_str(v.get("original_text") or v.get("raw_text"))
+            conf = None
+            try:
+                if v.get("confidence") is not None:
+                    conf = float(v.get("confidence"))
+            except Exception:
+                conf = None
+            out[str(k)] = {
+                "min": min_v,
+                "max": max_v,
+                "currency": currency,
+                "unit": unit,
+                "original_text": original_text,
+                "confidence": conf,
+            }
+        return out or None
+
+    tutor_types = _sanitize_tutor_types(tutor_types)
+    rate_breakdown = _sanitize_rate_breakdown(rate_breakdown)
 
     additional_remarks = _safe_str(parsed.get("additional_remarks")) if isinstance(parsed, dict) else None
 
@@ -551,13 +632,13 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     postal_lat = None
     postal_lon = None
     postal_coords_estimated = False
-    
+
     # First, try explicit postal code
     if postal_code:
         coords = _geocode_sg_postal(postal_code)
         if coords:
             postal_lat, postal_lon = coords
-    
+
     # If no explicit postal code or geocoding failed, try estimated postal code
     if postal_lat is None and postal_lon is None and postal_code_estimated:
         # Try the first estimated postal code
@@ -657,6 +738,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
         "rate_min": rate_min,
         "rate_max": rate_max,
         "rate_raw_text": rate_raw_text,
+        "tutor_types": tutor_types,
+        "rate_breakdown": rate_breakdown,
         "additional_remarks": additional_remarks,
         "signals_subjects": signals_subjects,
         "signals_levels": signals_levels,
@@ -895,6 +978,8 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 "rate_min",
                 "rate_max",
                 "rate_raw_text",
+                "tutor_types",
+                "rate_breakdown",
                 "additional_remarks",
                 "signals_subjects",
                 "signals_levels",

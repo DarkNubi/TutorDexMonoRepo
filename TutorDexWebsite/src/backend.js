@@ -160,6 +160,7 @@ export async function listOpenAssignmentsPaged({
   learningMode = null,
   location = null,
   minRate = null,
+  tutorType = null,
 } = {}) {
   if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
 
@@ -178,6 +179,7 @@ export async function listOpenAssignmentsPaged({
   if (learningMode) params.set("learning_mode", String(learningMode));
   if (location) params.set("location", String(location));
   if (minRate !== null && minRate !== undefined && String(minRate).trim() !== "") params.set("min_rate", String(minRate));
+  if (tutorType) params.set("tutor_type", String(tutorType));
 
   return backendFetch(`/assignments?${params.toString()}`);
 }
@@ -192,6 +194,7 @@ export async function getOpenAssignmentFacets({
   learningMode = null,
   location = null,
   minRate = null,
+  tutorType = null,
 } = {}) {
   if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
 
@@ -205,6 +208,7 @@ export async function getOpenAssignmentFacets({
   if (learningMode) params.set("learning_mode", String(learningMode));
   if (location) params.set("location", String(location));
   if (minRate !== null && minRate !== undefined && String(minRate).trim() !== "") params.set("min_rate", String(minRate));
+  if (tutorType) params.set("tutor_type", String(tutorType));
 
   return backendFetch(`/assignments/facets?${params.toString()}`);
 }

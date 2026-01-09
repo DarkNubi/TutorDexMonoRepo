@@ -81,6 +81,8 @@ create table if not exists public.assignments (
   rate_min int,
   rate_max int,
   rate_raw_text text,
+  tutor_types jsonb,
+  rate_breakdown jsonb,
   additional_remarks text,
 
   -- deterministic signals rollups (from `telegram_extractions.meta.signals`)
@@ -208,6 +210,12 @@ alter table public.assignments
   add column if not exists rate_raw_text text;
 
 alter table public.assignments
+  add column if not exists tutor_types jsonb;
+
+alter table public.assignments
+  add column if not exists rate_breakdown jsonb;
+
+alter table public.assignments
   add column if not exists additional_remarks text;
 
 alter table public.assignments
@@ -311,6 +319,10 @@ create index if not exists assignments_signals_specific_levels_gin
 create index if not exists assignments_signals_streams_gin
   on public.assignments using gin (signals_streams);
 
+-- GIN index to accelerate queries filtering by tutor_types[].canonical using jsonb containment
+create index if not exists assignments_tutor_types_gin
+  on public.assignments using gin (tutor_types jsonb_path_ops);
+
 -- --------------------------------------------------------------------------------
 -- RPC (function) compatibility
 --
@@ -355,6 +367,7 @@ create or replace function public.list_open_assignments(
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
+  p_tutor_type text default null,
   p_min_rate integer default null
 )
 returns table(
@@ -379,6 +392,8 @@ returns table(
   rate_min integer,
   rate_max integer,
   rate_raw_text text,
+  tutor_types jsonb,
+  rate_breakdown jsonb,
   signals_subjects text[],
   signals_levels text[],
   signals_specific_student_levels text[],
@@ -434,6 +449,7 @@ filtered as (
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
+    and (p_tutor_type is null or tutor_types @> jsonb_build_array(jsonb_build_object('canonical', p_tutor_type)))
     and (
       p_cursor_last_seen is null
       or (_sort_ts, id) < (p_cursor_last_seen, p_cursor_id)
@@ -461,6 +477,8 @@ select
   rate_min,
   rate_max,
   rate_raw_text,
+  tutor_types,
+  rate_breakdown,
   signals_subjects,
   signals_levels,
   signals_specific_student_levels,
@@ -499,6 +517,7 @@ create or replace function public.list_open_assignments_v2(
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
+  p_tutor_type text default null,
   p_min_rate integer default null
 )
 returns table(
@@ -523,6 +542,8 @@ returns table(
   rate_min integer,
   rate_max integer,
   rate_raw_text text,
+  tutor_types jsonb,
+  rate_breakdown jsonb,
   signals_subjects text[],
   signals_levels text[],
   signals_specific_student_levels text[],
@@ -580,6 +601,7 @@ filtered as (
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
+    and (p_tutor_type is null or tutor_types @> jsonb_build_array(jsonb_build_object('canonical', p_tutor_type)))
 ),
 scored as (
   select
@@ -648,6 +670,8 @@ select
   rate_min,
   rate_max,
   rate_raw_text,
+  tutor_types,
+  rate_breakdown,
   signals_subjects,
   signals_levels,
   signals_specific_student_levels,
@@ -682,6 +706,7 @@ create or replace function public.open_assignment_facets(
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
+  p_tutor_type text default null,
   p_min_rate integer default null
 )
 returns jsonb
@@ -724,7 +749,8 @@ filtered as (
       or btrim(p_location_query) = ''
       or _loc like '%' || lower(p_location_query) || '%'
     )
-    and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
+      and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
+      and (p_tutor_type is null or tutor_types @> jsonb_build_array(jsonb_build_object('canonical', p_tutor_type)))
 )
 select jsonb_build_object(
   'total', (select count(*) from filtered),
@@ -828,6 +854,21 @@ select jsonb_build_object(
       from filtered
       where learning_mode is not null and btrim(learning_mode) <> ''
       group by learning_mode
+    ) s
+  )
+  , 'tutor_types', (
+    select coalesce(
+      jsonb_agg(jsonb_build_object('value', t, 'count', c) order by c desc, t asc),
+      '[]'::jsonb
+    )
+    from (
+      select t, count(*) as c
+      from (
+        select distinct id, jsonb_array_elements(tutor_types) ->> 'canonical' as t
+        from filtered
+      ) d
+      where t is not null and btrim(t) <> ''
+      group by t
     ) s
   )
 );

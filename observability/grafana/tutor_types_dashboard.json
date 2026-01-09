@@ -1,0 +1,23 @@
+{
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Tutor Types Extracted",
+      "targets": [{"expr": "sum(worker_tutor_types_extracted_total)"}]
+    },
+    {
+      "type": "graph",
+      "title": "Unmapped Tutor Types",
+      "targets": [{"expr": "sum(worker_tutor_types_unmapped_total)"}]
+    },
+    {
+      "type": "graph",
+      "title": "Low-confidence Tutor Types",
+      "targets": [{"expr": "sum(worker_tutor_types_low_confidence_total)"}]
+    }
+  ],
+  "schemaVersion": 16,
+  "title": "Tutor Types Extraction",
+  "version": 1
+}

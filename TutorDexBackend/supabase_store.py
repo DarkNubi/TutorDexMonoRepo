@@ -280,6 +280,7 @@ class SupabaseStore:
         learning_mode: Optional[str] = None,
         location_query: Optional[str] = None,
         min_rate: Optional[int] = None,
+        tutor_type: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         RPC wrapper for `public.list_open_assignments` (must be installed in DB).
@@ -299,6 +300,7 @@ class SupabaseStore:
             "p_learning_mode": learning_mode,
             "p_location_query": location_query,
             "p_min_rate": int(min_rate) if min_rate is not None else None,
+            "p_tutor_type": str(tutor_type).strip() if tutor_type is not None else None,
         }
         # PostgREST treats missing keys as defaults; remove null keys to keep payload tidy.
         payload = {k: v for k, v in payload.items() if v is not None}
@@ -343,6 +345,7 @@ class SupabaseStore:
         learning_mode: Optional[str] = None,
         location_query: Optional[str] = None,
         min_rate: Optional[int] = None,
+        tutor_type: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         RPC wrapper for `public.list_open_assignments_v2` (must be installed in DB).
@@ -368,6 +371,7 @@ class SupabaseStore:
             "p_learning_mode": learning_mode,
             "p_location_query": location_query,
             "p_min_rate": int(min_rate) if min_rate is not None else None,
+            "p_tutor_type": str(tutor_type).strip() if tutor_type is not None else None,
         }
         payload = {k: v for k, v in payload.items() if v is not None}
 
@@ -403,6 +407,7 @@ class SupabaseStore:
         agency_name: Optional[str] = None,
         learning_mode: Optional[str] = None,
         location_query: Optional[str] = None,
+        tutor_type: Optional[str] = None,
         min_rate: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """
@@ -421,6 +426,7 @@ class SupabaseStore:
             "p_agency_name": agency_name,
             "p_learning_mode": learning_mode,
             "p_location_query": location_query,
+            "p_tutor_type": str(tutor_type).strip() if tutor_type is not None else None,
             "p_min_rate": int(min_rate) if min_rate is not None else None,
         }
         payload = {k: v for k, v in payload.items() if v is not None}
@@ -523,4 +529,3 @@ class SupabaseStore:
             logger.warning("Supabase broadcast_messages patch failed external_id=%s error=%s", ext, e)
             return False
         return resp.status_code < 400
-

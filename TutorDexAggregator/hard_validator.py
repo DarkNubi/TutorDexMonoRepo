@@ -255,6 +255,81 @@ def hard_validate(
     data["rate"] = {"min": rmin, "max": rmax, "raw_text": rate_raw_s}
 
     # -------------------------
+    # tutor_types + rate_breakdown
+    # -------------------------
+    tt = data.get("tutor_types")
+    if tt is None:
+        validated_tt = None
+    else:
+        if not isinstance(tt, list):
+            violations.append(_violation("tutor_types", "TYPE", "Expected list or null"))
+            validated_tt = None
+        else:
+            validated_items = []
+            for i, item in enumerate(tt):
+                if not isinstance(item, dict):
+                    violations.append(_violation(f"tutor_types[{i}]", "TYPE", "Expected object"))
+                    continue
+                canon = _safe_str(item.get("canonical"))
+                orig = _safe_str(item.get("original"))
+                agency_field = _safe_str(item.get("agency"))
+                conf_raw = item.get("confidence")
+                try:
+                    conf = float(conf_raw) if conf_raw is not None else None
+                except Exception:
+                    conf = None
+                if canon is None:
+                    violations.append(_violation(f"tutor_types[{i}].canonical", "REQUIRED", "Missing canonical"))
+                    continue
+                if conf is not None and not (0.0 <= conf <= 1.0):
+                    violations.append(_violation(f"tutor_types[{i}].confidence", "RANGE", "Expected 0.0-1.0"))
+                    conf = None
+                validated_items.append({"canonical": canon, "original": orig, "agency": agency_field, "confidence": conf})
+            validated_tt = validated_items or None
+    data["tutor_types"] = validated_tt
+
+    rb = data.get("rate_breakdown")
+    if rb is None:
+        validated_rb = None
+    else:
+        if not isinstance(rb, dict):
+            violations.append(_violation("rate_breakdown", "TYPE", "Expected object/dict or null"))
+            validated_rb = None
+        else:
+            validated_map: Dict[str, Dict[str, Any]] = {}
+            for k, v in rb.items():
+                if not isinstance(v, dict):
+                    violations.append(_violation(f"rate_breakdown.{k}", "TYPE", "Expected object"))
+                    continue
+                min_raw = v.get("min")
+                max_raw = v.get("max")
+                min_n = _coerce_number(min_raw)
+                max_n = _coerce_number(max_raw)
+                if min_raw is not None and min_n is None:
+                    violations.append(_violation(f"rate_breakdown.{k}.min", "TYPE", "Expected number or null"))
+                if max_raw is not None and max_n is None:
+                    violations.append(_violation(f"rate_breakdown.{k}.max", "TYPE", "Expected number or null"))
+                orig_text = _safe_str(v.get("original_text"))
+                currency = _safe_str(v.get("currency"))
+                unit = _safe_str(v.get("unit"))
+                conf_raw = v.get("confidence")
+                try:
+                    conf = float(conf_raw) if conf_raw is not None else None
+                except Exception:
+                    conf = None
+                if conf is not None and not (0.0 <= conf <= 1.0):
+                    violations.append(_violation(f"rate_breakdown.{k}.confidence", "RANGE", "Expected 0.0-1.0"))
+                    conf = None
+                # enforce min<=max
+                if min_n is not None and max_n is not None and min_n > max_n:
+                    violations.append(_violation(f"rate_breakdown.{k}", "RATE", "min>max; forcing null"))
+                    min_n = None
+                    max_n = None
+                validated_map[k] = {"min": min_n, "max": max_n, "original_text": orig_text, "currency": currency, "unit": unit, "confidence": conf}
+            validated_rb = validated_map or None
+    data["rate_breakdown"] = validated_rb
+
+    # -------------------------
     # additional_remarks support guard
     # -------------------------
     if "additional_remarks" in data:

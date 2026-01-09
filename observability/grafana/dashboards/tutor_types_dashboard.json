@@ -1,0 +1,54 @@
+{
+  "id": null,
+  "title": "Tutor Types Extraction Metrics",
+  "tags": ["tutor_types", "aggregator"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Tutor Types Extracted (per channel)",
+      "id": 1,
+      "targets": [
+        {
+          "expr": "worker_tutor_types_extracted_total",
+          "legendFormat": "channel={{channel}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": null,
+      "lines": true,
+      "linewidth": 2
+    },
+    {
+      "type": "graph",
+      "title": "Tutor Types Low Confidence",
+      "id": 2,
+      "targets": [
+        {
+          "expr": "worker_tutor_types_low_confidence_total",
+          "legendFormat": "channel={{channel}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": null,
+      "lines": true
+    },
+    {
+      "type": "graph",
+      "title": "Tutor Types Unmapped",
+      "id": 3,
+      "targets": [
+        {
+          "expr": "worker_tutor_types_unmapped_total",
+          "legendFormat": "channel={{channel}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": null,
+      "lines": true
+    }
+  ],
+  "refresh": "30s"
+}

@@ -256,6 +256,24 @@ function mapAssignmentRow(row) {
   const internalId = row?.id != null ? String(row.id).trim() : "";
   const subjectsCanonical = toStringList(row?.subjects_canonical);
   const subjectsGeneral = toStringList(row?.subjects_general);
+  let tutorTypes = [];
+  try {
+    if (Array.isArray(row?.tutor_types)) tutorTypes = row.tutor_types;
+    else if (typeof row?.tutor_types === "string") {
+      tutorTypes = JSON.parse(row.tutor_types || "[]") || [];
+    }
+  } catch (e) {
+    tutorTypes = [];
+  }
+  let rateBreakdown = {};
+  try {
+    if (typeof row?.rate_breakdown === "object" && row?.rate_breakdown) rateBreakdown = row.rate_breakdown;
+    else if (typeof row?.rate_breakdown === "string") {
+      rateBreakdown = JSON.parse(row.rate_breakdown || "{}") || {};
+    }
+  } catch (e) {
+    rateBreakdown = {};
+  }
 
   return {
     id: externalId || (internalId ? `DB-${internalId}` : ""),
@@ -297,6 +315,8 @@ function mapAssignmentRow(row) {
     processedAt: toText(row?.last_seen),
     postalCode: postal,
     postalEstimated,
+    tutorTypes,
+    rateBreakdown,
   };
 }
 
@@ -541,6 +561,12 @@ function renderCards(data) {
       // show postal (explicit or estimated), distance, and time availability in compact mode
       const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
       meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
+      // compact: show tutor type summary if available
+      if (Array.isArray(job.tutorTypes) && job.tutorTypes.length) {
+        const t = job.tutorTypes[0];
+        const label = t && (t.original || t.canonical) ? t.original || t.canonical : null;
+        if (label) meta.appendChild(metaItem("fa-solid fa-user-tie", label));
+      }
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
         meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
       }
@@ -686,6 +712,26 @@ function renderCards(data) {
     if (!compact && job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
     if (!compact && job.agencyName) addDetail("fa-solid fa-building", job.agencyName);
 
+    // show tutor types and rate breakdown in full view
+    if (!compact && Array.isArray(job.tutorTypes) && job.tutorTypes.length) {
+      const typesText = job.tutorTypes
+        .map((t) => (t && (t.original || t.canonical) ? t.original || t.canonical : null))
+        .filter(Boolean)
+        .join(" · ");
+      if (typesText) addDetail("fa-solid fa-user-tie", `Tutor types: ${typesText}`);
+    }
+    if (!compact && job.rateBreakdown && typeof job.rateBreakdown === "object") {
+      const entries = Object.entries(job.rateBreakdown)
+        .slice(0, 3)
+        .map(([k, v]) => {
+          const min = v && v.min ? `$${v.min}` : "";
+          const max = v && v.max ? (v.max === v.min ? `$${v.max}` : `$${v.min}-$${v.max}`) : "";
+          return `${k}${min || max ? ` ${min || max}${v && v.unit ? `/${v.unit}` : ""}` : ""}`;
+        })
+        .filter(Boolean);
+      if (entries.length) addDetail("fa-solid fa-money-bill", `Rates: ${entries.join(" · ")}`);
+    }
+
     if (job.postedAt) {
       const rel = formatRelativeTime(job.postedAt);
       const d = formatShortDate(job.postedAt);
@@ -790,6 +836,7 @@ function snapshotFiltersForStorage() {
     location: filters.location || "",
     sort: filters.sort || "newest",
     minRate: filters.minRate || "",
+    tutorType: filters.tutorType || "",
     savedAtMs: Date.now(),
   };
 }
@@ -803,6 +850,7 @@ function restoreFiltersIntoUI(stored) {
   const locEl = document.getElementById("filter-location");
   const sortEl = document.getElementById("filter-sort");
   const rateEl = document.getElementById("filter-rate");
+  const tutorTypeEl = document.getElementById("filter-tutor-type");
   if (!levelEl || !specificEl || !locEl || !sortEl || !rateEl) return false;
   // Handle versioning of stored snapshot
   const v = Number.isFinite(Number(stored.v)) ? Number(stored.v) : 1;
@@ -815,6 +863,7 @@ function restoreFiltersIntoUI(stored) {
   locEl.value = String(stored.location || "");
   sortEl.value = String(stored.sort || "newest");
   rateEl.value = String(stored.minRate || "");
+  if (tutorTypeEl) tutorTypeEl.value = String(stored.tutorType || "");
 
   // Options may not exist yet; set pending targets so updateFilter* can re-select after rebuild.
   if (genEl) pendingFilters.subjectGeneral = String(stored.subjectGeneral || "").trim() || null;
@@ -1139,6 +1188,115 @@ function updateFilterSubjects() {
     }
     pendingFilters.subjectCanonical = null;
   }
+  // Tutor types facet population
+  try {
+    updateFilterTutorTypes();
+  } catch (e) {}
+}
+
+function updateFilterTutorTypes() {
+  const select = $id("filter-tutor-type");
+  if (!select) return;
+  const prev = select.value || "";
+  select.innerHTML = '<option value="">All Tutor Types</option>';
+  const facetOptions = Array.isArray(lastFacets?.tutor_types) ? lastFacets.tutor_types : null;
+  if (facetOptions && facetOptions.length) {
+    facetOptions.forEach((it) => {
+      const code = String(it?.value || "").trim();
+      if (!code) return;
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.text = it.count ? `${code} (${it.count})` : code;
+      select.appendChild(opt);
+    });
+  } else {
+    // Keep existing static options (do nothing)
+  }
+  if (prev) {
+    if (!Array.from(select.options || []).some((o) => String(o.value || "").trim() === String(prev).trim())) {
+      const opt = document.createElement("option");
+      opt.value = prev;
+      opt.text = prev;
+      select.appendChild(opt);
+    }
+    select.value = prev;
+  }
+}
+
+function mountTutorTypeSearch() {
+  const input = document.getElementById("tutor-type-search");
+  const resultsEl = document.getElementById("tutor-type-search-results");
+  if (!input || !resultsEl) return;
+
+  function hide() {
+    resultsEl.classList.add("hidden");
+    resultsEl.innerHTML = "";
+  }
+
+  function show(items) {
+    resultsEl.innerHTML = "";
+    if (!items || !items.length) {
+      hide();
+      return;
+    }
+    items.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "w-full text-left px-4 py-2 hover:bg-gray-50 transition flex items-center justify-between gap-3";
+      btn.textContent = `${item.label || item.value}`;
+      btn.addEventListener("click", () => {
+        const select = document.getElementById("filter-tutor-type");
+        if (select) {
+          ensureOptionAndSelect(select, item.value, item.label || item.value);
+        }
+        hide();
+        input.value = "";
+      });
+      resultsEl.appendChild(btn);
+    });
+    resultsEl.classList.remove("hidden");
+  }
+
+  function ensureOptionAndSelect(select, value, label) {
+    const exists = Array.from(select.options || []).some((o) => String(o.value || "") === String(value || ""));
+    if (!exists) {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.text = label || value;
+      select.appendChild(opt);
+    }
+    select.value = value;
+  }
+
+  let timer = null;
+  input.addEventListener("input", () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      const q = String(input.value || "")
+        .trim()
+        .toLowerCase();
+      if (!q) return hide();
+      const facetOptions = Array.isArray(lastFacets?.tutor_types) ? lastFacets.tutor_types : null;
+      const candidates = (
+        facetOptions && facetOptions.length
+          ? facetOptions
+          : Array.from(document.getElementById("filter-tutor-type").options || []).map((o) => ({ value: o.value }))
+      ).map((o) => ({ value: String(o.value || "").trim(), label: String(o.value || "").trim() }));
+      const matched = candidates
+        .filter(
+          (c) =>
+            String(c.value || "")
+              .toLowerCase()
+              .includes(q) ||
+            String(c.label || "")
+              .toLowerCase()
+              .includes(q)
+        )
+        .slice(0, 10);
+      show(matched);
+    }, 120);
+  });
+  input.addEventListener("blur", () => setTimeout(hide, 150));
 }
 
 function collectFiltersFromUI() {
@@ -1150,6 +1308,7 @@ function collectFiltersFromUI() {
     location: (document.getElementById("filter-location")?.value || "").trim() || null,
     sort: (document.getElementById("filter-sort")?.value || "").trim() || "newest",
     minRate: (document.getElementById("filter-rate")?.value || "").trim() || null,
+    tutorType: (document.getElementById("filter-tutor-type")?.value || "").trim() || null,
   };
 }
 
@@ -1304,12 +1463,14 @@ async function loadAssignments({ reset = false, append = false } = {}) {
           level: filters.level,
           location: filters.location,
           minRate: Number.isFinite(minRate) ? minRate : null,
+          tutorType: filters.tutorType || null,
         });
         if (loadToken === activeLoadToken) {
           lastFacets = facetsResp?.facets || null;
           // Rebuild dropdown options based on new facets.
           updateFilterSpecificLevels();
           updateFilterSubjects();
+          updateFilterTutorTypes();
           setFacetHintVisible(Boolean(lastFacets));
         }
       } catch (e) {
@@ -1332,6 +1493,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       subjectCanonical: filters.subjectCanonical,
       location: filters.location,
       minRate: Number.isFinite(minRate) ? minRate : null,
+      tutorType: filters.tutorType || null,
     });
 
     if (loadToken !== activeLoadToken) return;
@@ -1446,6 +1608,7 @@ window.addEventListener("load", () => {
   updateViewToggleUI();
   updateGridLayout();
   mountSubjectSearch();
+  mountTutorTypeSearch();
 
   const generalSelect = document.getElementById("filter-subject-general");
   const canonicalSelect = document.getElementById("filter-subject-canonical");

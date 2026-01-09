@@ -33,6 +33,12 @@ Signals generation is best-effort and never fails a job; failures are stored as 
     "source": "academic_display_text|normalized_text|raw_text",
     "text_chars": 123,
     "subjects": ["English", "Maths"],
+    "tutor_types": [
+      {"canonical":"part-timer","original":"PT","agency":null,"confidence":0.9}
+    ],
+    "rate_breakdown": {
+      "part-timer": {"min":15,"max":25,"currency":"$","unit":"hour","original_text":"$15-25/hr","confidence":0.9}
+    },
     "levels": ["Primary"],
     "specific_student_levels": ["Primary 4", "Primary 6"],
     "streams": ["G3", "Express", "HL"],

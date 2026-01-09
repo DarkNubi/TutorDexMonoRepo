@@ -1,0 +1,71 @@
+version: 1
+description: |
+  Canonical tutor types and common aliases. Agencies may have additional aliases
+  defined under `agency_aliases/`.
+canonical:
+  part-timer:
+    display: Part-timer
+    aliases:
+      - pt
+      - p/t
+      - p t
+      - part-time
+      - part time
+      - parttimer
+      - "part-timer"
+      - "part timer"
+      - part timers
+      - parttime
+      - casual
+      - "temp"
+      - temporary
+      - contract
+      - freelance
+      - "fresh grad"
+      - freshgrad
+      - graduate
+      - grad
+      - undergraduate
+      - undergrad
+      - diploma
+      - degree
+      - student
+    subgroups:
+      - undergraduate
+      - graduate
+      - diploma
+      - degree
+  full-timer:
+    display: Full-timer
+    aliases:
+      - ft
+      - f/t
+      - f t
+      - full-time
+      - full time
+      - fulltimer
+      - "full-timer"
+      - "full timer"
+      - permanent
+      - staff
+      - senior
+      - "senior teacher"
+      - "subject teacher"
+  moe-exmoe:
+    display: MOE/Ex-MOE
+    aliases:
+      - moe
+      - m.o.e
+      - ex-moe
+      - exmoe
+      - "former moe"
+      - "moe teacher"
+      - "ex moe"
+      - "moe/ex-moe"
+      - "moe ex"
+      - "teacher"
+      - "ex teacher"
+      - "ex-teacher"
+  unknown:
+    display: Unknown
+    aliases: []

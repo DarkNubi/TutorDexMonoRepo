@@ -54,6 +54,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 async def _startup_log() -> None:
     # Fail fast on dangerous misconfig in production.
@@ -298,6 +299,7 @@ async def _telegram_answer_callback_query(*, callback_query_id: str, url: Option
     except Exception:
         logger.exception("telegram_answer_callback_failed", extra={"callback_query_id": callback_query_id})
 
+
 def _truthy(value: Optional[str]) -> bool:
     if value is None:
         return False
@@ -447,6 +449,8 @@ class AssignmentRow(BaseModel):
     rate_min: Optional[int] = None
     rate_max: Optional[int] = None
     rate_raw_text: Optional[str] = None
+    tutor_types: Optional[List[Dict[str, Any]]] = None
+    rate_breakdown: Optional[Dict[str, Any]] = None
     signals_subjects: Optional[List[str]] = None
     signals_levels: Optional[List[str]] = None
     signals_specific_student_levels: Optional[List[str]] = None
@@ -639,7 +643,7 @@ def health_dependencies() -> Dict[str, Any]:
 def health_webhook() -> Dict[str, Any]:
     """
     Check Telegram webhook status for the broadcast bot.
-    
+
     Returns webhook information including URL, pending updates, and any errors.
     Useful for monitoring and troubleshooting inline button functionality.
     """
@@ -650,9 +654,9 @@ def health_webhook() -> Dict[str, Any]:
             "error": "no_bot_token",
             "message": "GROUP_BOT_TOKEN not configured"
         }
-    
+
     import requests  # local import
-    
+
     try:
         resp = requests.get(
             f"https://api.telegram.org/bot{token}/getWebhookInfo",
@@ -660,23 +664,23 @@ def health_webhook() -> Dict[str, Any]:
         )
         resp.raise_for_status()
         result = resp.json()
-        
+
         if not result.get("ok"):
             return {
                 "ok": False,
                 "error": "telegram_api_error",
                 "description": result.get("description", "Unknown error")
             }
-        
+
         info = result.get("result", {})
         webhook_url = info.get("url", "")
         has_webhook = bool(webhook_url)
-        
+
         # Determine health status
         ok = has_webhook and info.get("pending_update_count", 0) < 100
         if info.get("last_error_date"):
             ok = False
-        
+
         return {
             "ok": ok,
             "has_webhook": has_webhook,
@@ -720,6 +724,7 @@ async def list_assignments(
     learning_mode: Optional[str] = None,
     location: Optional[str] = None,
     min_rate: Optional[int] = None,
+    tutor_type: Optional[str] = None,
 ) -> Response:
     """
     Public listing endpoint for the website.
@@ -829,6 +834,7 @@ async def list_assignments(
         learning_mode=_clean_opt_str(learning_mode),
         location_query=_clean_opt_str(location),
         min_rate=int(min_rate) if min_rate is not None else None,
+        tutor_type=_clean_opt_str(tutor_type),
     )
     if not result:
         raise HTTPException(status_code=500, detail="list_assignments_failed")
@@ -1290,22 +1296,22 @@ def telegram_claim(request: Request, req: TelegramClaimRequest) -> Dict[str, Any
 def _verify_telegram_webhook(request: Request) -> bool:
     """
     Verify Telegram webhook request using secret token.
-    
+
     When a webhook is set with a secret_token, Telegram includes it in the
     X-Telegram-Bot-Api-Secret-Token header. We verify it matches our configured secret.
-    
+
     Returns True if verification passes or no secret is configured (permissive mode).
     """
     configured_secret = (os.environ.get("WEBHOOK_SECRET_TOKEN") or "").strip()
     if not configured_secret:
         # No secret configured - allow requests (backward compatible)
         return True
-    
+
     # FastAPI converts headers to lowercase. Telegram sends this as
     # "X-Telegram-Bot-Api-Secret-Token" per their webhook documentation,
     # but we access it as lowercase per FastAPI's normalization.
     header_secret = (request.headers.get("x-telegram-bot-api-secret-token") or "").strip()
-    
+
     return header_secret == configured_secret
 
 
@@ -1313,12 +1319,12 @@ def _verify_telegram_webhook(request: Request) -> bool:
 async def telegram_callback(request: Request) -> Dict[str, Any]:
     """
     Handle Telegram webhook callbacks for inline button interactions.
-    
+
     CLICK TRACKING DISABLED: This endpoint now returns a no-op response.
-    
+
     This endpoint receives callback queries when users click inline buttons
     in broadcast messages. Requires a webhook to be set up with Telegram.
-    
+
     Setup:
         python TutorDexBackend/telegram_webhook_setup.py set --url https://yourdomain.com/telegram/callback
     """

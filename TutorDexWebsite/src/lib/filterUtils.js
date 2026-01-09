@@ -8,6 +8,7 @@ export function matchesFilters(job, filters) {
   const subjectCanonical = String(filters.subjectCanonical || "").trim();
   const location = String(filters.location || "").trim();
   const minRate = filters.minRate ? Number.parseInt(filters.minRate, 10) : null;
+  const tutorType = String(filters.tutorType || "").trim();
 
   if (level && !(Array.isArray(job.signalsLevels) && job.signalsLevels.includes(level))) return false;
   if (specificLevel && !(Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.includes(specificLevel))) return false;
@@ -20,6 +21,21 @@ export function matchesFilters(job, filters) {
   }
   if (minRate && typeof job.rateMin === "number" && job.rateMin < minRate) return false;
   if (minRate && typeof job.rateMin !== "number") return false;
+  if (tutorType) {
+    // job.tutorTypes can be [{canonical, original, confidence}] or absent
+    const types = Array.isArray(job.tutorTypes) ? job.tutorTypes : [];
+    const has = types.some((t) => {
+      if (!t) return false;
+      const c = String(t.canonical || "")
+        .trim()
+        .toLowerCase();
+      const o = String(t.original || "")
+        .trim()
+        .toLowerCase();
+      return c === tutorType.toLowerCase() || o === tutorType.toLowerCase();
+    });
+    if (!has) return false;
+  }
   return true;
 }
 

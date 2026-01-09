@@ -389,6 +389,23 @@
             <input type="number" id="filter-rate" placeholder="Min Rate ($/hr)" class="nike-input" />
           </div>
 
+          <div class="select-wrapper lg:col-span-2">
+            <select id="filter-tutor-type" class="nike-input">
+              <option value="">All Tutor Types</option>
+              <option value="part-timer">Part-timer</option>
+              <option value="full-timer">Full-timer</option>
+              <option value="ex-moe">Ex-MOE</option>
+              <option value="moe">MOE</option>
+            </select>
+          </div>
+          <div class="md:col-span-2 relative lg:col-span-2">
+            <input id="tutor-type-search" type="text" class="nike-input" placeholder="Search tutor types (e.g. PT, MOE)…" autocomplete="off" />
+            <div
+              id="tutor-type-search-results"
+              class="hidden absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50"
+            ></div>
+          </div>
+
           <div class="lg:col-span-6 flex flex-col sm:flex-row gap-2">
             <button
               onclick="applyFilters()"

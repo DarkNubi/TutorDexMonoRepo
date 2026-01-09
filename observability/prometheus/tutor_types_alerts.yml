@@ -1,0 +1,22 @@
+groups:
+- name: tutor_types.rules
+- rules:
+  - alert: TutorTypesExtractionLowCoverage
+    expr: |
+      sum(worker_tutor_types_extracted_total) by (pipeline_version, schema_version) == 0
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Tutor types extraction coverage is zero for pipeline {{ $labels.pipeline_version }}"
+      description: "No tutor type extractions recorded in the last 10 minutes for pipeline {{ $labels.pipeline_version }}"
+
+  - alert: TutorTypesHighUnmappedRate
+    expr: |
+      sum(worker_tutor_types_unmapped_total) / sum(worker_tutor_types_extracted_total) > 0.1
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High unmapped tutor types rate"
+      description: "More than 10% of tutor type mentions are unmapped for pipeline {{ $labels.pipeline_version }}"
