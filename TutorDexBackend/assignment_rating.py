@@ -27,17 +27,21 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-# Distance scoring parameters
-DISTANCE_VERY_CLOSE_KM = _env_float("RATING_DISTANCE_VERY_CLOSE_KM", 1.0)
-DISTANCE_CLOSE_KM = _env_float("RATING_DISTANCE_CLOSE_KM", 3.0)
-DISTANCE_MODERATE_KM = _env_float("RATING_DISTANCE_MODERATE_KM", 5.0)
-DISTANCE_FAR_KM = _env_float("RATING_DISTANCE_FAR_KM", 10.0)
+# Distance scoring parameters (tiers in km)
+DISTANCE_TIER_1_KM = _env_float("RATING_DISTANCE_TIER_1_KM", 0.5)   # 0-500m
+DISTANCE_TIER_2_KM = _env_float("RATING_DISTANCE_TIER_2_KM", 1.5)   # 500-1500m
+DISTANCE_TIER_3_KM = _env_float("RATING_DISTANCE_TIER_3_KM", 3.0)   # 1.5-3km
+DISTANCE_TIER_4_KM = _env_float("RATING_DISTANCE_TIER_4_KM", 5.0)   # 3-5km
+DISTANCE_TIER_5_KM = _env_float("RATING_DISTANCE_TIER_5_KM", 10.0)  # 5-10km
 
-# Distance score bonuses/penalties
-DISTANCE_VERY_CLOSE_BONUS = _env_float("RATING_DISTANCE_VERY_CLOSE_BONUS", 5.0)
-DISTANCE_CLOSE_BONUS = _env_float("RATING_DISTANCE_CLOSE_BONUS", 3.0)
-DISTANCE_MODERATE_BONUS = _env_float("RATING_DISTANCE_MODERATE_BONUS", 1.0)
-DISTANCE_FAR_PENALTY = _env_float("RATING_DISTANCE_FAR_PENALTY", -2.0)
+# Distance score values at each tier boundary
+DISTANCE_SCORE_0KM = _env_float("RATING_DISTANCE_SCORE_0KM", 5.0)     # Perfect match at 0km
+DISTANCE_SCORE_TIER_1 = _env_float("RATING_DISTANCE_SCORE_TIER_1", 4.0)  # At 500m
+DISTANCE_SCORE_TIER_2 = _env_float("RATING_DISTANCE_SCORE_TIER_2", 3.0)  # At 1.5km
+DISTANCE_SCORE_TIER_3 = _env_float("RATING_DISTANCE_SCORE_TIER_3", 2.0)  # At 3km
+DISTANCE_SCORE_TIER_4 = _env_float("RATING_DISTANCE_SCORE_TIER_4", 1.0)  # At 5km
+DISTANCE_SCORE_TIER_5 = _env_float("RATING_DISTANCE_SCORE_TIER_5", 0.0)  # At 10km
+DISTANCE_SCORE_FAR = _env_float("RATING_DISTANCE_SCORE_FAR", -2.0)       # Beyond 10km
 
 # Rate scoring parameters
 RATE_BONUS_THRESHOLD_PCT = _env_float("RATING_RATE_BONUS_THRESHOLD_PCT", 20.0)  # 20% above avg
@@ -48,35 +52,62 @@ RATE_PENALTY_MAX = _env_float("RATING_RATE_PENALTY_MAX", -2.0)
 
 def calculate_distance_score(distance_km: Optional[float]) -> float:
     """
-    Calculate distance-based score component.
+    Calculate distance-based score component using continuous interpolation.
     
-    Scoring tiers:
-    - < 1km: +5.0 (very close, highly valuable)
-    - 1-3km: +3.0 (close, valuable)
-    - 3-5km: +1.0 (moderate, slight bonus)
-    - 5-10km: 0.0 (neutral)
+    Scoring is continuous and linearly interpolated between tier boundaries:
+    - 0km: +5.0 (perfect match)
+    - 0-500m: +5.0 to +4.0 (very close)
+    - 500m-1.5km: +4.0 to +3.0 (close)
+    - 1.5-3km: +3.0 to +2.0 (moderate)
+    - 3-5km: +2.0 to +1.0 (acceptable)
+    - 5-10km: +1.0 to 0.0 (neutral)
     - > 10km: -2.0 (far, penalty)
     
     Args:
         distance_km: Distance in kilometers, or None if not available
         
     Returns:
-        Distance score contribution
+        Distance score contribution (continuous value)
     """
     if distance_km is None:
         # No distance info (e.g., online assignments) - neutral
         return 0.0
     
-    if distance_km < DISTANCE_VERY_CLOSE_KM:
-        return DISTANCE_VERY_CLOSE_BONUS
-    elif distance_km < DISTANCE_CLOSE_KM:
-        return DISTANCE_CLOSE_BONUS
-    elif distance_km < DISTANCE_MODERATE_KM:
-        return DISTANCE_MODERATE_BONUS
-    elif distance_km < DISTANCE_FAR_KM:
-        return 0.0  # Neutral
-    else:
-        return DISTANCE_FAR_PENALTY
+    dist = float(distance_km)
+    
+    # Beyond 10km: constant penalty
+    if dist > DISTANCE_TIER_5_KM:
+        return DISTANCE_SCORE_FAR
+    
+    # Define tier boundaries and scores
+    tiers = [
+        (0.0, DISTANCE_SCORE_0KM),
+        (DISTANCE_TIER_1_KM, DISTANCE_SCORE_TIER_1),
+        (DISTANCE_TIER_2_KM, DISTANCE_SCORE_TIER_2),
+        (DISTANCE_TIER_3_KM, DISTANCE_SCORE_TIER_3),
+        (DISTANCE_TIER_4_KM, DISTANCE_SCORE_TIER_4),
+        (DISTANCE_TIER_5_KM, DISTANCE_SCORE_TIER_5),
+    ]
+    
+    # Find which tier range we're in and interpolate
+    for i in range(len(tiers) - 1):
+        km_lower, score_lower = tiers[i]
+        km_upper, score_upper = tiers[i + 1]
+        
+        if km_lower <= dist <= km_upper:
+            # Linear interpolation between the two tier boundaries
+            if km_upper == km_lower:
+                return score_lower
+            
+            # Calculate position within this tier (0.0 to 1.0)
+            position = (dist - km_lower) / (km_upper - km_lower)
+            
+            # Interpolate between scores
+            score = score_lower + (score_upper - score_lower) * position
+            return score
+    
+    # Should not reach here, but return neutral as fallback
+    return 0.0
 
 
 def calculate_rate_score(
@@ -85,12 +116,14 @@ def calculate_rate_score(
     tutor_avg_rate: Optional[float],
 ) -> float:
     """
-    Calculate rate-based score component.
+    Calculate rate-based score component using continuous interpolation.
     
-    Compares assignment rate against tutor's historical average:
-    - Assignment pays significantly more (>20% above avg): bonus up to +3.0
-    - Assignment pays around average: neutral (0.0)
-    - Assignment pays significantly less (<30% below avg): penalty up to -2.0
+    Compares assignment rate against tutor's historical average with smooth scaling:
+    - Rate significantly above average (>20%): bonus from 0 to +3.0 (max at 50%+ above)
+    - Rate around average (±20%): neutral (0.0)
+    - Rate significantly below average (<-20%): penalty from 0 to -2.0 (max at 50%+ below)
+    
+    Scoring is continuous and smoothly interpolated based on percentage difference.
     
     Args:
         assignment_rate_min: Assignment minimum rate
@@ -98,7 +131,7 @@ def calculate_rate_score(
         tutor_avg_rate: Tutor's historical average rate (or None if no history)
         
     Returns:
-        Rate score contribution
+        Rate score contribution (continuous value)
     """
     # If no rate info, neutral
     if assignment_rate_min is None or assignment_rate_min <= 0:
@@ -114,21 +147,38 @@ def calculate_rate_score(
     if tutor_avg_rate is None or tutor_avg_rate <= 0:
         return 0.0
     
-    # Calculate percentage difference
+    # Calculate percentage difference from tutor's average
     rate_diff_pct = ((assignment_rate - tutor_avg_rate) / tutor_avg_rate) * 100.0
     
+    # Continuous scaling for bonuses and penalties
     if rate_diff_pct > RATE_BONUS_THRESHOLD_PCT:
-        # High pay - give bonus
-        # Scale linearly: 20% above = 0.0, 50%+ above = max bonus
-        scale = min(1.0, (rate_diff_pct - RATE_BONUS_THRESHOLD_PCT) / 30.0)
+        # High pay - continuous bonus
+        # 20% above = 0.0, 50% above = max bonus (+3.0)
+        # Linear interpolation between threshold and max
+        excess_pct = rate_diff_pct - RATE_BONUS_THRESHOLD_PCT
+        scale = min(1.0, excess_pct / 30.0)  # 30% range (20% to 50%)
         return scale * RATE_BONUS_MAX
+        
     elif rate_diff_pct < -RATE_PENALTY_THRESHOLD_PCT:
-        # Low pay - give penalty
-        # Scale linearly: 30% below = 0.0, 60%+ below = max penalty
-        scale = min(1.0, (abs(rate_diff_pct) - RATE_PENALTY_THRESHOLD_PCT) / 30.0)
+        # Low pay - continuous penalty
+        # -30% below = 0.0, -60% below = max penalty (-2.0)
+        # Linear interpolation between threshold and max
+        deficit_pct = abs(rate_diff_pct) - RATE_PENALTY_THRESHOLD_PCT
+        scale = min(1.0, deficit_pct / 30.0)  # 30% range (30% to 60%)
         return scale * RATE_PENALTY_MAX
+        
+    elif rate_diff_pct > 0:
+        # Between 0% and +20%: gradual ramp from 0.0 to 0.0
+        # Smooth transition into bonus zone
+        return 0.0
+        
+    elif rate_diff_pct < 0:
+        # Between 0% and -30%: gradual ramp from 0.0 to 0.0
+        # Smooth transition into penalty zone
+        return 0.0
+    
     else:
-        # Around average - neutral
+        # Exactly at average
         return 0.0
 
 
