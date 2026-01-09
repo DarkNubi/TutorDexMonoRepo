@@ -27,47 +27,59 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-# Distance scoring parameters (tiers in km)
-DISTANCE_TIER_1_KM = _env_float("RATING_DISTANCE_TIER_1_KM", 0.5)   # 0-500m
-DISTANCE_TIER_2_KM = _env_float("RATING_DISTANCE_TIER_2_KM", 1.5)   # 500-1500m
-DISTANCE_TIER_3_KM = _env_float("RATING_DISTANCE_TIER_3_KM", 3.0)   # 1.5-3km
-DISTANCE_TIER_4_KM = _env_float("RATING_DISTANCE_TIER_4_KM", 5.0)   # 3-5km
-DISTANCE_TIER_5_KM = _env_float("RATING_DISTANCE_TIER_5_KM", 10.0)  # 5-10km
+# Distance scoring parameters - Singapore-optimized breakpoints
+# Based on SG transport reality: walkability, bus/MRT connections, peak-hour pain
+DISTANCE_BREAKPOINTS = [
+    (0.0, 5.0),    # 0km: Perfect match, walkable
+    (0.8, 4.0),    # 800m: 1-2 bus stops, still very convenient
+    (1.8, 3.0),    # 1.8km: Short feeder bus / 1 MRT stop
+    (3.5, 2.0),    # 3.5km: Time uncertainty starts
+    (6.0, 1.0),    # 6km: Peak-hour pain begins
+    (10.0, 0.0),   # 10km: Neutral threshold
+    (12.0, -1.5),  # 12km: Hard floor, actively avoid beyond this
+]
 
-# Distance score values at each tier boundary
-DISTANCE_SCORE_0KM = _env_float("RATING_DISTANCE_SCORE_0KM", 5.0)     # Perfect match at 0km
-DISTANCE_SCORE_TIER_1 = _env_float("RATING_DISTANCE_SCORE_TIER_1", 4.0)  # At 500m
-DISTANCE_SCORE_TIER_2 = _env_float("RATING_DISTANCE_SCORE_TIER_2", 3.0)  # At 1.5km
-DISTANCE_SCORE_TIER_3 = _env_float("RATING_DISTANCE_SCORE_TIER_3", 2.0)  # At 3km
-DISTANCE_SCORE_TIER_4 = _env_float("RATING_DISTANCE_SCORE_TIER_4", 1.0)  # At 5km
-DISTANCE_SCORE_TIER_5 = _env_float("RATING_DISTANCE_SCORE_TIER_5", 0.0)  # At 10km
-DISTANCE_SCORE_FAR = _env_float("RATING_DISTANCE_SCORE_FAR", -2.0)       # Beyond 10km
+# Hard floor for distance penalty (never worse than this)
+DISTANCE_SCORE_MIN = -1.5
 
-# Rate scoring parameters
-RATE_BONUS_THRESHOLD_PCT = _env_float("RATING_RATE_BONUS_THRESHOLD_PCT", 20.0)  # 20% above avg
-RATE_BONUS_MAX = _env_float("RATING_RATE_BONUS_MAX", 3.0)
-RATE_PENALTY_THRESHOLD_PCT = _env_float("RATING_RATE_PENALTY_THRESHOLD_PCT", 30.0)  # 30% below avg
-RATE_PENALTY_MAX = _env_float("RATING_RATE_PENALTY_MAX", -2.0)
+# Rate scoring parameters - Singapore-optimized
+# Based on SG tutor psychology: anchoring to historical average
+RATE_BREAKPOINTS = [
+    (0.25, 2.0),    # +25% or more: Hard cap
+    (0.15, 1.5),    # +15%: Strong positive
+    (0.10, 1.0),    # +10%: Noticeable positive
+    (0.05, 0.5),    # +5%: Slight positive
+    (0.00, 0.0),    # 0%: Neutral (at average)
+    (-0.05, -0.5),  # -5%: Slight negative
+    (-0.10, -1.0),  # -10%: Noticeable negative
+    (-0.15, -1.5),  # -15%: Strong negative
+    (-0.25, -2.0),  # -25% or less: Hard floor
+]
+
+# Hard caps for rate scoring (never worse/better than this)
+RATE_SCORE_MAX = 2.0
+RATE_SCORE_MIN = -2.0
 
 
 def calculate_distance_score(distance_km: Optional[float]) -> float:
     """
     Calculate distance-based score component using continuous interpolation.
+    Singapore-optimized: accounts for walkability, bus/MRT connections, and peak-hour pain.
     
-    Scoring is continuous and linearly interpolated between tier boundaries:
-    - 0km: +5.0 (perfect match)
-    - 0-500m: +5.0 to +4.0 (very close)
-    - 500m-1.5km: +4.0 to +3.0 (close)
-    - 1.5-3km: +3.0 to +2.0 (moderate)
-    - 3-5km: +2.0 to +1.0 (acceptable)
-    - 5-10km: +1.0 to 0.0 (neutral)
-    - > 10km: -2.0 (far, penalty)
+    Breakpoints (km → score):
+    - 0.0 km   → +5.0 (walkable distance)
+    - 0.8 km   → +4.0 (1-2 bus stops)
+    - 1.8 km   → +3.0 (short feeder bus / 1 MRT stop)
+    - 3.5 km   → +2.0 (time uncertainty starts)
+    - 6.0 km   → +1.0 (peak-hour pain begins)
+    - 10.0 km  →  0.0 (neutral threshold)
+    - >12.0 km → -1.5 (hard floor - tutors actively avoid)
     
     Args:
         distance_km: Distance in kilometers, or None if not available
         
     Returns:
-        Distance score contribution (continuous value)
+        Distance score contribution (continuous value, clamped to [-1.5, +5.0])
     """
     if distance_km is None:
         # No distance info (e.g., online assignments) - neutral
@@ -75,27 +87,17 @@ def calculate_distance_score(distance_km: Optional[float]) -> float:
     
     dist = float(distance_km)
     
-    # Beyond 10km: constant penalty
-    if dist > DISTANCE_TIER_5_KM:
-        return DISTANCE_SCORE_FAR
-    
-    # Define tier boundaries and scores
-    tiers = [
-        (0.0, DISTANCE_SCORE_0KM),
-        (DISTANCE_TIER_1_KM, DISTANCE_SCORE_TIER_1),
-        (DISTANCE_TIER_2_KM, DISTANCE_SCORE_TIER_2),
-        (DISTANCE_TIER_3_KM, DISTANCE_SCORE_TIER_3),
-        (DISTANCE_TIER_4_KM, DISTANCE_SCORE_TIER_4),
-        (DISTANCE_TIER_5_KM, DISTANCE_SCORE_TIER_5),
-    ]
+    # Beyond last breakpoint: use hard floor
+    if dist >= DISTANCE_BREAKPOINTS[-1][0]:
+        return DISTANCE_SCORE_MIN
     
     # Find which tier range we're in and interpolate
-    for i in range(len(tiers) - 1):
-        km_lower, score_lower = tiers[i]
-        km_upper, score_upper = tiers[i + 1]
+    for i in range(len(DISTANCE_BREAKPOINTS) - 1):
+        km_lower, score_lower = DISTANCE_BREAKPOINTS[i]
+        km_upper, score_upper = DISTANCE_BREAKPOINTS[i + 1]
         
         if km_lower <= dist <= km_upper:
-            # Linear interpolation between the two tier boundaries
+            # Linear interpolation between the two breakpoints
             if km_upper == km_lower:
                 return score_lower
             
@@ -104,9 +106,11 @@ def calculate_distance_score(distance_km: Optional[float]) -> float:
             
             # Interpolate between scores
             score = score_lower + (score_upper - score_lower) * position
-            return score
+            
+            # Clamp to valid range (safety check)
+            return max(DISTANCE_SCORE_MIN, min(5.0, score))
     
-    # Should not reach here, but return neutral as fallback
+    # Fallback: return neutral
     return 0.0
 
 
@@ -117,13 +121,21 @@ def calculate_rate_score(
 ) -> float:
     """
     Calculate rate-based score component using continuous interpolation.
+    Singapore-optimized: accounts for tutor psychology and anchoring to historical average.
     
-    Compares assignment rate against tutor's historical average with smooth scaling:
-    - Rate significantly above average (>20%): bonus from 0 to +3.0 (max at 50%+ above)
-    - Rate around average (±20%): neutral (0.0)
-    - Rate significantly below average (<-20%): penalty from 0 to -2.0 (max at 50%+ below)
+    Rate difference → Score mapping:
+    - +25% or more  → +2.0 (hard cap)
+    - +15%          → +1.5
+    - +10%          → +1.0
+    - +5%           → +0.5
+    - 0%            →  0.0 (neutral, at average)
+    - -5%           → -0.5
+    - -10%          → -1.0
+    - -15%          → -1.5
+    - -25% or less  → -2.0 (hard floor)
     
     Scoring is continuous and smoothly interpolated based on percentage difference.
+    Rate should never overpower distance + subject fit combined.
     
     Args:
         assignment_rate_min: Assignment minimum rate
@@ -131,7 +143,7 @@ def calculate_rate_score(
         tutor_avg_rate: Tutor's historical average rate (or None if no history)
         
     Returns:
-        Rate score contribution (continuous value)
+        Rate score contribution (continuous value, clamped to [-2.0, +2.0])
     """
     # If no rate info, neutral
     if assignment_rate_min is None or assignment_rate_min <= 0:
@@ -147,39 +159,36 @@ def calculate_rate_score(
     if tutor_avg_rate is None or tutor_avg_rate <= 0:
         return 0.0
     
-    # Calculate percentage difference from tutor's average
-    rate_diff_pct = ((assignment_rate - tutor_avg_rate) / tutor_avg_rate) * 100.0
+    # Calculate percentage difference from tutor's average (as decimal, not percentage)
+    delta = (assignment_rate - tutor_avg_rate) / tutor_avg_rate
     
-    # Continuous scaling for bonuses and penalties
-    if rate_diff_pct > RATE_BONUS_THRESHOLD_PCT:
-        # High pay - continuous bonus
-        # 20% above = 0.0, 50% above = max bonus (+3.0)
-        # Linear interpolation between threshold and max
-        excess_pct = rate_diff_pct - RATE_BONUS_THRESHOLD_PCT
-        scale = min(1.0, excess_pct / 30.0)  # 30% range (20% to 50%)
-        return scale * RATE_BONUS_MAX
-        
-    elif rate_diff_pct < -RATE_PENALTY_THRESHOLD_PCT:
-        # Low pay - continuous penalty
-        # -30% below = 0.0, -60% below = max penalty (-2.0)
-        # Linear interpolation between threshold and max
-        deficit_pct = abs(rate_diff_pct) - RATE_PENALTY_THRESHOLD_PCT
-        scale = min(1.0, deficit_pct / 30.0)  # 30% range (30% to 60%)
-        return scale * RATE_PENALTY_MAX
-        
-    elif rate_diff_pct > 0:
-        # Between 0% and +20%: gradual ramp from 0.0 to 0.0
-        # Smooth transition into bonus zone
-        return 0.0
-        
-    elif rate_diff_pct < 0:
-        # Between 0% and -30%: gradual ramp from 0.0 to 0.0
-        # Smooth transition into penalty zone
-        return 0.0
+    # Beyond the extreme breakpoints: use hard caps
+    if delta >= RATE_BREAKPOINTS[0][0]:
+        return RATE_SCORE_MAX
+    if delta <= RATE_BREAKPOINTS[-1][0]:
+        return RATE_SCORE_MIN
     
-    else:
-        # Exactly at average
-        return 0.0
+    # Find which range we're in and interpolate
+    for i in range(len(RATE_BREAKPOINTS) - 1):
+        delta_lower, score_lower = RATE_BREAKPOINTS[i]
+        delta_upper, score_upper = RATE_BREAKPOINTS[i + 1]
+        
+        if delta_upper <= delta <= delta_lower:
+            # Linear interpolation between the two breakpoints
+            if delta_lower == delta_upper:
+                return score_lower
+            
+            # Calculate position within this range (0.0 to 1.0)
+            position = (delta - delta_lower) / (delta_upper - delta_lower)
+            
+            # Interpolate between scores
+            score = score_lower + (score_upper - score_lower) * position
+            
+            # Clamp to valid range (safety check)
+            return max(RATE_SCORE_MIN, min(RATE_SCORE_MAX, score))
+    
+    # Fallback: return neutral
+    return 0.0
 
 
 def calculate_assignment_rating(
