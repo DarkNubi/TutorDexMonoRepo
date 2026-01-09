@@ -107,7 +107,12 @@ create table if not exists public.assignments (
   last_seen timestamptz not null default now(),
   bump_count int not null default 0,
   freshness_tier text not null default 'green',
-  status text not null default 'open'
+  status text not null default 'open',
+
+  -- duplicate detection fields (added 2026-01-09)
+  duplicate_group_id bigint,
+  is_primary_in_group boolean not null default true,
+  duplicate_confidence_score decimal(5,2)
 );
 
 -- Additive upgrades for older DBs (avoid failures when creating indexes/functions).
@@ -264,6 +269,16 @@ alter table public.assignments
 alter table public.assignments
   add column if not exists status text;
 
+-- duplicate detection columns (added 2026-01-09)
+alter table public.assignments
+  add column if not exists duplicate_group_id bigint;
+
+alter table public.assignments
+  add column if not exists is_primary_in_group boolean;
+
+alter table public.assignments
+  add column if not exists duplicate_confidence_score decimal(5,2);
+
 create unique index if not exists assignments_agency_external_id_uq
   on public.assignments (agency_id, external_id);
 
@@ -310,6 +325,75 @@ create index if not exists assignments_signals_specific_levels_gin
 
 create index if not exists assignments_signals_streams_gin
   on public.assignments using gin (signals_streams);
+
+-- duplicate detection indices (added 2026-01-09)
+create index if not exists assignments_duplicate_group_idx
+  on public.assignments (duplicate_group_id)
+  where duplicate_group_id is not null;
+
+create index if not exists assignments_is_primary_idx
+  on public.assignments (is_primary_in_group, status)
+  where is_primary_in_group = true and status = 'open';
+
+create index if not exists assignments_duplicate_confidence_idx
+  on public.assignments (duplicate_confidence_score desc)
+  where duplicate_confidence_score is not null;
+
+create index if not exists assignments_duplicate_lookup_idx
+  on public.assignments (duplicate_group_id, is_primary_in_group, status)
+  where duplicate_group_id is not null;
+
+-- --------------------------------------------------------------------------------
+-- Duplicate detection tables (added 2026-01-09)
+-- --------------------------------------------------------------------------------
+
+create table if not exists public.assignment_duplicate_groups (
+  id bigserial primary key,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary_assignment_id bigint references public.assignments(id) on delete set null,
+  member_count int not null default 2,
+  avg_confidence_score decimal(5,2),
+  status text not null default 'active',
+  detection_algorithm_version text not null default 'v1_revised',
+  meta jsonb default '{}'::jsonb
+);
+
+create index if not exists duplicate_groups_primary_idx
+  on public.assignment_duplicate_groups (primary_assignment_id)
+  where primary_assignment_id is not null;
+
+create index if not exists duplicate_groups_status_idx
+  on public.assignment_duplicate_groups (status)
+  where status = 'active';
+
+create index if not exists duplicate_groups_created_at_idx
+  on public.assignment_duplicate_groups (created_at desc);
+
+create table if not exists public.duplicate_detection_config (
+  id bigserial primary key,
+  config_key text not null unique,
+  config_value jsonb not null,
+  description text,
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+
+-- Add foreign key constraint for duplicate_group_id (needs to be after table creation)
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.table_constraints
+    where constraint_name = 'assignments_duplicate_group_id_fkey'
+      and table_name = 'assignments'
+  ) then
+    alter table public.assignments
+      add constraint assignments_duplicate_group_id_fkey
+      foreign key (duplicate_group_id)
+      references public.assignment_duplicate_groups(id)
+      on delete set null;
+  end if;
+end $$;
 
 -- --------------------------------------------------------------------------------
 -- RPC (function) compatibility
@@ -499,7 +583,8 @@ create or replace function public.list_open_assignments_v2(
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
-  p_min_rate integer default null
+  p_min_rate integer default null,
+  p_show_duplicates boolean default true  -- NEW: filter duplicates
 )
 returns table(
   id bigint,
@@ -580,6 +665,11 @@ filtered as (
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
+    -- NEW: Duplicate filter
+    and (
+      coalesce(p_show_duplicates, true) = true  -- Show all if true
+      or is_primary_in_group = true  -- Only show primary if false
+    )
 ),
 scored as (
   select

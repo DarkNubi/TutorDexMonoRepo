@@ -197,10 +197,52 @@ def _classify_dm_error(*, status_code: Optional[int], error: Optional[str]) -> s
     return "error"
 
 
+def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
+    """
+    Check if DM should be sent for this assignment.
+    Returns False if assignment is non-primary duplicate.
+    
+    Environment variable DM_FILTER_DUPLICATES (default: true) controls this behavior.
+    """
+    # Check if DM duplicate filtering is enabled
+    filter_enabled = _truthy(os.environ.get("DM_FILTER_DUPLICATES", "true"))
+    if not filter_enabled:
+        return True
+    
+    # Get duplicate metadata from parsed data
+    parsed = payload.get("parsed") or {}
+    is_primary = parsed.get("is_primary_in_group", True)
+    
+    # If assignment is non-primary, skip DM
+    if not is_primary:
+        duplicate_group_id = parsed.get("duplicate_group_id")
+        logger.info(
+            f"Skipping DM for non-primary duplicate assignment",
+            extra={
+                "assignment_id": parsed.get("id"),
+                "duplicate_group_id": duplicate_group_id,
+                "reason": "non_primary_duplicate"
+            }
+        )
+        try:
+            from observability_metrics import dm_skipped_duplicate_total
+            dm_skipped_duplicate_total.inc()
+        except Exception:
+            pass
+        return False
+    
+    return True
+
+
 def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not DM_ENABLED:
         log_event(logger, logging.DEBUG, "dm_skipped", reason="dm_disabled")
         return {"ok": False, "skipped": True, "reason": "dm_disabled"}
+    
+    # Check if we should skip this assignment due to duplicate filtering
+    if not _should_send_dm_for_assignment(payload):
+        log_event(logger, logging.INFO, "dm_skipped", reason="non_primary_duplicate")
+        return {"ok": True, "skipped": True, "reason": "non_primary_duplicate", "matched": 0, "sent": 0}
 
     try:
         from broadcast_assignments import build_inline_keyboard, build_message_text

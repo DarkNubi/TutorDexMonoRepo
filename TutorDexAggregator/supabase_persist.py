@@ -34,6 +34,52 @@ except Exception:
     _obs_versions = None  # type: ignore
 
 
+# Duplicate detection integration
+def _should_run_duplicate_detection() -> bool:
+    """Check if duplicate detection should run (environment variable)"""
+    return _truthy(os.environ.get("DUPLICATE_DETECTION_ENABLED"))
+
+
+def _run_duplicate_detection_async(assignment_id: int, cfg: SupabaseConfig):
+    """
+    Run duplicate detection asynchronously (non-blocking)
+    
+    This runs in a separate thread to avoid blocking the main persist operation.
+    Failures in duplicate detection do not affect assignment persistence.
+    """
+    import threading
+    
+    def _detect():
+        try:
+            from duplicate_detector import detect_duplicates_for_assignment  # type: ignore
+            
+            group_id = detect_duplicates_for_assignment(
+                assignment_id,
+                supabase_url=cfg.url,
+                supabase_key=cfg.key
+            )
+            
+            if group_id:
+                logger.info(
+                    f"Duplicate detection completed for assignment {assignment_id}",
+                    extra={"assignment_id": assignment_id, "duplicate_group_id": group_id}
+                )
+            else:
+                logger.debug(
+                    f"No duplicates found for assignment {assignment_id}",
+                    extra={"assignment_id": assignment_id}
+                )
+        except Exception as e:
+            logger.warning(
+                f"Duplicate detection failed for assignment {assignment_id}: {e}",
+                extra={"assignment_id": assignment_id, "error": str(e)}
+            )
+    
+    # Run in background thread (non-blocking)
+    thread = threading.Thread(target=_detect, daemon=True)
+    thread.start()
+
+
 def _truthy(value: Optional[str]) -> bool:
     if value is None:
         return False
@@ -1040,6 +1086,11 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             res = {"ok": ok, "action": "updated", "status_code": patch_resp.status_code, "get_ms": get_ms, "patch_ms": patch_ms}
             res["total_ms"] = round((timed() - t_all) * 1000.0, 2)
             log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_persist_result", **res)
+            
+            # Duplicate detection (after successful update, only if re-extraction occurred)
+            if ok and _should_run_duplicate_detection():
+                _run_duplicate_detection_async(existing.get("id"), cfg)
+            
             return res
 
         row_to_insert = dict(row)
@@ -1100,6 +1151,13 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         res = {"ok": ok, "action": "inserted", "status_code": insert_resp.status_code, "get_ms": get_ms, "insert_ms": insert_ms}
         res["total_ms"] = round((timed() - t_all) * 1000.0, 2)
         log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_persist_result", **res)
+        
+        # Duplicate detection (after successful insert)
+        if ok and _should_run_duplicate_detection():
+            inserted_rows = _coerce_rows(insert_resp) if insert_resp.status_code < 400 else []
+            if inserted_rows and inserted_rows[0].get("id"):
+                _run_duplicate_detection_async(inserted_rows[0]["id"], cfg)
+        
         return res
 
 
