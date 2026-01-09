@@ -274,6 +274,44 @@ dm_rate_limited_total = Counter(
 )
 
 
+# ----------------------------
+# Duplicate Detection
+# ----------------------------
+duplicate_detected_total = Counter(
+    "tutordex_duplicate_detected_total",
+    "Total number of duplicates detected.",
+    ["confidence_level", "pipeline_version"],
+)
+
+duplicate_group_size = Histogram(
+    "tutordex_duplicate_group_size",
+    "Size of duplicate groups.",
+    buckets=[2, 3, 4, 5, 10, 20, 50],
+)
+
+duplicate_detection_seconds = Histogram(
+    "tutordex_duplicate_detection_seconds",
+    "Time taken to detect duplicates for a single assignment.",
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
+)
+
+dm_skipped_duplicate_total = Counter(
+    "tutordex_dm_skipped_duplicate_total",
+    "DMs skipped due to duplicate filtering.",
+)
+
+broadcast_skipped_duplicate_total = Counter(
+    "tutordex_broadcast_skipped_duplicate_total",
+    "Broadcasts skipped due to duplicate filtering.",
+)
+
+duplicate_detection_errors_total = Counter(
+    "tutordex_duplicate_detection_errors_total",
+    "Errors during duplicate detection.",
+    ["error_type"],
+)
+
+
 def set_version_metrics(*, component: str, v: Optional[Versions] = None) -> Versions:
     v = v or versions()
     if component == "collector":

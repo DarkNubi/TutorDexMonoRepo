@@ -735,6 +735,12 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
 
     If no bot configuration is present, write the payload to a local file for manual handling.
     
+    Duplicate Filtering:
+    - Controlled by BROADCAST_DUPLICATE_MODE environment variable
+    - Modes: 'all' (default), 'primary_only', 'primary_with_note'
+    - 'primary_only': Only broadcast primary assignment from duplicate groups
+    - 'primary_with_note': Broadcast primary with note about other agencies
+    
     Args:
         payload: Assignment payload to broadcast
         target_chats: Optional list of chat IDs to override TARGET_CHATS.
@@ -772,6 +778,29 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     pv = str(payload.get("pipeline_version") or "").strip() or v.pipeline_version
     sv = str(payload.get("schema_version") or "").strip() or v.schema_version
     assignment_id = _derive_external_id_for_tracking(payload)
+    
+    # Check duplicate filtering mode
+    duplicate_mode = os.environ.get("BROADCAST_DUPLICATE_MODE", "all").strip().lower()
+    if duplicate_mode in ("primary_only", "primary_with_note"):
+        parsed = payload.get("parsed") or {}
+        is_primary = parsed.get("is_primary_in_group", True)
+        
+        if not is_primary:
+            # Skip broadcasting non-primary duplicates
+            logger.info(
+                f"Skipping broadcast for non-primary duplicate (mode={duplicate_mode})",
+                extra={
+                    "assignment_id": assignment_id,
+                    "duplicate_group_id": parsed.get("duplicate_group_id"),
+                    "duplicate_mode": duplicate_mode
+                }
+            )
+            try:
+                from observability_metrics import broadcast_skipped_duplicate_total
+                broadcast_skipped_duplicate_total.inc()
+            except Exception:
+                pass
+            return {"ok": True, "skipped": True, "reason": "non_primary_duplicate", "mode": duplicate_mode}
 
     with bind_log_context(
         cid=cid,

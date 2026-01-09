@@ -53,10 +53,6 @@ services:
       - redis
     ports:
       - "0.0.0.0:8000:8000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`backend.tutordex.local`)"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     volumes:
       - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
     environment:
@@ -173,10 +169,6 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "0.0.0.0:${PROMETHEUS_PORT:-9090}:9090"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`prometheus.tutordex.local`)"
-      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
     networks:
       - tutordex
     depends_on:
@@ -197,10 +189,6 @@ services:
       - tutordex
     depends_on:
       - alertmanager-telegram
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.tutordex.local`)"
-      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
 
   alertmanager-telegram:
     build: ./observability/alertmanager-telegram
@@ -208,9 +196,6 @@ services:
       - ./TutorDexAggregator/.env
     networks:
       - tutordex
-
-
-  # promtail removed (not needed without Loki)
 
   grafana:
     image: grafana/grafana:10.4.2
@@ -220,20 +205,21 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
       GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+
     volumes:
       - grafana_data:/var/lib/grafana
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
     ports:
       - "0.0.0.0:${GRAFANA_PORT:-3300}:3000"
+
     networks:
       - tutordex
+
     depends_on:
       - prometheus
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.tutordex.local`)"
-      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
@@ -256,10 +242,6 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - tutordex
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.cadvisor.rule=Host(`cadvisor.tutordex.local`)"
-      - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
@@ -290,34 +272,6 @@ services:
       - "--config.file=/etc/blackbox_exporter/config.yml"
     networks:
       - tutordex
-
-  
-
-  # otel-collector removed
-
-  traefik:
-    image: traefik:v2.10
-    restart: unless-stopped
-    command:
-      - "--api.insecure=true"
-      - "--providers.file.filename=/etc/traefik/dynamic.yml"
-      - "--providers.file.watch=true"
-      - "--entryPoints.web.address=:80"
-      - "--entryPoints.websecure.address=:443"
-      - "--log.level=INFO"
-    ports:
-      - "0.0.0.0:8082:80"
-      - "0.0.0.0:8081:8080" # dashboard bound to 0.0.0.0 (host port chosen to avoid conflicts)
-    volumes:
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
-    networks:
-      - tutordex
-
-  # ===========================
-  # Sentry (Self-Hosted Error Tracking)
-  # ===========================
-
-  # Sentry removed: using cloud-hosted Sentry instead of self-hosting
 
 networks:
   tutordex:

@@ -394,6 +394,7 @@ class TutorUpsert(BaseModel):
     teaching_locations: Optional[List[str]] = None
     contact_phone: Optional[str] = None
     contact_telegram_handle: Optional[str] = None
+    desired_assignments_per_day: Optional[int] = Field(None, description="Target number of assignments per day (default: 10)")
 
 
 class MatchPayloadRequest(BaseModel):
@@ -724,11 +725,16 @@ async def list_assignments(
     learning_mode: Optional[str] = None,
     location: Optional[str] = None,
     min_rate: Optional[int] = None,
+    show_duplicates: Optional[bool] = True,  # NEW: Filter duplicates
     tutor_type: Optional[str] = None,
 ) -> Response:
     """
     Public listing endpoint for the website.
     Requires DB RPC `public.list_open_assignments` (see TutorDexAggregator/supabase sqls).
+    
+    New Parameters:
+        show_duplicates: If false, only shows primary assignments from each duplicate group.
+                         Default is true (show all assignments).
     """
     if not sb.enabled():
         raise HTTPException(status_code=503, detail="supabase_disabled")
@@ -834,6 +840,7 @@ async def list_assignments(
         learning_mode=_clean_opt_str(learning_mode),
         location_query=_clean_opt_str(location),
         min_rate=int(min_rate) if min_rate is not None else None,
+        show_duplicates=bool(show_duplicates) if show_duplicates is not None else True,  # NEW parameter
         tutor_type=_clean_opt_str(tutor_type),
     )
     if not result:
@@ -957,6 +964,171 @@ async def assignment_facets(
     return JSONResponse(content=payload)
 
 
+# ================================================================================
+# Duplicate Detection Endpoints
+# ================================================================================
+
+@app.get("/assignments/{assignment_id}/duplicates")
+async def get_assignment_duplicates(
+    request: Request,
+    assignment_id: int,
+) -> Response:
+    """
+    Get all assignments in the same duplicate group as the specified assignment.
+    Returns an array of assignment data including duplicate metadata.
+    
+    Query Parameters:
+        - assignment_id: ID of the assignment to get duplicates for
+    
+    Returns:
+        - ok: boolean
+        - assignment_id: int - The queried assignment ID
+        - duplicate_group_id: int | null - Group ID if duplicates exist
+        - is_primary: boolean - Whether this assignment is primary in its group
+        - confidence_score: float | null - Similarity score (0-100)
+        - duplicates: array - List of duplicate assignments (empty if no duplicates)
+    
+    Status Codes:
+        - 200: Success (even if no duplicates found)
+        - 404: Assignment not found
+        - 503: Supabase disabled
+    """
+    if not sb.enabled():
+        raise HTTPException(status_code=503, detail="supabase_disabled")
+    
+    try:
+        # Get the assignment
+        assignment_query = f"assignments?id=eq.{assignment_id}&select=id,duplicate_group_id,is_primary_in_group,duplicate_confidence_score&limit=1"
+        assignment_resp = sb.client.get(assignment_query, timeout=10)
+        
+        if assignment_resp.status_code != 200:
+            logger.error(f"Failed to fetch assignment {assignment_id}: {assignment_resp.status_code}")
+            raise HTTPException(status_code=500, detail="fetch_failed")
+        
+        assignments = assignment_resp.json()
+        if not assignments:
+            raise HTTPException(status_code=404, detail="assignment_not_found")
+        
+        assignment = assignments[0]
+        duplicate_group_id = assignment.get("duplicate_group_id")
+        
+        # If no duplicate group, return empty duplicates list
+        if not duplicate_group_id:
+            return JSONResponse(content={
+                "ok": True,
+                "assignment_id": assignment_id,
+                "duplicate_group_id": None,
+                "is_primary": True,
+                "confidence_score": None,
+                "duplicates": []
+            })
+        
+        # Get all assignments in the duplicate group
+        duplicates_query = (
+            f"assignments?duplicate_group_id=eq.{duplicate_group_id}"
+            f"&status=eq.open"
+            f"&select=id,agency_name,assignment_code,is_primary_in_group,duplicate_confidence_score,published_at,postal_code,subjects_canonical,signals_levels,rate_min,rate_max"
+            f"&order=is_primary_in_group.desc,duplicate_confidence_score.desc.nullslast,published_at.asc"
+        )
+        duplicates_resp = sb.client.get(duplicates_query, timeout=10)
+        
+        if duplicates_resp.status_code != 200:
+            logger.error(f"Failed to fetch duplicates for group {duplicate_group_id}: {duplicates_resp.status_code}")
+            raise HTTPException(status_code=500, detail="fetch_duplicates_failed")
+        
+        duplicates = duplicates_resp.json()
+        
+        return JSONResponse(content={
+            "ok": True,
+            "assignment_id": assignment_id,
+            "duplicate_group_id": duplicate_group_id,
+            "is_primary": assignment.get("is_primary_in_group", True),
+            "confidence_score": float(assignment["duplicate_confidence_score"]) if assignment.get("duplicate_confidence_score") else None,
+            "duplicates": duplicates
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching duplicates for assignment {assignment_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="internal_error")
+
+
+@app.get("/duplicate-groups/{group_id}")
+async def get_duplicate_group(
+    request: Request,
+    group_id: int,
+) -> Response:
+    """
+    Get detailed information about a duplicate group, including all member assignments.
+    
+    Query Parameters:
+        - group_id: ID of the duplicate group
+    
+    Returns:
+        - ok: boolean
+        - group: object with group metadata
+        - assignments: array of all assignments in the group
+    
+    Status Codes:
+        - 200: Success
+        - 404: Group not found
+        - 503: Supabase disabled
+    """
+    if not sb.enabled():
+        raise HTTPException(status_code=503, detail="supabase_disabled")
+    
+    try:
+        # Get group metadata
+        group_query = f"assignment_duplicate_groups?id=eq.{group_id}&select=*&limit=1"
+        group_resp = sb.client.get(group_query, timeout=10)
+        
+        if group_resp.status_code != 200:
+            logger.error(f"Failed to fetch duplicate group {group_id}: {group_resp.status_code}")
+            raise HTTPException(status_code=500, detail="fetch_failed")
+        
+        groups = group_resp.json()
+        if not groups:
+            raise HTTPException(status_code=404, detail="group_not_found")
+        
+        group = groups[0]
+        
+        # Get all assignments in the group
+        assignments_query = (
+            f"assignments?duplicate_group_id=eq.{group_id}"
+            f"&status=eq.open"
+            f"&select=id,agency_name,assignment_code,is_primary_in_group,duplicate_confidence_score,published_at,postal_code,subjects_canonical,signals_levels,rate_min,rate_max,message_link"
+            f"&order=is_primary_in_group.desc,duplicate_confidence_score.desc.nullslast,published_at.asc"
+        )
+        assignments_resp = sb.client.get(assignments_query, timeout=10)
+        
+        if assignments_resp.status_code != 200:
+            logger.error(f"Failed to fetch assignments for group {group_id}: {assignments_resp.status_code}")
+            raise HTTPException(status_code=500, detail="fetch_assignments_failed")
+        
+        assignments = assignments_resp.json()
+        
+        return JSONResponse(content={
+            "ok": True,
+            "group": {
+                "id": group["id"],
+                "primary_assignment_id": group.get("primary_assignment_id"),
+                "member_count": group.get("member_count", 0),
+                "avg_confidence_score": float(group["avg_confidence_score"]) if group.get("avg_confidence_score") else None,
+                "status": group.get("status", "active"),
+                "created_at": group.get("created_at"),
+                "updated_at": group.get("updated_at"),
+            },
+            "assignments": assignments
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching duplicate group {group_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="internal_error")
+
+
 def _auth_required() -> bool:
     return str(os.environ.get("AUTH_REQUIRED") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
 
@@ -1038,6 +1210,7 @@ def upsert_tutor(request: Request, tutor_id: str, req: TutorUpsert) -> Dict[str,
         teaching_locations=req.teaching_locations,
         contact_phone=req.contact_phone,
         contact_telegram_handle=req.contact_telegram_handle,
+        desired_assignments_per_day=req.desired_assignments_per_day,
     )
 
 
@@ -1071,6 +1244,9 @@ def match_payload(request: Request, req: MatchPayloadRequest) -> Dict[str, Any]:
                 "score": r.score,
                 "reasons": r.reasons,
                 "distance_km": r.distance_km,
+                "rating": r.rating,
+                "rate_min": r.rate_min,
+                "rate_max": r.rate_max,
             }
             for r in results
         ],
@@ -1087,7 +1263,7 @@ def me(request: Request) -> Dict[str, Any]:
 @app.get("/me/tutor")
 def me_get_tutor(request: Request) -> Dict[str, Any]:
     uid = _require_uid(request)
-    tutor = store.get_tutor(uid) or {"tutor_id": uid}
+    tutor = store.get_tutor(uid) or {"tutor_id": uid, "desired_assignments_per_day": 10}
 
     if sb.enabled():
         user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
@@ -1106,6 +1282,7 @@ def me_get_tutor(request: Request) -> Dict[str, Any]:
                         "assignment_types": prefs.get("assignment_types") or tutor.get("assignment_types") or [],
                         "tutor_kinds": prefs.get("tutor_kinds") or tutor.get("tutor_kinds") or [],
                         "learning_modes": prefs.get("learning_modes") or tutor.get("learning_modes") or [],
+                        "desired_assignments_per_day": prefs.get("desired_assignments_per_day") if prefs.get("desired_assignments_per_day") is not None else tutor.get("desired_assignments_per_day", 10),
                         "updated_at": prefs.get("updated_at") or tutor.get("updated_at"),
                     }
                 )
@@ -1185,6 +1362,7 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
         teaching_locations=req.teaching_locations,
         contact_phone=req.contact_phone,
         contact_telegram_handle=req.contact_telegram_handle,
+        desired_assignments_per_day=req.desired_assignments_per_day,
     )
 
     if sb.enabled():
@@ -1202,6 +1380,8 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
                 prefs["postal_code"] = postal_code
                 prefs["postal_lat"] = postal_lat
                 prefs["postal_lon"] = postal_lon
+            if req.desired_assignments_per_day is not None:
+                prefs["desired_assignments_per_day"] = req.desired_assignments_per_day
             sb.upsert_preferences(
                 user_id=user_id,
                 prefs=prefs,

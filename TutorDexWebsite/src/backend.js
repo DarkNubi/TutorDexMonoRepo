@@ -88,6 +88,16 @@ export async function getRecentMatchCounts({ levels, subjects, subjectsCanonical
   });
 }
 
+export async function fetchAssignmentDuplicates(assignmentId) {
+  if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
+  return backendFetch(`/assignments/${assignmentId}/duplicates`);
+}
+
+export async function fetchDuplicateGroup(groupId) {
+  if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
+  return backendFetch(`/duplicate-groups/${groupId}`);
+}
+
 export async function trackEvent({ eventType, assignmentExternalId, agencyName, meta } = {}) {
   if (!isBackendEnabled()) return { ok: false, skipped: true, reason: "backend_disabled" };
   return backendFetch("/analytics/event", {
@@ -161,6 +171,7 @@ export async function listOpenAssignmentsPaged({
   location = null,
   minRate = null,
   tutorType = null,
+  showDuplicates = true,
 } = {}) {
   if (!isBackendEnabled()) throw new Error("Backend not configured (VITE_BACKEND_URL missing).");
 
@@ -179,6 +190,7 @@ export async function listOpenAssignmentsPaged({
   if (learningMode) params.set("learning_mode", String(learningMode));
   if (location) params.set("location", String(location));
   if (minRate !== null && minRate !== undefined && String(minRate).trim() !== "") params.set("min_rate", String(minRate));
+  params.set("show_duplicates", showDuplicates ? "true" : "false");
   if (tutorType) params.set("tutor_type", String(tutorType));
 
   return backendFetch(`/assignments?${params.toString()}`);

@@ -119,6 +119,7 @@ class TutorStore:
         teaching_locations: Any = None,
         contact_phone: Optional[str] = None,
         contact_telegram_handle: Optional[str] = None,
+        desired_assignments_per_day: Optional[int] = None,
     ) -> Dict[str, Any]:
         key = self._tutor_key(tutor_id)
         # Important: Do not overwrite existing fields when the caller omits them.
@@ -161,6 +162,8 @@ class TutorStore:
             doc["contact_phone"] = str(contact_phone).strip()
         if contact_telegram_handle is not None:
             doc["contact_telegram_handle"] = str(contact_telegram_handle).strip()
+        if desired_assignments_per_day is not None:
+            doc["desired_assignments_per_day"] = str(int(desired_assignments_per_day))
 
         pipe = self.r.pipeline()
         pipe.hset(key, mapping=doc)
@@ -207,6 +210,15 @@ class TutorStore:
         raw = self.r.hgetall(key)
         if not raw:
             return None
+        
+        # Parse desired_assignments_per_day with default of 10
+        desired_per_day = 10
+        if raw.get("desired_assignments_per_day"):
+            try:
+                desired_per_day = int(raw.get("desired_assignments_per_day"))
+            except Exception:
+                desired_per_day = 10
+        
         return {
             "tutor_id": raw.get("tutor_id") or tutor_id,
             "chat_id": raw.get("chat_id"),
@@ -222,6 +234,7 @@ class TutorStore:
             "teaching_locations": _json_loads(raw.get("teaching_locations")) or [],
             "contact_phone": raw.get("contact_phone") or "",
             "contact_telegram_handle": raw.get("contact_telegram_handle") or "",
+            "desired_assignments_per_day": desired_per_day,
             "updated_at": raw.get("updated_at"),
         }
 
