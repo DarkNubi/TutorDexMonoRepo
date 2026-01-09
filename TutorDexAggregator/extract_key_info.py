@@ -222,8 +222,8 @@ PROMPT_FOOTER = (
     "- tutor_types: an array of objects, each with \"canonical\", \"original\", \"agency\", and \"confidence\" properties (use null or [] when absent).\n"
     "- rate_breakdown: an object mapping canonical tutor_type to an object with \"min\", \"max\", \"currency\", \"unit\", \"original_text\", and \"confidence\" properties (use null when absent).\n"
     "Example fragment:\n"
-    "  \"tutor_types\": [{\"canonical\": \"part-timer\", \"original\": \"PT\", \"agency\": null, \"confidence\": 0.9}],\n"
-    "  \"rate_breakdown\": {\"part-timer\": {\"min\": 20, \"max\": 30, \"currency\": \"$\", \"unit\": \"hour\", \"original_text\": \"$20-30/hr\", \"confidence\": 0.9}}\n"
+    "  \"tutor_types\": [{{\"canonical\": \"part-timer\", \"original\": \"PT\", \"agency\": null, \"confidence\": 0.9}}],\n"
+    "  \"rate_breakdown\": {{\"part-timer\": {{\"min\": 20, \"max\": 30, \"currency\": \"$\", \"unit\": \"hour\", \"original_text\": \"$20-30/hr\", \"confidence\": 0.9}}}}\n"
 )
 
 EXAMPLES_WRAPPER_HEADER = (
