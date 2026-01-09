@@ -136,6 +136,17 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
 
 
 def fetch_matching_results(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Fetch matching tutors from the backend.
+    
+    Returns list of matches with:
+    - chat_id: Telegram chat ID
+    - tutor_id: User ID for database operations
+    - distance_km: Distance to assignment
+    - score: Base matching score
+    - rating: Overall assignment rating (optional, may be None)
+    - rate_min, rate_max: Assignment rates
+    """
     headers = {"x-api-key": BACKEND_API_KEY} if BACKEND_API_KEY else None
     t0 = timed()
     resp = requests.post(TUTOR_MATCH_URL, json={"payload": payload}, headers=headers, timeout=10)
@@ -152,12 +163,21 @@ def fetch_matching_results(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             chat_id = str(m.get("chat_id") or "").strip()
             if not chat_id:
                 continue
-            out.append({"chat_id": chat_id, "distance_km": m.get("distance_km")})
+            out.append({
+                "chat_id": chat_id,
+                "tutor_id": m.get("tutor_id"),
+                "distance_km": m.get("distance_km"),
+                "score": m.get("score"),
+                "rating": m.get("rating"),
+                "rate_min": m.get("rate_min"),
+                "rate_max": m.get("rate_max"),
+            })
         log_event(logger, logging.DEBUG, "dm_match_ok", matched=len(out), match_ms=match_ms)
         return out
 
+    # Backward compatibility: old format with just chat_ids
     chat_ids = _coerce_chat_ids(data.get("chat_ids"))
-    out = [{"chat_id": cid, "distance_km": None} for cid in chat_ids]
+    out = [{"chat_id": cid, "distance_km": None, "tutor_id": None, "score": 0, "rating": None, "rate_min": None, "rate_max": None} for cid in chat_ids]
     log_event(logger, logging.DEBUG, "dm_match_ok", matched=len(out), match_ms=match_ms)
     return out
 

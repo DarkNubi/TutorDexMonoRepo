@@ -392,6 +392,7 @@ class TutorUpsert(BaseModel):
     teaching_locations: Optional[List[str]] = None
     contact_phone: Optional[str] = None
     contact_telegram_handle: Optional[str] = None
+    desired_assignments_per_day: Optional[int] = Field(None, description="Target number of assignments per day (default: 10)")
 
 
 class MatchPayloadRequest(BaseModel):
@@ -1203,6 +1204,7 @@ def upsert_tutor(request: Request, tutor_id: str, req: TutorUpsert) -> Dict[str,
         teaching_locations=req.teaching_locations,
         contact_phone=req.contact_phone,
         contact_telegram_handle=req.contact_telegram_handle,
+        desired_assignments_per_day=req.desired_assignments_per_day,
     )
 
 
@@ -1236,6 +1238,9 @@ def match_payload(request: Request, req: MatchPayloadRequest) -> Dict[str, Any]:
                 "score": r.score,
                 "reasons": r.reasons,
                 "distance_km": r.distance_km,
+                "rating": r.rating,
+                "rate_min": r.rate_min,
+                "rate_max": r.rate_max,
             }
             for r in results
         ],
@@ -1252,7 +1257,7 @@ def me(request: Request) -> Dict[str, Any]:
 @app.get("/me/tutor")
 def me_get_tutor(request: Request) -> Dict[str, Any]:
     uid = _require_uid(request)
-    tutor = store.get_tutor(uid) or {"tutor_id": uid}
+    tutor = store.get_tutor(uid) or {"tutor_id": uid, "desired_assignments_per_day": 10}
 
     if sb.enabled():
         user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
@@ -1271,6 +1276,7 @@ def me_get_tutor(request: Request) -> Dict[str, Any]:
                         "assignment_types": prefs.get("assignment_types") or tutor.get("assignment_types") or [],
                         "tutor_kinds": prefs.get("tutor_kinds") or tutor.get("tutor_kinds") or [],
                         "learning_modes": prefs.get("learning_modes") or tutor.get("learning_modes") or [],
+                        "desired_assignments_per_day": prefs.get("desired_assignments_per_day") if prefs.get("desired_assignments_per_day") is not None else tutor.get("desired_assignments_per_day", 10),
                         "updated_at": prefs.get("updated_at") or tutor.get("updated_at"),
                     }
                 )
@@ -1350,6 +1356,7 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
         teaching_locations=req.teaching_locations,
         contact_phone=req.contact_phone,
         contact_telegram_handle=req.contact_telegram_handle,
+        desired_assignments_per_day=req.desired_assignments_per_day,
     )
 
     if sb.enabled():
@@ -1367,6 +1374,8 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
                 prefs["postal_code"] = postal_code
                 prefs["postal_lat"] = postal_lat
                 prefs["postal_lon"] = postal_lon
+            if req.desired_assignments_per_day is not None:
+                prefs["desired_assignments_per_day"] = req.desired_assignments_per_day
             sb.upsert_preferences(
                 user_id=user_id,
                 prefs=prefs,
