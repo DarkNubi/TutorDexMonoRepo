@@ -54,6 +54,7 @@ We've completed a comprehensive project review and identified the next three str
 - [TutorDexWebsite](TutorDexWebsite/README.md) - React + Firebase website
 - [Observability](observability/README.md) - Prometheus, Grafana, Loki stack
 - [Duplicate Detection](docs/DUPLICATE_DETECTION_SUMMARY.md) - Cross-agency duplicate assignment handling
+- [Assignment Rating System](docs/assignment_rating_system.md) - **NEW:** Adaptive threshold and quality scoring
 
 **Strategic Context:**
 - [Strategic Vision](TutorDex%20background%20info.txt) - Business goals and monetization strategy
