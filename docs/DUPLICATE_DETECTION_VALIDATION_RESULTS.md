@@ -75,6 +75,62 @@ This document analyzes the production database validation results and provides t
 - **Conclusion**: Always present, but remains a weak signal (5 points)
 - **Action**: Keep weight at 5
 
+#### 10. Address - Needs Validation ⚠️
+- **Status**: NOT YET VALIDATED
+- **Database field**: `address` (text array)
+- **Potential value**: Address could provide additional confidence when postal codes are missing or fuzzy
+- **Concerns**: 
+  - Same location may have multiple address formats (e.g., "Blk 123" vs "Block 123")
+  - Addresses may be incomplete or abbreviated differently
+  - Address matching is computationally expensive (string similarity)
+- **Recommendation**: 
+  - **Run validation query** to check address coverage and format consistency
+  - If coverage >70% and addresses are relatively consistent, consider as **supplementary signal (5-10 points)**
+  - Use fuzzy string matching (e.g., Levenshtein distance) for address comparison
+  - **Postal code remains PRIMARY** because it's more reliable and standardized
+
+**SQL Query to Validate Address**:
+```sql
+-- Check address coverage and format
+SELECT 
+    COUNT(*) FILTER (WHERE address IS NOT NULL AND array_length(address, 1) > 0) as with_address,
+    COUNT(*) FILTER (WHERE address IS NULL OR array_length(address, 1) = 0) as without_address,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE address IS NOT NULL AND array_length(address, 1) > 0) / COUNT(*), 2) as pct_with_address
+FROM public.assignments
+WHERE status = 'open';
+
+-- Sample addresses to understand format
+SELECT 
+    address,
+    postal_code,
+    COUNT(*) as count
+FROM public.assignments
+WHERE status = 'open'
+    AND address IS NOT NULL
+    AND array_length(address, 1) > 0
+GROUP BY address, postal_code
+ORDER BY count DESC
+LIMIT 20;
+
+-- Check if same postal has consistent addresses
+SELECT 
+    unnest(postal_code) as postal,
+    array_agg(DISTINCT unnest(address) ORDER BY unnest(address)) as addresses,
+    COUNT(DISTINCT unnest(address)) as num_address_variants
+FROM public.assignments
+WHERE status = 'open'
+    AND postal_code IS NOT NULL
+    AND array_length(postal_code, 1) > 0
+    AND address IS NOT NULL
+    AND array_length(address, 1) > 0
+GROUP BY postal
+HAVING COUNT(DISTINCT unnest(address)) > 1
+ORDER BY num_address_variants DESC
+LIMIT 20;
+```
+
+**Decision**: Address validation is RECOMMENDED but NOT REQUIRED for initial implementation. Postal code (50 pts) is sufficient as PRIMARY signal. Address can be added in Phase 2 if validation shows good coverage and consistency.
+
 ---
 
 ## Tuned Algorithm Parameters

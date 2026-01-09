@@ -154,6 +154,80 @@ LIMIT 20;
 
 ---
 
+### 2.5 Address Assumptions (ADDITIONAL VALIDATION RECOMMENDED)
+
+**Assumption 2.5.1**: Address field may provide additional location confidence  
+**Assumption 2.5.2**: Addresses might have format variations (e.g., "Blk 123" vs "Block 123")  
+**Assumption 2.5.3**: Address matching would require fuzzy string comparison  
+**Assumption 2.5.4**: Postal code is more reliable than address for duplicate detection  
+
+**SQL Queries to Validate**:
+
+```sql
+-- Query 2.5.1: Address coverage
+SELECT 
+    COUNT(*) FILTER (WHERE address IS NOT NULL AND array_length(address, 1) > 0) as with_address,
+    COUNT(*) FILTER (WHERE address IS NULL OR array_length(address, 1) = 0) as without_address,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE address IS NOT NULL AND array_length(address, 1) > 0) / COUNT(*), 2) as pct_with_address
+FROM public.assignments
+WHERE status = 'open';
+
+-- Query 2.5.2: Sample addresses to understand format
+SELECT 
+    unnest(address) as address_sample,
+    unnest(COALESCE(postal_code, postal_code_estimated, ARRAY[]::text[])) as postal,
+    COUNT(*) as count
+FROM public.assignments
+WHERE status = 'open'
+    AND address IS NOT NULL
+    AND array_length(address, 1) > 0
+GROUP BY address_sample, postal
+ORDER BY count DESC
+LIMIT 30;
+
+-- Query 2.5.3: Check address consistency for same postal code
+SELECT 
+    postal,
+    COUNT(DISTINCT address_text) as num_address_variants,
+    array_agg(DISTINCT address_text ORDER BY address_text) as address_variants
+FROM (
+    SELECT 
+        unnest(COALESCE(postal_code, postal_code_estimated, ARRAY[]::text[])) as postal,
+        unnest(address) as address_text
+    FROM public.assignments
+    WHERE status = 'open'
+        AND address IS NOT NULL
+        AND array_length(address, 1) > 0
+) sub
+WHERE postal ~ '^\d{6}$'
+GROUP BY postal
+HAVING COUNT(DISTINCT address_text) > 1
+ORDER BY num_address_variants DESC
+LIMIT 20;
+
+-- Query 2.5.4: Compare assignments with same address but different postal codes
+SELECT 
+    address_text,
+    COUNT(DISTINCT postal) as num_postal_codes,
+    array_agg(DISTINCT postal ORDER BY postal) as postal_codes,
+    COUNT(*) as num_assignments
+FROM (
+    SELECT 
+        unnest(address) as address_text,
+        unnest(COALESCE(postal_code, postal_code_estimated, ARRAY[]::text[])) as postal
+    FROM public.assignments
+    WHERE status = 'open'
+        AND address IS NOT NULL
+        AND array_length(address, 1) > 0
+) sub
+GROUP BY address_text
+HAVING COUNT(DISTINCT postal) > 1
+ORDER BY num_postal_codes DESC, num_assignments DESC
+LIMIT 20;
+```
+
+---
+
 ### 3. Subject and Level Assumptions
 
 **Assumption 3.1**: Most assignments have subjects extracted  
@@ -590,6 +664,11 @@ LIMIT 10;
 ### Nice to Validate
 9. **Time availability**: Coverage and structure
 10. **False positive scenarios**: What edge cases exist?
+
+### Additional Validation (RECOMMENDED)
+11. **Address field**: Coverage? Format consistency? Would it improve detection accuracy?
+    - Run queries 2.5.1 through 2.5.4 to assess if address should be added as supplementary signal
+    - Consider as 5-10 point signal if coverage >70% and formats are relatively consistent
 
 ---
 
