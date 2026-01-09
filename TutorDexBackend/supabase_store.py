@@ -343,10 +343,14 @@ class SupabaseStore:
         learning_mode: Optional[str] = None,
         location_query: Optional[str] = None,
         min_rate: Optional[int] = None,
+        show_duplicates: bool = True,  # NEW: Filter duplicates
     ) -> Optional[Dict[str, Any]]:
         """
         RPC wrapper for `public.list_open_assignments_v2` (must be installed in DB).
         Returns: { "items": [...], "total": int }
+        
+        New Parameter:
+            show_duplicates: If False, filters to only primary assignments from duplicate groups.
         """
         if not self.client:
             return None
@@ -368,6 +372,7 @@ class SupabaseStore:
             "p_learning_mode": learning_mode,
             "p_location_query": location_query,
             "p_min_rate": int(min_rate) if min_rate is not None else None,
+            "p_show_duplicates": bool(show_duplicates),  # NEW parameter
         }
         payload = {k: v for k, v in payload.items() if v is not None}
 

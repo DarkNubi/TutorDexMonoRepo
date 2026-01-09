@@ -583,7 +583,8 @@ create or replace function public.list_open_assignments_v2(
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
-  p_min_rate integer default null
+  p_min_rate integer default null,
+  p_show_duplicates boolean default true  -- NEW: filter duplicates
 )
 returns table(
   id bigint,
@@ -664,6 +665,11 @@ filtered as (
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
+    -- NEW: Duplicate filter
+    and (
+      coalesce(p_show_duplicates, true) = true  -- Show all if true
+      or is_primary_in_group = true  -- Only show primary if false
+    )
 ),
 scored as (
   select
