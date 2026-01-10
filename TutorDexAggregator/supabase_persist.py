@@ -40,7 +40,7 @@ def _should_run_duplicate_detection() -> bool:
     return _truthy(os.environ.get("DUPLICATE_DETECTION_ENABLED"))
 
 
-def _run_duplicate_detection_async(assignment_id: int, cfg: SupabaseConfig):
+def _run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
     """
     Run duplicate detection asynchronously (non-blocking)
     
