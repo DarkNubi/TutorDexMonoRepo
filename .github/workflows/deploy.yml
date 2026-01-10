@@ -1,15 +1,11 @@
 name: Deploy via Tailscale + OpenSSH
 
 on:
-  pull_request:
+  push:
     branches: ["main"]
-    types: [closed]
 
 jobs:
   deploy:
-    # Only run if PR was merged
-    if: github.event.pull_request.merged == true && github.event.pull_request.merge_commit_sha != null
-
     runs-on: ubuntu-latest
 
     steps:
@@ -22,7 +18,7 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      # 2️⃣ Setup SSH key (Windows OpenSSH key)
+      # 2️⃣ Setup SSH key
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -30,12 +26,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SERVER_TS_IP }} >> ~/.ssh/known_hosts
 
-      # 3️⃣ Deploy via normal SSH (NOT Tailscale SSH)
+      # 3️⃣ Deploy via SSH (username has space)
       - name: Deploy to Windows server
         run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }} "
-            cd D:/TutorDex &&
-            git pull --ff-only &&
-            docker compose pull &&
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" << 'EOF'
+            cd /d D:/TutorDex
+            git pull --ff-only
+            docker compose pull
             docker compose up -d --build
-          "
+          EOF
