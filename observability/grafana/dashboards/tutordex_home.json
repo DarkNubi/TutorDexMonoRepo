@@ -10,7 +10,7 @@
     {
       "asDropdown": true,
       "icon": "external link",
-      "includeVars": true,
+      "includeVars": false,
       "keepTime": true,
       "tags": [
         "tutordex"
@@ -25,96 +25,31 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Number of DM notifications sent per assignment over time",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "Down"
+                }
+              },
+              "type": "value"
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "options": {
-        "legend": {
-          "calcs": [
-            "last",
-            "mean",
-            "max"
+            {
+              "options": {
+                "1": {
+                  "color": "green",
+                  "text": "Up"
+                }
+              },
+              "type": "value"
+            }
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "expr": "rate(dm_sent_total[5m]) / rate(worker_parse_success_total[5m])",
-          "legendFormat": "DMs per Assignment",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "title": "Tutor Matching: DMs per Assignment",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Distribution of matched tutors for assignments",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -123,12 +58,8 @@
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 5
-              },
-              {
                 "color": "green",
-                "value": 10
+                "value": 1
               }
             ]
           },
@@ -137,93 +68,38 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
+        "h": 4,
+        "w": 4,
+        "x": 0,
         "y": 0
       },
-      "id": 2,
+      "id": 1,
       "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": ""
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "textMode": "value_and_name"
       },
       "targets": [
         {
-          "expr": "rate(dm_sent_total[1h]) / rate(worker_parse_success_total[1h])",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "up{job=\"tutordex_collector\"}",
+          "legendFormat": "Collector",
+          "refId": "A"
         }
       ],
-      "title": "Average Tutors Matched per Assignment",
-      "type": "gauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Total notifications sent in the last 24 hours",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 0
-      },
-      "id": 3,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "sum"
-          ],
-          "fields": ""
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "text": {}
-      },
-      "targets": [
-        {
-          "expr": "sum(increase(dm_sent_total[24h])) + sum(increase(broadcast_sent_total[24h]))",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "title": "Total Notifications (24h)",
+      "title": "Collector",
       "type": "stat"
     },
     {
@@ -231,226 +107,174 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Breakdown of notification delivery by channel type",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "Down"
+                }
+              },
+              "type": "value"
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "mappings": [],
+            {
+              "options": {
+                "1": {
+                  "color": "green",
+                  "text": "Up"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
               {
                 "color": "green",
-                "value": null
+                "value": 1
               }
             ]
           },
-          "unit": "ops/s"
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
       },
-      "id": 4,
+      "id": 2,
       "options": {
-        "legend": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "last",
-            "mean",
-            "max"
+            "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "textMode": "value_and_name"
       },
       "targets": [
         {
-          "expr": "sum(rate(broadcast_sent_total[5m])) * 60",
-          "legendFormat": "Broadcast (channel)",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "sum(rate(dm_sent_total[5m])) * 60",
-          "legendFormat": "Direct Messages",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
+          },
+          "expr": "up{job=\"tutordex_worker\"}",
+          "legendFormat": "Worker",
+          "refId": "A"
         }
       ],
-      "title": "Notification Delivery Rate by Channel (per minute)",
-      "type": "timeseries"
+      "title": "Worker",
+      "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Success rates for different notification channels",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "Down"
+                }
+              },
+              "type": "value"
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "mappings": [],
+            {
+              "options": {
+                "1": {
+                  "color": "green",
+                  "text": "Up"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A",
+                "color": "red",
                 "value": null
               },
               {
-                "color": "#FADE2A",
-                "value": 0.9
-              },
-              {
-                "color": "#37872D",
-                "value": 0.95
+                "color": "green",
+                "value": 1
               }
             ]
           },
-          "unit": "ops/s",
-          "min": 0,
-          "max": 1
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
       },
-      "id": 5,
+      "id": 3,
       "options": {
-        "legend": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "last",
-            "mean",
-            "max"
+            "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "textMode": "value_and_name"
       },
       "targets": [
         {
-          "expr": "sum(rate(broadcast_sent_total[5m])) / (sum(rate(broadcast_sent_total[5m])) + sum(rate(broadcast_fail_total[5m])))",
-          "legendFormat": "Broadcast Success Rate",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "sum(rate(dm_sent_total[5m])) / (sum(rate(dm_sent_total[5m])) + sum(rate(dm_fail_total[5m])))",
-          "legendFormat": "DM Success Rate",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
+          },
+          "expr": "up{job=\"tutordex_backend\"}",
+          "legendFormat": "Backend",
+          "refId": "A"
         }
       ],
-      "title": "Delivery Success Rates by Channel",
-      "type": "timeseries"
+      "title": "Backend",
+      "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "DM rate limiting incidents over time",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -466,7 +290,163 @@
               },
               {
                 "color": "red",
-                "value": 5
+                "value": 3
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"critical\"})",
+          "legendFormat": "Critical",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Critical Alerts",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "orange",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"warning\"})",
+          "legendFormat": "Warning",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Warning Alerts",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -476,9 +456,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
-        "y": 16
+        "y": 4
       },
       "id": 6,
       "options": {
@@ -499,16 +479,16 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(dm_rate_limited_total[10m]))",
-          "legendFormat": "Rate Limit Incidents",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "sum(rate(worker_parse_success_total[5m])) * 3600",
+          "legendFormat": "Assignments/Hour",
+          "refId": "A"
         }
       ],
-      "title": "DM Rate Limiting Incidents",
+      "title": "Assignment Creation Rate",
       "type": "timeseries"
     },
     {
@@ -516,104 +496,80 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Failure reasons for DM delivery",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true
-          },
           "mappings": [],
+          "max": 1,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "#37872D",
+                "color": "#C4162A",
                 "value": null
               },
               {
                 "color": "#FADE2A",
-                "value": 0.01
+                "value": 0.9
               },
               {
-                "color": "#C4162A",
-                "value": 0.05
+                "color": "#37872D",
+                "value": 0.95
               }
             ]
           },
-          "unit": "short"
+          "unit": "ops/s"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
+        "w": 8,
+        "x": 8,
+        "y": 4
       },
       "id": 7,
       "options": {
-        "legend": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "last",
-            "mean",
-            "max"
+            "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
-          "expr": "sum by (reason) (rate(dm_fail_reason_total[5m]))",
-          "legendFormat": "{{reason}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "sum(rate(worker_parse_success_total[1h])) / (sum(rate(worker_parse_success_total[1h])) + sum(rate(worker_parse_failure_total[1h])))",
+          "refId": "A"
         }
       ],
-      "title": "DM Failure Reasons",
-      "type": "timeseries"
+      "title": "Parse Success Rate",
+      "type": "gauge"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Failure reasons for broadcast delivery",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -626,29 +582,28 @@
               "legend": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "#37872D",
+                "color": "green",
                 "value": null
-              },
-              {
-                "color": "#FADE2A",
-                "value": 0.01
-              },
-              {
-                "color": "#C4162A",
-                "value": 0.05
               }
             ]
           },
@@ -658,9 +613,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
+        "w": 8,
+        "x": 16,
+        "y": 4
       },
       "id": 8,
       "options": {
@@ -681,83 +636,139 @@
       },
       "targets": [
         {
-          "expr": "sum by (reason) (rate(broadcast_fail_reason_total[5m]))",
-          "legendFormat": "{{reason}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "queue_pending",
+          "legendFormat": "Pending",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "queue_processing",
+          "legendFormat": "Processing",
+          "refId": "B"
         }
       ],
-      "title": "Broadcast Failure Reasons",
-      "type": "timeseries"
+      "title": "Queue Status",
+      "type": "timeseries",
+      "description": "Queue depth monitoring. High values indicate processing backlog."
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Total notification failures in last 24 hours",
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "id": 9,
+      "options": {
+        "alertInstanceLabelFilter": "",
+        "alertName": "",
+        "dashboardAlerts": false,
+        "groupBy": [
+          "alertname"
+        ],
+        "groupMode": "default",
+        "maxItems": 20,
+        "sortOrder": 1,
+        "stateFilter": {
+          "error": true,
+          "firing": true,
+          "noData": false,
+          "normal": false,
+          "pending": true
+        },
+        "viewMode": "list"
+      },
+      "title": "Active Alerts",
+      "type": "alertlist",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              {
-                "color": "#37872D",
-                "value": null
-              },
-              {
-                "color": "#FADE2A",
-                "value": 0.01
-              },
-              {
-                "color": "#C4162A",
-                "value": 0.05
-              }
-            ]
+            "steps": []
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
           },
-          "unit": "short"
+          "mappings": [],
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 12,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 12
       },
-      "id": 9,
+      "id": 10,
       "options": {
-        "orientation": "auto",
+        "displayMode": "list",
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
         "reduceOptions": {
           "values": false,
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": ""
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "text": {}
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
       },
+      "pluginVersion": "12.3.1",
       "targets": [
         {
-          "expr": "sum(increase(dm_fail_total[24h])) + sum(increase(broadcast_fail_total[24h]))",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "up",
+          "legendFormat": "{{job}} - {{instance}}",
+          "refId": "A"
         }
       ],
-      "title": "Total Notification Failures (24h)",
-      "type": "stat"
+      "title": "All Services Health",
+      "type": "bargauge",
+      "description": "Health monitoring. Check for degraded or down services."
     }
   ],
   "refresh": "30s",
@@ -765,19 +776,19 @@
   "style": "dark",
   "tags": [
     "tutordex",
-    "matching",
-    "notifications"
+    "home",
+    "overview"
   ],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "TutorDex Matching & Notifications",
-  "uid": "tutordex_matching",
+  "title": "TutorDex Home",
+  "uid": "tutordex-home",
   "version": 1
 }

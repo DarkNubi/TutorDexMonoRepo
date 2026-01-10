@@ -1,37 +1,40 @@
 {
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   },
-  "editable": false,
+  "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [
-    {
-      "asDropdown": true,
-      "icon": "external link",
-      "includeVars": true,
-      "keepTime": true,
-      "tags": [
-        "tutordex"
-      ],
-      "title": "All TutorDex Dashboards",
-      "type": "dashboards"
-    }
-  ],
+  "links": [],
   "panels": [
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Message ingestion rate by source channel",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -43,6 +46,7 @@
               "viz": false,
               "legend": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -50,7 +54,14 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -62,7 +73,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "jobs/s"
         },
         "overrides": []
       },
@@ -75,11 +86,7 @@
       "id": 1,
       "options": {
         "legend": {
-          "calcs": [
-            "last",
-            "mean",
-            "max"
-          ],
+          "calcs": ["last", "mean", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -91,16 +98,26 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(collector_messages_seen_total[5m])) * 60",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "rate(worker_jobs_processed_total[5m])",
+          "refId": "A",
+          "legendFormat": "Jobs Processed"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(worker_jobs_failed_total[5m])",
+          "refId": "B",
+          "legendFormat": "Jobs Failed"
         }
       ],
-      "title": "Messages per Channel (messages/min)",
+      "title": "Worker Processing Rate",
+      "description": "Rate of jobs processed and failed by extraction workers. Higher processing rate indicates good throughput.",
       "type": "timeseries"
     },
     {
@@ -108,11 +125,10 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Total messages seen in last 24 hours by channel",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
@@ -121,6 +137,14 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 100
               }
             ]
           },
@@ -136,43 +160,47 @@
       },
       "id": 2,
       "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
         "reduceOptions": {
           "values": false,
-          "calcs": [
-            "sum"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": ""
         },
-        "showUnfilled": true
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
       },
+      "pluginVersion": "12.3.1",
       "targets": [
         {
-          "expr": "sum by (channel) (increase(collector_messages_seen_total[24h]))",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "sum(extraction_queue_pending)",
+          "refId": "A"
         }
       ],
-      "title": "Total Messages by Channel (24h)",
-      "type": "bargauge"
+      "title": "Queue Backlog",
+      "description": "Current number of pending jobs in the extraction queue. High values indicate workers can't keep up with demand.",
+      "type": "gauge"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Parse success rate by source channel",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -184,6 +212,7 @@
               "viz": false,
               "legend": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -191,46 +220,100 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "#C4162A",
+                "color": "green",
                 "value": null
-              },
-              {
-                "color": "#FADE2A",
-                "value": 0.9
-              },
-              {
-                "color": "#37872D",
-                "value": 0.95
               }
             ]
           },
-          "unit": "ops/s",
-          "max": 1,
-          "min": 0
+          "unit": "s"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Queue Wait"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LLM Processing"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Database Operations"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#37872D",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Broadcast/DM"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#C4162A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 8
       },
       "id": 3,
       "options": {
         "legend": {
-          "calcs": [
-            "last",
-            "mean",
-            "max"
-          ],
+          "calcs": ["last", "mean"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -242,16 +325,44 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(worker_parse_success_total[10m])) / (sum by (channel) (rate(worker_parse_success_total[10m])) + sum by (channel) (rate(worker_parse_failure_total[10m])))",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "avg(worker_queue_wait_seconds)",
+          "refId": "A",
+          "legendFormat": "Queue Wait"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(worker_llm_processing_seconds)",
+          "refId": "B",
+          "legendFormat": "LLM Processing"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(worker_database_seconds)",
+          "refId": "C",
+          "legendFormat": "Database Operations"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(worker_broadcast_seconds)",
+          "refId": "D",
+          "legendFormat": "Broadcast/DM"
         }
       ],
-      "title": "Parse Success Rate by Channel",
+      "title": "Per-Stage Latency Breakdown",
+      "description": "Average time spent in each stage of job processing. Identifies bottlenecks in the pipeline.",
       "type": "timeseries"
     },
     {
@@ -259,11 +370,132 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Time since last message from each channel",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "jobs/min"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": ["last", "mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(worker_jobs_processed_total[5m]) * 60",
+          "refId": "A",
+          "legendFormat": "Worker Throughput (jobs/min)"
+        }
+      ],
+      "title": "Worker Throughput Trends",
+      "description": "Jobs processed per minute over time. Measures overall worker efficiency and capacity utilization.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -275,19 +507,15 @@
               },
               {
                 "color": "yellow",
-                "value": 300
-              },
-              {
-                "color": "orange",
-                "value": 600
+                "value": 15
               },
               {
                 "color": "red",
-                "value": 1800
+                "value": 30
               }
             ]
           },
-          "unit": "s"
+          "unit": "jobs/min"
         },
         "overrides": []
       },
@@ -295,95 +523,12 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "expr": "time() - collector_last_message_timestamp_seconds",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "title": "Channel Staleness (seconds since last message)",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Assignments successfully created by source channel",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
         "y": 16
       },
       "id": 5,
       "options": {
         "legend": {
-          "calcs": [
-            "last",
-            "mean",
-            "max"
-          ],
+          "calcs": ["last", "mean"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -395,16 +540,17 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(worker_parse_success_total[5m])) * 60",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "rate(worker_jobs_processed_total[5m]) * 60 / count(up{job=\"worker\"})",
+          "refId": "A",
+          "legendFormat": "Efficiency (jobs/min/worker)"
         }
       ],
-      "title": "Assignments Created by Channel (per minute)",
+      "title": "Worker Efficiency Metrics",
+      "description": "Jobs processed per minute per worker instance. Lower values may indicate resource constraints or inefficiencies.",
       "type": "timeseries"
     },
     {
@@ -412,13 +558,15 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Error rate by source channel",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -430,6 +578,7 @@
               "viz": false,
               "legend": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -437,98 +586,14 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": true
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#37872D",
-                "value": null
-              },
-              {
-                "color": "#FADE2A",
-                "value": 0.01
-              },
-              {
-                "color": "#C4162A",
-                "value": 0.05
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 6,
-      "options": {
-        "legend": {
-          "calcs": [
-            "last",
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum by (channel) (rate(collector_errors_total[5m]))",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "title": "Collector Errors by Channel",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Conversion rate from messages to assignments by channel",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -540,9 +605,7 @@
               }
             ]
           },
-          "unit": "ops/s",
-          "max": 1,
-          "min": 0
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -552,14 +615,10 @@
         "x": 0,
         "y": 24
       },
-      "id": 7,
+      "id": 6,
       "options": {
         "legend": {
-          "calcs": [
-            "last",
-            "mean",
-            "max"
-          ],
+          "calcs": ["last", "mean", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -571,16 +630,17 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(worker_parse_success_total[30m])) / sum by (channel) (rate(collector_messages_seen_total[30m]))",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "avg(rate(process_cpu_seconds_total{job=\"worker\"}[5m])) * 100",
+          "refId": "A",
+          "legendFormat": "CPU Usage"
         }
       ],
-      "title": "Message \u2192 Assignment Conversion Rate by Channel",
+      "title": "Worker CPU Utilization",
+      "description": "Average CPU usage across all worker instances. High values (>80%) may indicate resource constraints.",
       "type": "timeseries"
     },
     {
@@ -588,11 +648,42 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Best performing channels by assignments created",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -604,7 +695,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "decbytes"
         },
         "overrides": []
       },
@@ -614,80 +705,49 @@
         "x": 12,
         "y": 24
       },
-      "id": 8,
+      "id": 7,
       "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "sum"
-          ],
-          "fields": ""
+        "legend": {
+          "calcs": ["last", "mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "showUnfilled": true
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "expr": "sum by (channel) (increase(worker_parse_success_total[24h]))",
-          "legendFormat": "{{channel}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "avg(process_resident_memory_bytes{job=\"worker\"})",
+          "refId": "A",
+          "legendFormat": "Memory Usage"
         }
       ],
-      "title": "Top Performing Channels (24h assignments)",
-      "type": "bargauge"
+      "title": "Worker Memory Utilization",
+      "description": "Average memory usage across all worker instances. Monitor for memory leaks or excessive consumption.",
+      "type": "timeseries"
     }
   ],
-  "refresh": "30s",
+  "refresh": "1m",
   "schemaVersion": 41,
-  "style": "dark",
-  "tags": [
-    "tutordex",
-    "channels",
-    "performance"
-  ],
+  "tags": ["tutordex", "worker", "performance"],
   "templating": {
-    "list": [
-      {
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(collector_messages_seen_total, channel)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "Channel",
-        "multi": true,
-        "name": "channel",
-        "options": [],
-        "query": {
-          "query": "label_values(collector_messages_seen_total, channel)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "TutorDex Channel Performance",
-  "uid": "tutordex_channels",
-  "version": 1
+  "title": "TutorDex Worker Performance",
+  "uid": "tutordex-worker-performance",
+  "version": 0,
+  "weekStart": ""
 }

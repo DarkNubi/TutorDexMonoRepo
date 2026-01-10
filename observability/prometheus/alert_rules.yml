@@ -9,8 +9,10 @@ groups:
           component: observability
         annotations:
           summary: "Prometheus scrape target down ({{ $labels.job }})"
-          description: "Target {{ $labels.instance }} is down for {{ humanizeDuration $value }}."
+          description: "Target {{ $labels.instance }} is down for {{ humanizeDuration $value }}. Check service health immediately."
           runbook: "observability/runbooks/PrometheusTargetDown.md"
+          dashboard: "http://grafana:3300/d/tutordex-infra/tutordex-infra"
+          current_value: "up = {{ $value }}"
 
       - alert: BlackboxProbeFailed
         expr: probe_success == 0
@@ -20,8 +22,10 @@ groups:
           component: observability
         annotations:
           summary: "Health probe failed ({{ $labels.instance }})"
-          description: "Blackbox probe failing for {{ $labels.instance }}."
+          description: "Blackbox probe failing for {{ $labels.instance }}. Service may be unresponsive."
           runbook: "observability/runbooks/BlackboxProbeFailed.md"
+          dashboard: "http://grafana:3300/d/tutordex-infra/tutordex-infra"
+          current_value: "probe_success = {{ $value }}"
 
       - alert: HostDiskLow
         expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) < 0.10
@@ -31,8 +35,10 @@ groups:
           component: infra
         annotations:
           summary: "Host disk low ({{ $labels.mountpoint }})"
-          description: "Disk free < 10% on {{ $labels.mountpoint }} ({{ $labels.device }})."
+          description: "Disk free < 10% on {{ $labels.mountpoint }} ({{ $labels.device }}). Clean up logs or increase storage."
           runbook: "observability/runbooks/HostDiskLow.md"
+          dashboard: "http://grafana:3300/d/tutordex-infra/tutordex-infra"
+          current_value: "disk_free_pct = {{ $value | humanizePercentage }}"
 
       - alert: ContainerRestarted
         expr: changes(container_start_time_seconds{container_label_com_docker_compose_service=~"collector-tail|aggregator-worker|backend|prometheus|alertmanager|grafana"}[15m]) > 0
@@ -42,8 +48,10 @@ groups:
           component: infra
         annotations:
           summary: "Container restarted ({{ $labels.container_label_com_docker_compose_service }})"
-          description: "Service restarted within 15m (name={{ $labels.name }})."
+          description: "Service restarted within 15m (name={{ $labels.name }}). Check logs for crash or OOM."
           runbook: "observability/runbooks/ContainerRestarted.md"
+          dashboard: "http://grafana:3300/d/tutordex-infra/tutordex-infra"
+          restart_count: "{{ $value }} restarts"
 
   - name: tutordex-deadman
     rules:
@@ -82,8 +90,10 @@ groups:
           component: queue
         annotations:
           summary: "Queue backlog growing with zero throughput"
-          description: "pending increased over 15m and worker throughput is 0 (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }})"
+          description: "Pending jobs increased over 15m and worker throughput is 0 (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }}). Worker may be stuck or crashed."
           runbook: "observability/runbooks/QueueBacklogGrowingNoThroughput.md"
+          dashboard: "http://grafana:3300/d/tutordex-overview/tutordex-overview"
+          queue_size: "{{ query \"queue_pending\" | first | value }} jobs pending"
 
       - alert: QueueOldestPendingTooOld
         expr: queue_oldest_pending_age_seconds > 1800
@@ -93,8 +103,10 @@ groups:
           component: queue
         annotations:
           summary: "Oldest pending job too old"
-          description: "oldest pending age={{ humanizeDuration $value }} (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }})"
+          description: "Oldest pending job age={{ humanizeDuration $value }} (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }}). Worker may be overwhelmed."
           runbook: "observability/runbooks/QueueOldestPendingTooOld.md"
+          dashboard: "http://grafana:3300/d/tutordex-overview/tutordex-overview"
+          age_minutes: "{{ $value | humanizeDuration }}"
 
       - alert: QueueStuckProcessing
         expr: queue_oldest_processing_age_seconds > 900
@@ -104,8 +116,10 @@ groups:
           component: queue
         annotations:
           summary: "Jobs stuck in processing"
-          description: "oldest processing age={{ humanizeDuration $value }} (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }})"
+          description: "Oldest processing job age={{ humanizeDuration $value }} (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }}). Job likely deadlocked or worker crashed."
           runbook: "observability/runbooks/QueueStuckProcessing.md"
+          dashboard: "http://grafana:3300/d/tutordex-overview/tutordex-overview"
+          stuck_duration: "{{ $value | humanizeDuration }}"
 
       - alert: LLMFailureSpike
         expr: rate(worker_llm_fail_total[5m]) > 0.2
@@ -115,8 +129,10 @@ groups:
           component: worker
         annotations:
           summary: "LLM failures spiking"
-          description: "LLM fail rate={{ $value | humanize }} /s (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }})"
+          description: "LLM fail rate={{ $value | humanize }} /s (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }}). Check LLM API health and rate limits."
           runbook: "observability/runbooks/LLMFailureSpike.md"
+          dashboard: "http://grafana:3300/d/tutordex-llm-supabase/tutordex-llm-supabase"
+          failure_rate: "{{ $value | humanize }} failures/s"
 
       - alert: SupabaseFailureSpike
         expr: sum by (operation, pipeline_version, schema_version) (rate(worker_supabase_fail_total[5m])) > 0.2
@@ -126,8 +142,11 @@ groups:
           component: worker
         annotations:
           summary: "Supabase failures spiking ({{ $labels.operation }})"
-          description: "Supabase fail rate={{ $value | humanize }} /s (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }})"
+          description: "Supabase fail rate={{ $value | humanize }} /s for {{ $labels.operation }} (pipeline={{ $labels.pipeline_version }}, schema={{ $labels.schema_version }}). Check DB connectivity and quotas."
           runbook: "observability/runbooks/SupabaseFailureSpike.md"
+          dashboard: "http://grafana:3300/d/tutordex-llm-supabase/tutordex-llm-supabase"
+          operation: "{{ $labels.operation }}"
+          failure_rate: "{{ $value | humanize }} failures/s"
 
       - alert: BroadcastFailureSpike
         expr: rate(broadcast_fail_total[5m]) > 0.2
@@ -172,8 +191,10 @@ groups:
           component: worker
         annotations:
           summary: "Parse failures spiking"
-          description: "Parse failure rate={{ $value | humanize }} /s (see reasons via worker_parse_failure_total{reason=...})."
+          description: "Parse failure rate={{ $value | humanize }} /s. Check parse quality dashboard for reasons. Common causes: LLM model change, upstream format change."
           runbook: "observability/runbooks/ParseFailureSpike.md"
+          dashboard: "http://grafana:3300/d/tutordex-quality/tutordex-quality"
+          failure_rate: "{{ $value | humanize }} failures/s"
 
       - alert: ParseErrorFractionHigh
         expr: tutordex:worker:parse_error_fraction > 0.20
@@ -183,8 +204,10 @@ groups:
           component: worker
         annotations:
           summary: "High parse error fraction"
-          description: "Over last 10m, >20% of attempts are failing."
+          description: "Over last 10m, >20% of attempts are failing (current: {{ $value | humanizePercentage }}). Review parse quality dashboard and recent changes."
           runbook: "observability/runbooks/ParseErrorFractionHigh.md"
+          dashboard: "http://grafana:3300/d/tutordex-quality/tutordex-quality"
+          error_rate: "{{ $value | humanizePercentage }}"
 
       - alert: MissingSubjectsHigh
         expr: sum(rate(assignment_quality_missing_field_total{field="signals_subjects"}[30m])) > 0.2

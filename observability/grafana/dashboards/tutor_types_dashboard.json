@@ -1,9 +1,12 @@
 {
   "id": null,
   "title": "Tutor Types Extraction Metrics",
-  "tags": ["tutor_types", "aggregator"],
+  "tags": [
+    "tutor_types",
+    "aggregator"
+  ],
   "timezone": "browser",
-  "schemaVersion": 36,
+  "schemaVersion": 41,
   "version": 1,
   "panels": [
     {
@@ -14,12 +17,40 @@
         {
           "expr": "worker_tutor_types_extracted_total",
           "legendFormat": "channel={{channel}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "datasource": null,
       "lines": true,
-      "linewidth": 2
+      "linewidth": 2,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last",
+            "mean",
+            "max"
+          ]
+        }
+      }
     },
     {
       "type": "graph",
@@ -29,11 +60,39 @@
         {
           "expr": "worker_tutor_types_low_confidence_total",
           "legendFormat": "channel={{channel}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "datasource": null,
-      "lines": true
+      "lines": true,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last",
+            "mean",
+            "max"
+          ]
+        }
+      }
     },
     {
       "type": "graph",
@@ -43,12 +102,85 @@
         {
           "expr": "worker_tutor_types_unmapped_total",
           "legendFormat": "channel={{channel}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "datasource": null,
-      "lines": true
+      "lines": true,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last",
+            "mean",
+            "max"
+          ]
+        }
+      }
     }
   ],
-  "refresh": "30s"
+  "refresh": "30s",
+  "uid": "tutor-types-dashboard",
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(worker_parse_success_total, pipeline_version)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Pipeline Version",
+        "multi": true,
+        "name": "pipeline_version",
+        "options": [],
+        "query": {
+          "query": "label_values(worker_parse_success_total, pipeline_version)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [
+        "tutordex"
+      ],
+      "title": "All TutorDex Dashboards",
+      "type": "dashboards"
+    }
+  ]
 }
