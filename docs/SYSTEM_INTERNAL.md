@@ -177,7 +177,12 @@ Before invoking the LLM, the worker filters raw content in this order:
 1. **Deleted messages**: the worker can mark corresponding assignments closed via `supabase_persist.mark_assignment_closed` (see imports in `extract_worker.py`).
 2. **Forwarded messages**: messages that are forwards from other channels are skipped.
 3. **Empty messages**: messages with no text content are skipped.
-4. **Compilation posts**: multi-assignment aggregator posts are detected and skipped via `compilation_detection.is_compilation`.
+4. **Compilation posts** (updated 2026-01-10): multi-assignment aggregator posts are detected via `compilation_detection.is_compilation`:
+   - Instead of skipping completely, the worker now extracts assignment codes from the compilation using `compilation_extractor.extract_assignment_codes()`
+   - Each extracted code is used to bump the corresponding assignment in the database via `compilation_bump.bump_assignments_by_codes()`
+   - This keeps assignments fresh when they appear in compilation posts without requiring expensive LLM extraction
+   - If no valid codes are found, the compilation is skipped
+   - Bump throttling (default 6 hours minimum between bumps) prevents excessive updates
 5. **Non-assignment messages** (added 2026-01-10): messages that are clearly not assignments are filtered via `extractors/non_assignment_detector.is_non_assignment`:
    - **Status-only messages**: Simple status updates like "ASSIGNMENT CLOSED", "TAKEN", "FILLED", "EXPIRED"
    - **Redirect messages**: References like "Assignment X has been reposted below" or "See above"
@@ -186,7 +191,7 @@ Before invoking the LLM, the worker filters raw content in this order:
    - Detection happens AFTER compilation check but BEFORE LLM call to save costs on non-assignment content.
    - Detected messages are logged with detailed metadata and optionally reported to the triage channel.
 
-This matters operationally: if an agency posts "10 assignments in one message" or a simple status update, TutorDex skips it without wasting LLM API calls.
+This matters operationally: if an agency posts "10 assignments in one message", TutorDex extracts the codes and bumps them. Simple status updates are skipped without wasting LLM API calls.
 #### LLM extraction call
 - Code: `TutorDexAggregator/extract_key_info.py` (worker calls `extract_assignment_with_model`).
 - Transport: OpenAI-compatible HTTP API configured by `LLM_API_URL` (default in `.env.example`: `http://host.docker.internal:1234`).

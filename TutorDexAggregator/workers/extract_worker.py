@@ -29,6 +29,8 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from compilation_detection import is_compilation  # noqa: E402
+from compilation_extractor import extract_assignment_codes  # noqa: E402
+from compilation_bump import bump_assignments_by_codes  # noqa: E402
 from extractors.non_assignment_detector import is_non_assignment, detection_meta  # noqa: E402
 from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta  # noqa: E402
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
@@ -866,15 +868,86 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
 
         is_comp, comp_details = is_compilation(raw_text)
         if is_comp:
-            _mark_extraction(
-                url,
-                key,
-                extraction_id,
-                status="skipped",
-                meta_patch=_with_prompt({"reason": "compilation", "details": comp_details, "ts": _utc_now_iso(), "normalization": norm_meta}),
-                existing_meta=existing_meta,
-                llm_model=llm_model,
-            )
+            # Instead of skipping, extract assignment codes and bump them
+            codes, code_meta = extract_assignment_codes(raw_text)
+            
+            if codes:
+                # Bump assignments by their codes
+                try:
+                    bump_result = bump_assignments_by_codes(
+                        codes,
+                        supabase_url=url,
+                        supabase_key=key,
+                    )
+                    _mark_extraction(
+                        url,
+                        key,
+                        extraction_id,
+                        status="skipped",
+                        meta_patch=_with_prompt({
+                            "reason": "compilation_processed",
+                            "compilation_details": comp_details,
+                            "codes_extracted": code_meta,
+                            "bump_result": bump_result,
+                            "ts": _utc_now_iso(),
+                            "normalization": norm_meta,
+                        }),
+                        existing_meta=existing_meta,
+                        llm_model=llm_model,
+                    )
+                    log_event(
+                        logger,
+                        logging.INFO,
+                        "compilation_processed",
+                        channel=channel_link,
+                        message_id=message_id,
+                        codes_found=len(codes),
+                        bumped=bump_result.get("bumped", 0),
+                    )
+                except Exception as e:
+                    # If bumping fails, log but still skip the message
+                    log_event(
+                        logger,
+                        logging.ERROR,
+                        "compilation_bump_failed",
+                        channel=channel_link,
+                        message_id=message_id,
+                        error=str(e),
+                    )
+                    _mark_extraction(
+                        url,
+                        key,
+                        extraction_id,
+                        status="skipped",
+                        meta_patch=_with_prompt({
+                            "reason": "compilation_bump_failed",
+                            "compilation_details": comp_details,
+                            "codes_extracted": code_meta,
+                            "error": str(e),
+                            "ts": _utc_now_iso(),
+                            "normalization": norm_meta,
+                        }),
+                        existing_meta=existing_meta,
+                        llm_model=llm_model,
+                    )
+            else:
+                # No codes found, just skip
+                _mark_extraction(
+                    url,
+                    key,
+                    extraction_id,
+                    status="skipped",
+                    meta_patch=_with_prompt({
+                        "reason": "compilation_no_codes",
+                        "compilation_details": comp_details,
+                        "codes_extracted": code_meta,
+                        "ts": _utc_now_iso(),
+                        "normalization": norm_meta,
+                    }),
+                    existing_meta=existing_meta,
+                    llm_model=llm_model,
+                )
+            
             return "skipped"
 
         # Check for non-assignment messages (status updates, redirects, administrative posts)
