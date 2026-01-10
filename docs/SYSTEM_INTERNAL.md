@@ -173,12 +173,20 @@ Status tracking (explicit, opt-in):
 - The RPC uses `FOR UPDATE SKIP LOCKED` (defined in `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql`) to avoid double-processing.
 
 #### Filtering (skips)
-Before invoking the LLM, the worker filters raw content:
-- Deleted messages: the worker can mark corresponding assignments closed via `supabase_persist.mark_assignment_closed` (see imports in `extract_worker.py`).
-- “Compilation” posts: multi-assignment aggregator posts are detected and skipped via `compilation_detection.is_compilation`.
+Before invoking the LLM, the worker filters raw content in this order:
+1. **Deleted messages**: the worker can mark corresponding assignments closed via `supabase_persist.mark_assignment_closed` (see imports in `extract_worker.py`).
+2. **Forwarded messages**: messages that are forwards from other channels are skipped.
+3. **Empty messages**: messages with no text content are skipped.
+4. **Compilation posts**: multi-assignment aggregator posts are detected and skipped via `compilation_detection.is_compilation`.
+5. **Non-assignment messages** (added 2026-01-10): messages that are clearly not assignments are filtered via `extractors/non_assignment_detector.is_non_assignment`:
+   - **Status-only messages**: Simple status updates like "ASSIGNMENT CLOSED", "TAKEN", "FILLED", "EXPIRED"
+   - **Redirect messages**: References like "Assignment X has been reposted below" or "See above"
+   - **Administrative/promotional messages**: Announcements and job list compilations like "Calling All Tutors! There are many job opportunities..."
+   - These are detected using conservative heuristics (regex patterns + content markers) to avoid false positives.
+   - Detection happens AFTER compilation check but BEFORE LLM call to save costs on non-assignment content.
+   - Detected messages are logged with detailed metadata and optionally reported to the triage channel.
 
-This matters operationally: if an agency posts “10 assignments in one message”, TutorDex may skip it entirely.
-
+This matters operationally: if an agency posts "10 assignments in one message" or a simple status update, TutorDex skips it without wasting LLM API calls.
 #### LLM extraction call
 - Code: `TutorDexAggregator/extract_key_info.py` (worker calls `extract_assignment_with_model`).
 - Transport: OpenAI-compatible HTTP API configured by `LLM_API_URL` (default in `.env.example`: `http://host.docker.internal:1234`).
@@ -195,6 +203,7 @@ After the LLM output, the worker hardens the extracted data:
 - Code: `TutorDexAggregator/schema_validation.py`.
 - Function: `validate_parsed_assignment(parsed)`.
 - This is a structural check: required fields, expected types, etc.
+- **Important** (updated 2026-01-10): Online-only assignments (learning_mode starting with "Online") do not require address/postal_code/nearest_mrt fields. This supports "Online Tuition", "Online Lesson", etc.
 
 2) **Hard validation (stricter rules)**
 - Code: `TutorDexAggregator/hard_validator.py`.
