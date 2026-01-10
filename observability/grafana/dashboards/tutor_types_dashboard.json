@@ -1,9 +1,12 @@
 {
   "id": null,
   "title": "Tutor Types Extraction Metrics",
-  "tags": ["tutor_types", "aggregator"],
+  "tags": [
+    "tutor_types",
+    "aggregator"
+  ],
   "timezone": "browser",
-  "schemaVersion": 36,
+  "schemaVersion": 39,
   "version": 1,
   "panels": [
     {
@@ -14,7 +17,11 @@
         {
           "expr": "worker_tutor_types_extracted_total",
           "legendFormat": "channel={{channel}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "datasource": null,
@@ -29,7 +36,11 @@
         {
           "expr": "worker_tutor_types_low_confidence_total",
           "legendFormat": "channel={{channel}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "datasource": null,
@@ -43,12 +54,17 @@
         {
           "expr": "worker_tutor_types_unmapped_total",
           "legendFormat": "channel={{channel}}",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "datasource": null,
       "lines": true
     }
   ],
-  "refresh": "30s"
+  "refresh": "30s",
+  "uid": "tutor-types-dashboard"
 }

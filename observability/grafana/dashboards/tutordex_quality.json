@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -7,71 +9,202 @@
   "links": [],
   "panels": [
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
       "targets": [
-        { "expr": "tutordex:worker:parse_error_fraction", "legendFormat": "error_fraction", "refId": "A" }
+        {
+          "expr": "tutordex:worker:parse_error_fraction",
+          "legendFormat": "error_fraction",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
       ],
       "title": "Parse error fraction (10m)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
       "id": 2,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
       "targets": [
-        { "expr": "sum by (reason) (rate(worker_parse_failure_total[10m]))", "legendFormat": "{{reason}}", "refId": "A" }
+        {
+          "expr": "sum by (reason) (rate(worker_parse_failure_total[10m]))",
+          "legendFormat": "{{reason}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
       ],
       "title": "Parse failures by reason (/s)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 7 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
       "id": 3,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
       "targets": [
-        { "expr": "sum by (field) (rate(assignment_quality_missing_field_total[30m]))", "legendFormat": "{{field}}", "refId": "A" }
+        {
+          "expr": "sum by (field) (rate(assignment_quality_missing_field_total[30m]))",
+          "legendFormat": "{{field}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
       ],
       "title": "Missing-field rate (30m)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
       "id": 4,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
       "targets": [
-        { "expr": "sum by (kind) (rate(assignment_quality_inconsistency_total[30m]))", "legendFormat": "{{kind}}", "refId": "A" }
+        {
+          "expr": "sum by (kind) (rate(assignment_quality_inconsistency_total[30m]))",
+          "legendFormat": "{{kind}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
       ],
       "title": "Inconsistency rate (30m)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 14 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
       "id": 5,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
       "targets": [
-        { "expr": "rate(worker_parse_failure_total[5m])", "legendFormat": "parse_fail/s", "refId": "A" }
+        {
+          "expr": "rate(worker_parse_failure_total[5m])",
+          "legendFormat": "parse_fail/s",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
       ],
       "title": "Recent worker failures (metric)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
     }
   ],
   "refresh": "30s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["tutordex"],
-  "templating": { "list": [] },
-  "time": { "from": "now-6h", "to": "now" },
+  "tags": [
+    "tutordex"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
   "title": "TutorDex Quality",
   "uid": "tutordex-quality",
   "version": 1
 }
-
