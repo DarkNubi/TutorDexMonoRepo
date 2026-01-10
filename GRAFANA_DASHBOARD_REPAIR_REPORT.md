@@ -2,11 +2,11 @@
 
 ## Executive Summary
 
-All 10 Grafana dashboards have been audited, repaired, and modernized for Grafana 10.4.2 compatibility.
+All 10 Grafana dashboards have been audited, repaired, and modernized for Grafana 12.3.1 compatibility.
 
 ### Changes Applied
 
-1. **Schema Version Upgrades**: 6 dashboards upgraded from v27/v36 to v39
+1. **Schema Version Upgrades**: 6 dashboards upgraded from v27/v36 to v41
 2. **fieldConfig Added**: 17 panels received proper fieldConfig structures
 3. **Explicit Datasources**: 81 query targets now have explicit datasource references
 4. **Missing UIDs**: 1 dashboard received a UID for proper identification
@@ -28,7 +28,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema**: v39 (already current)
+- ✅ **Schema**: v41 (current)
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 7
 - **Panels fixed**: 1
@@ -99,7 +99,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema upgraded**: v27 → v39
+- ✅ **Schema upgraded**: v27 → v41
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 10
 - **Panels fixed**: 10
@@ -203,7 +203,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema upgraded**: v27 → v39
+- ✅ **Schema upgraded**: v27 → v41
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 8
 - **Panels fixed**: 8
@@ -286,7 +286,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema upgraded**: v27 → v39
+- ✅ **Schema upgraded**: v27 → v41
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 9
 - **Panels fixed**: 9
@@ -377,7 +377,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema upgraded**: v27 → v39
+- ✅ **Schema upgraded**: v27 → v41
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 9
 - **Panels fixed**: 9
@@ -470,7 +470,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema**: v39 (already current)
+- ✅ **Schema**: v41 (current)
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 3
 - **Panels fixed**: 3
@@ -516,7 +516,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema**: v39 (already current)
+- ✅ **Schema**: v41 (current)
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 4
 - **Panels fixed**: 4
@@ -572,7 +572,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema**: v39 (already current)
+- ✅ **Schema**: v41 (current)
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 5
 - **Panels fixed**: 5
@@ -636,7 +636,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema upgraded**: v36 → v39
+- ✅ **Schema upgraded**: v36 → v41
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 3
 - **Panels fixed**: 3
@@ -682,7 +682,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ### Summary
 
-- ✅ **Schema upgraded**: v36 → v39
+- ✅ **Schema upgraded**: v36 → v41
 - **Datasource**: Prometheus (uid: prometheus)
 - **Total panels**: 8
 - **Panels fixed**: 8

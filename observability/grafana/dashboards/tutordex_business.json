@@ -785,7 +785,7 @@
     }
   ],
   "refresh": "30s",
-  "schemaVersion": 39,
+  "schemaVersion": 41,
   "style": "dark",
   "tags": [
     "tutordex",

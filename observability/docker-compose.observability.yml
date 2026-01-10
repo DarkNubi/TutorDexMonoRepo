@@ -50,7 +50,7 @@ services:
   # Loki / Promtail removed from this observability compose file
 
   grafana:
-    image: grafana/grafana:10.4.2
+    image: grafana/grafana:12.3.1
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_USERS_ALLOW_SIGN_UP: "false"
