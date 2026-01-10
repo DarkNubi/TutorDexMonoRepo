@@ -41,7 +41,10 @@ def _is_online_only(learning_mode: Any) -> bool:
             mode = next(iter(learning_mode))
 
     try:
-        return str(mode).strip().lower() == "online"
+        mode_str = str(mode).strip().lower()
+        # Match "online" as exact word or at start (e.g., "Online Tuition", "online lesson")
+        # but not "partially online" or "not online"
+        return mode_str == "online" or mode_str.startswith("online ")
     except Exception:
         return False
 
