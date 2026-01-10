@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        darkMode: 'class',
+        darkMode: "class",
       };
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -130,7 +130,7 @@
     </style>
     <script>
       // Initialize dark mode ASAP to prevent flash
-      (function() {
+      (function () {
         const stored = localStorage.getItem("theme");
         // Default to dark mode
         const shouldBeDark = stored ? stored === "dark" : true;
@@ -141,7 +141,9 @@
     </script>
   </head>
   <body class="overflow-x-hidden dark:bg-gray-900" data-require-auth="true">
-    <nav class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white dark:bg-gray-800 z-50 border-b border-gray-200 dark:border-gray-800 transition duration-300">
+    <nav
+      class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white dark:bg-gray-800 z-50 border-b border-gray-200 dark:border-gray-800 transition duration-300"
+    >
       <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
         <div class="w-10 h-10 bg-black dark:bg-blue-500 text-white flex items-center justify-center font-bold rounded-lg">TD</div>
         <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
@@ -165,20 +167,28 @@
           <i id="theme-icon-sun" class="fa-solid fa-sun text-lg hidden dark:inline"></i>
           <i id="theme-icon-moon" class="fa-solid fa-moon text-lg inline dark:hidden"></i>
         </button>
-        
+
         <details class="md:hidden relative">
           <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-gray-100 transition" aria-label="Open menu">
             <i class="fa-solid fa-bars text-lg"></i>
           </summary>
           <div class="absolute right-0 mt-3 w-56 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-2">
             <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">Assignments</a>
-            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition" aria-current="page">Profile</a>
+            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition" aria-current="page"
+              >Profile</a
+            >
             <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Agencies</span>
             <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Rates</span>
           </div>
         </details>
 
-        <button type="button" data-auth-logout class="bg-black dark:bg-blue-500 text-white px-5 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-blue-600 transition">Log Out</button>
+        <button
+          type="button"
+          data-auth-logout
+          class="bg-black dark:bg-blue-500 text-white px-5 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-blue-600 transition"
+        >
+          Log Out
+        </button>
       </div>
     </nav>
 
@@ -486,13 +496,11 @@
 
         <section class="mb-16">
           <h2 class="text-2xl mb-6">06. Assignment Volume Preference</h2>
-          
+
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label for="desired-assignments-per-day" class="block text-xs font-bold uppercase">
-                Desired Assignments Per Day
-              </label>
-              
+              <label for="desired-assignments-per-day" class="block text-xs font-bold uppercase"> Desired Assignments Per Day </label>
+
               <button
                 type="button"
                 class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full flex items-center gap-1 hover:bg-gray-100"
@@ -502,24 +510,27 @@
                 Info
               </button>
             </div>
-            
-            <input 
-              id="desired-assignments-per-day" 
-              type="number" 
-              min="1" 
-              max="50" 
-              step="1" 
-              value="10" 
-              placeholder="10" 
+
+            <input
+              id="desired-assignments-per-day"
+              type="number"
+              min="1"
+              max="50"
+              step="1"
+              value="10"
+              placeholder="10"
               class="nike-input rounded-lg w-full md:w-48"
             />
-            
+
             <p id="assignments-per-day-info" class="mt-2 text-xs text-gray-500 hidden">
-              This controls how many assignment notifications you want to receive daily. The system uses this to calculate a personalized quality threshold - higher values mean more assignments (including lower-quality matches), lower values mean fewer but higher-quality assignments. Default is 10 per day.
+              This controls how many assignment notifications you want to receive daily. The system uses this to calculate a personalized quality
+              threshold - higher values mean more assignments (including lower-quality matches), lower values mean fewer but higher-quality
+              assignments. Default is 10 per day.
             </p>
-            
+
             <p class="mt-2 text-xs text-gray-500">
-              Set your target daily assignment volume (default: 10). The system will adaptively filter assignments to match your preference based on quality scores.
+              Set your target daily assignment volume (default: 10). The system will adaptively filter assignments to match your preference based on
+              quality scores.
             </p>
           </div>
         </section>
@@ -535,20 +546,20 @@
     </div>
 
     <script type="module" src="/src/page-profile.js"></script>
-    
+
     <script>
       // Theme toggle functionality
-      (function() {
-        const themeToggle = document.getElementById('theme-toggle');
+      (function () {
+        const themeToggle = document.getElementById("theme-toggle");
         if (themeToggle) {
-          themeToggle.addEventListener('click', function() {
-            const isDark = document.documentElement.classList.contains('dark');
+          themeToggle.addEventListener("click", function () {
+            const isDark = document.documentElement.classList.contains("dark");
             if (isDark) {
-              document.documentElement.classList.remove('dark');
-              localStorage.setItem('theme', 'light');
+              document.documentElement.classList.remove("dark");
+              localStorage.setItem("theme", "light");
             } else {
-              document.documentElement.classList.add('dark');
-              localStorage.setItem('theme', 'dark');
+              document.documentElement.classList.add("dark");
+              localStorage.setItem("theme", "dark");
             }
           });
         }
