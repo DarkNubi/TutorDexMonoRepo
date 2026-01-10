@@ -6,7 +6,19 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [
+        "tutordex"
+      ],
+      "title": "All TutorDex Dashboards",
+      "type": "dashboards"
+    }
+  ],
   "panels": [
     {
       "datasource": {
@@ -69,11 +81,12 @@
             "max"
           ],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -99,7 +112,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -164,7 +177,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -255,7 +268,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -271,14 +284,15 @@
           "calcs": [
             "last",
             "mean",
-            "sum"
+            "max"
           ],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -341,12 +355,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#C4162A",
                 "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.9
+              },
+              {
+                "color": "#37872D",
+                "value": 0.95
               }
             ]
           },
-          "unit": "percentunit",
+          "unit": "ops/s",
           "min": 0,
           "max": 1
         },
@@ -363,14 +385,16 @@
         "legend": {
           "calcs": [
             "last",
-            "mean"
+            "mean",
+            "max"
           ],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -446,7 +470,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -460,14 +484,17 @@
       "options": {
         "legend": {
           "calcs": [
-            "sum"
+            "last",
+            "mean",
+            "max"
           ],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -521,8 +548,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.01
+              },
+              {
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },
@@ -541,14 +576,16 @@
         "legend": {
           "calcs": [
             "last",
-            "sum"
+            "mean",
+            "max"
           ],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -602,8 +639,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.01
+              },
+              {
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },
@@ -622,14 +667,16 @@
         "legend": {
           "calcs": [
             "last",
-            "sum"
+            "mean",
+            "max"
           ],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -655,23 +702,23 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 10
+                "color": "#FADE2A",
+                "value": 0.01
               },
               {
-                "color": "red",
-                "value": 50
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },

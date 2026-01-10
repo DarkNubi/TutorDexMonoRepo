@@ -28,7 +28,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -94,7 +94,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -114,7 +114,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -160,7 +160,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -226,7 +226,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -335,7 +335,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -349,6 +349,7 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
             "max"
           ],
@@ -425,7 +426,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -439,6 +440,7 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
             "max"
           ],
@@ -529,7 +531,9 @@
       "options": {
         "legend": {
           "calcs": [
-            "sum"
+            "last",
+            "mean",
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -572,7 +576,24 @@
               "legend": false
             }
           },
-          "mappings": []
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#37872D",
+                "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.01
+              },
+              {
+                "color": "#C4162A",
+                "value": 0.05
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -704,7 +725,9 @@
       "options": {
         "legend": {
           "calcs": [
-            "sum"
+            "last",
+            "mean",
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -758,7 +781,41 @@
     "optimization"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "1 week",
+          "value": "1w"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Compare To",
+        "multi": false,
+        "name": "compare_period",
+        "options": [
+          {
+            "selected": false,
+            "text": "1 day",
+            "value": "1d"
+          },
+          {
+            "selected": true,
+            "text": "1 week",
+            "value": "1w"
+          },
+          {
+            "selected": false,
+            "text": "1 month",
+            "value": "4w"
+          }
+        ],
+        "query": "1d,1w,4w",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
     "from": "now-7d",

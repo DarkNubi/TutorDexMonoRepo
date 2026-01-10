@@ -20,7 +20,7 @@
         "x": 0,
         "y": 0,
         "w": 6,
-        "h": 3
+        "h": 4
       },
       "targets": [
         {
@@ -47,6 +47,10 @@
                 "value": null
               }
             ]
+          },
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
           }
         },
         "overrides": []
@@ -82,6 +86,31 @@
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last",
+            "mean",
+            "max"
+          ]
+        }
       }
     },
     {
@@ -91,7 +120,7 @@
       "gridPos": {
         "x": 0,
         "y": 3,
-        "w": 9,
+        "w": 8,
         "h": 6
       },
       "targets": [
@@ -117,6 +146,31 @@
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last",
+            "mean",
+            "max"
+          ]
+        }
       }
     },
     {
@@ -126,7 +180,7 @@
       "gridPos": {
         "x": 9,
         "y": 3,
-        "w": 9,
+        "w": 8,
         "h": 6
       },
       "targets": [
@@ -152,6 +206,31 @@
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last",
+            "mean",
+            "max"
+          ]
+        }
       }
     },
     {
@@ -161,7 +240,7 @@
       "gridPos": {
         "x": 0,
         "y": 9,
-        "w": 9,
+        "w": 8,
         "h": 6
       },
       "targets": [
@@ -176,7 +255,16 @@
       ],
       "transform": "timeseries_aggregations",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
         "overrides": []
       },
       "datasource": {
@@ -192,7 +280,7 @@
         "x": 9,
         "y": 9,
         "w": 6,
-        "h": 3
+        "h": 4
       },
       "targets": [
         {
@@ -218,6 +306,9 @@
                 "value": null
               }
             ]
+          },
+          "color": {
+            "mode": "palette-classic"
           }
         },
         "overrides": []
@@ -235,7 +326,7 @@
         "x": 15,
         "y": 9,
         "w": 6,
-        "h": 3
+        "h": 4
       },
       "targets": [
         {
@@ -261,6 +352,9 @@
                 "value": null
               }
             ]
+          },
+          "color": {
+            "mode": "palette-classic"
           }
         },
         "overrides": []
@@ -294,13 +388,106 @@
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops/s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last",
+            "mean",
+            "max"
+          ]
+        }
       }
     }
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(collector_messages_seen_total, channel)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Channel",
+        "multi": true,
+        "name": "channel",
+        "options": [],
+        "query": {
+          "query": "label_values(collector_messages_seen_total, channel)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(worker_parse_success_total, pipeline_version)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Pipeline Version",
+        "multi": true,
+        "name": "pipeline_version",
+        "options": [],
+        "query": {
+          "query": "label_values(worker_parse_success_total, pipeline_version)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query"
+      }
+    ]
   },
   "annotations": {
     "list": []
-  }
+  },
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [
+        "tutordex"
+      ],
+      "title": "All TutorDex Dashboards",
+      "type": "dashboards"
+    }
+  ]
 }

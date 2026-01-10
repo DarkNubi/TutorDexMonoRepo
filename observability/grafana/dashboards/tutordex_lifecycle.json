@@ -26,7 +26,7 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 2,
+        "h": 4,
         "w": 24,
         "x": 0,
         "y": 0
@@ -41,7 +41,19 @@
         "content": "# Assignment Lifecycle Funnel\n\nTrack the complete journey from Telegram message to tutor notification. Each stage shows volume and conversion rate.",
         "mode": "markdown"
       },
-      "type": "text"
+      "type": "text",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      }
     },
     {
       "datasource": {
@@ -51,7 +63,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -109,15 +121,23 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#C4162A",
                 "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.9
+              },
+              {
+                "color": "#37872D",
+                "value": 0.95
               }
             ]
           },
@@ -167,7 +187,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -225,7 +245,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -283,7 +303,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -385,7 +405,7 @@
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -399,8 +419,9 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
-            "last"
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -460,7 +481,11 @@
               "legend": false
             }
           },
-          "mappings": []
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
         },
         "overrides": []
       },
@@ -594,10 +619,12 @@
       "options": {
         "legend": {
           "calcs": [
-            "sum"
+            "last",
+            "mean",
+            "max"
           ],
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
@@ -664,8 +691,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.01
+              },
+              {
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },
@@ -683,7 +718,9 @@
       "options": {
         "legend": {
           "calcs": [
-            "sum"
+            "last",
+            "mean",
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -715,7 +752,8 @@
         }
       ],
       "title": "Parse Quality (Success vs Failures)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Error rate monitoring. High values require investigation."
     }
   ],
   "refresh": "1m",
@@ -728,7 +766,62 @@
     "business"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(collector_messages_seen_total, channel)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Channel",
+        "multi": true,
+        "name": "channel",
+        "options": [],
+        "query": {
+          "query": "label_values(collector_messages_seen_total, channel)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(worker_parse_success_total, pipeline_version)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Pipeline Version",
+        "multi": true,
+        "name": "pipeline_version",
+        "options": [],
+        "query": {
+          "query": "label_values(worker_parse_success_total, pipeline_version)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-24h",

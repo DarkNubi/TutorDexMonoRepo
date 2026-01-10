@@ -28,7 +28,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "max": 1,
@@ -37,20 +37,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#FADE2A",
                 "value": 0.95
               },
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": 0.99
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -96,7 +96,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "max": 1,
@@ -105,20 +105,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#FADE2A",
                 "value": 0.9
               },
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": 0.95
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -164,7 +164,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "max": 1,
@@ -173,20 +173,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 0.995
+                "color": "#FADE2A",
+                "value": 0.9
               },
               {
-                "color": "green",
-                "value": 0.999
+                "color": "#37872D",
+                "value": 0.95
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -232,7 +232,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "max": 1,
@@ -241,20 +241,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 0.95
+                "color": "#FADE2A",
+                "value": 0.9
               },
               {
-                "color": "green",
-                "value": 0.98
+                "color": "#37872D",
+                "value": 0.95
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -346,7 +346,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -360,6 +360,7 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
             "max"
           ],
@@ -369,7 +370,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -451,7 +452,7 @@
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -465,8 +466,9 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
-            "last"
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -474,7 +476,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -499,23 +501,23 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#37872D",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 20
+                "color": "#FADE2A",
+                "value": 0.01
               },
               {
-                "color": "green",
-                "value": 50
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },
@@ -605,16 +607,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "red",
-                "value": 0.999
+                "color": "#FADE2A",
+                "value": 0.9
+              },
+              {
+                "color": "#37872D",
+                "value": 0.95
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -628,8 +634,9 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
-            "last"
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -637,7 +644,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -728,7 +735,7 @@
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -742,8 +749,9 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
-            "last"
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -751,7 +759,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [

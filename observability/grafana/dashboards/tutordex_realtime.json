@@ -70,7 +70,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -85,6 +85,7 @@
         "legend": {
           "calcs": [
             "last",
+            "mean",
             "max"
           ],
           "displayMode": "table",
@@ -160,7 +161,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "s"
         },
         "overrides": [
           {
@@ -206,6 +207,7 @@
         "legend": {
           "calcs": [
             "last",
+            "mean",
             "max"
           ],
           "displayMode": "table",
@@ -214,7 +216,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -238,7 +240,8 @@
         }
       ],
       "title": "\ud83d\udd34 LIVE: Queue Depth (real-time)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Queue depth monitoring. High values indicate processing backlog."
     },
     {
       "datasource": {
@@ -285,16 +288,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": null
               },
               {
-                "color": "red",
-                "value": 0.1
+                "color": "#FADE2A",
+                "value": 0.01
+              },
+              {
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },
-          "unit": "ops"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -308,10 +315,12 @@
       "options": {
         "legend": {
           "calcs": [
-            "last"
+            "last",
+            "mean",
+            "max"
           ],
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
@@ -367,7 +376,8 @@
         }
       ],
       "title": "\ud83d\udd34 LIVE: Error Rates (5min window)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Error rate monitoring. High values require investigation."
     },
     {
       "datasource": {
@@ -377,7 +387,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [
             {
@@ -477,7 +487,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -497,7 +507,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -543,7 +553,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -646,8 +656,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.01
+              },
+              {
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },
@@ -665,10 +683,12 @@
       "options": {
         "legend": {
           "calcs": [
-            "sum"
+            "last",
+            "mean",
+            "max"
           ],
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
@@ -688,7 +708,8 @@
         }
       ],
       "title": "Parse Failures by Reason (1min buckets)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Error rate monitoring. High values require investigation."
     }
   ],
   "refresh": "5s",
@@ -700,7 +721,35 @@
     "operations"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(up{job=~\"tutordex.*\"}, job)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": {
+          "query": "label_values(up{job=~\"tutordex.*\"}, job)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-15m",

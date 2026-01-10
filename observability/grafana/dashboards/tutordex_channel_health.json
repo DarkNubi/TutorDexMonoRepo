@@ -28,7 +28,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -100,7 +100,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "max": 1,
@@ -109,20 +109,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 0.85
+                "color": "#FADE2A",
+                "value": 0.9
               },
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": 0.95
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -230,11 +230,12 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
-            "last"
+            "max"
           ],
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
@@ -264,7 +265,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -385,8 +386,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": null
+              },
+              {
+                "color": "#FADE2A",
+                "value": 0.01
+              },
+              {
+                "color": "#C4162A",
+                "value": 0.05
               }
             ]
           },
@@ -404,11 +413,12 @@
       "options": {
         "legend": {
           "calcs": [
+            "last",
             "mean",
             "max"
           ],
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
@@ -428,7 +438,8 @@
         }
       ],
       "title": "Parse Failures by Channel",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Error rate monitoring. High values require investigation."
     },
     {
       "datasource": {
@@ -438,7 +449,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "max": 100,
@@ -447,16 +458,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 70
+                "color": "#FADE2A",
+                "value": 0.9
               },
               {
-                "color": "green",
-                "value": 85
+                "color": "#37872D",
+                "value": 0.95
               }
             ]
           },
@@ -521,7 +532,11 @@
               "legend": false
             }
           },
-          "mappings": []
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
         },
         "overrides": []
       },
@@ -583,7 +598,68 @@
     "monitoring"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(collector_messages_seen_total, channel)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Channel",
+        "multi": true,
+        "name": "channel",
+        "options": [],
+        "query": {
+          "query": "label_values(collector_messages_seen_total, channel)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "1 week",
+          "value": "1w"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Compare To",
+        "multi": false,
+        "name": "compare_period",
+        "options": [
+          {
+            "selected": false,
+            "text": "1 day",
+            "value": "1d"
+          },
+          {
+            "selected": true,
+            "text": "1 week",
+            "value": "1w"
+          },
+          {
+            "selected": false,
+            "text": "1 month",
+            "value": "4w"
+          }
+        ],
+        "query": "1d,1w,4w",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
     "from": "now-24h",

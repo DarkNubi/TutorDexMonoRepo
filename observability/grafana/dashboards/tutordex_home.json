@@ -28,7 +28,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [
             {
@@ -110,7 +110,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [
             {
@@ -192,7 +192,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [
             {
@@ -274,7 +274,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -341,7 +341,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -450,7 +450,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -465,7 +465,8 @@
         "legend": {
           "calcs": [
             "last",
-            "mean"
+            "mean",
+            "max"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -473,7 +474,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -498,7 +499,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "max": 1,
@@ -507,20 +508,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "#C4162A",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 0.8
+                "color": "#FADE2A",
+                "value": 0.9
               },
               {
-                "color": "green",
+                "color": "#37872D",
                 "value": 0.95
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "ops/s"
         },
         "overrides": []
       },
@@ -620,15 +621,17 @@
       "options": {
         "legend": {
           "calcs": [
-            "last"
+            "last",
+            "mean",
+            "max"
           ],
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -652,7 +655,8 @@
         }
       ],
       "title": "Queue Status",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Queue depth monitoring. High values indicate processing backlog."
     },
     {
       "datasource": {
@@ -660,7 +664,7 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 10,
+        "h": 12,
         "w": 12,
         "x": 0,
         "y": 12
@@ -686,7 +690,19 @@
         "viewMode": "list"
       },
       "title": "Active Alerts",
-      "type": "alertlist"
+      "type": "alertlist",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
+        },
+        "overrides": []
+      }
     },
     {
       "datasource": {
@@ -702,12 +718,19 @@
               "legend": false
             }
           },
-          "mappings": []
+          "mappings": [],
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
+        "h": 12,
         "w": 12,
         "x": 12,
         "y": 12
@@ -744,7 +767,8 @@
         }
       ],
       "title": "All Services Health",
-      "type": "bargauge"
+      "type": "bargauge",
+      "description": "Health monitoring. Check for degraded or down services."
     }
   ],
   "refresh": "30s",
