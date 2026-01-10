@@ -643,6 +643,7 @@ returns table(
   freshness_tier text,
   distance_km double precision,
   distance_sort_key double precision,
+  postal_coords_estimated boolean,
   total_count bigint
 )
 language sql
@@ -691,6 +692,8 @@ filtered as (
       coalesce(p_show_duplicates, true) = true  -- Show all if true
       or is_primary_in_group = true  -- Only show primary if false
     )
+    -- NEW: Tutor type filter - expects tutor_types to be array of objects with 'canonical' property
+    -- Format: [{"canonical": "full-timer", "original": "FT", "agency": null, "confidence": 0.9}, ...]
     and (p_tutor_type is null or tutor_types @> jsonb_build_array(jsonb_build_object('canonical', p_tutor_type)))
 ),
 scored as (
@@ -776,6 +779,7 @@ select
   freshness_tier,
   distance_km,
   distance_sort_key,
+  coalesce(postal_coords_estimated, false) as postal_coords_estimated,
   count(*) over() as total_count
 from paged
 order by
