@@ -78,6 +78,8 @@ Think of the system as a pipeline with two optional “sinks”:
 
 - **Small resilience and observability improvements**: Minor retries, structured logs, and atomic state writes were added around recovery state updates and backfill runs to make resumable catchup more robust and observable.
 
+Note on docs upkeep: `docs/SYSTEM_INTERNAL.md` is intended to be the authoritative, up-to-date description of system behaviour. Update this file whenever you change extraction, persistence, or distribution logic (including prompt/schema changes, deterministic signal rollups, or DB persistence heuristics).
+
 ---
 
 ## 2. Monorepo Overview
@@ -211,6 +213,29 @@ After the LLM output, the worker hardens the extracted data:
 - Documentation: `docs/signals.md`.
 
 5) **Deterministic time availability override (important)**
+
+### 3.4 Duplicate assignment detection (cross-agency)
+
+This repo now implements cross-agency duplicate assignment detection to group assignments that are the same upstream posting appearing from multiple agency channels. Key points:
+
+- Purpose: detect the same assignment posted by different agencies, surface a primary/representative assignment, and allow UI/backend/broadcast rules to prefer the primary and avoid duplicate broadcasts.
+- Schema & migration: SQL migration `TutorDexAggregator/supabase sqls/2026-01-09_duplicate_detection.sql` adds `assignment_duplicate_groups` table and assignment columns: `duplicate_group_id`, `is_primary_in_group`, `duplicate_confidence_score` and related indices. Ensure this migration is applied before enabling detection.
+- Config / toggles:
+  - `DUPLICATE_DETECTION_ENABLED` (env) — master switch used by `supabase_persist` to run detection asynchronously.
+  - `BROADCAST_DUPLICATE_MODE` (env) — controls broadcaster behavior: `all` (default), `primary_only`, `primary_with_note`.
+- Detection flow:
+  - After successful insert/update in `persist_assignment_to_supabase`, the code calls an async helper that invokes `duplicate_detector.detect_duplicates_for_assignment(...)` when `DUPLICATE_DETECTION_ENABLED=true`.
+  - The detector computes similarity/score, creates/updates `assignment_duplicate_groups`, sets `duplicate_group_id`, `is_primary_in_group`, and `duplicate_confidence_score` on `public.assignments`.
+  - Thresholds are configurable via the DB `duplicate_detection_config` table (migration seeds sensible thresholds: high=90, medium=70, low=55).
+- API & UI integration:
+  - Backend RPCs and API endpoints support duplicate-aware listing (see `TutorDexBackend/supabase_store.py` parameter `show_duplicates` / `p_show_duplicates`).
+  - Website shows duplicate badges and a Duplicate modal (components: `TutorDexWebsite/src/components/ui/DuplicateBadge.jsx`, `DuplicateModal.jsx`) and calls `/assignments/{id}/duplicates` via `backend.js`.
+  - Broadcaster respects `BROADCAST_DUPLICATE_MODE` and will skip non-primary duplicates when configured.
+- Operator notes:
+  - Apply DB migrations in `TutorDexAggregator/supabase sqls/` before enabling `DUPLICATE_DETECTION_ENABLED=true`.
+  - Use `DUPLICATE_DETECTION_ENABLED=true` in staging first, monitor `duplicate_confidence_score` distributions (Prometheus metrics/logs) and adjust `duplicate_detection_config` values before flipping to production.
+  - When changing duplicate config thresholds, re-run detection for historical assignments using the provided admin utilities in `TutorDexAggregator/duplicate_detector.py` (see docs/DUPLICATE_DETECTION_*.md).
+
 - Code: `TutorDexAggregator/extractors/time_availability.py`.
 - Function: `extract_time_availability(raw_text, ...)`.
 - Toggle: `USE_DETERMINISTIC_TIME=1`.
@@ -276,7 +301,7 @@ Auth enforcement is optional.
 #### Matching endpoint (used by Aggregator for DM sending)
 - `POST /match/payload`.
 - Implementation: `TutorDexBackend/matching.py` → `match_from_payload(store, payload)`.
-- Critical expectation: the Aggregator worker provides deterministic signals in `payload.meta.signals.signals` (subjects + levels) so matching is stable.
+-- Critical expectation: the Aggregator worker provides deterministic signals in `meta.signals` (Supabase row `meta.signals` contains `{ "ok": true, "signals": { ... } }`) — the actual signal map lives under `meta.signals.signals` (subjects + levels). Matching relies on these deterministic rollups for stability.
 
 ### 3.6 Frontend consumption
 
@@ -708,17 +733,21 @@ If you rename/remove columns in `public.assignments`, you must update:
 - Website mapping
 
 ### Contract C: deterministic signals location in payload
-Matching depends on the Aggregator embedding deterministic signals in `payload.meta.signals`.
+Matching depends on the Aggregator embedding deterministic signals in `meta.signals` (see `TutorDexAggregator` worker flow). The persistence layer (`supabase_persist`) prefers these deterministic signals for `tutor_types` and `rate_breakdown` over the LLM `parsed` fields when present.
 - Producer: `TutorDexAggregator/signals_builder.py`.
 - Consumer: `TutorDexBackend/matching.py::_payload_to_query`.
 
 If you move signals, matching will quietly degrade (empty query → low scores).
 
+### Contract F: duplicate detection schema & config
+- The duplicate detection migration (`TutorDexAggregator/supabase sqls/2026-01-09_duplicate_detection.sql`) must be applied and keep the columns `duplicate_group_id`, `is_primary_in_group`, and `duplicate_confidence_score` available on `public.assignments`.
+- The async detector (`TutorDexAggregator/duplicate_detector.py`) is invoked from `supabase_persist` when `DUPLICATE_DETECTION_ENABLED=true`. If you remove or rename the detector entrypoints or columns, API listing and broadcaster behavior will break silently.
+
 Matching subject semantics (taxonomy v2):
 - Backend matching prefers taxonomy v2 `subjects_canonical` when present in signals, and falls back to legacy subject labels.
 
 Matching assignment type / tutor kind (not implemented yet):
-- Tutor profiles store `assignment_types[]` (e.g. private vs tuition centre) and `tutor_kinds[]` (PT/FT/MOE/Ex-MOE), but assignments currently do not provide a reliable deterministic `type` signal into `payload.meta.signals` for scoring.
+- Tutor profiles store `assignment_types[]` (e.g. private vs tuition centre) and `tutor_kinds[]` (PT/FT/MOE/Ex-MOE). Assignments expose `tutor_types` and `rate_breakdown` at the assignment row level (populated from `meta.signals` when available); however, a fully reliable deterministic `type` signal for some scoring uses may still be incomplete for certain channels.
 - Recommendation: only add this as a *soft boost* once a stable assignment-side type signal exists; avoid strict filtering to prevent false negatives.
 
 ### Contract D: click tracking RPC

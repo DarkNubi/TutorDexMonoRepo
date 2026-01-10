@@ -4,11 +4,13 @@
 
 TutorDex is a tuition assignment aggregator that collects, parses, and distributes tutor assignment posts from multiple Telegram channels. The system matches assignments with tutors based on their preferences and delivers personalized notifications.
 
+Authoritative system state: see `docs/SYSTEM_INTERNAL.md` for a detailed, up-to-date description of how the codebase actually behaves. Keep `docs/SYSTEM_INTERNAL.md` in sync with code changes — update it whenever you change extraction, persistence, or distribution behavior. Use `copilot-instructions.md` for quick developer guidance and workflows; prefer `docs/SYSTEM_INTERNAL.md` when you need the canonical, operational picture.
+
 ### Architecture
 
 This is a **monorepo** containing three main components:
 
-1. **TutorDexAggregator** (Python) - Telegram message collector and LLM-based parser
+1. **TutorDexAggregator** (Python) - Telegram message collector and parsing pipeline
 2. **TutorDexBackend** (Python FastAPI) - Matching engine and API service
 3. **TutorDexWebsite** (JavaScript/TypeScript + Vite) - Static website with Firebase Auth
 
@@ -23,8 +25,8 @@ Additional components:
 ### Backend (Python)
 - **Framework**: FastAPI, Uvicorn
 - **Database**: Redis (matching preferences), Supabase (PostgreSQL for persistence)
-- **Message Queue**: Telegram API (Telethon), extraction queue in Supabase
-- **AI/ML**: Local LLM API (OpenAI-compatible, typically LM Studio)
+- **Message Queue**: Telegram API (Telethon), extraction queue in Supabase (versioned by pipeline)
+- **AI/ML & Deterministic Extraction**: Hybrid — a local LLM API (OpenAI-compatible, typically LM Studio) is used for canonical parsing, while tutor-type and per-type rate extraction are deterministic, rule-based. Persisted signals prefer deterministic `meta.signals` outputs for `tutor_types` and `rate_breakdown` to avoid LLM variance.
 - **Observability**: Prometheus metrics, OpenTelemetry, structured logging
 - **Authentication**: Firebase Admin SDK (token verification)
 
@@ -48,7 +50,7 @@ Additional components:
 - Node.js 18+ with npm
 - Docker Desktop (for local development)
 - Firebase CLI (`npm i -g firebase-tools`)
-- Local LLM server (LM Studio or compatible)
+- Local LLM server (LM Studio or compatible) — LLM is optional for some workflows
 
 ### Environment Configuration
 
@@ -56,6 +58,10 @@ Each component requires a `.env` file. Use the `.env.example` files as templates
 - `TutorDexAggregator/.env.example` → `TutorDexAggregator/.env`
 - `TutorDexBackend/.env.example` → `TutorDexBackend/.env`
 - `TutorDexWebsite/.env.example` → `TutorDexWebsite/.env`
+
+Important operational env vars
+- `EXTRACTION_PIPELINE_VERSION`: version string used to key extraction jobs. Bump when changing prompts/schema/models to create an isolated reprocess run.
+- `SCHEMA_VERSION`: bump only for breaking changes to the canonical JSON contract.
 
 **Important**: Never commit `.env` files or secrets to git.
 
@@ -79,8 +85,9 @@ docker compose down
 ```bash
 cd TutorDexAggregator
 pip install -r requirements.txt
+# Run collector tail or backfill/enqueue commands; set EXTRACTION_PIPELINE_VERSION in env when enqueueing
 python collector.py tail  # Start collector
-python workers/extract_worker.py  # Start extraction worker
+python workers/extract_worker.py  # Start extraction worker (control side-effects via env vars)
 ```
 
 **TutorDexBackend**:
@@ -211,16 +218,20 @@ firebase deploy --only hosting
 
 ### Data Flow
 
-1. **Ingestion**: Telegram messages → `collector.py` → Supabase raw table
-2. **Extraction**: Extraction worker → LLM API → Parse & enrich → Supabase assignments table
-3. **Matching**: Assignment → Backend `/match/payload` → Redis → Matching tutors
-4. **Distribution**: Matched tutors → Telegram DM bot → Individual notifications
+1. **Ingestion**: Telegram messages → `collector.py` → `public.telegram_messages_raw` (immutable raw log)
+2. **Queueing / Versioning**: `collector.py` enqueues jobs into `public.telegram_extractions` keyed by `(raw_id, pipeline_version)`. Use `EXTRACTION_PIPELINE_VERSION` to isolate reprocess runs.
+3. **Extraction**: Extraction worker claims jobs for its configured `EXTRACTION_PIPELINE_VERSION`. The pipeline uses a hybrid approach:
+	- Deterministic rule-based extractor computes `tutor_types` and `rate_breakdown` and places them in `meta.signals`.
+	- The LLM canonical parser produces `canonical_json` for authoritative parsed fields.
+4. **Persistence**: `supabase_persist` merges incoming parsed rows into `public.assignments`, preferring deterministic `meta.signals` for tutor-type and rate signals and using conservative merge heuristics (parse_quality_score) to avoid regressions.
+5. **Matching & Distribution**: Assignment → Backend `/match/payload` → Redis → Matching tutors → DM/broadcast (worker controls side-effects via env vars).
 
 ### Message Processing Pipeline
 
-- **collector.py**: Reads Telegram, writes raw messages, enqueues extraction jobs
-- **extract_worker.py**: Claims jobs, calls LLM, validates output, persists to Supabase
-- **Deterministic hardening**: Normalizes text, validates structure, computes matching signals
+- **collector.py**: Reads Telegram, writes raw messages, enqueues extraction jobs (respecting `EXTRACTION_PIPELINE_VERSION`)
+- **extract_worker.py**: Claims jobs for its `EXTRACTION_PIPELINE_VERSION`, runs deterministic extractors (tutor types/rate breakdown), runs canonical LLM parser, validates, and persists to Supabase
+- **Deterministic hardening**: Rule-based extraction for tutor types and rates; results live in `meta.signals` and are preferred at persist time
+- **Reprocessing modes**: Use the documented Modes (enqueue under new `EXTRACTION_PIPELINE_VERSION`, run oneshot worker with `EXTRACTION_WORKER_ONESHOT=1` and broadcasts/DMS disabled to validate) to backfill safely
 - **Broadcasting**: Sends to aggregator channel (optional)
 - **DM delivery**: Sends personalized messages to matched tutors (optional)
 
@@ -274,11 +285,11 @@ firebase deploy --only hosting
 ### Adding a New LLM Extraction Field
 
 1. Update prompt in `TutorDexAggregator/message_examples/`
-2. Modify parser in `extract_key_info.py`
+2. Modify parser in `extract_key_info.py` or add a deterministic extractor for any new signal
 3. Update Supabase schema if persisting
 4. Add validation in `hard_validator.py`
 5. Update tests
-6. Consider deterministic fallback
+6. Consider deterministic fallback (preferred for stable signals)
 
 ### Modifying Matching Logic
 
@@ -347,7 +358,6 @@ firebase deploy --only hosting
 ## Common Pitfalls to Avoid
 
 - Don't hardcode URLs or credentials
-- Don't commit `.env` files or secrets
 - Don't break backward compatibility without migration
 - Don't skip validation or error handling
 - Don't ignore failing tests or linting
