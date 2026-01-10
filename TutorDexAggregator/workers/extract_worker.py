@@ -29,6 +29,7 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from compilation_detection import is_compilation  # noqa: E402
+from extractors.non_assignment_detector import is_non_assignment, detection_meta  # noqa: E402
 from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta  # noqa: E402
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
 from supabase_env import resolve_supabase_url  # noqa: E402
@@ -873,6 +874,34 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 meta_patch=_with_prompt({"reason": "compilation", "details": comp_details, "ts": _utc_now_iso(), "normalization": norm_meta}),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
+            )
+            return "skipped"
+
+        # Check for non-assignment messages (status updates, redirects, administrative posts)
+        # before expensive LLM extraction
+        is_non, non_type, non_details = is_non_assignment(raw_text)
+        if is_non:
+            non_meta = detection_meta(is_non, non_type, non_details)
+            _mark_extraction(
+                url,
+                key,
+                extraction_id,
+                status="skipped",
+                meta_patch=_with_prompt({
+                    "reason": "non_assignment",
+                    "non_assignment_detection": non_meta,
+                    "ts": _utc_now_iso(),
+                    "normalization": norm_meta,
+                }),
+                existing_meta=existing_meta,
+                llm_model=llm_model,
+            )
+            # Report to triage channel if configured
+            _try_report_failed_message(
+                raw=raw,
+                channel_link=channel_link,
+                error_summary=f"non_assignment: {non_type} - {non_details}",
+                stage="pre_extraction_filter"
             )
             return "skipped"
 
