@@ -1,13 +1,13 @@
-name: Deploy via Tailscale SSH
+name: Deploy via Tailscale + OpenSSH
 
 on:
   pull_request:
-    branches: [ "main" ]
-    types: [ closed ]
+    branches: ["main"]
+    types: [closed]
 
 jobs:
   deploy:
-    # Only run if the PR was actually merged (not just closed)
+    # Only run if PR was merged
     if: github.event.pull_request.merged == true && github.event.pull_request.merge_commit_sha != null
 
     runs-on: ubuntu-latest
@@ -16,17 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 1️⃣ Connect runner to your Tailnet
       - name: Connect to Tailscale
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
+      # 2️⃣ Setup SSH key (Windows OpenSSH key)
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_TS_IP }} >> ~/.ssh/known_hosts
+
+      # 3️⃣ Deploy via normal SSH (NOT Tailscale SSH)
       - name: Deploy to Windows server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SERVER_TS_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script_stop: true
-          script: |
-            cmd /Q /C "cd /d D:\TutorDex && git pull --ff-only && docker compose up -d --build"
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }} "
+            cd D:/TutorDex &&
+            git pull --ff-only &&
+            docker compose pull &&
+            docker compose up -d --build
+          "
