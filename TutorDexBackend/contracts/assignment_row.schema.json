@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tutordex.local/contracts/assignment_row.schema.json",
   "title": "TutorDex Assignment Row",
+  "description": "Assignment data contract returned by /assignments API. See docs/signals.md for detailed field schemas.",
   "type": "object",
   "additionalProperties": true,
   "required": [
