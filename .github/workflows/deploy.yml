@@ -12,13 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1️⃣ Connect runner to your Tailnet
       - name: Connect to Tailscale
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      # 2️⃣ Setup SSH key
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -26,10 +24,11 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SERVER_TS_IP }} >> ~/.ssh/known_hosts
 
-      # 3️⃣ Deploy via SSH (username has space)
       - name: Deploy to Windows server
         run: |
-          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" << 'EOF'
+          ssh -i ~/.ssh/id_ed25519 \
+              -o IdentitiesOnly=yes \
+              "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" << 'EOF'
             cd /d D:/TutorDex
             git pull --ff-only
             docker compose pull
