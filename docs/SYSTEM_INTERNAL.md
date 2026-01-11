@@ -62,8 +62,31 @@ Think of the system as a pipeline with two optional “sinks”:
 - Prometheus + Grafana + Alertmanager run via root `docker-compose.yml` (see `observability/`).
 - Note: Loki (logs), Tempo (traces) and the OTEL Collector have been removed from the default local stack; add them back if you need centralized logs or tracing.
 
-**Recent Code Changes (2026-01-05)**
+**Recent Code Changes (2026-01)**
 
+**2026-01-10:**
+- **Deterministic academic requests extraction**: New extractor (`TutorDexAggregator/extractors/academic_requests.py`) parses subjects, levels, specific levels, streams, and per-request academic breakdowns using regex tokenization. Integrates with taxonomy v2 for canonical subject codes.
+- **Deterministic tutor types and rate breakdown**: New extractor (`TutorDexAggregator/extractors/tutor_types.py`) identifies tutor types (PT/FT/MOE/Ex-MOE) and associated rate ranges using pattern matching and agency-specific aliasing. Outputs deterministic signals that are preferred over LLM outputs at persist time.
+- **Enhanced compilation bump extraction**: Multi-assignment compilation posts now extract assignment codes and bump corresponding assignments, keeping them fresh without expensive LLM extraction. Non-assignment detector added to filter status-only messages, redirects, and administrative posts before LLM call.
+- **Tutor types and rate breakdown in list RPC**: Migration `2026-01-10_add_tutor_types_rate_breakdown_to_list_v2.sql` adds these fields to `list_open_assignments_v2` output for frontend display and filtering.
+
+**2026-01-09:**
+- **Assignment rating system**: Complete adaptive threshold system for personalized assignment distribution. Includes rating calculation (`TutorDexBackend/assignment_rating.py`), adaptive threshold RPC, DM integration with historical rate tracking, and `tutor_assignment_ratings` table. See docs/assignment_rating_system.md.
+- **Duplicate detection**: Cross-agency duplicate detection system with similarity scoring, primary assignment selection, and UI/broadcaster integration. Configurable thresholds via `duplicate_detection_config` table. Components: `DuplicateBadge.jsx`, `DuplicateModal.jsx`, backend `/assignments/{id}/duplicates` endpoint.
+
+**2026-01-07:**
+- **Postal code estimation fallback**: Support distance calculations from estimated postal codes when explicit postal code is unavailable. New `postal_coords_estimated` flag and frontend "(estimated)" indicator.
+- **List RPC v2 updates**: Returns `postal_coords_estimated`, `tutor_types`, `rate_breakdown`, and other new fields.
+
+**2026-01-04:**
+- **Published timestamp tracking**: New `published_at` column captures source publish time (distinct from `last_seen` poll time). Used for "sort=newest" to prevent polled APIs from floating indefinitely.
+- **Source last seen tracking**: New `source_last_seen` column tracks "last observed by pipeline" distinct from creation time, drives bump/freshness indicators.
+- **TutorCity composite ID cleanup**: Migration to clean up old composite external IDs from TutorCity (transition to using assignment_code as stable identifier).
+
+**2026-01-03:**
+- **Subjects taxonomy v2**: Complete migration to stable subject codes with general categories, canonical subjects, and level-specific variants. Database support tables, filter integration, and frontend dropdown generation.
+
+**2026-01-05 and earlier:**
 - **Backfill retries and resilience**: The recovery/catchup flow (`TutorDexAggregator/recovery/catchup.py`) now wraps per-channel backfill calls with a configurable retry loop and exponential backoff. Environment variables `RECOVERY_BACKFILL_MAX_ATTEMPTS` and `RECOVERY_BACKFILL_BASE_BACKOFF_SECONDS` control attempts and base wait. This makes automated backfills more tolerant of transient Telethon/network errors.
 
 - **Raw message idempotency confirmed**: The raw ingest path (`TutorDexAggregator/supabase_raw_persist.py`) uses PostgREST `on_conflict=channel_link,message_id` with `resolution=merge-duplicates` and the DB enforces a unique index on `(channel_link, message_id)`. Backfill overlaps are therefore safe (rows are upserted, not duplicated).
@@ -85,13 +108,39 @@ Note on docs upkeep: `docs/SYSTEM_INTERNAL.md` is intended to be the authoritati
 ## 2. Monorepo Overview
 
 ### Top-level folders/files (reality)
-- `TutorDexAggregator/`: ingestion, extraction, persistence, Telegram broadcast/DM, and most “business logic”.
-- `TutorDexBackend/`: FastAPI service providing website APIs, matching, click tracking, and Supabase-facing user/event persistence.
+- `TutorDexAggregator/`: ingestion, extraction, persistence, Telegram broadcast/DM, and most "business logic".
+- `TutorDexBackend/`: FastAPI service providing website APIs, matching, click tracking, assignment rating, and Supabase-facing user/event persistence.
 - `TutorDexWebsite/`: static multi-page site built with Vite; Firebase Hosting + Firebase Auth.
- - `observability/`: Prometheus/Grafana/Alertmanager configs (Loki/Tempo/OTEL removed from default local stack).
+- `observability/`: Full observability stack configuration and runbooks.
 - `docs/`: internal docs; some are used by pipeline logic (e.g., time availability doc references).
 - `tests/`: Python tests, primarily around normalization/validation/signals.
- - Root `docker-compose.yml`: runs the entire system (aggregator collector + worker + backend + link bot + redis) and a minimal observability stack (Prometheus, Grafana, Alertmanager).
+- `shared/`: Shared Python modules for contracts (assignment_row schema) and taxonomy (subjects v2, tutor types).
+- Root `docker-compose.yml`: runs the entire system and observability stack.
+
+### Docker compose services (complete list)
+**Core application services:**
+- `collector-tail`: Telegram message collector with automated catchup (`python collector.py live`)
+- `aggregator-worker`: Extraction queue worker (`python workers/extract_worker.py`)
+- `backend`: FastAPI backend API server (`uvicorn app:app`)
+- `telegram-link-bot`: Telegram link bot poller (`python telegram_link_bot.py`)
+- `redis`: Redis 7 (Alpine) with persistence (60s snapshots + AOF)
+- `tutorcity-fetch`: TutorCity API poller (scheduled loop)
+- `freshness-tiers`: Assignment freshness tier updater (scheduled loop)
+
+**Observability services:**
+- `prometheus`: Prometheus v2.50.1 (metrics collection + alerting evaluation)
+- `alertmanager`: Alertmanager v0.27.0 (alert routing + deduplication)
+- `alertmanager-telegram`: Custom Telegram alert webhook receiver
+- `grafana`: Grafana v12.3.1 (dashboards + visualization)
+- `cadvisor`: cAdvisor v0.51.0 (container resource metrics)
+- `node-exporter`: Node Exporter v1.8.1 (host system metrics)
+- `blackbox-exporter`: Blackbox Exporter v0.25.0 (endpoint probing + uptime)
+
+**Note on observability:**
+- Loki (logs), Tempo (traces), Promtail, and OTEL Collector are NOT included in default local stack
+- OTEL instrumentation is wired in code but only active when `OTEL_ENABLED=1`
+- To add centralized logs/traces, see `observability/README.md` and restore from git history
+- Default setup focuses on metrics + dashboards + alerts (lighter resource footprint)
 
 ### How the three projects relate
 - Aggregator produces the data. The Backend and Website do not ingest from Telegram.
@@ -797,7 +846,107 @@ Key in-memory state on assignments page:
 
 ---
 
-## 7. Infrastructure & Deployment
+## 7. Shared Modules & Contracts
+
+### Purpose
+The `shared/` directory contains Python modules and schemas that are shared across the monorepo components. This ensures consistency in data structures and business logic.
+
+### shared/contracts
+**Location:** `shared/contracts/`
+
+**Purpose:** Define and validate the canonical assignment row schema that flows between all components.
+
+**Key files:**
+- `assignment_row.schema.json`: The authoritative JSON Schema for assignment rows
+- `validate_contracts.py`: Validation tool to ensure synced copies match
+- `README.md`: Documentation on contract validation and syncing
+
+**Synced copies:**
+The schema is copied to component-specific locations for local validation:
+- `TutorDexBackend/contracts/assignment_row.schema.json`
+- `TutorDexWebsite/src/generated/assignment_row.schema.json`
+- TypeScript definitions: `TutorDexWebsite/src/generated/assignmentRow.d.ts`
+
+**Sync mechanism:**
+- CI workflow: `.github/workflows/contracts-validate.yml`
+- Validates on PR changes to `shared/contracts/` or component contract files
+- Runs: `python3 shared/contracts/validate_contracts.py`
+- Fails if synced copies are out of date or schema is invalid
+- Developer workflow: manually copy schema to synced locations when making changes
+
+**Contract fields include:**
+- Core IDs: `id`, `external_id`, `message_link`
+- Academic: `subjects`, `subjects_canonical`, `subjects_general`, `levels`, `specific_student_levels`, `streams`, `academic_requests`
+- Location: `postal_code`, `postal_code_estimated`, `postal_lat`, `postal_lon`, `postal_coords_estimated`, `nearest_mrt_computed_*`, `region_computed`
+- Metadata: `status`, `freshness_tier`, `published_at`, `source_last_seen`, `last_seen`
+- Tutor matching: `tutor_types`, `rate_breakdown`, `rate_min`, `rate_max`, `learning_mode`
+- Duplicate detection: `duplicate_group_id`, `is_primary_in_group`, `duplicate_confidence_score`
+- Click tracking: `click_count`
+
+### shared/taxonomy
+**Location:** `shared/taxonomy/`
+
+**Purpose:** Canonical taxonomies for subjects and tutor types with normalization logic.
+
+#### Subjects taxonomy v2
+**Location:** `shared/taxonomy/subjects/`
+
+**Key files:**
+- `subjects_taxonomy_v2.json`: The authoritative subject hierarchy with stable codes
+- `subjects_map_v2.json`: Mapping from raw subject strings to canonical codes
+- `subjects_enums_v2.json`: TypeScript enum exports
+- `validate_taxonomy.py`: Validation and sync checking tool
+- `sync_taxonomy_artifacts.py`: Generates map and enums from taxonomy
+- `implementation_v2.md`: Implementation guide
+- `MAPPING_RULES_v2.md`: Rules for adding/updating subject mappings
+
+**Structure:**
+- General categories (e.g., `MATH`, `SCIENCE`, `LANGUAGES`) contain canonical subjects
+- Canonical subjects have stable codes (e.g., `MATH.SEC_EMATH`, `SCI.SEC_PHYSICS`)
+- Level-specific variations supported (Primary Math vs Secondary Math vs JC Math)
+- IB/IGCSE subjects tracked separately
+
+**Workflow:**
+1. Edit `subjects_taxonomy_v2.json` (add/modify categories or subjects)
+2. Run `python3 shared/taxonomy/subjects/sync_taxonomy_artifacts.py` to regenerate map and enums
+3. Run `python3 shared/taxonomy/subjects/validate_taxonomy.py --check-sync` to verify
+4. CI validates on PR: `.github/workflows/taxonomy-validate.yml`
+
+**Integration:**
+- Extraction: `TutorDexAggregator/taxonomy/canonicalize_subjects.py` uses this taxonomy
+- Academic requests: `TutorDexAggregator/extractors/academic_requests.py` calls canonicalization
+- Database: `TutorDexAggregator/supabase sqls/2026-01-03_subjects_taxonomy_v2.sql` creates DB support
+- Backend: filters use `subject_canonical` and `subject_general` codes
+- Website: dropdowns derived from taxonomy, not hard-coded arrays
+
+#### Tutor types taxonomy
+**Location:** `shared/taxonomy/tutor_types.py`
+
+**Purpose:** Normalize tutor type labels (Part-timer, Full-timer, MOE, Ex-MOE, etc.) with agency-specific aliasing.
+
+**Function:** `normalize_label(label: str, agency: Optional[str] = None) -> Tuple[str, str, float]`
+- Returns: `(canonical_name, original_label, confidence)`
+- Handles common aliases: "PT" → "part-timer", "FT" → "full-timer", "MOE" → "moe-exmoe"
+- Agency-specific rules can be added for special cases
+
+**Integration:**
+- Used by: `TutorDexAggregator/extractors/tutor_types.py`
+- Output: deterministic `tutor_types[]` and `rate_breakdown{}` in `meta.signals`
+
+**Extensibility:**
+- Add agency-specific aliases by extending the mapping logic
+- Confidence scoring helps identify uncertain normalizations
+
+### Why shared modules matter
+- **Consistency:** All components use the same definitions
+- **Validation:** CI catches drift before it reaches production
+- **Maintainability:** Single source of truth for taxonomies
+- **Type safety:** Generated TypeScript definitions for frontend
+- **Backwards compatibility:** Stable codes survive label changes
+
+---
+
+## 8. Infrastructure & Deployment
 
 ### Docker setup (single system)
 Root `docker-compose.yml` is the intended “run everything” config.
@@ -841,7 +990,7 @@ Current reality:
 
 ---
 
-## 8. Operational Playbook
+## 9. Operational Playbook
 
 ### Run locally (fastest path)
 
@@ -854,12 +1003,35 @@ Current reality:
 - Copy and edit `TutorDexBackend/.env.example` → `TutorDexBackend/.env`.
 
 3) Apply DB schema + RPCs in Supabase:
-- `TutorDexAggregator/supabase sqls/supabase_schema_full.sql`
-- `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql`
-- `TutorDexAggregator/supabase sqls/2025-12-25_assignments_facets_pagination.sql`
-- `TutorDexAggregator/supabase sqls/2025-12-29_assignments_distance_sort.sql` (if using Nearest)
-- `TutorDexAggregator/supabase sqls/2025-12-25_click_tracking.sql` (if using click tracking/broadcast edits)
-- `TutorDexAggregator/supabase sqls/2026-01-03_subjects_taxonomy_v2.sql` (subjects taxonomy v2: codes + filters + facets)
+
+**Core schema and RPCs (required):**
+- `TutorDexAggregator/supabase sqls/supabase_schema_full.sql` — base schema with all tables
+- `TutorDexAggregator/supabase sqls/2025-12-22_extraction_queue_rpc.sql` — extraction queue claim/enqueue RPCs
+- `TutorDexAggregator/supabase sqls/2025-12-25_assignments_facets_pagination.sql` — facets and list RPCs
+
+**Feature-specific migrations (apply as needed):**
+- `TutorDexAggregator/supabase sqls/2025-12-25_click_tracking.sql` — click tracking tables + RPCs (for broadcast edits)
+- `TutorDexAggregator/supabase sqls/2025-12-29_assignments_distance_sort.sql` — distance-based sorting RPC v2
+- `TutorDexAggregator/supabase sqls/2026-01-03_subjects_taxonomy_v2.sql` — subjects taxonomy v2 (canonical codes + filters)
+- `TutorDexAggregator/supabase sqls/2026-01-04_01_assignments_published_at.sql` — adds `published_at` column
+- `TutorDexAggregator/supabase sqls/2026-01-04_02_assignments_source_last_seen.sql` — adds `source_last_seen` column
+- `TutorDexAggregator/supabase sqls/2026-01-04_03_rpc_return_source_last_seen.sql` — updates RPCs to return source timestamps
+- `TutorDexAggregator/supabase sqls/2026-01-04_04_verify_source_last_seen_and_indexes.sql` — verification queries for timestamps
+- `TutorDexAggregator/supabase sqls/2026-01-04_05_tutorcity_cleanup_composite_external_ids.sql` — TutorCity ID cleanup (one-time)
+- `TutorDexAggregator/supabase sqls/2026-01-07_postal_coords_estimated.sql` — adds `postal_coords_estimated` flag
+- `TutorDexAggregator/supabase sqls/2026-01-07_update_list_open_assignments_v2.sql` — updates list RPC for estimated coords
+- `TutorDexAggregator/supabase sqls/2026-01-09_duplicate_detection.sql` — duplicate detection tables + config
+- `TutorDexAggregator/supabase sqls/2026-01-09_assignment_ratings.sql` — assignment rating system tables + threshold calculation
+- `TutorDexAggregator/supabase sqls/2026-01-10_add_tutor_types_rate_breakdown_to_list_v2.sql` — adds tutor_types/rate fields to list RPC
+
+**Migration order:**
+Apply in chronological order (date prefix). The full schema includes these migrations, but incremental migration is safer for production.
+
+**Verification:**
+Run smoke test to confirm all required RPCs exist:
+```bash
+python scripts/smoke_test.py
+```
 
 4) Start the stack:
 - From repo root: `docker compose up -d --build`
@@ -894,7 +1066,7 @@ Reality: rollback is “git checkout previous commit + docker compose up”.
 
 ---
 
-## 9. System Invariants & Contracts
+## 10. System Invariants & Contracts
 
 These are the things that silently break the system if changed.
 
@@ -946,9 +1118,32 @@ Matching assignment type / tutor kind (not implemented yet):
 - Website must be served from Firebase Hosting (or the Firebase Hosting emulator) so `/__/firebase/init.js` exists.
 - Backend must either accept unauthenticated calls (dev) or successfully initialize Firebase Admin SDK (prod).
 
+### Contract F: assignment rating schema (NEW 2026-01-09)
+- The assignment rating migration (`TutorDexAggregator/supabase sqls/2026-01-09_assignment_ratings.sql`) must be applied when using adaptive thresholds.
+- Required components:
+  - `public.tutor_assignment_ratings` table with indexes
+  - `public.user_preferences.desired_assignments_per_day` column
+  - `public.calculate_tutor_rating_threshold(user_id, desired_per_day, lookback_days)` RPC function
+- DM system (`TutorDexAggregator/dm_assignments.py`) depends on:
+  - Backend rating calculation (`TutorDexBackend/assignment_rating.py`)
+  - Supabase historical rate lookup (`SupabaseStore.get_tutor_avg_rate`)
+  - Threshold RPC for adaptive filtering
+- If the rating table or RPC is missing, DM system gracefully degrades to base score matching (no adaptive thresholds)
+
+### Contract G: shared taxonomy and contracts
+- The `shared/contracts/assignment_row.schema.json` must stay in sync with synced copies in Backend/Website
+- CI enforces sync via `.github/workflows/contracts-validate.yml`
+- Taxonomy v2 artifacts (`subjects_map_v2.json`, `subjects_enums_v2.json`) must be regenerated when `subjects_taxonomy_v2.json` changes
+- CI enforces taxonomy sync via `.github/workflows/taxonomy-validate.yml`
+- Breaking changes to taxonomy structure require updating:
+  - Aggregator canonicalization logic (`TutorDexAggregator/taxonomy/canonicalize_subjects.py`)
+  - Database taxonomy support tables (`TutorDexAggregator/supabase sqls/2026-01-03_subjects_taxonomy_v2.sql`)
+  - Backend filter parameters
+  - Website dropdown generation
+
 ---
 
-## 10. Known Problems & Technical Debt
+## 11. Known Problems & Technical Debt
 
 Blunt list based on observed code patterns:
 
@@ -980,7 +1175,7 @@ Blunt list based on observed code patterns:
 
 ---
 
-## 11. Recently Implemented Refactors (2026-01)
+## 12. Recently Implemented Refactors (2026-01)
 
 This section tracks refactors that were previously suggested and have now been implemented.
 
