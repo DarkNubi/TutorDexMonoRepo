@@ -402,6 +402,7 @@ create or replace function public.get_duplicate_config(p_config_key text)
 returns jsonb
 language plpgsql
 stable
+set search_path = public, pg_temp
 as $$
 declare
   v_config_value jsonb;
@@ -426,6 +427,7 @@ returns table (
 )
 language plpgsql
 stable
+set search_path = public, pg_temp
 as $$
 begin
   return query
@@ -449,6 +451,7 @@ $$;
 create or replace function public.update_duplicate_group_timestamp()
 returns trigger
 language plpgsql
+set search_path = public, pg_temp
 as $$
 begin
   new.updated_at = now();
@@ -1227,7 +1230,11 @@ create or replace function public.calculate_tutor_rating_threshold(
   p_user_id bigint,
   p_desired_per_day integer default 10,
   p_lookback_days integer default 7
-) returns double precision as $$
+) returns double precision
+language plpgsql
+stable
+set search_path = public, pg_temp
+as $$
 declare
   v_count integer;
   v_threshold double precision;
@@ -1269,13 +1276,17 @@ begin
 
   return coalesce(v_threshold, 0.0);
 end;
-$$ language plpgsql stable;
+$$;
 
 -- Calculate average rate from past assignments shown to tutor (for rate bonus calculation).
 create or replace function public.get_tutor_avg_rate(
   p_user_id bigint,
   p_lookback_days integer default 30
-) returns double precision as $$
+) returns double precision
+language plpgsql
+stable
+set search_path = public, pg_temp
+as $$
 declare
   v_avg_rate double precision;
 begin
@@ -1289,7 +1300,7 @@ begin
 
   return coalesce(v_avg_rate, 0.0);
 end;
-$$ language plpgsql stable;
+$$;
 
 create table if not exists public.analytics_events (
   id bigserial primary key,
