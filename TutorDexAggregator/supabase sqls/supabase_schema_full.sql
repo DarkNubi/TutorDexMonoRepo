@@ -387,6 +387,81 @@ create table if not exists public.duplicate_detection_config (
   updated_by text
 );
 
+-- Initial configuration (validated defaults). Safe to re-run.
+insert into public.duplicate_detection_config (config_key, config_value, description)
+values
+  ('enabled', 'true', 'Master switch for duplicate detection'),
+  ('thresholds', '{"high_confidence": 90, "medium_confidence": 70, "low_confidence": 55}'::jsonb, 'Similarity score thresholds for duplicate detection'),
+  ('weights', '{"postal": 50, "subjects": 35, "levels": 25, "rate": 15, "temporal": 10, "assignment_code": 10, "time": 5}'::jsonb, 'Signal weights for similarity calculation'),
+  ('time_window_days', '7'::jsonb, 'Only check assignments from last N days (performance optimization)'),
+  ('detection_batch_size', '100'::jsonb, 'Maximum number of assignments to check per detection run'),
+  ('fuzzy_postal_tolerance', '2'::jsonb, 'Allow postal codes within ±N digits to match (fuzzy matching)')
+on conflict (config_key) do nothing;
+
+create or replace function public.get_duplicate_config(p_config_key text)
+returns jsonb
+language plpgsql
+stable
+as $$
+declare
+  v_config_value jsonb;
+begin
+  select config_value
+  into v_config_value
+  from public.duplicate_detection_config
+  where config_key = p_config_key;
+
+  return v_config_value;
+end;
+$$;
+
+create or replace function public.get_duplicate_group_members(p_group_id bigint)
+returns table (
+  assignment_id bigint,
+  agency_name text,
+  assignment_code text,
+  is_primary boolean,
+  confidence_score decimal(5,2),
+  published_at timestamptz
+)
+language plpgsql
+stable
+as $$
+begin
+  return query
+  select
+    a.id as assignment_id,
+    a.agency_name,
+    a.assignment_code,
+    a.is_primary_in_group as is_primary,
+    a.duplicate_confidence_score as confidence_score,
+    a.published_at
+  from public.assignments a
+  where a.duplicate_group_id = p_group_id
+    and a.status = 'open'
+  order by
+    a.is_primary_in_group desc,
+    a.duplicate_confidence_score desc nulls last,
+    a.published_at asc;
+end;
+$$;
+
+create or replace function public.update_duplicate_group_timestamp()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists duplicate_groups_update_timestamp on public.assignment_duplicate_groups;
+create trigger duplicate_groups_update_timestamp
+before update on public.assignment_duplicate_groups
+for each row
+execute function public.update_duplicate_group_timestamp();
+
 -- Add foreign key constraint for duplicate_group_id (needs to be after table creation)
 do $$
 begin
@@ -530,6 +605,23 @@ filtered as (
     and (
       p_location_query is null
       or btrim(p_location_query) = ''
+      or (
+        lower(btrim(p_location_query)) = 'online'
+        and lower(coalesce(learning_mode, '')) like '%online%'
+      )
+      or (
+        replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north', 'east', 'west', 'central', 'north-east', 'northeast')
+        and coalesce(region, '') = (
+          case
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'north' then 'North'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'east' then 'East'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'west' then 'West'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'central' then 'Central'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north-east', 'northeast') then 'North-East'
+            else ''
+          end
+        )
+      )
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
@@ -684,6 +776,23 @@ filtered as (
     and (
       p_location_query is null
       or btrim(p_location_query) = ''
+      or (
+        lower(btrim(p_location_query)) = 'online'
+        and lower(coalesce(learning_mode, '')) like '%online%'
+      )
+      or (
+        replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north', 'east', 'west', 'central', 'north-east', 'northeast')
+        and coalesce(region, '') = (
+          case
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'north' then 'North'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'east' then 'East'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'west' then 'West'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'central' then 'Central'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north-east', 'northeast') then 'North-East'
+            else ''
+          end
+        )
+      )
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
@@ -841,6 +950,23 @@ filtered as (
     and (
       p_location_query is null
       or btrim(p_location_query) = ''
+      or (
+        lower(btrim(p_location_query)) = 'online'
+        and lower(coalesce(learning_mode, '')) like '%online%'
+      )
+      or (
+        replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north', 'east', 'west', 'central', 'north-east', 'northeast')
+        and coalesce(region, '') = (
+          case
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'north' then 'North'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'east' then 'East'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'west' then 'West'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'central' then 'Central'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north-east', 'northeast') then 'North-East'
+            else ''
+          end
+        )
+      )
       or _loc like '%' || lower(p_location_query) || '%'
     )
       and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
@@ -1008,6 +1134,7 @@ create table if not exists public.user_preferences (
   postal_code text,
   postal_lat double precision,
   postal_lon double precision,
+  desired_assignments_per_day integer default 10,
   updated_at timestamptz not null default now()
 );
 
@@ -1042,11 +1169,106 @@ alter table public.user_preferences
   add column if not exists postal_lon double precision;
 
 alter table public.user_preferences
+  add column if not exists desired_assignments_per_day integer;
+
+alter table public.user_preferences
   add column if not exists updated_at timestamptz;
 
 -- Note: `user_id ... unique` already creates a unique index (typically `user_preferences_user_id_key`).
 -- Avoid creating a second identical index.
 drop index if exists public.user_preferences_user_id_uq;
+
+create table if not exists public.tutor_assignment_ratings (
+  id bigserial primary key,
+  user_id bigint not null references public.users(id) on delete cascade,
+  assignment_id bigint not null references public.assignments(id) on delete cascade,
+  rating_score double precision not null,
+  distance_km double precision,
+  rate_min integer,
+  rate_max integer,
+  match_score integer not null,
+  sent_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  unique(user_id, assignment_id)
+);
+
+create index if not exists tutor_assignment_ratings_user_id_sent_at_idx
+  on public.tutor_assignment_ratings(user_id, sent_at desc);
+
+create index if not exists tutor_assignment_ratings_assignment_id_idx
+  on public.tutor_assignment_ratings(assignment_id);
+
+create index if not exists tutor_assignment_ratings_user_id_rating_idx
+  on public.tutor_assignment_ratings(user_id, rating_score desc);
+
+-- Calculate adaptive rating threshold for a tutor based on historical assignment ratings.
+create or replace function public.calculate_tutor_rating_threshold(
+  p_user_id bigint,
+  p_desired_per_day integer default 10,
+  p_lookback_days integer default 7
+) returns double precision as $$
+declare
+  v_count integer;
+  v_threshold double precision;
+  v_total_days double precision;
+  v_target_count integer;
+  v_percentile double precision;
+begin
+  select extract(epoch from (max(sent_at) - min(sent_at))) / 86400.0
+  into v_total_days
+  from public.tutor_assignment_ratings
+  where user_id = p_user_id
+    and sent_at >= now() - (p_lookback_days || ' days')::interval;
+
+  if v_total_days is null or v_total_days < 0.5 then
+    return 0.0;
+  end if;
+
+  select count(*) into v_count
+  from public.tutor_assignment_ratings
+  where user_id = p_user_id
+    and sent_at >= now() - (p_lookback_days || ' days')::interval;
+
+  if v_count = 0 then
+    return 0.0;
+  end if;
+
+  v_target_count := greatest(1, round(p_desired_per_day * v_total_days));
+  if v_count > v_target_count then
+    v_percentile := 1.0 - (v_target_count::double precision / v_count::double precision);
+  else
+    v_percentile := 0.0;
+  end if;
+
+  select percentile_cont(v_percentile) within group (order by rating_score)
+  into v_threshold
+  from public.tutor_assignment_ratings
+  where user_id = p_user_id
+    and sent_at >= now() - (p_lookback_days || ' days')::interval;
+
+  return coalesce(v_threshold, 0.0);
+end;
+$$ language plpgsql stable;
+
+-- Calculate average rate from past assignments shown to tutor (for rate bonus calculation).
+create or replace function public.get_tutor_avg_rate(
+  p_user_id bigint,
+  p_lookback_days integer default 30
+) returns double precision as $$
+declare
+  v_avg_rate double precision;
+begin
+  select avg((rate_min + coalesce(rate_max, rate_min)) / 2.0)
+  into v_avg_rate
+  from public.tutor_assignment_ratings
+  where user_id = p_user_id
+    and sent_at >= now() - (p_lookback_days || ' days')::interval
+    and rate_min is not null
+    and rate_min > 0;
+
+  return coalesce(v_avg_rate, 0.0);
+end;
+$$ language plpgsql stable;
 
 create table if not exists public.analytics_events (
   id bigserial primary key,

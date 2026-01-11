@@ -54,6 +54,12 @@ def extract_tutor_types(*, text: str, parsed: Optional[Dict[str, Any]] = None, a
         max_n = _parse_number(m.group("max"))
         if min_n is not None and max_n is None:
             max_n = min_n
+        prefix = (m.group("prefix") or "").strip()
+        unit = (m.group("unit") or "").strip()
+        if not prefix and not unit:
+            continue
+        if min_n is None and max_n is None:
+            continue
 
         # search for alias tokens in the window
         tokens = re.findall(r"[A-Za-z0-9\-\/]+", window)
@@ -76,8 +82,8 @@ def extract_tutor_types(*, text: str, parsed: Optional[Dict[str, Any]] = None, a
                 {
                     "min": min_n,
                     "max": max_n,
-                    "currency": "$" if (m.group("prefix") or "").strip() == "$" else None,
-                    "unit": "hour" if (m.group("unit") or "").strip() else None,
+                    "currency": "$" if prefix == "$" else None,
+                    "unit": "hour" if unit else None,
                     "original_text": raw,
                     "confidence": 0.9,
                 }

@@ -581,6 +581,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
             if not isinstance(item, dict):
                 continue
             canonical = _safe_str(item.get("canonical") or item.get("canonical_name") or item.get("canonical"))
+            if not canonical:
+                continue
             original = _safe_str(item.get("original") or item.get("label") or item.get("raw"))
             agency = _safe_str(item.get("agency"))
             conf = None
@@ -590,7 +592,7 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 conf = None
             out.append({
-                "canonical": canonical or (None if canonical == "" else None),
+                "canonical": canonical,
                 "original": original,
                 "agency": agency,
                 "confidence": conf,

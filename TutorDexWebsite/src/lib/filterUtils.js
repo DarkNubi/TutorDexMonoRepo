@@ -15,9 +15,28 @@ export function matchesFilters(job, filters) {
   if (subjectGeneral && !(Array.isArray(job.subjectsGeneral) && job.subjectsGeneral.includes(subjectGeneral))) return false;
   if (subjectCanonical && !(Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.includes(subjectCanonical))) return false;
   if (location) {
-    const haystack = String(job.location || "").toLowerCase();
-    const needle = String(location).toLowerCase();
-    if (!haystack.includes(needle)) return false;
+    const needle = String(location).trim().toLowerCase();
+    const norm = needle.replace(/\s+/g, "").replace(/_/g, "-");
+    const isRegion =
+      norm === "north" || norm === "east" || norm === "west" || norm === "central" || norm === "north-east" || norm === "northeast";
+    const isOnline = norm === "online";
+
+    if (isRegion) {
+      const want = norm === "northeast" ? "north-east" : norm;
+      const jobRegion = String(job.region || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/_/g, "-");
+      if (jobRegion !== want) return false;
+    } else if (isOnline) {
+      const lm = String(job.learningMode || "").toLowerCase();
+      const loc = String(job.location || "").toLowerCase();
+      if (!(lm.includes("online") || loc.includes("online"))) return false;
+    } else {
+      const haystack = String(job.location || "").toLowerCase();
+      if (!haystack.includes(needle)) return false;
+    }
   }
   if (minRate && typeof job.rateMin === "number" && job.rateMin < minRate) return false;
   if (minRate && typeof job.rateMin !== "number") return false;

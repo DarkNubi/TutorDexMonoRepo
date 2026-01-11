@@ -116,6 +116,23 @@ filtered as (
     and (
       p_location_query is null
       or btrim(p_location_query) = ''
+      or (
+        lower(btrim(p_location_query)) = 'online'
+        and lower(coalesce(learning_mode, '')) like '%online%'
+      )
+      or (
+        replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north', 'east', 'west', 'central', 'north-east', 'northeast')
+        and coalesce(region, '') = (
+          case
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'north' then 'North'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'east' then 'East'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'west' then 'West'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'central' then 'Central'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north-east', 'northeast') then 'North-East'
+            else ''
+          end
+        )
+      )
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))

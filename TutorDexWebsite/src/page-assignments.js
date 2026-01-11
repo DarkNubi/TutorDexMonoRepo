@@ -135,6 +135,38 @@ function parseRate(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+const TUTOR_TYPE_LABELS = {
+  "part-timer": "Part-timer",
+  "full-timer": "Full-timer",
+  "moe-exmoe": "MOE/Ex-MOE",
+  unknown: "Unknown",
+};
+
+function normalizeTutorTypeFilterValue(value) {
+  const v = String(value || "").trim().toLowerCase();
+  if (!v) return "";
+  if (v === "moe" || v === "ex-moe" || v === "exmoe" || v === "moe/ex-moe") return "moe-exmoe";
+  return v;
+}
+
+function tutorTypeLabel(value) {
+  const v = normalizeTutorTypeFilterValue(value);
+  return TUTOR_TYPE_LABELS[v] || v || "";
+}
+
+function normalizeLocationFilterValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const norm = raw.toLowerCase().replace(/\s+/g, "").replace(/_/g, "-");
+  if (norm === "north") return "North";
+  if (norm === "east") return "East";
+  if (norm === "west") return "West";
+  if (norm === "central") return "Central";
+  if (norm === "north-east" || norm === "northeast") return "North-East";
+  if (norm === "online") return "Online";
+  return raw;
+}
+
 function pickFirst(value) {
   if (Array.isArray(value)) {
     for (const item of value) {
@@ -561,12 +593,15 @@ function renderCards(data) {
       // show postal (explicit or estimated), distance, and time availability in compact mode
       const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
       meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
-      // compact: show tutor type summary if available
-      if (Array.isArray(job.tutorTypes) && job.tutorTypes.length) {
-        const t = job.tutorTypes[0];
-        const label = t && (t.original || t.canonical) ? t.original || t.canonical : null;
-        if (label) meta.appendChild(metaItem("fa-solid fa-user-tie", label));
-      }
+  // compact: show tutor type summary if available
+  if (Array.isArray(job.tutorTypes) && job.tutorTypes.length) {
+    const t = job.tutorTypes[0];
+    const label =
+      t && (t.canonical || t.original)
+        ? tutorTypeLabel(t.canonical || "") || String(t.original || "").trim() || null
+        : null;
+    if (label) meta.appendChild(metaItem("fa-solid fa-user-tie", label));
+  }
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
         meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
       }
@@ -715,7 +750,11 @@ function renderCards(data) {
     // show tutor types and rate breakdown in full view
     if (!compact && Array.isArray(job.tutorTypes) && job.tutorTypes.length) {
       const typesText = job.tutorTypes
-        .map((t) => (t && (t.original || t.canonical) ? t.original || t.canonical : null))
+        .map((t) => {
+          const canon = t && t.canonical ? tutorTypeLabel(t.canonical) : "";
+          const orig = t && t.original ? String(t.original || "").trim() : "";
+          return canon || orig || null;
+        })
         .filter(Boolean)
         .join(" · ");
       if (typesText) addDetail("fa-solid fa-user-tie", `Tutor types: ${typesText}`);
@@ -724,9 +763,25 @@ function renderCards(data) {
       const entries = Object.entries(job.rateBreakdown)
         .slice(0, 3)
         .map(([k, v]) => {
-          const min = v && v.min ? `$${v.min}` : "";
-          const max = v && v.max ? (v.max === v.min ? `$${v.max}` : `$${v.min}-$${v.max}`) : "";
-          return `${k}${min || max ? ` ${min || max}${v && v.unit ? `/${v.unit}` : ""}` : ""}`;
+          const currency =
+            v && typeof v.currency === "string" && v.currency.trim()
+              ? v.currency.trim()
+              : v && typeof v.original_text === "string" && v.original_text.includes("$")
+              ? "$"
+              : "";
+          const minVal = v && Number.isFinite(Number(v.min)) ? Number(v.min) : null;
+          const maxVal = v && Number.isFinite(Number(v.max)) ? Number(v.max) : null;
+          const rateText = (() => {
+            if (minVal != null && maxVal != null) {
+              if (Math.abs(minVal - maxVal) < 1e-9) return `${currency}${minVal}`;
+              return `${currency}${minVal}-${currency}${maxVal}`;
+            }
+            if (minVal != null) return `${currency}${minVal}`;
+            if (maxVal != null) return `${currency}${maxVal}`;
+            return "";
+          })();
+          const label = tutorTypeLabel(k);
+          return `${label || k}${rateText ? ` ${rateText}${v && v.unit ? `/${v.unit}` : ""}` : ""}`;
         })
         .filter(Boolean);
       if (entries.length) addDetail("fa-solid fa-money-bill", `Rates: ${entries.join(" · ")}`);
@@ -860,10 +915,10 @@ function restoreFiltersIntoUI(stored) {
   }
 
   levelEl.value = String(stored.level || "");
-  locEl.value = String(stored.location || "");
+  locEl.value = normalizeLocationFilterValue(String(stored.location || ""));
   sortEl.value = String(stored.sort || "newest");
   rateEl.value = String(stored.minRate || "");
-  if (tutorTypeEl) tutorTypeEl.value = String(stored.tutorType || "");
+  if (tutorTypeEl) tutorTypeEl.value = normalizeTutorTypeFilterValue(String(stored.tutorType || ""));
 
   // Options may not exist yet; set pending targets so updateFilter* can re-select after rebuild.
   if (genEl) pendingFilters.subjectGeneral = String(stored.subjectGeneral || "").trim() || null;
@@ -1197,7 +1252,8 @@ function updateFilterSubjects() {
 function updateFilterTutorTypes() {
   const select = $id("filter-tutor-type");
   if (!select) return;
-  const prev = select.value || "";
+  const prev = normalizeTutorTypeFilterValue(select.value || "");
+  const existingOptions = Array.from(select.options || []).map((o) => ({ value: o.value, text: o.text }));
   select.innerHTML = '<option value="">All Tutor Types</option>';
   const facetOptions = Array.isArray(lastFacets?.tutor_types) ? lastFacets.tutor_types : null;
   if (facetOptions && facetOptions.length) {
@@ -1206,17 +1262,27 @@ function updateFilterTutorTypes() {
       if (!code) return;
       const opt = document.createElement("option");
       opt.value = code;
-      opt.text = it.count ? `${code} (${it.count})` : code;
+      const label = tutorTypeLabel(code) || code;
+      opt.text = it.count ? `${label} (${it.count})` : label;
       select.appendChild(opt);
     });
   } else {
-    // Keep existing static options (do nothing)
+    // Restore the static options from HTML when facets are unavailable.
+    existingOptions.forEach((o) => {
+      const v = normalizeTutorTypeFilterValue(o?.value || "");
+      if (!v) return;
+      if (Array.from(select.options || []).some((x) => String(x.value || "") === v)) return;
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.text = String(o?.text || tutorTypeLabel(v) || v).trim() || v;
+      select.appendChild(opt);
+    });
   }
   if (prev) {
     if (!Array.from(select.options || []).some((o) => String(o.value || "").trim() === String(prev).trim())) {
       const opt = document.createElement("option");
       opt.value = prev;
-      opt.text = prev;
+      opt.text = tutorTypeLabel(prev) || prev;
       select.appendChild(opt);
     }
     select.value = prev;
@@ -1281,16 +1347,21 @@ function mountTutorTypeSearch() {
         facetOptions && facetOptions.length
           ? facetOptions
           : Array.from(document.getElementById("filter-tutor-type").options || []).map((o) => ({ value: o.value }))
-      ).map((o) => ({ value: String(o.value || "").trim(), label: String(o.value || "").trim() }));
+      )
+        .map((o) => {
+          const value = normalizeTutorTypeFilterValue(String(o.value || "").trim());
+          if (!value) return null;
+          const label = tutorTypeLabel(value) || value;
+          const keywords = [value, label].map((x) => String(x || "").toLowerCase());
+          if (value === "part-timer") keywords.push("pt", "part time", "part-time");
+          if (value === "full-timer") keywords.push("ft", "full time", "full-time");
+          if (value === "moe-exmoe") keywords.push("moe", "ex-moe", "exmoe", "teacher");
+          return { value, label, keywords };
+        })
+        .filter(Boolean);
       const matched = candidates
         .filter(
-          (c) =>
-            String(c.value || "")
-              .toLowerCase()
-              .includes(q) ||
-            String(c.label || "")
-              .toLowerCase()
-              .includes(q)
+          (c) => Array.isArray(c.keywords) && c.keywords.some((k) => String(k || "").includes(q))
         )
         .slice(0, 10);
       show(matched);
@@ -1305,10 +1376,10 @@ function collectFiltersFromUI() {
     specificStudentLevel: (document.getElementById("filter-specific-level")?.value || "").trim() || null,
     subjectGeneral: (document.getElementById("filter-subject-general")?.value || "").trim() || null,
     subjectCanonical: (document.getElementById("filter-subject-canonical")?.value || "").trim() || null,
-    location: (document.getElementById("filter-location")?.value || "").trim() || null,
+    location: normalizeLocationFilterValue((document.getElementById("filter-location")?.value || "").trim()) || null,
     sort: (document.getElementById("filter-sort")?.value || "").trim() || "newest",
     minRate: (document.getElementById("filter-rate")?.value || "").trim() || null,
-    tutorType: (document.getElementById("filter-tutor-type")?.value || "").trim() || null,
+    tutorType: normalizeTutorTypeFilterValue((document.getElementById("filter-tutor-type")?.value || "").trim()) || null,
   };
 }
 
@@ -1344,6 +1415,8 @@ function clearFilters() {
   const c = document.getElementById("filter-subject-canonical");
   if (c) c.innerHTML = '<option value="">Any Specific Syllabus</option>';
   document.getElementById("filter-location").value = "";
+  const tutorTypeEl = document.getElementById("filter-tutor-type");
+  if (tutorTypeEl) tutorTypeEl.value = "";
   const sortEl = document.getElementById("filter-sort");
   if (sortEl) sortEl.value = "newest";
   document.getElementById("filter-rate").value = "";

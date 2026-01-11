@@ -201,6 +201,23 @@ filtered as (
     and (
       p_location_query is null
       or btrim(p_location_query) = ''
+      or (
+        lower(btrim(p_location_query)) = 'online'
+        and lower(coalesce(learning_mode, '')) like '%online%'
+      )
+      or (
+        replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north', 'east', 'west', 'central', 'north-east', 'northeast')
+        and coalesce(region, '') = (
+          case
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'north' then 'North'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'east' then 'East'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'west' then 'West'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'central' then 'Central'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north-east', 'northeast') then 'North-East'
+            else ''
+          end
+        )
+      )
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
@@ -347,6 +364,23 @@ filtered as (
     and (
       p_location_query is null
       or btrim(p_location_query) = ''
+      or (
+        lower(btrim(p_location_query)) = 'online'
+        and lower(coalesce(learning_mode, '')) like '%online%'
+      )
+      or (
+        replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north', 'east', 'west', 'central', 'north-east', 'northeast')
+        and coalesce(region, '') = (
+          case
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'north' then 'North'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'east' then 'East'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'west' then 'West'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'central' then 'Central'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north-east', 'northeast') then 'North-East'
+            else ''
+          end
+        )
+      )
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
@@ -455,6 +489,7 @@ create or replace function public.open_assignment_facets(
   p_agency_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
+  p_tutor_type text default null,
   p_min_rate integer default null
 )
 returns jsonb
@@ -495,9 +530,27 @@ filtered as (
     and (
       p_location_query is null
       or btrim(p_location_query) = ''
+      or (
+        lower(btrim(p_location_query)) = 'online'
+        and lower(coalesce(learning_mode, '')) like '%online%'
+      )
+      or (
+        replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north', 'east', 'west', 'central', 'north-east', 'northeast')
+        and coalesce(region, '') = (
+          case
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'north' then 'North'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'east' then 'East'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'west' then 'West'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') = 'central' then 'Central'
+            when replace(replace(lower(btrim(p_location_query)), ' ', ''), '_', '-') in ('north-east', 'northeast') then 'North-East'
+            else ''
+          end
+        )
+      )
       or _loc like '%' || lower(p_location_query) || '%'
     )
     and (p_min_rate is null or (rate_min is not null and rate_min >= p_min_rate))
+    and (p_tutor_type is null or tutor_types @> jsonb_build_array(jsonb_build_object('canonical', p_tutor_type)))
 )
 select jsonb_build_object(
   'total', (select count(*) from filtered),
@@ -601,6 +654,21 @@ select jsonb_build_object(
       from filtered
       where learning_mode is not null and btrim(learning_mode) <> ''
       group by learning_mode
+    ) s
+  )
+  , 'tutor_types', (
+    select coalesce(
+      jsonb_agg(jsonb_build_object('value', t, 'count', c) order by c desc, t asc),
+      '[]'::jsonb
+    )
+    from (
+      select t, count(*) as c
+      from (
+        select distinct id, jsonb_array_elements(tutor_types) ->> 'canonical' as t
+        from filtered
+      ) d
+      where t is not null and btrim(t) <> ''
+      group by t
     ) s
   )
 );
