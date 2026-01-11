@@ -1,19 +1,49 @@
 import { canonicalizeSubjectLabels } from "../taxonomy/subjectsTaxonomyV2.js";
 
+function _parseList(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map((v) => String(v || "").trim()).filter(Boolean);
+  const s = String(value || "").trim();
+  if (!s) return [];
+  if (s.includes(",")) return s.split(",").map((x) => x.trim()).filter(Boolean);
+  return [s];
+}
+
+function _matchesAny(haystack, needles) {
+  const hs = Array.isArray(haystack) ? haystack.map((x) => String(x || "").trim()).filter(Boolean) : [];
+  const ns = _parseList(needles);
+  if (!ns.length) return true;
+  if (!hs.length) return false;
+  const set = new Set(hs);
+  return ns.some((n) => set.has(String(n || "").trim()));
+}
+
 export function matchesFilters(job, filters) {
   if (!job || !filters) return true;
   const level = String(filters.level || "").trim();
   const specificLevel = String(filters.specificStudentLevel || "").trim();
-  const subjectGeneral = String(filters.subjectGeneral || "").trim();
-  const subjectCanonical = String(filters.subjectCanonical || "").trim();
+  const subject = filters.subject;
+  const subjectGeneral = filters.subjectGeneral;
+  const subjectCanonical = filters.subjectCanonical;
   const location = String(filters.location || "").trim();
   const minRate = filters.minRate ? Number.parseInt(filters.minRate, 10) : null;
   const tutorType = String(filters.tutorType || "").trim();
 
   if (level && !(Array.isArray(job.signalsLevels) && job.signalsLevels.includes(level))) return false;
   if (specificLevel && !(Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.includes(specificLevel))) return false;
-  if (subjectGeneral && !(Array.isArray(job.subjectsGeneral) && job.subjectsGeneral.includes(subjectGeneral))) return false;
-  if (subjectCanonical && !(Array.isArray(job.subjectsCanonical) && job.subjectsCanonical.includes(subjectCanonical))) return false;
+
+  // Unified subject filter: OR across tokens matched against general/canonical/signals.
+  const tokens = _parseList(subject);
+  if (tokens.length) {
+    const ok =
+      _matchesAny(job.subjectsGeneral, tokens) || _matchesAny(job.subjectsCanonical, tokens) || _matchesAny(job.signalsSubjects, tokens);
+    if (!ok) return false;
+  } else {
+    // Back-compat: separate single-value filters.
+    if (!_matchesAny(job.subjectsGeneral, subjectGeneral)) return false;
+    if (!_matchesAny(job.subjectsCanonical, subjectCanonical)) return false;
+  }
+
   if (location) {
     const needle = String(location).trim().toLowerCase();
     const norm = needle.replace(/\s+/g, "").replace(/_/g, "-");

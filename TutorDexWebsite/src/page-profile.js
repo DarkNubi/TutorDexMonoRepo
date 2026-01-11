@@ -706,6 +706,7 @@ async function initProfilePage() {
         const tray = document.getElementById("subjects-tray");
         if (tray) tray.querySelectorAll(".tray-item").forEach((el) => el.remove());
         _updateEmptyTrayState();
+        updateSubjects();
       });
     }
 
@@ -720,46 +721,7 @@ async function initProfilePage() {
           if (String(el.dataset.level || "").trim() === level) el.remove();
         });
         _updateEmptyTrayState();
-      });
-    }
-
-    // Bulk presets: apply preset bundles to the subjects tray
-    const presetSelect = document.getElementById("subject-preset-select");
-    const applyPresetBtn = document.getElementById("apply-subject-preset");
-    if (applyPresetBtn && presetSelect) {
-      applyPresetBtn.addEventListener("click", () => {
-        const preset = String(presetSelect.value || "").trim();
-        const level = String(document.getElementById("level-select")?.value || "").trim();
-        if (!preset) return;
-        if (!level) {
-          setStatus("Pick a level first to apply a preset.", "error");
-          return;
-        }
-        let codes = [];
-        if (preset === "level-all") {
-          codes = canonicalSubjectsForLevel(level)
-            .map((s) => String(s?.code || "").trim())
-            .filter(Boolean);
-        } else if (preset === "secondary-math") {
-          const all = canonicalSubjectsForLevel("Secondary");
-          codes = (all || [])
-            .filter((s) =>
-              String(s.label || "")
-                .toLowerCase()
-                .includes("math")
-            )
-            .map((s) => String(s.code || "").trim());
-        }
-        if (!codes.length) {
-          setStatus("No subjects found for this preset.", "error");
-          return;
-        }
-        for (const code of codes) {
-          const label = labelForCanonicalCode(code) || code;
-          addChipToTray({ level, specificLevel: "", subjectCode: code, subjectLabel: label });
-        }
-        _updateEmptyTrayState();
-        setStatus("Preset applied.", "success");
+        updateSubjects();
       });
     }
 

@@ -4,6 +4,7 @@ import { debugLog, isDebugEnabled } from "./debug.js";
 import { SPECIFIC_LEVELS } from "./academicEnums.js";
 import {
   canonicalSubjectsForLevel,
+  generalCategoriesForLevel,
   generalCategoryOptions,
   labelForCanonicalCode,
   labelForGeneralCategoryCode,
@@ -19,6 +20,10 @@ const specificLevelsData = SPECIFIC_LEVELS || {};
 const FILTERS_STORAGE_KEY = "tutordex_assignments_filters_v1";
 const VIEW_MODE_STORAGE_KEY = "tutordex_assignments_view_mode_v1";
 const LAST_VISIT_STORAGE_KEY = "tutordex_assignments_last_visit_ms_v1";
+
+const MAX_SUBJECT_CHIPS = 3;
+let selectedSubjects = { general: [], canonical: [] };
+let selectedSubjectOrder = [];
 
 // --- 3. RENDER FUNCTIONS ---
 const grid = document.getElementById("assignments-grid");
@@ -38,6 +43,7 @@ let nextCursorDistanceKm = null;
 let lastFacets = null;
 let activeLoadToken = 0;
 let hasPostalCoords = null;
+
 let didRestoreFiltersFromStorage = false;
 let viewMode = "full";
 let lastVisitCutoffMs = 0;
@@ -52,8 +58,130 @@ function $id(id) {
   return _elCache.get(id);
 }
 
+function _subjectKey(type, code) {
+  return `${String(type || "").trim()}:${String(code || "").trim()}`;
+}
+
+function _normalizeSubjectType(type) {
+  const t = String(type || "").trim().toLowerCase();
+  return t === "canonical" ? "canonical" : "general";
+}
+
+function _subjectLabel(type, code) {
+  const c = String(code || "").trim();
+  if (!c) return "";
+  if (_normalizeSubjectType(type) === "canonical") return labelForCanonicalCode(c) || c;
+  return labelForGeneralCategoryCode(c) || c;
+}
+
+function _ensureSubjectStateInitialized() {
+  if (!selectedSubjects || typeof selectedSubjects !== "object") selectedSubjects = { general: [], canonical: [] };
+  if (!Array.isArray(selectedSubjects.general)) selectedSubjects.general = [];
+  if (!Array.isArray(selectedSubjects.canonical)) selectedSubjects.canonical = [];
+  if (!Array.isArray(selectedSubjectOrder)) selectedSubjectOrder = [];
+}
+
+function _removeSubjectSelection(type, code, { silent = false } = {}) {
+  _ensureSubjectStateInitialized();
+  const t = _normalizeSubjectType(type);
+  const c = String(code || "").trim();
+  if (!c) return false;
+  selectedSubjects[t] = (selectedSubjects[t] || []).filter((x) => String(x || "").trim() !== c);
+  const k = _subjectKey(t, c);
+  selectedSubjectOrder = (selectedSubjectOrder || []).filter((x) => _subjectKey(x?.type, x?.code) !== k);
+  renderSubjectTray();
+  if (!silent) {
+    writeStoredFilters(snapshotFiltersForStorage());
+    void loadAssignments({ reset: true });
+  }
+  return true;
+}
+
+function _addSubjectSelection(type, code, { silent = false, label = "" } = {}) {
+  _ensureSubjectStateInitialized();
+  const t = _normalizeSubjectType(type);
+  const c = String(code || "").trim();
+  if (!c) return false;
+
+  // Toggle off if already selected.
+  const existing = new Set((selectedSubjects[t] || []).map((x) => String(x || "").trim()));
+  if (existing.has(c)) return _removeSubjectSelection(t, c, { silent });
+
+  // Enforce max chips across both types.
+  const total = (selectedSubjects.general || []).length + (selectedSubjects.canonical || []).length;
+  if (total >= MAX_SUBJECT_CHIPS) {
+    const oldest = selectedSubjectOrder && selectedSubjectOrder.length ? selectedSubjectOrder[0] : null;
+    if (oldest?.type && oldest?.code) _removeSubjectSelection(oldest.type, oldest.code, { silent: true });
+  }
+
+  selectedSubjects[t] = [...(selectedSubjects[t] || []), c];
+  selectedSubjectOrder = [...(selectedSubjectOrder || []), { type: t, code: c, label: String(label || "").trim() || null }];
+  renderSubjectTray();
+
+  if (!silent) {
+    writeStoredFilters(snapshotFiltersForStorage());
+    void loadAssignments({ reset: true });
+  }
+  return true;
+}
+
+function renderSubjectTray() {
+  _ensureSubjectStateInitialized();
+  const tray = document.getElementById("subjects-tray");
+  const empty = document.getElementById("subjects-tray-empty");
+  if (!tray) return;
+
+  tray.innerHTML = "";
+  const items = (selectedSubjectOrder || [])
+    .map((x) => ({ type: _normalizeSubjectType(x?.type), code: String(x?.code || "").trim(), label: String(x?.label || "").trim() }))
+    .filter((x) => x.code);
+
+  if (!items.length) {
+    if (empty) empty.classList.remove("hidden");
+    return;
+  }
+  if (empty) empty.classList.add("hidden");
+
+  for (const item of items) {
+    const chip = document.createElement("span");
+    chip.className = "badge flex items-center gap-2 max-w-full";
+    chip.title = item.type === "canonical" ? "Specific syllabus" : "Broad subject";
+
+    const text = document.createElement("span");
+    text.className = "truncate";
+    text.textContent = item.label || _subjectLabel(item.type, item.code) || item.code;
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "text-xs font-bold opacity-70 hover:opacity-100";
+    remove.setAttribute("aria-label", `Remove ${text.textContent}`);
+    remove.textContent = "×";
+    remove.addEventListener("click", () => _removeSubjectSelection(item.type, item.code));
+
+    chip.appendChild(text);
+    chip.appendChild(remove);
+    tray.appendChild(chip);
+  }
+}
+
+function _collectSubjectCsv() {
+  _ensureSubjectStateInitialized();
+  const tokens = [];
+  for (const code of selectedSubjects.general || []) tokens.push(String(code || "").trim());
+  for (const code of selectedSubjects.canonical || []) tokens.push(String(code || "").trim());
+  const uniq = [];
+  const seen = new Set();
+  for (const t of tokens) {
+    const v = String(t || "").trim();
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    uniq.push(v);
+  }
+  return uniq.length ? uniq.join(",") : null;
+}
+
 // Pending selections preserved across async facet refreshes
-const pendingFilters = { level: null, specificStudentLevel: null, subjectGeneral: null, subjectCanonical: null };
+const pendingFilters = { level: null, specificStudentLevel: null };
 
 function getOrCreateStatusEl() {
   const host = document.querySelector(".max-w-6xl") || document.body;
@@ -133,38 +261,6 @@ function parseRate(value) {
   if (!m) return null;
   const n = Number.parseInt(m[1], 10);
   return Number.isFinite(n) ? n : null;
-}
-
-const TUTOR_TYPE_LABELS = {
-  "part-timer": "Part-timer",
-  "full-timer": "Full-timer",
-  "moe-exmoe": "MOE/Ex-MOE",
-  unknown: "Unknown",
-};
-
-function normalizeTutorTypeFilterValue(value) {
-  const v = String(value || "").trim().toLowerCase();
-  if (!v) return "";
-  if (v === "moe" || v === "ex-moe" || v === "exmoe" || v === "moe/ex-moe") return "moe-exmoe";
-  return v;
-}
-
-function tutorTypeLabel(value) {
-  const v = normalizeTutorTypeFilterValue(value);
-  return TUTOR_TYPE_LABELS[v] || v || "";
-}
-
-function normalizeLocationFilterValue(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  const norm = raw.toLowerCase().replace(/\s+/g, "").replace(/_/g, "-");
-  if (norm === "north") return "North";
-  if (norm === "east") return "East";
-  if (norm === "west") return "West";
-  if (norm === "central") return "Central";
-  if (norm === "north-east" || norm === "northeast") return "North-East";
-  if (norm === "online") return "Online";
-  return raw;
 }
 
 function pickFirst(value) {
@@ -593,15 +689,6 @@ function renderCards(data) {
       // show postal (explicit or estimated), distance, and time availability in compact mode
       const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
       meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
-  // compact: show tutor type summary if available
-  if (Array.isArray(job.tutorTypes) && job.tutorTypes.length) {
-    const t = job.tutorTypes[0];
-    const label =
-      t && (t.canonical || t.original)
-        ? tutorTypeLabel(t.canonical || "") || String(t.original || "").trim() || null
-        : null;
-    if (label) meta.appendChild(metaItem("fa-solid fa-user-tie", label));
-  }
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
         meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
       }
@@ -747,18 +834,6 @@ function renderCards(data) {
     if (!compact && job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
     if (!compact && job.agencyName) addDetail("fa-solid fa-building", job.agencyName);
 
-    // show tutor types and rate breakdown in full view
-    if (!compact && Array.isArray(job.tutorTypes) && job.tutorTypes.length) {
-      const typesText = job.tutorTypes
-        .map((t) => {
-          const canon = t && t.canonical ? tutorTypeLabel(t.canonical) : "";
-          const orig = t && t.original ? String(t.original || "").trim() : "";
-          return canon || orig || null;
-        })
-        .filter(Boolean)
-        .join(" · ");
-      if (typesText) addDetail("fa-solid fa-user-tie", `Tutor types: ${typesText}`);
-    }
     if (!compact && job.rateBreakdown && typeof job.rateBreakdown === "object") {
       const entries = Object.entries(job.rateBreakdown)
         .slice(0, 3)
@@ -780,8 +855,7 @@ function renderCards(data) {
             if (maxVal != null) return `${currency}${maxVal}`;
             return "";
           })();
-          const label = tutorTypeLabel(k);
-          return `${label || k}${rateText ? ` ${rateText}${v && v.unit ? `/${v.unit}` : ""}` : ""}`;
+          return `${k}${rateText ? ` ${rateText}${v && v.unit ? `/${v.unit}` : ""}` : ""}`;
         })
         .filter(Boolean);
       if (entries.length) addDetail("fa-solid fa-money-bill", `Rates: ${entries.join(" · ")}`);
@@ -883,15 +957,15 @@ function writeStoredFilters(filters) {
 function snapshotFiltersForStorage() {
   const filters = collectFiltersFromUI();
   return {
-    v: 1,
+    v: 2,
     level: filters.level || "",
     specificStudentLevel: filters.specificStudentLevel || "",
-    subjectGeneral: filters.subjectGeneral || "",
-    subjectCanonical: filters.subjectCanonical || "",
-    location: filters.location || "",
+    subjects: filters.subject || "",
+    subjectsGeneral: Array.isArray(selectedSubjects?.general) ? selectedSubjects.general : [],
+    subjectsCanonical: Array.isArray(selectedSubjects?.canonical) ? selectedSubjects.canonical : [],
+    subjectsOrder: Array.isArray(selectedSubjectOrder) ? selectedSubjectOrder : [],
     sort: filters.sort || "newest",
     minRate: filters.minRate || "",
-    tutorType: filters.tutorType || "",
     savedAtMs: Date.now(),
   };
 }
@@ -900,51 +974,50 @@ function restoreFiltersIntoUI(stored) {
   if (!stored || typeof stored !== "object") return false;
   const levelEl = document.getElementById("filter-level");
   const specificEl = document.getElementById("filter-specific-level");
-  const genEl = document.getElementById("filter-subject-general");
-  const canonEl = document.getElementById("filter-subject-canonical");
-  const locEl = document.getElementById("filter-location");
   const sortEl = document.getElementById("filter-sort");
   const rateEl = document.getElementById("filter-rate");
-  const tutorTypeEl = document.getElementById("filter-tutor-type");
-  if (!levelEl || !specificEl || !locEl || !sortEl || !rateEl) return false;
+  if (!levelEl || !specificEl || !sortEl || !rateEl) return false;
   // Handle versioning of stored snapshot
   const v = Number.isFinite(Number(stored.v)) ? Number(stored.v) : 1;
-  if (v !== 1) {
-    // Unknown format - ignore for safety
-    return false;
-  }
 
   levelEl.value = String(stored.level || "");
-  locEl.value = normalizeLocationFilterValue(String(stored.location || ""));
   sortEl.value = String(stored.sort || "newest");
   rateEl.value = String(stored.minRate || "");
-  if (tutorTypeEl) tutorTypeEl.value = normalizeTutorTypeFilterValue(String(stored.tutorType || ""));
 
   // Options may not exist yet; set pending targets so updateFilter* can re-select after rebuild.
-  if (genEl) pendingFilters.subjectGeneral = String(stored.subjectGeneral || "").trim() || null;
-  if (canonEl) pendingFilters.subjectCanonical = String(stored.subjectCanonical || "").trim() || null;
   pendingFilters.specificStudentLevel = String(stored.specificStudentLevel || "").trim() || null;
   pendingFilters.level = String(stored.level || "").trim() || null;
+
+  _ensureSubjectStateInitialized();
+  selectedSubjects = { general: [], canonical: [] };
+  selectedSubjectOrder = [];
+
+  if (v === 2) {
+    const order = Array.isArray(stored.subjectsOrder) ? stored.subjectsOrder : [];
+    for (const item of order) {
+      const type = _normalizeSubjectType(item?.type);
+      const code = String(item?.code || "").trim();
+      const label = String(item?.label || "").trim();
+      if (!code) continue;
+      _addSubjectSelection(type, code, { silent: true, label });
+    }
+    // Backfill from arrays if present (for older v2 snapshots).
+    const gen = Array.isArray(stored.subjectsGeneral) ? stored.subjectsGeneral : [];
+    const canon = Array.isArray(stored.subjectsCanonical) ? stored.subjectsCanonical : [];
+    for (const c of gen) _addSubjectSelection("general", c, { silent: true });
+    for (const c of canon) _addSubjectSelection("canonical", c, { silent: true });
+  } else if (v === 1) {
+    const g = String(stored.subjectGeneral || "").trim();
+    const c = String(stored.subjectCanonical || "").trim();
+    if (g) _addSubjectSelection("general", g, { silent: true });
+    if (c) _addSubjectSelection("canonical", c, { silent: true });
+  }
+
+  renderSubjectTray();
 
   // Trigger UI rebuilds which will pick up pendingFilters when facets arrive
   updateFilterSpecificLevels();
   updateFilterSubjects();
-  return true;
-}
-
-function ensureCanonicalOption(code, label) {
-  const select = $id("filter-subject-canonical");
-  if (!select) return false;
-  const c = String(code || "").trim();
-  if (!c) return false;
-  const exists = Array.from(select.options || []).some((o) => String(o.value || "").trim() === c);
-  if (!exists) {
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.text = String(label || c).trim() || c;
-    select.appendChild(opt);
-  }
-  select.value = c;
   return true;
 }
 
@@ -985,20 +1058,14 @@ function mountSubjectSearch() {
       btn.addEventListener("click", () => {
         const code = String(item.code || "").trim();
         if (!code) return;
-        input.value = String(item.label || code).trim();
-        const generalSelect = document.getElementById("filter-subject-general");
-        const canonicalSelect = document.getElementById("filter-subject-canonical");
         if (String(item.type || "").trim() === "general") {
-          if (generalSelect) generalSelect.value = code;
-          if (canonicalSelect) canonicalSelect.value = "";
+          _addSubjectSelection("general", code, { label: item.label });
         } else {
-          ensureCanonicalOption(code, item.label);
-          if (generalSelect) generalSelect.value = "";
+          _addSubjectSelection("canonical", code, { label: item.label });
         }
-        writeStoredFilters(snapshotFiltersForStorage());
+        input.value = "";
         hideResults();
         input.blur();
-        void loadAssignments({ reset: true });
       });
       resultsEl.appendChild(btn);
     });
@@ -1084,7 +1151,13 @@ function updateFilterSpecificLevels() {
 
   // Prefer server facets when available (accurate), fallback to static list.
   const facetOptions = Array.isArray(lastFacets?.specific_levels) ? lastFacets.specific_levels : null;
-  const items = facetOptions && facetOptions.length ? facetOptions : options.map((value) => ({ value, count: null }));
+  const allowed = new Set((options || []).map((v) => String(v || "").trim()).filter(Boolean));
+  const items = (() => {
+    if (facetOptions && facetOptions.length) {
+      return facetOptions.filter((it) => allowed.has(String(it?.value || "").trim()));
+    }
+    return (options || []).map((value) => ({ value, count: null }));
+  })();
 
   if (!items.length) {
     specificSelect.disabled = true;
@@ -1100,286 +1173,55 @@ function updateFilterSpecificLevels() {
     specificSelect.appendChild(option);
   });
 
-  // Preserve the previously selected specific level even if not in current facets
-  if (currentSelected) {
-    if (!Array.from(specificSelect.options || []).some((o) => String(o.value || "").trim() === String(currentSelected).trim())) {
-      const val = String(currentSelected).trim();
-      if (val) {
-        const opt = document.createElement("option");
-        opt.value = val;
-        opt.text = val;
-        specificSelect.appendChild(opt);
-      }
-    }
-    specificSelect.value = currentSelected;
+  // Preserve previous selection only if it is valid for the selected level.
+  const cur = String(currentSelected || "").trim();
+  if (cur && allowed.has(cur) && Array.from(specificSelect.options || []).some((o) => String(o.value || "").trim() === cur)) {
+    specificSelect.value = cur;
+  } else {
+    specificSelect.value = "";
   }
   specificSelect.disabled = false;
 
   // Re-apply any pending selection restored earlier if facets arrived late
   if (pendingFilters.specificStudentLevel) {
     const v = String(pendingFilters.specificStudentLevel || "").trim();
-    if (v) {
-      let appended = false;
-      if (!Array.from(specificSelect.options || []).some((o) => String(o.value || "").trim() === v)) {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.text = v;
-        specificSelect.appendChild(opt);
-        appended = true;
-      }
-      specificSelect.value = v;
-      if (appended) {
-        try {
-          trackEvent({ eventType: "facets_mismatch", facet: "specific_levels", value: v, note: "restored_from_storage_not_in_facets" });
-        } catch {}
-      }
-    }
+    if (v && allowed.has(v) && Array.from(specificSelect.options || []).some((o) => String(o.value || "").trim() === v)) specificSelect.value = v;
     pendingFilters.specificStudentLevel = null;
   }
 }
 
 function updateFilterSubjects() {
   const level = String($id("filter-level")?.value || "").trim();
-  const generalSelect = $id("filter-subject-general");
-  const canonicalSelect = $id("filter-subject-canonical");
-  const prevGeneral = generalSelect?.value || "";
-  const prevCanonical = canonicalSelect?.value || "";
-
-  if (generalSelect) generalSelect.innerHTML = '<option value="">All Subjects (Broad)</option>';
-  if (canonicalSelect) canonicalSelect.innerHTML = '<option value="">Any Specific Syllabus</option>';
-
-  // Prefer server facets when available (accurate), fallback to static list.
-  const facetGeneral = Array.isArray(lastFacets?.subjects_general) ? lastFacets.subjects_general : null;
-  const facetCanonical = Array.isArray(lastFacets?.subjects_canonical) ? lastFacets.subjects_canonical : null;
-
-  if (generalSelect) {
-    const items = facetGeneral && facetGeneral.length ? facetGeneral : generalCategoryOptions().map((c) => ({ value: c.code, count: null }));
-    items.forEach((item) => {
-      const code = String(item?.value || "").trim();
-      if (!code) return;
-      const label = labelForGeneralCategoryCode(code) || code;
-      const option = document.createElement("option");
-      option.value = code;
-      option.text = item?.count ? `${label} (${item.count})` : label;
-      generalSelect.appendChild(option);
-    });
+  if (!level) {
+    renderSubjectTray();
+    return;
   }
 
-  if (canonicalSelect) {
-    const lvl = String(level || "").trim();
-    const fallback = lvl ? canonicalSubjectsForLevel(lvl) : [];
-    const items = facetCanonical && facetCanonical.length ? facetCanonical : fallback.map((s) => ({ value: s.code, count: null }));
-    items.forEach((item) => {
-      const code = String(item?.value || "").trim();
-      if (!code) return;
-      const label = labelForCanonicalCode(code) || code;
-      const option = document.createElement("option");
-      option.value = code;
-      option.text = item?.count ? `${label} (${item.count})` : label;
-      canonicalSelect.appendChild(option);
-    });
-  }
+  const allowedGeneral = new Set(generalCategoriesForLevel(level, { includeAny: false }).map((c) => String(c?.code || "").trim()).filter(Boolean));
+  const allowedCanonical = new Set(canonicalSubjectsForLevel(level, { includeAny: false }).map((s) => String(s?.code || "").trim()).filter(Boolean));
 
-  if (generalSelect && prevGeneral) {
-    if (!Array.from(generalSelect.options || []).some((o) => String(o.value || "").trim() === String(prevGeneral).trim())) {
-      const code = String(prevGeneral).trim();
-      if (code) {
-        const opt = document.createElement("option");
-        opt.value = code;
-        opt.text = labelForGeneralCategoryCode(code) || code;
-        generalSelect.appendChild(opt);
-      }
-    }
-    generalSelect.value = prevGeneral;
-  }
+  _ensureSubjectStateInitialized();
+  const before = _collectSubjectCsv();
+  selectedSubjects.general = (selectedSubjects.general || []).filter((c) => allowedGeneral.has(String(c || "").trim()));
+  selectedSubjects.canonical = (selectedSubjects.canonical || []).filter((c) => allowedCanonical.has(String(c || "").trim()));
+  const allowedKeys = new Set([
+    ...(selectedSubjects.general || []).map((c) => _subjectKey("general", c)),
+    ...(selectedSubjects.canonical || []).map((c) => _subjectKey("canonical", c)),
+  ]);
+  selectedSubjectOrder = (selectedSubjectOrder || []).filter((x) => allowedKeys.has(_subjectKey(x?.type, x?.code)));
+  renderSubjectTray();
 
-  if (canonicalSelect && prevCanonical) {
-    if (!Array.from(canonicalSelect.options || []).some((o) => String(o.value || "").trim() === String(prevCanonical).trim())) {
-      const code = String(prevCanonical).trim();
-      if (code) {
-        const opt = document.createElement("option");
-        opt.value = code;
-        opt.text = labelForCanonicalCode(code) || code;
-        canonicalSelect.appendChild(opt);
-      }
-    }
-    canonicalSelect.value = prevCanonical;
-  }
-
-  // Reapply any pending selections that were stored while facets were loading
-  if (pendingFilters.subjectGeneral && generalSelect) {
-    const v = String(pendingFilters.subjectGeneral || "").trim();
-    if (v) {
-      let appended = false;
-      if (!Array.from(generalSelect.options || []).some((o) => String(o.value || "").trim() === v)) {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.text = labelForGeneralCategoryCode(v) || v;
-        generalSelect.appendChild(opt);
-        appended = true;
-      }
-      generalSelect.value = v;
-      if (appended) {
-        try {
-          trackEvent({ eventType: "facets_mismatch", facet: "subjects_general", value: v, note: "restored_from_storage_not_in_facets" });
-        } catch {}
-      }
-    }
-    pendingFilters.subjectGeneral = null;
-  }
-
-  if (pendingFilters.subjectCanonical && canonicalSelect) {
-    const v = String(pendingFilters.subjectCanonical || "").trim();
-    if (v) {
-      // If the option is not present, we'll track that we had to append it.
-      const exists = Array.from(canonicalSelect.options || []).some((o) => String(o.value || "").trim() === v);
-      ensureCanonicalOption(v, labelForCanonicalCode(v));
-      canonicalSelect.value = v;
-      if (!exists) {
-        try {
-          trackEvent({ eventType: "facets_mismatch", facet: "subjects_canonical", value: v, note: "restored_from_storage_not_in_facets" });
-        } catch {}
-      }
-    }
-    pendingFilters.subjectCanonical = null;
-  }
-  // Tutor types facet population
-  try {
-    updateFilterTutorTypes();
-  } catch (e) {}
-}
-
-function updateFilterTutorTypes() {
-  const select = $id("filter-tutor-type");
-  if (!select) return;
-  const prev = normalizeTutorTypeFilterValue(select.value || "");
-  const existingOptions = Array.from(select.options || []).map((o) => ({ value: o.value, text: o.text }));
-  select.innerHTML = '<option value="">All Tutor Types</option>';
-  const facetOptions = Array.isArray(lastFacets?.tutor_types) ? lastFacets.tutor_types : null;
-  if (facetOptions && facetOptions.length) {
-    facetOptions.forEach((it) => {
-      const code = String(it?.value || "").trim();
-      if (!code) return;
-      const opt = document.createElement("option");
-      opt.value = code;
-      const label = tutorTypeLabel(code) || code;
-      opt.text = it.count ? `${label} (${it.count})` : label;
-      select.appendChild(opt);
-    });
-  } else {
-    // Restore the static options from HTML when facets are unavailable.
-    existingOptions.forEach((o) => {
-      const v = normalizeTutorTypeFilterValue(o?.value || "");
-      if (!v) return;
-      if (Array.from(select.options || []).some((x) => String(x.value || "") === v)) return;
-      const opt = document.createElement("option");
-      opt.value = v;
-      opt.text = String(o?.text || tutorTypeLabel(v) || v).trim() || v;
-      select.appendChild(opt);
-    });
-  }
-  if (prev) {
-    if (!Array.from(select.options || []).some((o) => String(o.value || "").trim() === String(prev).trim())) {
-      const opt = document.createElement("option");
-      opt.value = prev;
-      opt.text = tutorTypeLabel(prev) || prev;
-      select.appendChild(opt);
-    }
-    select.value = prev;
-  }
-}
-
-function mountTutorTypeSearch() {
-  const input = document.getElementById("tutor-type-search");
-  const resultsEl = document.getElementById("tutor-type-search-results");
-  if (!input || !resultsEl) return;
-
-  function hide() {
-    resultsEl.classList.add("hidden");
-    resultsEl.innerHTML = "";
-  }
-
-  function show(items) {
-    resultsEl.innerHTML = "";
-    if (!items || !items.length) {
-      hide();
-      return;
-    }
-    items.forEach((item) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "w-full text-left px-4 py-2 hover:bg-gray-50 transition flex items-center justify-between gap-3";
-      btn.textContent = `${item.label || item.value}`;
-      btn.addEventListener("click", () => {
-        const select = document.getElementById("filter-tutor-type");
-        if (select) {
-          ensureOptionAndSelect(select, item.value, item.label || item.value);
-        }
-        hide();
-        input.value = "";
-      });
-      resultsEl.appendChild(btn);
-    });
-    resultsEl.classList.remove("hidden");
-  }
-
-  function ensureOptionAndSelect(select, value, label) {
-    const exists = Array.from(select.options || []).some((o) => String(o.value || "") === String(value || ""));
-    if (!exists) {
-      const opt = document.createElement("option");
-      opt.value = value;
-      opt.text = label || value;
-      select.appendChild(opt);
-    }
-    select.value = value;
-  }
-
-  let timer = null;
-  input.addEventListener("input", () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      const q = String(input.value || "")
-        .trim()
-        .toLowerCase();
-      if (!q) return hide();
-      const facetOptions = Array.isArray(lastFacets?.tutor_types) ? lastFacets.tutor_types : null;
-      const candidates = (
-        facetOptions && facetOptions.length
-          ? facetOptions
-          : Array.from(document.getElementById("filter-tutor-type").options || []).map((o) => ({ value: o.value }))
-      )
-        .map((o) => {
-          const value = normalizeTutorTypeFilterValue(String(o.value || "").trim());
-          if (!value) return null;
-          const label = tutorTypeLabel(value) || value;
-          const keywords = [value, label].map((x) => String(x || "").toLowerCase());
-          if (value === "part-timer") keywords.push("pt", "part time", "part-time");
-          if (value === "full-timer") keywords.push("ft", "full time", "full-time");
-          if (value === "moe-exmoe") keywords.push("moe", "ex-moe", "exmoe", "teacher");
-          return { value, label, keywords };
-        })
-        .filter(Boolean);
-      const matched = candidates
-        .filter(
-          (c) => Array.isArray(c.keywords) && c.keywords.some((k) => String(k || "").includes(q))
-        )
-        .slice(0, 10);
-      show(matched);
-    }, 120);
-  });
-  input.addEventListener("blur", () => setTimeout(hide, 150));
+  const after = _collectSubjectCsv();
+  if (before !== after) writeStoredFilters(snapshotFiltersForStorage());
 }
 
 function collectFiltersFromUI() {
   return {
     level: (document.getElementById("filter-level")?.value || "").trim() || null,
     specificStudentLevel: (document.getElementById("filter-specific-level")?.value || "").trim() || null,
-    subjectGeneral: (document.getElementById("filter-subject-general")?.value || "").trim() || null,
-    subjectCanonical: (document.getElementById("filter-subject-canonical")?.value || "").trim() || null,
-    location: normalizeLocationFilterValue((document.getElementById("filter-location")?.value || "").trim()) || null,
+    subject: _collectSubjectCsv(),
     sort: (document.getElementById("filter-sort")?.value || "").trim() || "newest",
     minRate: (document.getElementById("filter-rate")?.value || "").trim() || null,
-    tutorType: normalizeTutorTypeFilterValue((document.getElementById("filter-tutor-type")?.value || "").trim()) || null,
   };
 }
 
@@ -1390,12 +1232,6 @@ async function applyFilters() {
   writeStoredFilters(snapshotFiltersForStorage());
   if (!isBackendEnabled()) {
     // Legacy fallback: filter only the currently loaded in-memory list.
-    const level = document.getElementById("filter-level").value;
-    const specificLevel = document.getElementById("filter-specific-level").value;
-    const subjectGeneral = document.getElementById("filter-subject-general").value;
-    const subjectCanonical = document.getElementById("filter-subject-canonical").value;
-    const location = document.getElementById("filter-location").value;
-    const minRate = document.getElementById("filter-rate").value;
     const filters = collectFiltersFromUI();
     const filtered = allAssignments.filter((job) => matchesFilters(job, filters));
     renderCards(filtered);
@@ -1410,13 +1246,16 @@ function clearFilters() {
   document.getElementById("filter-specific-level").value = "";
   document.getElementById("filter-specific-level").innerHTML = '<option value="">All Specific Levels</option>';
   document.getElementById("filter-specific-level").disabled = true;
-  const g = document.getElementById("filter-subject-general");
-  if (g) g.innerHTML = '<option value="">All Subjects (Broad)</option>';
-  const c = document.getElementById("filter-subject-canonical");
-  if (c) c.innerHTML = '<option value="">Any Specific Syllabus</option>';
-  document.getElementById("filter-location").value = "";
-  const tutorTypeEl = document.getElementById("filter-tutor-type");
-  if (tutorTypeEl) tutorTypeEl.value = "";
+  selectedSubjects = { general: [], canonical: [] };
+  selectedSubjectOrder = [];
+  renderSubjectTray();
+  const subjectSearch = document.getElementById("subject-search");
+  if (subjectSearch) subjectSearch.value = "";
+  const subjectSearchResults = document.getElementById("subject-search-results");
+  if (subjectSearchResults) {
+    subjectSearchResults.classList.add("hidden");
+    subjectSearchResults.innerHTML = "";
+  }
   const sortEl = document.getElementById("filter-sort");
   if (sortEl) sortEl.value = "newest";
   document.getElementById("filter-rate").value = "";
@@ -1534,16 +1373,13 @@ async function loadAssignments({ reset = false, append = false } = {}) {
         // Fetch facets without self-filtering subject/specific level, so dropdowns remain useful.
         const facetsResp = await getOpenAssignmentFacets({
           level: filters.level,
-          location: filters.location,
           minRate: Number.isFinite(minRate) ? minRate : null,
-          tutorType: filters.tutorType || null,
         });
         if (loadToken === activeLoadToken) {
           lastFacets = facetsResp?.facets || null;
           // Rebuild dropdown options based on new facets.
           updateFilterSpecificLevels();
           updateFilterSubjects();
-          updateFilterTutorTypes();
           setFacetHintVisible(Boolean(lastFacets));
         }
       } catch (e) {
@@ -1562,11 +1398,8 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       cursorDistanceKm: append && sort === "distance" ? nextCursorDistanceKm : null,
       level: filters.level,
       specificStudentLevel: filters.specificStudentLevel,
-      subjectGeneral: filters.subjectGeneral,
-      subjectCanonical: filters.subjectCanonical,
-      location: filters.location,
+      subject: filters.subject,
       minRate: Number.isFinite(minRate) ? minRate : null,
-      tutorType: filters.tutorType || null,
     });
 
     if (loadToken !== activeLoadToken) return;
@@ -1681,20 +1514,7 @@ window.addEventListener("load", () => {
   updateViewToggleUI();
   updateGridLayout();
   mountSubjectSearch();
-  mountTutorTypeSearch();
-
-  const generalSelect = document.getElementById("filter-subject-general");
-  const canonicalSelect = document.getElementById("filter-subject-canonical");
-  if (generalSelect) {
-    generalSelect.addEventListener("change", () => {
-      if (canonicalSelect) canonicalSelect.value = "";
-    });
-  }
-  if (canonicalSelect) {
-    canonicalSelect.addEventListener("change", () => {
-      if (generalSelect) generalSelect.value = "";
-    });
-  }
+  // Tutor type filter is dropdown-only (no free-text search).
 
   if (retryLoadBtn) retryLoadBtn.addEventListener("click", () => loadAssignments({ reset: true }));
   if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => loadAssignments({ append: true }));
@@ -1717,26 +1537,4 @@ window.addEventListener("load", () => {
     // Load profile for "Matches you" + Nearest availability, but do not auto-apply preferences as filters.
     void loadProfileContext();
   });
-
-  // Advanced subjects toggle: toggle the specific syllabus details panel
-  try {
-    const advBtn = document.getElementById("toggle-advanced-subjects");
-    const details = document.getElementById("specific-syllabus-details");
-    const canonicalSelect = $id("filter-subject-canonical");
-    if (advBtn && details) {
-      advBtn.addEventListener("click", () => {
-        const open = details.hasAttribute("open");
-        if (open) details.removeAttribute("open");
-        else {
-          details.setAttribute("open", "");
-          // focus the select for keyboard users
-          setTimeout(() => {
-            try {
-              if (canonicalSelect && canonicalSelect.focus) canonicalSelect.focus();
-            } catch {}
-          }, 50);
-        }
-      });
-    }
-  } catch (e) {}
 });

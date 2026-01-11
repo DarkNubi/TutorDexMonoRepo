@@ -596,9 +596,16 @@ filtered as (
     and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
     and (
       p_subject is null
-      or p_subject = any(signals_subjects)
-      or p_subject = any(subjects_canonical)
-      or p_subject = any(subjects_general)
+      or exists (
+        select 1
+        from unnest(string_to_array(p_subject, ',')) as _t(_v)
+        where nullif(btrim(_t._v), '') is not null
+          and (
+            nullif(btrim(_t._v), '') = any(signals_subjects)
+            or nullif(btrim(_t._v), '') = any(subjects_canonical)
+            or nullif(btrim(_t._v), '') = any(subjects_general)
+          )
+      )
     )
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
@@ -767,9 +774,16 @@ filtered as (
     and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
     and (
       p_subject is null
-      or p_subject = any(signals_subjects)
-      or p_subject = any(subjects_canonical)
-      or p_subject = any(subjects_general)
+      or exists (
+        select 1
+        from unnest(string_to_array(p_subject, ',')) as _t(_v)
+        where nullif(btrim(_t._v), '') is not null
+          and (
+            nullif(btrim(_t._v), '') = any(signals_subjects)
+            or nullif(btrim(_t._v), '') = any(subjects_canonical)
+            or nullif(btrim(_t._v), '') = any(subjects_general)
+          )
+      )
     )
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
@@ -941,9 +955,16 @@ filtered as (
     and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
     and (
       p_subject is null
-      or p_subject = any(signals_subjects)
-      or p_subject = any(subjects_canonical)
-      or p_subject = any(subjects_general)
+      or exists (
+        select 1
+        from unnest(string_to_array(p_subject, ',')) as _t(_v)
+        where nullif(btrim(_t._v), '') is not null
+          and (
+            nullif(btrim(_t._v), '') = any(signals_subjects)
+            or nullif(btrim(_t._v), '') = any(subjects_canonical)
+            or nullif(btrim(_t._v), '') = any(subjects_general)
+          )
+      )
     )
     and (p_agency_name is null or agency_name = p_agency_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
