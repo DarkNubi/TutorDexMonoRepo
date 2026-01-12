@@ -276,11 +276,17 @@ firebase deploy --only hosting
 ### Adding a New API Endpoint (Backend)
 
 1. Define route in `TutorDexBackend/app.py`
-2. Add validation with Pydantic models
-3. Implement handler function
-4. Add metrics/logging
-5. Test with curl or Postman
-6. Document in README
+2. Add validation with Pydantic models (in `app.py`)
+3. Implement handler function (delegate business logic to services)
+4. Use existing services for common tasks:
+   - Auth: `_auth_service.require_uid()` or `_auth_service.require_admin()`
+   - Rate limiting: `await _cache_service.enforce_rate_limit(request, endpoint)`
+   - Health checks: `_health_service.*_health()`
+5. Add metrics/logging
+6. Test with curl or Postman
+7. Document in README
+
+**Note**: After 2026-01-12 refactoring, business logic should go in services (`TutorDexBackend/services/`), not directly in route handlers.
 
 ### Adding a New LLM Extraction Field
 
@@ -329,7 +335,9 @@ firebase deploy --only hosting
 - `TutorDexAggregator/collector.py` - Telegram message collector
 - `TutorDexAggregator/workers/extract_worker.py` - Extraction queue worker
 - `TutorDexAggregator/extract_key_info.py` - LLM extraction logic
-- `TutorDexBackend/app.py` - FastAPI application
+- `TutorDexBackend/app.py` - FastAPI application (HTTP routing)
+- `TutorDexBackend/services/` - Domain services (auth, health, cache, telegram, analytics)
+- `TutorDexBackend/utils/` - Utility functions (config, request, database)
 - `TutorDexBackend/matching.py` - Tutor matching algorithm
 - `TutorDexWebsite/src/` - Website source code
 - `shared/contracts/` - Shared data contracts
