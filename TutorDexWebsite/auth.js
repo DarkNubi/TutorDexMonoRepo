@@ -326,6 +326,10 @@ function initAuth() {
     btn.addEventListener("click", async (e) => {
       e.preventDefault();
       try {
+        // Clear user context before logging out
+        if (typeof window.clearUserContext === "function") {
+          window.clearUserContext();
+        }
         await auth.signOut();
         window.location.assign("index.html");
       } catch (err) {

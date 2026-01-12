@@ -1,5 +1,6 @@
 import { getCurrentUid, getCurrentUser, waitForAuth } from "../auth.js";
 import { createTelegramLinkCode, getRecentMatchCounts, getTutor, isBackendEnabled, trackEvent, upsertTutor } from "./backend.js";
+import { reportError, setUserContext, clearUserContext, addBreadcrumb } from "./errorReporter.js";
 import { SPECIFIC_LEVELS } from "./academicEnums.js";
 import { canonicalSubjectsForLevel, labelForCanonicalCode } from "./taxonomy/subjectsTaxonomyV2.js";
 import { canonicalizePair } from "./lib/filterUtils.js";
@@ -539,6 +540,7 @@ async function initProfilePage() {
         await saveProfile();
       } catch (err) {
         console.error(err);
+        reportError(err, { context: "saveProfile" });
         setStatus(`Save failed: ${err?.message || err}`, "error");
       }
     });
@@ -572,6 +574,7 @@ async function initProfilePage() {
         setStatus("Link code generated. Send it to the DM bot.", "success");
       } catch (err) {
         console.error(err);
+        reportError(err, { context: "generateLinkCode" });
         setStatus(`Link code failed: ${err?.message || err}`, "error");
       }
     });
@@ -637,6 +640,7 @@ async function initProfilePage() {
       if (match30) match30.textContent = String(c?.["30"] ?? "-");
     } catch (err) {
       console.error(err);
+      reportError(err, { context: "getRecentMatchCounts", levels, subjects, specificStudentLevels });
       if (matchNote) matchNote.textContent = ` (${err?.message || err})`;
       if (match7) match7.textContent = "-";
       if (match14) match14.textContent = "-";
@@ -727,8 +731,16 @@ async function initProfilePage() {
 
     await loadProfile();
     _updateEmptyTrayState();
+    
+    // Set user context for error reporting
+    const uid = await getCurrentUid();
+    if (uid) {
+      setUserContext(uid);
+      addBreadcrumb("Profile page loaded", { uid }, "navigation");
+    }
   } catch (err) {
     console.error(err);
+    reportError(err, { context: "initProfilePage" });
   }
 }
 

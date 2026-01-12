@@ -1,6 +1,7 @@
 import { getCurrentUid, waitForAuth } from "../auth.js";
 import { getOpenAssignmentFacets, getTutor, isBackendEnabled, listOpenAssignmentsPaged, sendClickBeacon, trackEvent } from "./backend.js";
 import { debugLog, isDebugEnabled } from "./debug.js";
+import { reportError, addBreadcrumb, setUserContext } from "./errorReporter.js";
 import { SPECIFIC_LEVELS } from "./academicEnums.js";
 import {
   canonicalSubjectsForLevel,
@@ -1445,6 +1446,15 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       return;
     }
 
+    // Report error to Sentry/console
+    reportError(err, {
+      context: "loadAssignments",
+      filters: collectFiltersFromUI(),
+      isInitial,
+      append,
+      reset,
+    });
+
     console.error("Failed to load assignments from backend.", err);
     const friendly = formatAssignmentsLoadError(err);
     setStatus(friendly, "error", { showRetry: true });
@@ -1466,6 +1476,10 @@ async function loadProfileContext() {
     if (!uid) return;
     currentUid = uid;
 
+    // Set user context for error reporting
+    setUserContext(uid);
+    addBreadcrumb("User authenticated", { uid }, "auth");
+
     const profile = await getTutor(uid);
     if (!profile) return;
     myTutorProfile = profile;
@@ -1476,6 +1490,7 @@ async function loadProfileContext() {
     applySortAvailability();
   } catch (err) {
     console.error("Failed to load profile context.", err);
+    reportError(err, { context: "loadProfileContext" });
   }
 }
 
