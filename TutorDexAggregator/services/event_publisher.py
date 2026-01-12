@@ -37,8 +37,6 @@ def run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
         assignment_id: Database assignment ID
         cfg: Supabase configuration
     """
-    import threading
-    
     def _detect():
         try:
             try:
