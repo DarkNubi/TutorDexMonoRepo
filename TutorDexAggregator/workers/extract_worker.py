@@ -955,11 +955,15 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             codes, code_meta = extract_assignment_codes(raw_text)
 
             # Report compilations to triage channel if configured, and include extracted assignment codes.
+            triggers = [str(t).strip() for t in (comp_details or []) if str(t).strip()]
+            triggers_preview = "; ".join(triggers[:3])
+            if len(triggers) > 3:
+                triggers_preview += f"; (+{len(triggers) - 3} more)"
             _try_report_triage_message(
                 kind="compilation",
                 raw=raw,
                 channel_link=channel_link,
-                summary=f"compilation_detected: codes_found={len(codes or [])}",
+                summary=f"compilation_detected: triggers=[{triggers_preview or 'unknown'}]; codes_found={len(codes or [])}",
                 stage="pre_extraction_filter",
                 extracted_codes=[str(c).strip() for c in (codes or []) if str(c).strip()],
             )

@@ -2,11 +2,17 @@ import os
 import re
 from typing import Any, Optional, Tuple, List
 
+try:
+    # When running inside TutorDexAggregator (worker adds this dir to sys.path)
+    from compilation_extractor import extract_assignment_codes
+except Exception:  # pragma: no cover
+    # When importing via namespace package in tests/tools
+    from TutorDexAggregator.compilation_extractor import extract_assignment_codes
 
-LABEL_RE = re.compile(r"(slot\s*[a-z]\s*:|assignment\s*\d+|job\s*\d+|available\s*assignment):", re.I)
-CODE_RE = re.compile(r"(code|assignment|job|id)\s*[:#]\s*\w+", re.I)
+MULTI_ITEM_LABEL_RE = re.compile(r"(?im)^(?:\s*)(slot\s*[a-z]\s*:|assignment\s*\d+\s*:|job\s*\d+\s*:)\s*")
 POSTAL_RE = re.compile(r"\b\d{6}\b")
 URL_RE = re.compile(r"https?://|t\.me/|www\.", re.I)
+APPLY_NOW_RE = re.compile(r"(?i)\bapply\s+now\b")
 
 
 def _env_int(name: str, default: int) -> int:
@@ -19,17 +25,43 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_int_optional(name: str) -> Optional[int]:
+    v = os.environ.get(name)
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    try:
+        return int(s)
+    except Exception:
+        return None
+
+
 def load_compilation_thresholds() -> dict[str, int]:
     """
     Default thresholds used by the queue worker pipeline.
     Override via env vars if needed.
     """
+    distinct_codes = _env_int_optional("COMPILATION_DISTINCT_CODES")
+    # Back-compat: older configs used COMPILATION_CODE_HITS (counting "ID:" fields).
+    # We now interpret it as the distinct-codes threshold when the new var isn't set.
+    if distinct_codes is None:
+        distinct_codes = _env_int_optional("COMPILATION_CODE_HITS")
+    if distinct_codes is None:
+        distinct_codes = 2
+
     return {
-        "code_hits": _env_int("COMPILATION_CODE_HITS", 2),
+        # Distinct assignment codes extracted via compilation_extractor (more reliable than counting "ID:" fields).
+        "distinct_codes": distinct_codes,
+        # Enumerated "slot A:", "assignment 1:", etc. Avoid generic section headers like "Available assignment:".
         "label_hits": _env_int("COMPILATION_LABEL_HITS", 2),
         "postal_hits": _env_int("COMPILATION_POSTAL_HITS", 2),
         "url_hits": _env_int("COMPILATION_URL_HITS", 2),
-        "block_count": _env_int("COMPILATION_BLOCK_COUNT", 3),
+        # A conservative default: many single-assignment posts are 3 blocks (title/details/footer).
+        "block_count": _env_int("COMPILATION_BLOCK_COUNT", 5),
+        # "Apply now" repeats frequently in compilation/list posts.
+        "apply_now_hits": _env_int("COMPILATION_APPLY_NOW_HITS", 2),
     }
 
 
@@ -42,26 +74,32 @@ def is_compilation(text: str) -> Tuple[bool, List[str]]:
         return False, []
 
     thresh = load_compilation_thresholds()
-    code_hits = len(CODE_RE.findall(text))
-    label_hits = len(LABEL_RE.findall(text))
+    codes, _meta = extract_assignment_codes(text)
+    distinct_codes = len({str(c).strip().upper() for c in (codes or []) if str(c).strip()})
+    label_hits = len(MULTI_ITEM_LABEL_RE.findall(text))
     postal_codes = {c.strip() for c in POSTAL_RE.findall(text) if str(c).strip()}
     postal_hits = len(postal_codes)
     url_hits = len(URL_RE.findall(text))
     blocks = [b for b in re.split(r"\n{2,}", text) if b.strip()]
     block_count = len(blocks)
+    apply_now_hits = len(APPLY_NOW_RE.findall(text))
 
     triggered: List[str] = []
-    if code_hits >= thresh["code_hits"]:
-        triggered.append(f"Multiple assignment codes detected ({code_hits} codes found, threshold: {thresh['code_hits']})")
+    if distinct_codes >= thresh["distinct_codes"]:
+        triggered.append(f"Multiple distinct assignment codes ({distinct_codes} >= {thresh['distinct_codes']})")
     if label_hits >= thresh["label_hits"] and block_count >= 2:
-        triggered.append(f"Multiple labeled sections ({label_hits} labels found, threshold: {thresh['label_hits']}, {block_count} blocks)")
+        triggered.append(f"Multiple enumerated items ({label_hits} >= {thresh['label_hits']}, blocks={block_count})")
     if postal_hits >= thresh["postal_hits"]:
-        triggered.append(
-            f"Multiple unique postal codes detected ({postal_hits} unique postal codes found, threshold: {thresh['postal_hits']})"
-        )
+        # Keep this signal, but require some evidence of multiple items to avoid false positives.
+        if distinct_codes >= 2 or label_hits >= 2 or apply_now_hits >= 2:
+            triggered.append(f"Multiple unique postal codes ({postal_hits} >= {thresh['postal_hits']})")
     if url_hits >= thresh["url_hits"]:
-        triggered.append(f"Multiple URLs detected ({url_hits} URLs found, threshold: {thresh['url_hits']})")
-    if block_count >= thresh["block_count"] and label_hits >= 1:
-        triggered.append(f"Multiple content blocks ({block_count} blocks found, threshold: {thresh['block_count']}, with {label_hits} labels)")
+        # Single assignments can contain multiple links; require extra evidence.
+        if distinct_codes >= 2 or label_hits >= 2 or apply_now_hits >= 2:
+            triggered.append(f"Multiple URLs ({url_hits} >= {thresh['url_hits']})")
+    if apply_now_hits >= thresh["apply_now_hits"] and block_count >= 2:
+        triggered.append(f"Repeated 'apply now' ({apply_now_hits} >= {thresh['apply_now_hits']}, blocks={block_count})")
+    if block_count >= thresh["block_count"] and (distinct_codes >= 2 or label_hits >= 2):
+        triggered.append(f"Many content blocks ({block_count} >= {thresh['block_count']}) with multi-item signals")
 
     return (len(triggered) > 0), triggered
