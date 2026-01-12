@@ -863,7 +863,7 @@ def me_assignment_match_counts(request: Request, req: MatchCountsRequest) -> Dic
     counts: Dict[str, Any] = {}
     for d in (7, 14, 30):
         c = count_matching_assignments(
-            sb.client,
+            sb,
             days=d,
             levels=levels,
             specific_student_levels=specific_student_levels,

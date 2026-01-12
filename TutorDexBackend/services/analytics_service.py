@@ -15,7 +15,10 @@ from fastapi import Request
 
 logger = logging.getLogger("tutordex_backend")
 
-# Module-level state for click cooldown fallback
+# Module-level state for click cooldown fallback.
+# NOTE: This dictionary is intentionally module-level (shared across service instances)
+# to provide consistent click tracking behavior even when Redis is down. This matches the
+# original implementation pattern in app.py.
 _CLICK_COOLDOWN_LOCAL: Dict[str, float] = {}
 _CLICK_COOLDOWN_LOCK = asyncio.Lock()
 

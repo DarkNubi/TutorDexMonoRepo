@@ -5,8 +5,11 @@ PostgreSQL and Supabase query helper functions extracted from app.py.
 """
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import quote as _url_quote
+
+if TYPE_CHECKING:
+    from TutorDexBackend.supabase_store import SupabaseStore
 
 logger = logging.getLogger("tutordex_backend")
 
@@ -62,7 +65,7 @@ def extract_count_from_header(value: Optional[str]) -> Optional[int]:
 
 
 def count_matching_assignments(
-    supabase_client,
+    supabase_store: "SupabaseStore",
     *,
     days: int,
     levels: List[str],
@@ -77,7 +80,7 @@ def count_matching_assignments(
     to avoid backfill inflation.
     
     Args:
-        supabase_client: Supabase client with get() method
+        supabase_store: SupabaseStore instance with enabled() and client attribute
         days: Days of history to include
         levels: Level filters
         specific_student_levels: Specific level filters
@@ -87,8 +90,10 @@ def count_matching_assignments(
     Returns:
         Count of matching assignments or None on error
     """
-    if not supabase_client:
+    if not supabase_store or not supabase_store.enabled() or not supabase_store.client:
         return None
+    
+    supabase_client = supabase_store.client
     
     since = datetime.now(timezone.utc) - timedelta(days=int(days))
     since_iso = since.isoformat()

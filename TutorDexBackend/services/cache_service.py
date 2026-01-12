@@ -22,7 +22,10 @@ from TutorDexBackend.utils.config_utils import (
 
 logger = logging.getLogger("tutordex_backend")
 
-# Module-level state for fallback when Redis unavailable
+# Module-level state for fallback when Redis unavailable.
+# NOTE: These dictionaries are intentionally module-level (shared across service instances)
+# to provide consistent rate limiting behavior even when Redis is down. This matches the
+# original implementation pattern in app.py and ensures rate limits work across all requests.
 _RATE_LIMIT_LOCAL: Dict[str, Tuple[int, float]] = {}
 _RATE_LIMIT_LOCK = asyncio.Lock()
 
