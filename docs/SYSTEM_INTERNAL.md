@@ -67,7 +67,7 @@ Think of the system as a pipeline with two optional “sinks”:
 **2026-01-10:**
 - **Deterministic academic requests extraction**: New extractor (`TutorDexAggregator/extractors/academic_requests.py`) parses subjects, levels, specific levels, streams, and per-request academic breakdowns using regex tokenization. Integrates with taxonomy v2 for canonical subject codes.
 - **Deterministic tutor types and rate breakdown**: New extractor (`TutorDexAggregator/extractors/tutor_types.py`) identifies tutor types (PT/FT/MOE/Ex-MOE) and associated rate ranges using pattern matching and agency-specific aliasing. Outputs deterministic signals that are preferred over LLM outputs at persist time.
-- **Enhanced compilation bump extraction**: Multi-assignment compilation posts now extract assignment codes and bump corresponding assignments, keeping them fresh without expensive LLM extraction. Non-assignment detector added to filter status-only messages, redirects, and administrative posts before LLM call.
+- **Compilation ingestion hardening**: Suspected multi-assignment posts now use an LLM-based identifier extractor with deterministic verbatim verification; confirmed compilations are split and ingested per assignment, and the pipeline fails closed against hallucinated identifiers.
 - **Tutor types and rate breakdown in list RPC**: Migration `2026-01-10_add_tutor_types_rate_breakdown_to_list_v2.sql` adds these fields to `list_open_assignments_v2` output for frontend display and filtering.
 
 **2026-01-09:**
@@ -232,12 +232,12 @@ Before invoking the LLM, the worker filters raw content in this order:
 1. **Deleted messages**: the worker can mark corresponding assignments closed via `supabase_persist.mark_assignment_closed` (see imports in `extract_worker.py`).
 2. **Forwarded messages**: messages that are forwards from other channels are skipped.
 3. **Empty messages**: messages with no text content are skipped.
-4. **Compilation posts** (updated 2026-01-10): multi-assignment aggregator posts are detected via `compilation_detection.is_compilation`:
-   - Instead of skipping completely, the worker now extracts assignment codes from the compilation using `compilation_extractor.extract_assignment_codes()`
-   - Each extracted code is used to bump the corresponding assignment in the database via `compilation_bump.bump_assignments_by_codes()`
-   - This keeps assignments fresh when they appear in compilation posts without requiring expensive LLM extraction
-   - If no valid codes are found, the compilation is skipped
-   - Bump throttling (default 6 hours minimum between bumps) prevents excessive updates
+4. **Compilation posts** (updated 2026-01-12): suspected multi-assignment posts are detected via `compilation_detection.is_compilation` and then handled via `TutorDexAggregator/compilation_message_handler.py`:
+   - The worker calls the LLM using ONLY `TutorDexAggregator/prompts/assignment_code_extractor_live.txt` to extract verbatim assignment identifiers from the raw message.
+   - LLM output is treated as untrusted: every returned identifier is deterministically verified as a verbatim substring of the raw message (hallucinations are dropped).
+   - If fewer than 2 identifiers survive verification, the message is **not** treated as a compilation and is downgraded to the normal non-compilation path (single-assignment extraction or non-assignment skip).
+   - If 2+ identifiers survive verification, the message is confirmed as a compilation: it is split into per-assignment segments and each segment runs the normal extraction+persist pipeline.
+   - The persisted `assignment_code` is forced to the verified identifier (with deterministic post-verification normalization) so hallucinated IDs cannot enter downstream processing.
 5. **Non-assignment messages** (added 2026-01-10): messages that are clearly not assignments are filtered via `extractors/non_assignment_detector.is_non_assignment`:
    - **Status-only messages**: Simple status updates like "ASSIGNMENT CLOSED", "TAKEN", "FILLED", "EXPIRED"
    - **Redirect messages**: References like "Assignment X has been reposted below" or "See above"
@@ -251,7 +251,7 @@ Before invoking the LLM, the worker filters raw content in this order:
      - `SKIPPED_MESSAGES_THREAD_ID_COMPILATIONS`: compilation skips (includes extracted assignment codes)
      - `SKIPPED_MESSAGES_THREAD_ID` remains a legacy fallback if the per-kind topic ids are not set.
 
-This matters operationally: if an agency posts "10 assignments in one message", TutorDex extracts the codes and bumps them. Simple status updates are skipped without wasting LLM API calls.
+This matters operationally: if an agency posts "10 assignments in one message", TutorDex can ingest all assignments safely (and will not proceed as a compilation unless 2+ identifiers are verified verbatim). Simple status updates are skipped without wasting LLM API calls.
 #### LLM extraction call
 - Code: `TutorDexAggregator/extract_key_info.py` (worker calls `extract_assignment_with_model`).
 - Transport: OpenAI-compatible HTTP API configured by `LLM_API_URL` (default in `.env.example`: `http://host.docker.internal:1234`).

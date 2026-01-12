@@ -29,8 +29,11 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from compilation_detection import is_compilation  # noqa: E402
-from compilation_extractor import extract_assignment_codes  # noqa: E402
-from compilation_bump import bump_assignments_by_codes  # noqa: E402
+from compilation_message_handler import (  # noqa: E402
+    confirm_compilation_identifiers,
+    order_verified_identifiers,
+    split_compilation_message,
+)
 from extractors.non_assignment_detector import is_non_assignment, detection_meta  # noqa: E402
 from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta  # noqa: E402
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
@@ -949,103 +952,297 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             "preview": normalized_text[:200] if normalized_text else "",
         }
 
-        is_comp, comp_details = is_compilation(raw_text)
-        if is_comp:
-            # Instead of skipping, extract assignment codes and bump them
-            codes, code_meta = extract_assignment_codes(raw_text)
+        is_comp_suspected, comp_details = is_compilation(raw_text)
+        compilation_audit: Optional[Dict[str, Any]] = None
+        if is_comp_suspected:
+            compilation_audit = confirm_compilation_identifiers(raw_message=raw_text, cid=cid, channel=channel_link)
 
-            # Report compilations to triage channel if configured, and include extracted assignment codes.
             triggers = [str(t).strip() for t in (comp_details or []) if str(t).strip()]
             triggers_preview = "; ".join(triggers[:3])
             if len(triggers) > 3:
                 triggers_preview += f"; (+{len(triggers) - 3} more)"
+
+            log_event(
+                logger,
+                logging.INFO,
+                "compilation_suspected",
+                channel=channel_link,
+                message_id=message_id,
+                raw_id=raw_id,
+                triggers=triggers,
+                llm_model=compilation_audit.get("llm_model"),
+                llm_parse_ok=bool(compilation_audit.get("ok")),
+                llm_parse_error=compilation_audit.get("parse_error"),
+                llm_raw_sha256=compilation_audit.get("llm_raw_sha256"),
+                llm_raw_output=(str(compilation_audit.get("llm_raw_output") or "")[:4000]),
+                llm_raw_truncated=bool(compilation_audit.get("llm_raw_truncated"))
+                or len(str(compilation_audit.get("llm_raw_output") or "")) > 4000,
+                candidates=compilation_audit.get("candidates") or [],
+                verified=compilation_audit.get("verified") or [],
+                dropped=compilation_audit.get("dropped") or [],
+                confirmed=bool(compilation_audit.get("confirmed")),
+            )
+
             _try_report_triage_message(
                 kind="compilation",
                 raw=raw,
                 channel_link=channel_link,
-                summary=f"compilation_detected: triggers=[{triggers_preview or 'unknown'}]; codes_found={len(codes or [])}",
-                stage="pre_extraction_filter",
-                extracted_codes=[str(c).strip() for c in (codes or []) if str(c).strip()],
+                summary=(
+                    f"compilation_suspected: triggers=[{triggers_preview or 'unknown'}]; "
+                    f"verified_ids={len(compilation_audit.get('verified') or [])}; "
+                    f"candidates={len(compilation_audit.get('candidates') or [])}"
+                ),
+                stage="compilation_identifiers",
+                extracted_codes=[str(c) for c in (compilation_audit.get("verified") or []) if isinstance(c, str) and c],
             )
-            
-            if codes:
-                # Bump assignments by their codes
-                try:
-                    bump_result = bump_assignments_by_codes(
-                        codes,
-                        supabase_url=url,
-                        supabase_key=key,
+
+            # Fail CLOSED: do not proceed with compilation splitting unless >=2 identifiers are verified verbatim.
+            if bool(compilation_audit.get("confirmed")):
+                ordered = order_verified_identifiers(raw_message=raw_text, verified=list(compilation_audit.get("verified") or []))
+                segments = split_compilation_message(raw_message=raw_text, identifiers=ordered)
+
+                results: List[Dict[str, Any]] = []
+                any_failed = False
+                any_requeueable_persist_fail = False
+
+                for seg in segments:
+                    seg_text = str(seg.get("text") or "")
+                    seg_code_verbatim = str(seg.get("identifier_verbatim") or "")
+                    seg_code_norm = str(seg.get("identifier_normalized") or "") or seg_code_verbatim
+
+                    seg_cid = f"{cid}:comp:{int(seg.get('index') or 0)}"
+                    normalized_seg_text = normalize_text(seg_text)
+
+                    # 1) Extract (LLM)
+                    try:
+                        llm_input = normalized_seg_text if bool(USE_NORMALIZED_TEXT_FOR_LLM) else seg_text
+                        model = _llm_model_name()
+                        try:
+                            worker_llm_requests_total.labels(model=model, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                        except Exception:
+                            pass
+                        t_llm0 = time.perf_counter()
+                        parsed = extract_assignment_with_model(llm_input, chat=channel_link, cid=seg_cid)
+                        try:
+                            worker_llm_call_latency_seconds.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(time.perf_counter() - t_llm0)
+                            worker_job_stage_latency_seconds.labels(stage="llm", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).observe(
+                                max(0.0, time.perf_counter() - t_llm0)
+                            )
+                        except Exception:
+                            pass
+                        if not isinstance(parsed, dict):
+                            parsed = {}
+                    except Exception as e:
+                        any_failed = True
+                        try:
+                            worker_llm_fail_total.labels(pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                        except Exception:
+                            pass
+                        results.append({"ok": False, "stage": "llm", "error": str(e), "identifier_verbatim": seg_code_verbatim, "identifier_normalized": seg_code_norm})
+                        _try_report_triage_message(
+                            kind="extraction_error",
+                            raw=raw,
+                            channel_link=channel_link,
+                            summary=f"compilation_segment_llm_failed: {str(e)[:500]}",
+                            stage="llm",
+                            extracted_codes=[seg_code_norm],
+                        )
+                        continue
+
+                    # Force verified identifier downstream (no hallucinated IDs).
+                    parsed["assignment_code"] = seg_code_norm
+
+                    payload: Dict[str, Any] = {
+                        "cid": seg_cid,
+                        "pipeline_version": _V.pipeline_version,
+                        "schema_version": _V.schema_version,
+                        "channel_link": channel_link,
+                        "channel_id": raw.get("channel_id") or ch_info.get("channel_id"),
+                        "channel_title": ch_info.get("title"),
+                        "channel_username": channel_link.replace("t.me/", "") if channel_link.startswith("t.me/") else None,
+                        "message_id": raw.get("message_id"),
+                        "message_link": _build_message_link(channel_link, str(raw.get("message_id") or "")),
+                        "date": raw.get("message_date"),
+                        "source_last_seen": raw.get("edit_date") or raw.get("message_date"),
+                        "raw_text": seg_text,
+                        "parsed": parsed,
+                        "meta": {
+                            "compilation": {
+                                "identifier_verbatim": seg_code_verbatim,
+                                "identifier_normalized": seg_code_norm,
+                            }
+                        },
+                    }
+
+                    # 2) Deterministic enrichment (safe, no guessing)
+                    postal_estimated_meta: Optional[Dict[str, Any]] = None
+                    try:
+                        parsed_obj = payload.get("parsed") or {}
+                        if isinstance(parsed_obj, dict):
+                            parsed_obj = _fill_postal_code_from_text(parsed_obj, seg_text)
+                            payload["parsed"] = parsed_obj
+                    except Exception:
+                        pass
+
+                    if _postal_code_estimated_enabled():
+                        try:
+                            parsed_obj = payload.get("parsed") or {}
+                            if isinstance(parsed_obj, dict):
+                                res = estimate_postal_codes(parsed=parsed_obj, raw_text=seg_text)
+                                parsed_obj["postal_code_estimated"] = res.estimated
+                                payload["parsed"] = parsed_obj
+                                postal_estimated_meta = dict(res.meta or {})
+                                postal_estimated_meta["estimated"] = res.estimated
+                        except Exception as e:
+                            postal_estimated_meta = {"ok": False, "error": str(e)}
+
+                    time_meta: Optional[Dict[str, Any]] = None
+                    if _deterministic_time_enabled():
+                        try:
+                            parsed_obj = payload.get("parsed") or {}
+                            det_ta, det_meta = extract_time_availability(raw_text=seg_text, normalized_text=normalized_seg_text)
+                            if isinstance(parsed_obj, dict):
+                                parsed_obj["time_availability"] = det_ta
+                                payload["parsed"] = parsed_obj
+                            time_meta = {"ok": True}
+                            if isinstance(det_meta, dict):
+                                time_meta.update(det_meta)
+                        except Exception as e:
+                            time_meta = {"ok": False, "error": str(e)}
+
+                    hard_meta: Optional[Dict[str, Any]] = None
+                    mode = _hard_mode()
+                    if mode != "off":
+                        try:
+                            cleaned, violations = hard_validate(payload.get("parsed") or {}, raw_text=seg_text, normalized_text=normalized_seg_text)
+                            hard_meta = {
+                                "mode": mode,
+                                "violations_count": int(len(violations)),
+                                "violations": violations[:50],
+                            }
+                            if mode == "enforce":
+                                payload["parsed"] = cleaned
+                        except Exception as e:
+                            hard_meta = {"mode": mode, "error": str(e)}
+
+                    signals_meta: Optional[Dict[str, Any]] = None
+                    if _signals_enabled():
+                        try:
+                            signals, err = build_signals(parsed=payload.get("parsed") or {}, raw_text=seg_text, normalized_text=normalized_seg_text)
+                            if err:
+                                signals_meta = {"ok": False, "error": err}
+                            else:
+                                signals_meta = {"ok": True, "signals": signals}
+                        except Exception as e:
+                            signals_meta = {"ok": False, "error": str(e)}
+
+                    ok_schema, schema_errors = validate_parsed_assignment(payload.get("parsed") or {})
+                    if not ok_schema:
+                        any_failed = True
+                        results.append({"ok": False, "stage": "validation", "errors": schema_errors, "identifier_verbatim": seg_code_verbatim, "identifier_normalized": seg_code_norm})
+                        _try_report_triage_message(
+                            kind="extraction_error",
+                            raw=raw,
+                            channel_link=channel_link,
+                            summary=f"compilation_segment_validation_failed: {str(schema_errors)[:500]}",
+                            stage="validation",
+                            extracted_codes=[seg_code_norm],
+                        )
+                        continue
+
+                    persist_res: Dict[str, Any] = {}
+                    try:
+                        try:
+                            worker_supabase_requests_total.labels(operation="persist", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()
+                        except Exception:
+                            pass
+                        r = persist_assignment_to_supabase(payload)
+                        persist_res = r if isinstance(r, dict) else {}
+                    except Exception as e:
+                        persist_res = {"ok": False, "error": str(e)}
+
+                    if not bool(persist_res.get("ok")):
+                        any_failed = True
+                        if attempt + 1 < MAX_ATTEMPTS:
+                            any_requeueable_persist_fail = True
+
+                    is_insert = bool(persist_res.get("ok")) and str(persist_res.get("action") or "").lower() == "inserted"
+                    broadcast_res: Any = None
+                    if is_insert and ENABLE_BROADCAST and broadcast_assignments is not None:
+                        try:
+                            broadcast_assignments.send_broadcast(payload)
+                            broadcast_res = {"ok": True}
+                        except Exception as e:
+                            broadcast_res = {"ok": False, "error": str(e)}
+
+                    dm_res: Any = None
+                    if is_insert and ENABLE_DMS and send_dms is not None:
+                        try:
+                            dm_res = send_dms(payload)
+                        except Exception as e:
+                            dm_res = {"ok": False, "error": str(e)}
+
+                    results.append(
+                        {
+                            "ok": bool(persist_res.get("ok")),
+                            "identifier_verbatim": seg_code_verbatim,
+                            "identifier_normalized": seg_code_norm,
+                            "segment_chars": len(seg_text),
+                            "persist": persist_res,
+                            "broadcast": broadcast_res,
+                            "dm": dm_res,
+                            "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw",
+                            "postal_code_estimated": postal_estimated_meta,
+                            "time_deterministic": time_meta,
+                            "hard_validation": hard_meta,
+                            "signals": signals_meta,
+                        }
+                    )
+
+                if any_requeueable_persist_fail:
+                    new_attempt = attempt + 1
+                    meta_patch = _merge_meta(
+                        existing_meta,
+                        {
+                            "attempt": new_attempt,
+                            "reason": "compilation_persist_failed",
+                            "compilation": {"triggers": comp_details, "identifiers": compilation_audit, "segments": results},
+                        },
                     )
                     _mark_extraction(
                         url,
                         key,
                         extraction_id,
-                        status="skipped",
-                        meta_patch=_with_prompt({
-                            "reason": "compilation_processed",
-                            "compilation_details": comp_details,
-                            "codes_extracted": code_meta,
-                            "bump_result": bump_result,
-                            "ts": _utc_now_iso(),
-                            "normalization": norm_meta,
-                        }),
+                        status="pending",
+                        error={"error": "persist_failed", "details": {"compilation_segments": results}},
+                        meta_patch=_with_prompt(meta_patch),
                         existing_meta=existing_meta,
                         llm_model=llm_model,
                     )
-                    log_event(
-                        logger,
-                        logging.INFO,
-                        "compilation_processed",
-                        channel=channel_link,
-                        message_id=message_id,
-                        codes_found=len(codes),
-                        bumped=bump_result.get("bumped", 0),
-                    )
-                except Exception as e:
-                    # If bumping fails, log but still skip the message
-                    log_event(
-                        logger,
-                        logging.ERROR,
-                        "compilation_bump_failed",
-                        channel=channel_link,
-                        message_id=message_id,
-                        error=str(e),
-                    )
-                    _mark_extraction(
-                        url,
-                        key,
-                        extraction_id,
-                        status="skipped",
-                        meta_patch=_with_prompt({
-                            "reason": "compilation_bump_failed",
-                            "compilation_details": comp_details,
-                            "codes_extracted": code_meta,
-                            "error": str(e),
-                            "ts": _utc_now_iso(),
-                            "normalization": norm_meta,
-                        }),
-                        existing_meta=existing_meta,
-                        llm_model=llm_model,
-                    )
-            else:
-                # No codes found, just skip
-                _mark_extraction(
-                    url,
-                    key,
-                    extraction_id,
-                    status="skipped",
-                    meta_patch=_with_prompt({
-                        "reason": "compilation_no_codes",
-                        "compilation_details": comp_details,
-                        "codes_extracted": code_meta,
-                        "ts": _utc_now_iso(),
-                        "normalization": norm_meta,
-                    }),
-                    existing_meta=existing_meta,
-                    llm_model=llm_model,
-                )
-            
-            return "skipped"
+                    return "requeued"
+
+                status = "ok" if (segments and not any_failed) else "failed"
+                meta = {
+                    "ts": _utc_now_iso(),
+                    "reason": "compilation_processed",
+                    "compilation_details": comp_details,
+                    "compilation": {"identifiers": compilation_audit, "segments": results},
+                    "normalization": norm_meta,
+                }
+                _mark_extraction(url, key, extraction_id, status=status, meta_patch=_with_prompt(meta), existing_meta=existing_meta, llm_model=llm_model)
+                return status
+
+            log_event(
+                logger,
+                logging.INFO,
+                "compilation_downgraded",
+                channel=channel_link,
+                message_id=message_id,
+                raw_id=raw_id,
+                triggers=triggers,
+                verified=len(compilation_audit.get("verified") or []),
+                decision="non_compilation_path",
+            )
 
         # Check for non-assignment messages (status updates, redirects, administrative posts)
         # before expensive LLM extraction
@@ -1365,6 +1562,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             "broadcast": broadcast_res,
             "dm": dm_res,
             "normalization": norm_meta,
+            "compilation_suspected": compilation_audit if compilation_audit else None,
             "llm_input": "normalized" if bool(USE_NORMALIZED_TEXT_FOR_LLM) else "raw",
             "postal_code_estimated": postal_estimated_meta,
             "time_deterministic": time_meta,
