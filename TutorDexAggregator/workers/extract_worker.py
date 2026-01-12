@@ -131,14 +131,35 @@ def _skipped_messages_chat_id() -> Optional[str]:
     return v or None
 
 
-def _skipped_messages_thread_id() -> Optional[int]:
-    v = (os.environ.get("SKIPPED_MESSAGES_THREAD_ID") or "").strip()
+def _parse_int_env(name: str) -> Optional[int]:
+    v = (os.environ.get(name) or "").strip()
     if not v:
         return None
     try:
         return int(v)
     except Exception:
         return None
+
+
+def _default_skipped_messages_thread_id() -> Optional[int]:
+    # Legacy single-thread fallback for all triage messages.
+    return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID")
+
+
+def _triage_thread_id(kind: str) -> Optional[int]:
+    """
+    Route triage messages to different Telegram topics (threads).
+
+    Back-compat: falls back to SKIPPED_MESSAGES_THREAD_ID when a kind-specific topic is not configured.
+    """
+    k = str(kind or "").strip().lower()
+    if k in {"extraction_error", "extraction_errors", "extraction"}:
+        return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_EXTRACTION_ERRORS") or _default_skipped_messages_thread_id()
+    if k in {"non_assignment", "non-assignments", "nonassignment"}:
+        return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_NON_ASSIGNMENT") or _default_skipped_messages_thread_id()
+    if k in {"compilation", "compilations"}:
+        return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_COMPILATIONS") or _default_skipped_messages_thread_id()
+    return _default_skipped_messages_thread_id()
 
 
 def _skipped_messages_bot_token() -> Optional[str]:
@@ -191,26 +212,56 @@ def _chunk_text(text: str, *, max_len: int) -> List[str]:
     return [t[i: i + max_len] for i in range(0, len(t), max_len)]
 
 
-def _try_report_failed_message(*, raw: Dict[str, Any], channel_link: str, error_summary: str, stage: str) -> None:
+def _try_report_triage_message(
+    *,
+    kind: str,
+    raw: Dict[str, Any],
+    channel_link: str,
+    summary: str,
+    stage: str,
+    extracted_codes: Optional[List[str]] = None,
+) -> None:
     to_chat_id = _skipped_messages_chat_id()
     if not to_chat_id:
         return
 
-    thread_id = _skipped_messages_thread_id()
+    thread_id = _triage_thread_id(kind)
 
     msg_id = raw.get("message_id")
     link = _build_message_link(channel_link, str(msg_id or "")) or ""
     raw_text = str(raw.get("raw_text") or "").strip()
 
+    kind_norm = str(kind or "").strip().lower()
+    title = "TutorDex: triage"
+    if kind_norm in {"extraction_error", "extraction_errors", "extraction"}:
+        title = "TutorDex: extraction error"
+    elif kind_norm in {"non_assignment", "non-assignments", "nonassignment"}:
+        title = "TutorDex: non-assignment (skipped)"
+    elif kind_norm in {"compilation", "compilations"}:
+        title = "TutorDex: compilation (skipped)"
+
     # Telegram sendMessage hard limit is 4096 chars. Keep a conservative ceiling.
     max_msg_len = 3600
+    codes_clean: Optional[List[str]] = None
+    codes_line = ""
+    codes_preview_limit = 40
+    if extracted_codes is not None:
+        codes_clean = [str(c).strip() for c in (extracted_codes or []) if str(c).strip()]
+        if not codes_clean:
+            codes_line = "codes=[]\n"
+        else:
+            preview = codes_clean[:codes_preview_limit]
+            rest = len(codes_clean) - len(preview)
+            preview_joined = ", ".join(preview)
+            codes_line = f"codes=[{preview_joined}{f' (+{rest} more)' if rest > 0 else ''}]\n"
     header = (
-        "TutorDex: extraction failed\n"
+        f"{title}\n"
         f"stage={stage}\n"
         f"channel={channel_link}\n"
         + (f"message_id={msg_id}\n" if msg_id is not None else "")
         + (f"link={link}\n" if link else "")
-        + f"error={str(error_summary or '')[:800]}\n"
+        + (codes_line if codes_line else "")
+        + f"summary={str(summary or '')[:800]}\n"
         "\n"
         "raw_text:\n"
     )
@@ -226,6 +277,7 @@ def _try_report_failed_message(*, raw: Dict[str, Any], channel_link: str, error_
             logging.INFO,
             "failed_message_triage_sent",
             ok=bool(res0.get("ok")),
+            kind=kind_norm,
             stage=stage,
             channel=channel_link,
             message_id=str(msg_id),
@@ -237,11 +289,41 @@ def _try_report_failed_message(*, raw: Dict[str, Any], channel_link: str, error_
     except Exception:
         return
 
+    # If we have a large codes list, send it in follow-up messages (so we include *all* extracted codes).
+    if codes_clean is not None and len(codes_clean) > codes_preview_limit:
+        try:
+            codes_full = ", ".join(codes_clean)
+            prefix = f"{title}: codes (full)\n"
+            budget = max(200, max_msg_len - len(prefix))
+            parts = _chunk_text(codes_full, max_len=budget)
+            for idx, chunk in enumerate(parts, start=1):
+                resi = _telegram_send_message(
+                    to_chat_id=to_chat_id,
+                    text=f"{prefix}(part {idx}/{len(parts)})\n{chunk}",
+                    thread_id=thread_id,
+                )
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "failed_message_triage_sent",
+                    ok=bool(resi.get("ok")),
+                    kind=kind_norm,
+                    stage=stage,
+                    channel=channel_link,
+                    message_id=str(msg_id),
+                    part=f"codes:{idx}",
+                    parts=f"codes:{len(parts)}",
+                    thread_id=thread_id,
+                    res=resi,
+                )
+        except Exception:
+            pass
+
     # Remaining raw text chunks (if any): send as additional messages.
     if raw_chunks and len(raw_chunks) > 1:
         for idx, chunk in enumerate(raw_chunks[1:], start=2):
             try:
-                part_prefix = f"TutorDex: failed raw_text (part {idx}/{len(raw_chunks)})\n"
+                part_prefix = f"{title}: raw_text (part {idx}/{len(raw_chunks)})\n"
                 budget = max(50, max_msg_len - len(part_prefix))
                 for sub in _chunk_text(chunk, max_len=budget):
                     resi = _telegram_send_message(to_chat_id=to_chat_id, text=part_prefix + sub, thread_id=thread_id)
@@ -250,6 +332,7 @@ def _try_report_failed_message(*, raw: Dict[str, Any], channel_link: str, error_
                         logging.INFO,
                         "failed_message_triage_sent",
                         ok=bool(resi.get("ok")),
+                        kind=kind_norm,
                         stage=stage,
                         channel=channel_link,
                         message_id=str(msg_id),
@@ -870,6 +953,16 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
         if is_comp:
             # Instead of skipping, extract assignment codes and bump them
             codes, code_meta = extract_assignment_codes(raw_text)
+
+            # Report compilations to triage channel if configured, and include extracted assignment codes.
+            _try_report_triage_message(
+                kind="compilation",
+                raw=raw,
+                channel_link=channel_link,
+                summary=f"compilation_detected: codes_found={len(codes or [])}",
+                stage="pre_extraction_filter",
+                extracted_codes=[str(c).strip() for c in (codes or []) if str(c).strip()],
+            )
             
             if codes:
                 # Bump assignments by their codes
@@ -970,11 +1063,12 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 llm_model=llm_model,
             )
             # Report to triage channel if configured
-            _try_report_failed_message(
+            _try_report_triage_message(
+                kind="non_assignment",
                 raw=raw,
                 channel_link=channel_link,
-                error_summary=f"non_assignment: {non_type} - {non_details}",
-                stage="pre_extraction_filter"
+                summary=f"non_assignment: {non_type} - {non_details}",
+                stage="pre_extraction_filter",
             )
             return "skipped"
 
@@ -1023,7 +1117,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
-            _try_report_failed_message(raw=raw, channel_link=channel_link, error_summary=str(e), stage="llm")
+            _try_report_triage_message(kind="extraction_error", raw=raw, channel_link=channel_link, summary=str(e), stage="llm")
             return "failed"
 
         payload: Dict[str, Any] = {
@@ -1176,8 +1270,19 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 existing_meta=existing_meta,
                 llm_model=llm_model,
             )
-            _try_report_failed_message(raw=raw, channel_link=channel_link,
-                                       error_summary=f"validation_failed: {str(schema_errors)[:500]}", stage="validation")
+            extracted_code = None
+            try:
+                extracted_code = str((payload.get("parsed") or {}).get("assignment_code") or "").strip()  # type: ignore[union-attr]
+            except Exception:
+                extracted_code = None
+            _try_report_triage_message(
+                kind="extraction_error",
+                raw=raw,
+                channel_link=channel_link,
+                summary=f"validation_failed: {str(schema_errors)[:500]}",
+                stage="validation",
+                extracted_codes=[extracted_code] if extracted_code else None,
+            )
             return "failed"
 
         # 3) Persist assignment row
@@ -1284,8 +1389,13 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
                 ).inc()
             except Exception:
                 pass
-            _try_report_failed_message(raw=raw, channel_link=channel_link,
-                                       error_summary=f"persist_failed_final: {json.dumps(persist_res, ensure_ascii=False)[:500]}", stage="persist")
+            _try_report_triage_message(
+                kind="extraction_error",
+                raw=raw,
+                channel_link=channel_link,
+                summary=f"persist_failed_final: {json.dumps(persist_res, ensure_ascii=False)[:500]}",
+                stage="persist",
+            )
         else:
             try:
                 worker_parse_success_total.labels(channel=channel_link, pipeline_version=_V.pipeline_version, schema_version=_V.schema_version).inc()

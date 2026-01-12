@@ -106,7 +106,10 @@ Supabase self-host migration runbook:
 
 **Skipped/Moderation forwarding (optional)**
 - `SKIPPED_MESSAGES_CHAT_ID`: Chat id to forward skipped posts to
-- `SKIPPED_MESSAGES_THREAD_ID`: Thread id (topic) inside that chat
+- `SKIPPED_MESSAGES_THREAD_ID`: Legacy fallback thread id (topic) inside that chat
+- `SKIPPED_MESSAGES_THREAD_ID_EXTRACTION_ERRORS`: Topic for extraction/validation/persist failures
+- `SKIPPED_MESSAGES_THREAD_ID_NON_ASSIGNMENT`: Topic for non-assignment skips (pre-LLM filter)
+- `SKIPPED_MESSAGES_THREAD_ID_COMPILATIONS`: Topic for compilation skips (includes extracted assignment codes)
 
 ## Logging
 
