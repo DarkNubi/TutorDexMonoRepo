@@ -1,39 +1,31 @@
 import os
 import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, Optional, Tuple, List
+import re
+import math
 import json
 import hashlib
 
 import requests
+from urllib.parse import urlparse
 
 try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+    from supabase_env import resolve_supabase_url  # type: ignore
     from geo_enrichment import enrich_from_coords  # type: ignore
-    from utils.timestamp_utils import utc_now_iso, parse_iso_dt, coerce_iso_ts, max_iso_ts  # type: ignore
-    from utils.field_coercion import (  # type: ignore
-        truthy, safe_str, normalize_sg_postal_code, coerce_int_like,
-        first_text, coerce_text_list, truthy_text
-    )
-    from utils.supabase_client import (  # type: ignore
-        SupabaseConfig, load_config_from_env, SupabaseRestClient, coerce_rows
-    )
 except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+    from TutorDexAggregator.supabase_env import resolve_supabase_url  # type: ignore
     from TutorDexAggregator.geo_enrichment import enrich_from_coords  # type: ignore
-    from TutorDexAggregator.utils.timestamp_utils import utc_now_iso, parse_iso_dt, coerce_iso_ts, max_iso_ts  # type: ignore
-    from TutorDexAggregator.utils.field_coercion import (  # type: ignore
-        truthy, safe_str, normalize_sg_postal_code, coerce_int_like,
-        first_text, coerce_text_list, truthy_text
-    )
-    from TutorDexAggregator.utils.supabase_client import (  # type: ignore
-        SupabaseConfig, load_config_from_env, SupabaseRestClient, coerce_rows
-    )
 
 setup_logging()
 logger = logging.getLogger("supabase_persist")
+_SG_POSTAL_RE = re.compile(r"\b(\d{6})\b")
 
 try:
     from observability_metrics import worker_supabase_fail_total, versions as _obs_versions  # type: ignore
@@ -45,7 +37,7 @@ except Exception:
 # Duplicate detection integration
 def _should_run_duplicate_detection() -> bool:
     """Check if duplicate detection should run (environment variable)"""
-    return truthy(os.environ.get("DUPLICATE_DETECTION_ENABLED"))
+    return _truthy(os.environ.get("DUPLICATE_DETECTION_ENABLED"))
 
 
 def _run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
@@ -88,28 +80,36 @@ def _run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
     thread.start()
 
 
+def _truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
 
 def _freshness_enabled() -> bool:
-    """Check if freshness tier feature is enabled."""
-    return truthy(os.environ.get("FRESHNESS_TIER_ENABLED"))
+    return _truthy(os.environ.get("FRESHNESS_TIER_ENABLED"))
 
 
 def _nominatim_disabled() -> bool:
-    """Check if Nominatim geocoding is disabled."""
-    return truthy(os.environ.get("DISABLE_NOMINATIM"))
+    return str(os.environ.get("DISABLE_NOMINATIM", "")).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _normalize_sg_postal_code(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    digits = re.sub(r"\D+", "", s)
+    m = _SG_POSTAL_RE.search(digits)
+    return m.group(1) if m else None
 
 
 @lru_cache(maxsize=2048)
 def _geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[float, float]]:
-    """
-    Geocode Singapore postal code using Nominatim API.
-    
-    Returns (lat, lon) tuple or None if geocoding fails.
-    Caches results to avoid repeated API calls.
-    """
     if _nominatim_disabled():
         return None
-    pc = normalize_sg_postal_code(postal_code)
+    pc = _normalize_sg_postal_code(postal_code)
     if not pc:
         return None
 
@@ -166,6 +166,147 @@ def _geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple
         return (lat, lon)
     except Exception:
         return None
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_iso_dt(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    s = str(value).strip()
+    try:
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        return datetime.fromisoformat(s)
+    except Exception:
+        return None
+
+
+def _safe_str(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    return s or None
+
+
+def _coerce_iso_ts(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    s = str(value).strip()
+    return s or None
+
+
+def _max_iso_ts(a: Optional[str], b: Optional[str]) -> Optional[str]:
+    """
+    Return the later of two ISO-ish timestamps.
+    If parsing fails, prefer a non-empty value deterministically.
+    """
+    if not a and not b:
+        return None
+    if not a:
+        return b
+    if not b:
+        return a
+    da = _parse_iso_dt(a)
+    db = _parse_iso_dt(b)
+    if da and db:
+        return a if da >= db else b
+    if da and not db:
+        return a
+    if db and not da:
+        return b
+    # Both unparseable: fall back to stable choice.
+    return b
+
+
+def _coerce_int_like(value: Any) -> Optional[int]:
+    """
+    Convert values like 45, 45.0, "45", "45.0" into an int.
+
+    Returns None if the value is not safely representable as an integer (e.g. 45.5).
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return None
+        rounded = round(value)
+        if abs(value - rounded) < 1e-9:
+            return int(rounded)
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            f = float(s)
+        except Exception:
+            return None
+        if not math.isfinite(f):
+            return None
+        rounded = round(f)
+        if abs(f - rounded) < 1e-9:
+            return int(rounded)
+        return None
+    # Best-effort fallback for numerics (e.g. Decimal)
+    try:
+        f2 = float(value)
+    except Exception:
+        return None
+    if not math.isfinite(f2):
+        return None
+    rounded2 = round(f2)
+    if abs(f2 - rounded2) < 1e-9:
+        return int(rounded2)
+    return None
+
+
+def _first_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            s = _first_text(item)
+            if s:
+                return s
+        return None
+    return _safe_str(value)
+
+
+def _coerce_text_list(value: Any) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        v = value.strip()
+        return [v] if v else []
+    if isinstance(value, (list, tuple)):
+        out: List[str] = []
+        for x in value:
+            out.extend(_coerce_text_list(x))
+        # de-dup preserve order
+        seen = set()
+        uniq: List[str] = []
+        for t in out:
+            s = str(t).strip()
+            if not s or s in seen:
+                continue
+            seen.add(s)
+            uniq.append(s)
+        return uniq
+    v = str(value).strip()
+    return [v] if v else []
+
+
+def _truthy_text(value: Any) -> bool:
+    return any(_coerce_text_list(value))
 
 
 def _compute_parse_quality(row_like: Dict[str, Any]) -> int:
@@ -410,8 +551,8 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     rate = parsed.get("rate") if isinstance(parsed, dict) else None
     if not isinstance(rate, dict):
         rate = {}
-    rate_min = coerce_int_like(rate.get("min"))
-    rate_max = coerce_int_like(rate.get("max"))
+    rate_min = _coerce_int_like(rate.get("min"))
+    rate_max = _coerce_int_like(rate.get("max"))
     rate_raw_text = _safe_str(rate.get("raw_text"))
     # New: per-type tutor types and rate breakdown (optional)
     # Prefer deterministic signals (rule-based extractor) provided in `meta.signals` over LLM `parsed` outputs.
@@ -468,11 +609,11 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
             if not isinstance(v, dict):
                 continue
             try:
-                min_v = coerce_int_like(v.get("min"))
+                min_v = _coerce_int_like(v.get("min"))
             except Exception:
                 min_v = None
             try:
-                max_v = coerce_int_like(v.get("max"))
+                max_v = _coerce_int_like(v.get("max"))
             except Exception:
                 max_v = None
             currency = _safe_str(v.get("currency"))
@@ -684,13 +825,68 @@ def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @dataclass(frozen=True)
+class SupabaseConfig:
+    url: str
+    key: str
+    assignments_table: str = "assignments"
+    enabled: bool = False
+    bump_min_seconds: int = 6 * 60 * 60  # 6 hours
+
+
+def load_config_from_env() -> SupabaseConfig:
+    url = resolve_supabase_url()
+    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
+    assignments_table = (os.environ.get("SUPABASE_ASSIGNMENTS_TABLE") or "assignments").strip()
+    enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key and assignments_table)
+    bump_min_seconds = int(os.environ.get("SUPABASE_BUMP_MIN_SECONDS") or str(6 * 60 * 60))
+    return SupabaseConfig(
+        url=url,
+        key=key,
+        assignments_table=assignments_table,
+        enabled=enabled,
+        bump_min_seconds=bump_min_seconds,
+    )
+
+
+class SupabaseRestClient:
+    def __init__(self, cfg: SupabaseConfig):
+        self.cfg = cfg
+        self.base = f"{cfg.url}/rest/v1"
+        self.session = requests.Session()
+        try:
+            host = (urlparse(cfg.url).hostname or "").lower()
+            if host in {"127.0.0.1", "localhost", "::1"}:
+                self.session.trust_env = False
+        except Exception:
+            pass
+        self.session.headers.update(
+            {
+                "apikey": cfg.key,
+                "authorization": f"Bearer {cfg.key}",
+                "content-type": "application/json",
+            }
+        )
+
+    def _url(self, path: str) -> str:
+        return f"{self.base}/{path.lstrip('/')}"
+
+    def get(self, path: str, *, timeout: int = 15) -> requests.Response:
+        return self.session.get(self._url(path), timeout=timeout)
+
+    def post(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None) -> requests.Response:
+        headers = {}
+        if prefer:
+            headers["prefer"] = prefer
+        return self.session.post(self._url(path), json=json_body, headers=headers, timeout=timeout)
+
+    def patch(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None) -> requests.Response:
+        headers = {}
+        if prefer:
+            headers["prefer"] = prefer
+        return self.session.patch(self._url(path), json=json_body, headers=headers, timeout=timeout)
+
 
 def _upsert_agency(client: SupabaseRestClient, *, name: str, channel_link: Optional[str]) -> Optional[int]:
-    """
-    Find or create agency by name/channel_link.
-    
-    Returns agency_id or None if operation fails.
-    """
     if not name:
         return None
 
@@ -700,7 +896,7 @@ def _upsert_agency(client: SupabaseRestClient, *, name: str, channel_link: Optio
         try:
             r = client.get(q, timeout=15)
             if r.status_code < 400:
-                rows = coerce_rows(r)
+                rows = _coerce_rows(r)
                 if rows:
                     return rows[0].get("id")
         except Exception:
@@ -710,7 +906,7 @@ def _upsert_agency(client: SupabaseRestClient, *, name: str, channel_link: Optio
     try:
         r2 = client.get(q2, timeout=15)
         if r2.status_code < 400:
-            rows = coerce_rows(r2)
+            rows = _coerce_rows(r2)
             if rows:
                 return rows[0].get("id")
     except Exception:
@@ -724,13 +920,21 @@ def _upsert_agency(client: SupabaseRestClient, *, name: str, channel_link: Optio
             prefer="return=representation",
         )
         if ins.status_code < 400:
-            rows = coerce_rows(ins)
+            rows = _coerce_rows(ins)
             if rows:
                 return rows[0].get("id")
     except Exception:
         logger.debug("Agency insert failed", exc_info=True)
         return None
     return None
+
+
+def _coerce_rows(resp: requests.Response) -> List[Dict[str, Any]]:
+    try:
+        data = resp.json()
+    except Exception:
+        return []
+    return data if isinstance(data, list) else []
 
 
 def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[SupabaseConfig] = None) -> Dict[str, Any]:
@@ -914,7 +1118,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 else:
                     patch_body["source_last_seen"] = existing_source_last_seen
             else:
-                patch_body["source_last_seen"] = max_iso_ts(existing_source_last_seen, incoming_source_last_seen) or existing_source_last_seen
+                patch_body["source_last_seen"] = _max_iso_ts(existing_source_last_seen, incoming_source_last_seen) or existing_source_last_seen
             if patch_body.get("source_last_seen") is None:
                 patch_body.pop("source_last_seen", None)
 
