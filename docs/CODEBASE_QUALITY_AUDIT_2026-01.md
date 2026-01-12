@@ -4,6 +4,14 @@
 **Auditor Role:** Senior Staff Engineer / Systems Architect  
 **Scope:** Full monorepo quality assessment for long-term maintainability
 
+**Status Update (2026-01-12):**  
+✅ **Week 1 Priority Fixes Implemented** - Three critical fixes from this audit have been completed:
+- Priority 1: Fail Fast on Auth (already implemented)
+- Priority 2: Detect Supabase RPC 300 Errors (implemented)
+- Priority 3: Add LLM Circuit Breaker (implemented)
+
+See `docs/IMPLEMENTATION_PRIORITIES_1-3.md` for complete implementation details.
+
 ---
 
 ## 1. Executive Summary
@@ -34,16 +42,20 @@ This codebase represents a **production-ready MVP** that has successfully delive
 ### Top 3 Systemic Risks
 
 1. **File Complexity Crisis** (Severity: **HIGH**)
-   - Three files exceed 1,500 lines: `app.py` (1547), `extract_worker.py` (1610), `supabase_persist.py` (1311)
+   - Three files exceed 1,500 lines: `app.py` (1547), `extract_worker.py` (1644), `supabase_persist.py` (1311)
    - God-object pattern in `app.py` mixing auth, matching, tracking, analytics, admin endpoints
    - Worker contains orchestration + filtering + LLM calls + persistence + broadcasting
    - **Impact:** 3-5x slower onboarding, cascade edits on changes, high bug introduction risk
+   - **Note (2026-01-12):** Extract worker grew by 34 lines with circuit breaker implementation (Priority 3 fix)
 
-2. **Silent Failure Modes** (Severity: **HIGH**)
+2. **Silent Failure Modes** (Severity: **HIGH**) - **PARTIALLY ADDRESSED ✅**
    - Bare `except:` blocks swallow errors without recovery strategy
    - Optional features (auth, duplicate detection, click tracking) fail open/silent
-   - Missing invariant enforcement: Firebase Admin can initialize disabled, breaking auth
+   - ~~Missing invariant enforcement: Firebase Admin can initialize disabled, breaking auth~~ ✅ **FIXED (Priority 1)**
+   - ~~No circuit breaker for LLM API calls causing queue burn~~ ✅ **FIXED (Priority 3)**
+   - ~~Supabase RPC HTTP 300 errors cause silent data loss~~ ✅ **FIXED (Priority 2)**
    - **Impact:** Production incidents go undetected, data corruption risk, security vulnerabilities
+   - **Update (2026-01-12):** Three critical failure modes have been addressed with Week 1 priority fixes
 
 3. **Undeclared External Dependencies** (Severity: **MEDIUM-HIGH**)
    - Supabase PostgreSQL instance required but not included/versioned in repo
@@ -97,7 +109,7 @@ This codebase represents a **production-ready MVP** that has successfully delive
 
 **Enforcement Gaps:**
 - No Python package boundaries (missing `__init__.py` in many subdirs)
-- Only 7 `__init__.py` files across 113 Python files
+- Only 7 `__init__.py` files across 116 Python files (updated 2026-01-12: +3 files from circuit breaker implementation)
 - No import restrictions (can import anything from anywhere)
 - CI validates contract schema sync but doesn't prevent cross-boundary imports
 
@@ -116,7 +128,8 @@ This codebase represents a **production-ready MVP** that has successfully delive
    - Functions like `_resolve_original_url()` embed click tracking business logic in HTTP layer
    - **Should be:** Thin HTTP adapter delegating to domain services
 
-3. **`TutorDexAggregator/workers/extract_worker.py` (lines 1-1610)**
+3. **`TutorDexAggregator/workers/extract_worker.py` (lines 1-1644)**
+   - **Update (2026-01-12):** Grew from 1610 to 1644 lines (+34) with Priority 3 implementation (LLM circuit breaker integration)
    - Orchestrates: claim, load, filter, extract, validate, persist, broadcast, DM
    - Contains compilation detection, non-assignment filtering, LLM retry logic
    - **Should be:** Pipeline coordinator with separate stages
@@ -657,7 +670,7 @@ except Exception:
 | File/Module | Risk Level | Why It's Risky | Likely Failure Mode | Severity |
 |-------------|------------|----------------|---------------------|----------|
 | **`TutorDexBackend/app.py`** (1547 lines) | **HIGH** | God object mixing 5 concerns; 40+ endpoints; auth logic spread across functions | Breaking change to one endpoint affects unrelated routes; auth bypass via config error | **HIGH** |
-| **`TutorDexAggregator/workers/extract_worker.py`** (1610 lines) | **HIGH** | Main loop with embedded claim/process/retry/metrics; no clear module boundaries | Worker crashes silently; retry logic breaks; jobs stuck in "processing" forever | **HIGH** |
+| **`TutorDexAggregator/workers/extract_worker.py`** (1644 lines) | **HIGH** | Main loop with embedded claim/process/retry/metrics; no clear module boundaries; **+34 lines from circuit breaker** | Worker crashes silently; retry logic breaks; jobs stuck in "processing" forever | **HIGH** |
 | **`TutorDexAggregator/supabase_persist.py`** (1311 lines) | **HIGH** | 300-line merge function with 7 nesting levels; embeds 5 business rules | Merge logic regression corrupts assignments; geo-enrichment failure breaks distance sorting | **MEDIUM** |
 | **Firebase Admin initialization** (backend startup) | **HIGH** | Silent failure mode; auth can initialize disabled; prod misconfiguration | Production runs with no authentication; attacker accesses tutor data | **CRITICAL** |
 | **Supabase RPC function overloads** | **MEDIUM** | PostgREST returns 300 on ambiguous signature; worker doesn't detect | Assignments fail to persist; jobs marked "ok" but data missing; silent data loss | **HIGH** |
@@ -1090,8 +1103,8 @@ Based on this audit, the following should be enforced as **system invariants**:
 
 **Rule:** Files exceeding 500 lines must have a documented reason (in file header) or be refactored.
 
-**Current Violations:**
-- `app.py` (1547), `extract_worker.py` (1610), `supabase_persist.py` (1311)
+**Current Violations (Updated 2026-01-12):**
+- `app.py` (1547), `extract_worker.py` (1644), `supabase_persist.py` (1311)
 
 **Enforcement:**
 - Add pre-commit hook that warns on large files
