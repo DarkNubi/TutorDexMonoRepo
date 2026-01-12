@@ -120,6 +120,19 @@ USE_DETERMINISTIC_TIME = DEFAULT_USE_DETERMINISTIC_TIME
 ENABLE_POSTAL_CODE_ESTIMATED = DEFAULT_ENABLE_POSTAL_CODE_ESTIMATED
 
 
+# Initialize circuit breaker for LLM calls
+from circuit_breaker import CircuitBreaker, CircuitBreakerOpenError  # noqa: E402
+
+# Circuit breaker prevents queue burn when LLM API is down
+# Default: open after 5 consecutive failures, reset after 60 seconds
+_LLM_CIRCUIT_BREAKER_THRESHOLD = int(os.environ.get("LLM_CIRCUIT_BREAKER_THRESHOLD", "5"))
+_LLM_CIRCUIT_BREAKER_TIMEOUT = int(os.environ.get("LLM_CIRCUIT_BREAKER_TIMEOUT_SECONDS", "60"))
+llm_circuit_breaker = CircuitBreaker(
+    failure_threshold=_LLM_CIRCUIT_BREAKER_THRESHOLD,
+    timeout_seconds=_LLM_CIRCUIT_BREAKER_TIMEOUT
+)
+
+
 setup_logging()
 logger = logging.getLogger("extract_worker")
 _V = set_version_metrics(component="worker")
@@ -415,8 +428,9 @@ def _rpc(url: str, key: str, fn: str, body: Dict[str, Any], *, timeout: int = 30
         pass
     try:
         resp = requests.post(f"{url}/rest/v1/rpc/{fn}", headers=_headers(key), json=body, timeout=timeout)
-        if resp.status_code >= 400:
-            raise RuntimeError(f"rpc {fn} failed status={resp.status_code} body={resp.text[:300]}")
+        # Check for ambiguous overloads (HTTP 300) and other errors
+        from supabase_env import check_rpc_response  # noqa: E402
+        check_rpc_response(resp, fn)
         try:
             return resp.json()
         except Exception:
@@ -1282,7 +1296,27 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
             except Exception:
                 pass
             t_llm0 = time.perf_counter()
-            parsed = extract_assignment_with_model(llm_input, chat=channel_link, cid=cid)
+            
+            # Use circuit breaker to prevent queue burn when LLM API is down
+            try:
+                parsed = llm_circuit_breaker.call(
+                    extract_assignment_with_model,
+                    llm_input,
+                    chat=channel_link,
+                    cid=cid
+                )
+            except CircuitBreakerOpenError as e:
+                # Circuit breaker open - fail fast without retrying
+                logger.warning(
+                    "llm_circuit_breaker_blocked_call",
+                    extra={
+                        "extraction_id": extraction_id,
+                        "channel": channel_link,
+                        "circuit_stats": llm_circuit_breaker.get_stats(),
+                    }
+                )
+                raise RuntimeError(f"LLM circuit breaker open: {e}") from e
+            
             try:
                 worker_llm_call_latency_seconds.labels(pipeline_version=_V.pipeline_version,
                                                        schema_version=_V.schema_version).observe(time.perf_counter() - t_llm0)
