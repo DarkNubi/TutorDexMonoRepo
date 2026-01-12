@@ -17,6 +17,7 @@ try:
     )
     from services.row_builder import build_assignment_row, compute_parse_quality  # type: ignore
     from services.merge_policy import merge_patch_body  # type: ignore
+    from services.persistence_operations import upsert_agency  # type: ignore
 except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
@@ -27,6 +28,7 @@ except Exception:
     )
     from TutorDexAggregator.services.row_builder import build_assignment_row, compute_parse_quality  # type: ignore
     from TutorDexAggregator.services.merge_policy import merge_patch_body  # type: ignore
+    from TutorDexAggregator.services.persistence_operations import upsert_agency  # type: ignore
 
 setup_logging()
 logger = logging.getLogger("supabase_persist")
@@ -175,52 +177,7 @@ def _geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple
 
 
 
-def _upsert_agency(client: SupabaseRestClient, *, name: str, channel_link: Optional[str]) -> Optional[int]:
-    """
-    Find or create agency by name/channel_link.
-    
-    Returns agency_id or None if operation fails.
-    """
-    if not name:
-        return None
-
-    # Try lookup by channel_link first (if present), else by name.
-    if channel_link:
-        q = f"agencies?select=id&channel_link=eq.{requests.utils.quote(channel_link, safe='')}&limit=1"
-        try:
-            r = client.get(q, timeout=15)
-            if r.status_code < 400:
-                rows = coerce_rows(r)
-                if rows:
-                    return rows[0].get("id")
-        except Exception:
-            logger.debug("Agency lookup by channel_link failed", exc_info=True)
-
-    q2 = f"agencies?select=id&name=eq.{requests.utils.quote(name, safe='')}&limit=1"
-    try:
-        r2 = client.get(q2, timeout=15)
-        if r2.status_code < 400:
-            rows = coerce_rows(r2)
-            if rows:
-                return rows[0].get("id")
-    except Exception:
-        logger.debug("Agency lookup by name failed", exc_info=True)
-
-    try:
-        ins = client.post(
-            "agencies",
-            [{"name": name, "channel_link": channel_link}],
-            timeout=20,
-            prefer="return=representation",
-        )
-        if ins.status_code < 400:
-            rows = coerce_rows(ins)
-            if rows:
-                return rows[0].get("id")
-    except Exception:
-        logger.debug("Agency insert failed", exc_info=True)
-        return None
-    return None
+# Imported from services.persistence_operations: upsert_agency
 
 
 def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[SupabaseConfig] = None) -> Dict[str, Any]:
@@ -273,7 +230,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         # If the normalized schema exists, try to create/resolve agency_id.
         try:
             t0 = timed()
-            agency_id = _upsert_agency(client, name=str(agency_name), channel_link=str(agency_link) if agency_link else None)
+            agency_id = upsert_agency(client, name=str(agency_name), channel_link=str(agency_link) if agency_link else None)
             agency_ms = round((timed() - t0) * 1000.0, 2)
             if agency_id:
                 row["agency_id"] = agency_id
