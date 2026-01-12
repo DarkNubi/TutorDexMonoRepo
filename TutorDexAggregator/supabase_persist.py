@@ -18,6 +18,8 @@ try:
     from services.row_builder import build_assignment_row, compute_parse_quality  # type: ignore
     from services.merge_policy import merge_patch_body  # type: ignore
     from services.persistence_operations import upsert_agency  # type: ignore
+    from services.geocoding_service import geocode_sg_postal  # type: ignore
+    from services.event_publisher import should_run_duplicate_detection, run_duplicate_detection_async  # type: ignore
 except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
@@ -29,6 +31,8 @@ except Exception:
     from TutorDexAggregator.services.row_builder import build_assignment_row, compute_parse_quality  # type: ignore
     from TutorDexAggregator.services.merge_policy import merge_patch_body  # type: ignore
     from TutorDexAggregator.services.persistence_operations import upsert_agency  # type: ignore
+    from TutorDexAggregator.services.geocoding_service import geocode_sg_postal  # type: ignore
+    from TutorDexAggregator.services.event_publisher import should_run_duplicate_detection, run_duplicate_detection_async  # type: ignore
 
 setup_logging()
 logger = logging.getLogger("supabase_persist")
@@ -40,130 +44,11 @@ except Exception:
     _obs_versions = None  # type: ignore
 
 
-# Duplicate detection integration
-def _should_run_duplicate_detection() -> bool:
-    """Check if duplicate detection should run (environment variable)"""
-    return truthy(os.environ.get("DUPLICATE_DETECTION_ENABLED"))
-
-
-def _run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
-    """
-    Run duplicate detection asynchronously (non-blocking)
-    
-    This runs in a separate thread to avoid blocking the main persist operation.
-    Failures in duplicate detection do not affect assignment persistence.
-    """
-    import threading
-    
-    def _detect():
-        try:
-            from duplicate_detector import detect_duplicates_for_assignment  # type: ignore
-            
-            group_id = detect_duplicates_for_assignment(
-                assignment_id,
-                supabase_url=cfg.url,
-                supabase_key=cfg.key
-            )
-            
-            if group_id:
-                logger.info(
-                    f"Duplicate detection completed for assignment {assignment_id}",
-                    extra={"assignment_id": assignment_id, "duplicate_group_id": group_id}
-                )
-            else:
-                logger.debug(
-                    f"No duplicates found for assignment {assignment_id}",
-                    extra={"assignment_id": assignment_id}
-                )
-        except Exception as e:
-            logger.warning(
-                f"Duplicate detection failed for assignment {assignment_id}: {e}",
-                extra={"assignment_id": assignment_id, "error": str(e)}
-            )
-    
-    # Run in background thread (non-blocking)
-    thread = threading.Thread(target=_detect, daemon=True)
-    thread.start()
+# Imported from services.event_publisher: should_run_duplicate_detection, run_duplicate_detection_async
 
 
 
-def _freshness_enabled() -> bool:
-    """Check if freshness tier feature is enabled."""
-    return truthy(os.environ.get("FRESHNESS_TIER_ENABLED"))
-
-
-def _nominatim_disabled() -> bool:
-    """Check if Nominatim geocoding is disabled."""
-    return truthy(os.environ.get("DISABLE_NOMINATIM"))
-
-
-@lru_cache(maxsize=2048)
-def _geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[float, float]]:
-    """
-    Geocode Singapore postal code using Nominatim API.
-    
-    Returns (lat, lon) tuple or None if geocoding fails.
-    Caches results to avoid repeated API calls.
-    """
-    if _nominatim_disabled():
-        return None
-    pc = normalize_sg_postal_code(postal_code)
-    if not pc:
-        return None
-
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
-    headers = {"User-Agent": os.environ.get("NOMINATIM_USER_AGENT") or "TutorDexAggregator/1.0"}
-
-    max_attempts = int(os.environ.get("NOMINATIM_RETRIES") or "3")
-    backoff_s = float(os.environ.get("NOMINATIM_BACKOFF_SECONDS") or "1.0")
-
-    resp = None
-    for attempt in range(max(1, min(max_attempts, 6))):
-        try:
-            resp = requests.get(url, params=params, headers=headers, timeout=timeout)
-        except Exception:
-            logger.debug("postal_geocode_failed", exc_info=True)
-            resp = None
-
-        if resp is None:
-            # transient network issue
-            if attempt < max_attempts - 1:
-                try:
-                    import time
-                    time.sleep(min(10.0, backoff_s * (2**attempt)))
-                except Exception:
-                    pass
-            continue
-
-        if resp.status_code in {429, 503} and attempt < max_attempts - 1:
-            try:
-                import time
-                time.sleep(min(10.0, backoff_s * (2**attempt)))
-            except Exception:
-                pass
-            continue
-
-        if resp.status_code >= 400:
-            return None
-        break
-
-    if resp is None:
-        return None
-
-    try:
-        data = resp.json()
-    except Exception:
-        return None
-    if not isinstance(data, list) or not data or not isinstance(data[0], dict):
-        return None
-
-    try:
-        lat = float(data[0].get("lat"))
-        lon = float(data[0].get("lon"))
-        return (lat, lon)
-    except Exception:
-        return None
+# Imported from services.geocoding_service: geocode_sg_postal
 
 
 # Imported from services.row_builder: compute_parse_quality, derive_agency, derive_external_id, build_assignment_row
@@ -198,7 +83,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
     pv = pv or "-"
     sv = sv or "-"
 
-    row = build_assignment_row(payload, geocode_func=_geocode_sg_postal)
+    row = build_assignment_row(payload, geocode_func=geocode_sg_postal)
     external_id = row.get("external_id")
     agency_name = row.get("agency_name")
     agency_link = row.get("agency_link")
@@ -418,8 +303,8 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_persist_result", **res)
             
             # Duplicate detection (after successful update, only if re-extraction occurred)
-            if ok and _should_run_duplicate_detection():
-                _run_duplicate_detection_async(existing.get("id"), cfg)
+            if ok and should_run_duplicate_detection():
+                run_duplicate_detection_async(existing.get("id"), cfg)
             
             return res
 
@@ -483,10 +368,10 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_persist_result", **res)
         
         # Duplicate detection (after successful insert)
-        if ok and _should_run_duplicate_detection():
+        if ok and should_run_duplicate_detection():
             inserted_rows = _coerce_rows(insert_resp) if insert_resp.status_code < 400 else []
             if inserted_rows and inserted_rows[0].get("id"):
-                _run_duplicate_detection_async(inserted_rows[0]["id"], cfg)
+                run_duplicate_detection_async(inserted_rows[0]["id"], cfg)
         
         return res
 
@@ -506,7 +391,7 @@ def mark_assignment_closed(payload: Dict[str, Any], *, cfg: Optional[SupabaseCon
 
     with bind_log_context(cid=str(cid), message_id=msg_id, channel=str(channel) if channel else None, step="supabase.close"):
         client = SupabaseRestClient(cfg)
-        row = build_assignment_row(payload, geocode_func=_geocode_sg_postal)
+        row = build_assignment_row(payload, geocode_func=geocode_sg_postal)
         external_id = row.get("external_id")
         agency_name = row.get("agency_name")
         agency_link = row.get("agency_link")
