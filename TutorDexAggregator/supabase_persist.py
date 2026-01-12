@@ -1,9 +1,7 @@
 import os
 import logging
-from functools import lru_cache
-from typing import Any, Dict, Optional, Tuple, List
-import json
-import hashlib
+from typing import Any, Dict, Optional
+from datetime import datetime, timezone
 
 import requests
 
@@ -11,11 +9,11 @@ try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
-    from utils.field_coercion import truthy, safe_str, coerce_text_list  # type: ignore
+    from utils.field_coercion import truthy, safe_str  # type: ignore
     from utils.supabase_client import (  # type: ignore
         SupabaseConfig, load_config_from_env, SupabaseRestClient, coerce_rows
     )
-    from services.row_builder import build_assignment_row, compute_parse_quality  # type: ignore
+    from services.row_builder import build_assignment_row  # type: ignore
     from services.merge_policy import merge_patch_body  # type: ignore
     from services.persistence_operations import upsert_agency  # type: ignore
     from services.geocoding_service import geocode_sg_postal  # type: ignore
@@ -24,11 +22,11 @@ except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from TutorDexAggregator.utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
-    from TutorDexAggregator.utils.field_coercion import truthy, safe_str, coerce_text_list  # type: ignore
+    from TutorDexAggregator.utils.field_coercion import truthy, safe_str  # type: ignore
     from TutorDexAggregator.utils.supabase_client import (  # type: ignore
         SupabaseConfig, load_config_from_env, SupabaseRestClient, coerce_rows
     )
-    from TutorDexAggregator.services.row_builder import build_assignment_row, compute_parse_quality  # type: ignore
+    from TutorDexAggregator.services.row_builder import build_assignment_row  # type: ignore
     from TutorDexAggregator.services.merge_policy import merge_patch_body  # type: ignore
     from TutorDexAggregator.services.persistence_operations import upsert_agency  # type: ignore
     from TutorDexAggregator.services.geocoding_service import geocode_sg_postal  # type: ignore
@@ -42,27 +40,6 @@ try:
 except Exception:
     worker_supabase_fail_total = None  # type: ignore
     _obs_versions = None  # type: ignore
-
-
-# Imported from services.event_publisher: should_run_duplicate_detection, run_duplicate_detection_async
-
-
-
-# Imported from services.geocoding_service: geocode_sg_postal
-
-
-# Imported from services.row_builder: compute_parse_quality, derive_agency, derive_external_id, build_assignment_row
-
-
-# Imported from services.merge_policy: merge_patch_body
-
-
-
-
-
-
-
-# Imported from services.persistence_operations: upsert_agency
 
 
 def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[SupabaseConfig] = None) -> Dict[str, Any]:
@@ -195,7 +172,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                     pass
             return {"ok": False, "error": str(e)}
 
-        existing_rows = _coerce_rows(existing_resp) if existing_resp.status_code < 400 else []
+        existing_rows = coerce_rows(existing_resp) if existing_resp.status_code < 400 else []
         if existing_rows:
             existing = existing_rows[0]
             last_seen = parse_iso_dt(existing.get("last_seen"))
@@ -369,7 +346,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         
         # Duplicate detection (after successful insert)
         if ok and should_run_duplicate_detection():
-            inserted_rows = _coerce_rows(insert_resp) if insert_resp.status_code < 400 else []
+            inserted_rows = coerce_rows(insert_resp) if insert_resp.status_code < 400 else []
             if inserted_rows and inserted_rows[0].get("id"):
                 run_duplicate_detection_async(inserted_rows[0]["id"], cfg)
         
@@ -415,7 +392,7 @@ def mark_assignment_closed(payload: Dict[str, Any], *, cfg: Optional[SupabaseCon
 
         try:
             existing_resp = client.get(query, timeout=10)
-            existing_rows = _coerce_rows(existing_resp) if existing_resp.status_code < 400 else []
+            existing_rows = coerce_rows(existing_resp) if existing_resp.status_code < 400 else []
         except Exception as e:
             log_event(logger, logging.WARNING, "supabase_close_lookup_failed", error=str(e))
             return {"ok": False, "error": str(e), "action": "lookup_failed"}
