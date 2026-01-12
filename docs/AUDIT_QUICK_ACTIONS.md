@@ -160,33 +160,55 @@ TutorDexBackend/
 
 ---
 
-### 5. Add Migration Version Tracking (1 day)
+### 5. Add Migration Version Tracking ✅ **COMPLETED 2026-01-12**
 
 **Problem:** 19 SQL files, no tracking of what's applied. Operator must remember state.
 
-**Solution:**
-```sql
--- New file: TutorDexAggregator/supabase sqls/00_migration_tracking.sql
-CREATE TABLE IF NOT EXISTS public.schema_migrations (
-    id SERIAL PRIMARY KEY,
-    migration_name TEXT UNIQUE NOT NULL,
-    applied_at TIMESTAMPTZ DEFAULT NOW()
-);
+**Implementation:**
+- Created `00_migration_tracking.sql` with `schema_migrations` table
+- Created `scripts/migrate.py` (260 lines) with dry-run, checksums, force re-apply
+- Full documentation in `scripts/MIGRATIONS_README.md`
+
+**Usage:**
+```bash
+python scripts/migrate.py              # Apply all pending
+python scripts/migrate.py --dry-run    # Preview changes
 ```
 
-```python
-# New script: scripts/migrate.py
-def apply_migrations(supabase_url, supabase_key):
-    migrations = sorted(Path("TutorDexAggregator/supabase sqls").glob("*.sql"))
-    for migration_file in migrations:
-        name = migration_file.stem
-        if not migration_applied(name):
-            logger.info(f"Applying migration: {name}")
-            execute_sql(migration_file.read_text())
-            record_migration(name)
+**Impact:** ✅ Safe deploys (auto-apply migrations), clear audit trail, idempotent execution.
+
+---
+
+### 6. Add Frontend Error Reporting ✅ **COMPLETED 2026-01-12**
+
+**Problem:** Website errors invisible. Users report bugs via support tickets.
+
+**Implementation:**
+- Created `TutorDexWebsite/src/errorReporter.js` with Sentry integration
+- Added `@sentry/browser` dependency
+- Integrated in `page-assignments.js` and `page-profile.js`
+- User context tracking, breadcrumbs, smart filtering
+- Full documentation in `TutorDexWebsite/SENTRY_README.md`
+
+**Features:**
+- Production-only (dev uses console)
+- Automatic error capture with context
+- User tracking (Firebase UID)
+- Privacy protection (PII redaction)
+- Performance monitoring (10% sample)
+
+**Usage:**
+```javascript
+import { reportError, setUserContext } from './errorReporter.js';
+
+try {
+  await riskyOperation();
+} catch (error) {
+  reportError(error, { context: 'loadAssignments', filters });
+}
 ```
 
-**Impact:** Safe deploys (auto-apply migrations), clear audit log.
+**Impact:** ✅ Faster bug detection, full error context, performance insights, stays within free tier.
 
 ---
 
