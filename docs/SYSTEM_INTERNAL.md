@@ -109,7 +109,7 @@ Note on docs upkeep: `docs/SYSTEM_INTERNAL.md` is intended to be the authoritati
 
 ### Top-level folders/files (reality)
 - `TutorDexAggregator/`: ingestion, extraction, persistence, Telegram broadcast/DM, and most "business logic".
-- `TutorDexBackend/`: FastAPI service providing website APIs, matching, click tracking, assignment rating, and Supabase-facing user/event persistence.
+- `TutorDexBackend/`: FastAPI service providing website APIs, matching, click tracking, assignment rating, and Supabase-facing user/event persistence. **Refactored 2026-01-12**: now uses modular service architecture with `utils/` and `services/` subdirectories (see Backend Architecture section below).
 - `TutorDexWebsite/`: static multi-page site built with Vite; Firebase Hosting + Firebase Auth.
 - `observability/`: Full observability stack configuration and runbooks.
 - `docs/`: internal docs; some are used by pipeline logic (e.g., time availability doc references).
@@ -462,7 +462,7 @@ Website calls these paths via `TutorDexWebsite/src/backend.js` (which adds `Auth
 
 Auth enforcement is optional.
 - Code: `TutorDexBackend/firebase_auth.py` and token verification `verify_bearer_token`.
-- Behavior toggle is in backend (`AUTH_REQUIRED`), enforced in app middleware/routes (search for `_auth_required()` and `verify_bearer_token` usage in `TutorDexBackend/app.py`).
+- Behavior toggle is in backend (`AUTH_REQUIRED`), enforced in app middleware/routes via `AuthService.require_uid()` and `AuthService.require_admin()` (see `TutorDexBackend/services/auth_service.py`).
 
 #### Matching endpoint (used by Aggregator for DM sending)
 - `POST /match/payload`.
@@ -538,7 +538,7 @@ The website is a static Firebase-hosted app.
 
 Assignments are loaded from backend:
 - `listOpenAssignmentsPaged` in `TutorDexWebsite/src/backend.js` calls `GET /assignments?limit=...&sort=...&...`.
-- Public browsing protections (anonymous users) live in `TutorDexBackend/app.py`:
+- Public browsing protections (anonymous users) live in `TutorDexBackend/services/cache_service.py`:
   - rate limiting on `GET /assignments` and `GET /assignments/facets`
   - public limit caps for `/assignments`
   - short Redis-backed caching for common anonymous queries (facets + first page newest)
@@ -583,12 +583,12 @@ Beacon payload:
 Backend endpoint:
 - `POST /track`.
 - Dedup logic:
-  - `TutorDexBackend/app.py::_should_increment_click(...)` uses Redis `SET NX EX` keyed by `external_id` + hashed IP.
+  - `AnalyticsService.check_click_cooldown()` uses Redis `SET NX EX` keyed by `external_id` + hashed IP.
 
 Supabase updates:
 - Backend resolves a canonical `original_url`:
   - prefer `destination_url` from beacon
-  - else look up `broadcast_messages.original_url` via `SupabaseStore.get_broadcast_message` (see `_resolve_original_url` in `TutorDexBackend/app.py`).
+  - else look up `broadcast_messages.original_url` via `SupabaseStore.get_broadcast_message` (see `AnalyticsService.resolve_broadcast_url()`).
 - Backend increments clicks via Supabase RPC `increment_assignment_clicks` (defined in `TutorDexAggregator/supabase sqls/2025-12-25_click_tracking.sql`).
 
 #### Analytics events
@@ -708,8 +708,43 @@ The repo assumes a local model server (LM Studio / llama.cpp HTTP server).
 
 ## 5. TutorDexBackend
 
+### Architecture (Refactored 2026-01-12)
+
+**Before refactoring**: `app.py` was a 1547-line monolithic file mixing routing, auth, caching, analytics, and health checks.
+
+**After refactoring**: Modular service architecture with clear separation of concerns:
+
+```
+TutorDexBackend/
+├── app.py (1033 lines)          # HTTP routing + Pydantic models
+├── utils/                        # Pure utility functions
+│   ├── config_utils.py          # Environment configuration parsing
+│   ├── request_utils.py         # HTTP request utilities (IP, traceparent)
+│   └── database_utils.py        # PostgreSQL/Supabase helpers
+├── services/                     # Domain services (isolated, testable)
+│   ├── auth_service.py          # Firebase token verification, admin auth
+│   ├── health_service.py        # Health checks for all services
+│   ├── cache_service.py         # Rate limiting + response caching
+│   ├── telegram_service.py      # Webhook verification, callbacks
+│   └── analytics_service.py     # Click tracking, event insertion
+├── matching.py                   # Tutor matching logic (unchanged)
+├── redis_store.py               # Redis store operations (unchanged)
+├── supabase_store.py            # Supabase operations (unchanged)
+├── firebase_auth.py             # Firebase Admin SDK (unchanged)
+└── ... (other modules unchanged)
+```
+
+**Key service responsibilities**:
+- `AuthService`: Firebase token verification, admin API key validation, production config validation
+- `HealthService`: Aggregates health checks for Redis, Supabase, worker, collector, webhook
+- `CacheService`: Rate limiting for anonymous users, response caching with Redis fallback
+- `TelegramService`: Webhook secret verification, callback query handling
+- `AnalyticsService`: Click cooldown tracking, URL resolution, event insertion
+
+All 30 API endpoints preserved with identical signatures. Zero breaking changes.
+
 ### API surface (actual)
-Implemented in `TutorDexBackend/app.py`.
+Implemented in `TutorDexBackend/app.py` (HTTP routing) with business logic delegated to services.
 
 Categories:
 - Website tutor profile:
@@ -739,12 +774,14 @@ Two layers exist:
 
 2) Backend verification (optional)
 - Backend can verify tokens with Firebase Admin SDK (`TutorDexBackend/firebase_auth.py`).
+- Auth verification logic now centralized in `TutorDexBackend/services/auth_service.py` (`AuthService` class).
 - Toggle:
   - `FIREBASE_ADMIN_ENABLED=true`
   - provide `FIREBASE_ADMIN_CREDENTIALS_PATH` (mounted in docker as `/run/secrets/firebase-admin-service-account.json`).
 
 Admin/bot auth:
 - Some endpoints accept `x-api-key` (see `.env.example` and `TutorDexBackend/telegram_link_bot.py` which uses `BACKEND_API_KEY` or `ADMIN_API_KEY`).
+- Admin auth validation handled by `AuthService.require_admin()`.
 
 ### Database schema (tables, key fields)
 Backend uses Supabase for durable tables.
@@ -758,7 +795,7 @@ Key tables for backend behavior:
 
 ### Click / apply tracking
 - Website sends click beacons (`sendClickBeacon`) to `POST /track`.
-- Backend deduplicates by IP + assignment via Redis NX keys (`_should_increment_click`).
+- Backend deduplicates by IP + assignment via Redis NX keys (logic in `AnalyticsService.check_click_cooldown()`).
 - Supabase increments are atomic via RPC `increment_assignment_clicks`.
 - If broadcast mapping exists (`broadcast_messages`), backend can edit the Telegram broadcast message content (requires the bot token that originally posted it).
 
@@ -772,7 +809,7 @@ Two integrations exist:
 - Backend stores `chat_id` for that tutor in Redis and optionally in Supabase preferences.
 
 2) Callback query handling (for inline buttons)
-- Backend contains `_telegram_answer_callback_query` in `TutorDexBackend/app.py`.
+- Backend callback query handling logic in `TelegramService.answer_callback_query()` (called from `/telegram/callback` endpoint in `app.py`).
 - This is used to respond to Telegram callback queries and can open URLs.
 
 ### Background jobs / workers
