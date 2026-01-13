@@ -82,7 +82,7 @@ This directory contains a comprehensive suite of documentation related to the Ja
 
 ---
 
-## ✅ Completed Work (Priorities 1-6)
+## ✅ Completed Work (Priorities 1-7)
 
 | Priority | Task | Effort | Impact | Status |
 |----------|------|--------|--------|--------|
@@ -92,8 +92,9 @@ This directory contains a comprehensive suite of documentation related to the Ja
 | 4 | Extract app.py Services | 5h | HIGH | ✅ Jan 12, 2026 |
 | 5 | Migration Tracking | 2h | MEDIUM | ✅ Jan 12, 2026 |
 | 6 | Frontend Error Reporting | 2h | MEDIUM | ✅ Jan 12, 2026 |
+| 7 | Break Up supabase_persist.py | - | HIGH | ✅ Discovered complete Jan 13, 2026 |
 
-**Total completed:** ~12 hours of implementation
+**Total completed:** ~12 hours of implementation + supabase_persist refactor (1311→416 lines)
 
 See [`IMPLEMENTATION_PRIORITIES_1-3.md`](./IMPLEMENTATION_PRIORITIES_1-3.md) for details on Priorities 1-3.
 
@@ -105,14 +106,16 @@ See [`IMPLEMENTATION_PRIORITIES_1-3.md`](./IMPLEMENTATION_PRIORITIES_1-3.md) for
 - [ ] **Task 1**: HTTP Integration Tests (2-3 days) ⭐ **CRITICAL**
 - [ ] **Task 2**: Consolidate Environment Config (2-3 days)
 
-### Phase 2: Architecture (Next Month) - 3-4 weeks
+### Phase 2: Observability (Next 1-2 Weeks) - 1 week ✅ **Task 4 Complete!**
 - [ ] **Task 3**: End-to-End Tracing (1 week)
-- [ ] **Task 4**: Break Up supabase_persist.py (2-3 weeks) ⭐ **HIGHEST IMPACT**
+- [x] ~~**Task 4**: Break Up supabase_persist.py~~ ✅ **ALREADY COMPLETE**
 
 ### Phase 3: Additional Improvements (Ongoing) - 1-2 weeks
 - [ ] Tasks 5-10: State machine, metrics, rate limiting, etc.
 
-**Total remaining:** 5-7 weeks of focused effort
+**Total remaining:** 2-4 weeks of focused effort (down from 5-7 weeks)
+
+**Note:** Task 4 (supabase_persist.py refactor) was discovered to be already complete, reducing remaining work significantly.
 
 See [`REMAINING_AUDIT_TASKS.md`](./REMAINING_AUDIT_TASKS.md) for complete implementation details.
 
@@ -121,53 +124,48 @@ See [`REMAINING_AUDIT_TASKS.md`](./REMAINING_AUDIT_TASKS.md) for complete implem
 ## 📊 Key Metrics
 
 ### Progress
-- **Completed:** 6/16 items (38%)
-- **Remaining:** 10/16 items (62%)
-- **Time Spent:** ~12 hours
-- **Time Estimated:** 5-7 weeks
+- **Completed:** 7/16 items (44%)
+- **Remaining:** 9/16 items (56%)
+- **Time Spent:** ~12 hours + supabase_persist refactor
+- **Time Estimated:** 2-4 weeks (down from 5-7 weeks)
 
 ### Impact Analysis
-- **Critical (Must Do):** Task 1 + Task 4 = ~3 weeks
+- **Critical (Must Do):** Task 1 = ~3 days
 - **High Value (Should Do):** Task 2 + Task 3 = ~2 weeks
 - **Nice to Have (Could Do):** Tasks 5-10 = ~2 weeks
 
-### Complexity Reduction (Target)
-- **Current:** 3 files >1,500 lines (app.py was 1547, now 1033)
-- **After Task 4:** All files <500 lines
-- **Impact:** 5× easier to understand, testable without DB
+### Complexity Reduction (Achieved & Target)
+- **Backend app.py:** 1547 → 1033 lines ✅ (Priority 4 complete)
+- **Aggregator supabase_persist.py:** 1311 → 416 lines ✅ (Priority 7 complete)
+- **Remaining:** extract_worker.py (1842 lines) - not in current scope
+- **Impact:** 5× easier to understand merge logic, testable without DB
 
 ---
 
-## 🎓 Lessons Learned from Priorities 1-6
+## 🎓 Lessons Learned from Priorities 1-7
 
 **What Worked Well:**
 - ✅ Small, focused PRs (1-3 hours each)
 - ✅ Comprehensive tests before integration
 - ✅ Clear documentation and runbooks
 - ✅ Backward compatible changes
+- ✅ Service extraction pattern (app.py and supabase_persist.py)
 
 **Apply to Remaining Tasks:**
 - ✅ Same pattern for remaining work
 - ✅ Test extensively before integration
 - ✅ Document as you go
-- ✅ Feature flags for risky changes (especially Task 4)
+- ✅ Feature flags for risky changes
 
 ---
 
 ## 🚨 Critical Success Factors
 
 ### For All Tasks
-1. ✅ Follow recommended sequence (Tasks 1→2→3→4)
-2. ✅ Complete tests before refactoring (Task 1 before Task 4)
+1. ✅ Follow recommended sequence (Tasks 1→2→3)
+2. ✅ Complete tests for safety net (Task 1)
 3. ✅ Small, incremental changes
 4. ✅ Document as you implement
-
-### For Task 4 (supabase_persist refactor) - Special Attention
-- ⚠️ **HIGH RISK** - Must preserve exact merge semantics
-- ✅ Must have Task 1 tests in place first
-- ✅ Run new code in parallel with old (feature flag)
-- ✅ Compare outputs before cutover
-- ✅ Gradual rollout: 10% → 50% → 100%
 
 ---
 

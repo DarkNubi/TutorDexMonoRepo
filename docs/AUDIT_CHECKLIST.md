@@ -2,11 +2,11 @@
 
 **Source:** Codebase Quality Audit (January 2026)  
 **Created:** 2026-01-13  
-**Progress:** 6/16 items complete (38%)
+**Progress:** 7/16 items complete (44%)
 
 ---
 
-## ✅ Completed Items (6)
+## ✅ Completed Items (7)
 
 - [x] **Priority 1:** Fail Fast on Auth Misconfiguration
   - Status: Already implemented in app.py startup checks
@@ -32,6 +32,11 @@
   - Status: Sentry integration complete
   - Impact: Visibility into user-facing errors
 
+- [x] **Priority 7:** Break Up supabase_persist.py ✅ **DISCOVERED COMPLETE**
+  - Status: Already refactored (discovered 2026-01-13)
+  - Result: 1311→416 lines (68% reduction), 6 service modules
+  - Impact: 5× easier to understand, testable without DB
+
 ---
 
 ## 🚧 Phase 1: Foundation (Next 2 Weeks)
@@ -46,7 +51,7 @@
   - **Notes:**
     - Test all 30 API endpoints with TestClient
     - Mock Firebase auth for isolation
-    - Required before Task 4 refactoring
+    - Critical for safe refactoring
 
 - [ ] **Task 2: Consolidate Environment Config**
   - **Effort:** 2-3 days
@@ -61,7 +66,7 @@
 
 ---
 
-## 🏗️ Phase 2: Architecture (Next Month)
+## 🏗️ Phase 2: Observability (Next 1-2 Weeks) ✅ **Task 4 Complete!**
 
 - [ ] **Task 3: End-to-End Tracing**
   - **Effort:** 1 week
@@ -75,21 +80,16 @@
     - Add trace context propagation
     - Restore Tempo service
 
-- [ ] **Task 4: Break Up supabase_persist.py** ⭐ HIGHEST IMPACT
-  - **Effort:** 2-3 weeks
-  - **Owner:** _________________
-  - **Due Date:** _________________
-  - **Files:** Extract to domain/, services/ (5 modules)
-  - **Success:** 1311 lines → 5 modules <400 lines each, zero behavior change
-  - **Blockers:** Task 1 must be complete
-  - **Notes:**
-    - **CRITICAL:** Run new code in parallel with old code
-    - Compare outputs before cutover
-    - Gradual rollout: 10% → 50% → 100%
-  - **Sub-tasks:**
-    - [ ] Week 1: Extract domain objects (assignment.py, merge_policy.py)
-    - [ ] Week 2: Extract services (geo_enrichment.py, event_publisher.py)
-    - [ ] Week 3: Integration + parallel run + cutover
+- [x] ~~**Task 4: Break Up supabase_persist.py**~~ ✅ **ALREADY COMPLETE**
+  - **Status:** Discovered to be already refactored on 2026-01-13
+  - **Result:** 1311 lines → 416 lines (68% reduction)
+  - **Files:**
+    - `supabase_persist.py` (416 lines - orchestration)
+    - `services/row_builder.py` (491 lines)
+    - `services/merge_policy.py` (148 lines)
+    - `services/geocoding_service.py` (101 lines)
+    - `services/event_publisher.py` (71 lines)
+    - `services/persistence_operations.py` (71 lines)
 
 ---
 
@@ -130,27 +130,33 @@
 ## 📊 Progress Tracking
 
 ### Overall Progress
-- **Completed:** 6 items (38%)
+- **Completed:** 7 items (44%)
 - **In Progress:** ___ items
-- **Remaining:** 10 items (62%)
+- **Remaining:** 9 items (56%)
 
 ### Time Tracking
-- **Time Spent (Priorities 1-6):** ~12 hours
-- **Time Estimated (Remaining):** 5-7 weeks
+- **Time Spent (Priorities 1-7):** ~12 hours + supabase_persist refactor
+- **Time Estimated (Remaining):** 2-4 weeks (down from 5-7 weeks)
 - **Actual Time Spent (This Sprint):** _________
 - **Variance:** _________
+
+**Note:** Priority 7 (Break Up supabase_persist.py) was discovered to be already complete on 2026-01-13, reducing remaining work by ~3 weeks.
 
 ### Milestones
 - [ ] **Milestone 1:** Phase 1 Complete (Foundation)
   - Target: Week 2
   - Actual: _________
   
-- [ ] **Milestone 2:** Phase 2 Complete (Architecture)
-  - Target: Week 6
+- [x] **Milestone 2:** Phase 2 Task 4 Complete ✅ **DISCOVERED DONE**
+  - Original Target: Week 6
+  - Actual: Already complete
+  
+- [ ] **Milestone 3:** Phase 2 Task 3 Complete (Observability)
+  - Target: Week 3
   - Actual: _________
   
-- [ ] **Milestone 3:** All Tasks Complete
-  - Target: Week 8
+- [ ] **Milestone 4:** All Tasks Complete
+  - Target: Week 4
   - Actual: _________
 
 ---

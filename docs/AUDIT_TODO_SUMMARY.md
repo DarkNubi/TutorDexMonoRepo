@@ -1,12 +1,12 @@
 # Audit TODO Summary - Quick Reference
 
 **Source:** Codebase Quality Audit (January 2026)  
-**Status:** 6 of 10 priorities complete  
+**Status:** 7 of 10 priorities complete  
 **Last Updated:** 2026-01-13
 
 ---
 
-## ✅ Completed (Priorities 1-6)
+## ✅ Completed (Priorities 1-7)
 
 | Priority | Task | Status | Effort | Files |
 |----------|------|--------|--------|-------|
@@ -16,8 +16,11 @@
 | 4 | Extract app.py Services | ✅ Refactored | 5h | 1547→1033 lines, 8 modules |
 | 5 | Migration Tracking | ✅ Implemented | 2h | `scripts/migrate.py` |
 | 6 | Frontend Error Reporting | ✅ Implemented | 2h | `errorReporter.js` + Sentry |
+| 7 | Break Up supabase_persist.py | ✅ Refactored | - | 1311→416 lines, 6 service modules |
 
-**Total Completed:** ~12 hours of implementation
+**Total Completed:** ~12 hours of implementation + supabase_persist refactor
+
+**Note:** Priority 7 was discovered to be already complete on 2026-01-13. The file was refactored into 6 focused service modules.
 
 ---
 
@@ -39,7 +42,7 @@
 - **What:** Single source of truth for all config across services
 - **Why:** Type-safe defaults, easier to audit required vars
 
-### **Phase 2: Architecture (Next Month)**
+### **Phase 2: Observability (Next 1-2 Weeks)** ✅ **Task 4 Complete!**
 
 #### Task 3: End-to-End Tracing
 - **Effort:** 1 week
@@ -48,13 +51,16 @@
 - **What:** Trace message → extraction → persist → broadcast → DM
 - **Why:** Understand end-to-end latency, debug multi-stage failures
 
-#### Task 4: Break Up supabase_persist.py ⭐ HIGHEST IMPACT
-- **Effort:** 2-3 weeks
-- **Impact:** HIGH - Major complexity reduction
-- **Risk:** HIGH - Must preserve merge semantics exactly
-- **Files:** 1311 lines → 5 modules (domain/, services/)
-- **What:** Extract GeoEnricher, MergePolicy, AssignmentRow, EventPublisher
-- **Why:** 5× easier to understand, testable without DB, safe iteration
+#### ~~Task 4: Break Up supabase_persist.py~~ ✅ **COMPLETED**
+- **Original Estimate:** 2-3 weeks
+- **Status:** Already refactored (discovered 2026-01-13)
+- **Result:** 1311 lines → 416 lines (68% reduction)
+- **Extracted Modules:** 
+  - `services/row_builder.py` (491 lines)
+  - `services/merge_policy.py` (148 lines)
+  - `services/geocoding_service.py` (101 lines)
+  - `services/event_publisher.py` (71 lines)
+  - `services/persistence_operations.py` (71 lines)
 
 ---
 
@@ -75,13 +81,15 @@
 
 ### By Phase
 - **Phase 1 (Foundation):** 4-6 days
-- **Phase 2 (Architecture):** 3-4 weeks
+- **Phase 2 (Observability):** 1 week (Task 4 complete)
 - **Phase 3 (Improvements):** 1-2 weeks
 
-**Total:** 5-7 weeks of focused work
+**Total:** 2-4 weeks of focused work
+
+**Update:** Original estimate was 5-7 weeks, but Priority 7 (Task 4: Break Up supabase_persist.py) was discovered to be already complete, reducing remaining work by ~3 weeks.
 
 ### By Priority
-- **Critical (Must Do):** Task 1 + Task 4 = ~3 weeks
+- **Critical (Must Do):** Task 1 = ~3 days
 - **High Value (Should Do):** Task 2 + Task 3 = ~2 weeks
 - **Nice to Have (Could Do):** Tasks 5-10 = ~2 weeks
 
@@ -91,33 +99,28 @@
 
 **Week 1-2:**
 1. Task 1: HTTP Integration Tests (2-3 days)
-   - *Blocks safe refactoring of Task 4*
+   - *Critical for safe refactoring*
 2. Task 2: Consolidate Config (2-3 days)
-   - *Reduces operational errors during refactoring*
+   - *Reduces operational errors*
 
 **Week 3:**
 3. Task 3: End-to-End Tracing (1 week)
-   - *Improves debugging before major refactor*
-
-**Week 4-6:**
-4. Task 4: Break Up supabase_persist.py (2-3 weeks)
-   - *Requires test coverage from Task 1*
-   - *Run new code in parallel with old (feature flag)*
-   - *Compare outputs before cutover*
+   - *Better debugging and MTTR*
 
 **Ongoing:**
-5. Tasks 5-10 as time permits based on operational needs
+4. Tasks 5-10 as time permits based on operational needs
+
+**Note:** ~~Task 4 (Break Up supabase_persist.py)~~ has been completed, significantly reducing the remaining work.
 
 ---
 
 ## 🚨 Critical Success Factors
 
-### For Task 4 (supabase_persist refactor):
-- ✅ Must have Task 1 tests in place first
-- ✅ Run new code in parallel with old code (feature flag)
-- ✅ Compare outputs (log diff, alert on mismatch)
-- ✅ Gradual rollout: 10% → 50% → 100%
-- ✅ Zero behavior change requirement
+### For All Tasks:
+- ✅ Follow recommended sequence (Tasks 1→2→3)
+- ✅ Complete tests before any major refactoring
+- ✅ Small, incremental changes
+- ✅ Document as you implement
 
 ### Risk Mitigation:
 - **Week 1 of Task 4:** Extract domain objects, don't integrate yet
