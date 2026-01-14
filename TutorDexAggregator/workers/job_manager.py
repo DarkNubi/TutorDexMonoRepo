@@ -12,7 +12,6 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from workers.supabase_operations import call_rpc, patch_table
-from observability_metrics import worker_requeued_stale_jobs_total
 
 logger = logging.getLogger("job_manager")
 
