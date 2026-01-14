@@ -312,6 +312,65 @@ duplicate_detection_errors_total = Counter(
 )
 
 
+# ----------------------------
+# Business Metrics (Task 6)
+# ----------------------------
+
+# Assignments per hour (rolling window)
+assignments_created_per_hour = Gauge(
+    "tutordex_assignments_created_per_hour",
+    "Number of assignments created in the last hour (rolling window).",
+)
+
+# Active tutors with DM subscriptions
+tutors_with_active_dms = Gauge(
+    "tutordex_tutors_with_active_dm_subscriptions",
+    "Number of tutors with active DM subscriptions in Redis.",
+)
+
+# Time to first match histogram
+time_to_first_match_seconds = Histogram(
+    "tutordex_assignment_time_to_first_match_seconds",
+    "Time from assignment creation to first tutor match (DM sent).",
+    buckets=[60, 300, 600, 1800, 3600, 7200, 14400, 28800],  # 1min to 8hours
+)
+
+# Active assignments by status
+assignments_by_status = Gauge(
+    "tutordex_assignments_by_status",
+    "Number of assignments in each status.",
+    ["status"],  # open, closed, hidden, expired, deleted
+)
+
+# Tutor engagement metrics
+tutors_with_profiles = Gauge(
+    "tutordex_tutors_with_profiles",
+    "Total number of tutors with saved profiles.",
+)
+
+tutors_with_telegram_linked = Gauge(
+    "tutordex_tutors_with_telegram_linked",
+    "Number of tutors with Telegram accounts linked.",
+)
+
+# Assignment quality metrics
+assignments_with_parsed_rate = Gauge(
+    "tutordex_assignments_with_parsed_rate",
+    "Percentage of assignments with successfully parsed rate information.",
+)
+
+assignments_with_location = Gauge(
+    "tutordex_assignments_with_location",
+    "Percentage of assignments with location information (region or postal code).",
+)
+
+# Matching efficiency
+average_matches_per_assignment = Gauge(
+    "tutordex_average_matches_per_assignment",
+    "Average number of tutors matched per assignment.",
+)
+
+
 def set_version_metrics(*, component: str, v: Optional[Versions] = None) -> Versions:
     v = v or versions()
     if component == "collector":

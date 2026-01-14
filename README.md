@@ -17,49 +17,33 @@ TutorDex has achieved **Aggregation Accuracy** with a production-ready infrastru
 
 ---
 
-## 📋 Next Steps: Recommended Milestones
-
-We've completed a comprehensive project review and identified the next three strategic milestones:
-
-### 📊 [Milestone 2: Product Analytics & Loop Validation](MILESTONE_SUMMARY.md#-milestone-2-product-analytics--loop-validation-2-3-weeks) (2-3 weeks)
-- Implement frontend analytics events
-- Build tutor feedback UI (report scam/filled/no-reply)
-- Create KPI dashboard to understand tutor behavior
-- **Goal:** Validate product-market fit with real usage data
-
-### 🚀 [Milestone 3: One-Click Apply & Application Flow](MILESTONE_SUMMARY.md#-milestone-3-one-click-apply--application-flow-3-4-weeks) (3-4 weeks)
-- Build one-click apply system
-- Route applications through TutorDex
-- Track application outcomes
-- **Goal:** Build agency leverage and data moat
-
-### 💰 [Milestone 4: Soft Monetization & User Tiers](MILESTONE_SUMMARY.md#-milestone-4-soft-monetization--tiers-2-3-weeks) (2-3 weeks)
-- Implement user tiers (free/supporter/premium)
-- Create payment flow (start with manual PayNow)
-- Add premium features (instant DMs, tighter filters, historical data)
-- **Goal:** Validate willingness to pay and offset infrastructure costs
-
 ---
 
 ## 📚 Documentation
 
-**Quick Start:**
-- [Visual Roadmap](MILESTONES_VISUAL.md) - ASCII diagram with week-by-week breakdown
-- [Executive Summary](MILESTONE_SUMMARY.md) - High-level overview (5 min read)
-- [Full Milestone Details](NEXT_MILESTONES.md) - Complete implementation guide (25 min read)
+**📖 Start Here:**
+- **[docs/README.md](docs/README.md)** - Complete documentation index and navigation guide
+- **[docs/SYSTEM_INTERNAL.md](docs/SYSTEM_INTERNAL.md)** - Authoritative system architecture (primary reference)
+- **[DEPENDENCIES.md](DEPENDENCIES.md)** - External dependencies and setup guide
+- **[scripts/bootstrap.sh](scripts/bootstrap.sh)** - One-command environment setup
 
 **Component Documentation:**
-- [TutorDexAggregator](TutorDexAggregator/README.md) - Message collector and LLM parser
-- [TutorDexBackend](TutorDexBackend/README.md) - FastAPI matching engine and API
-- [TutorDexWebsite](TutorDexWebsite/README.md) - React + Firebase website
-- [Observability](observability/README.md) - Prometheus, Grafana, Loki stack
-- [Duplicate Detection](docs/DUPLICATE_DETECTION_SUMMARY.md) - Cross-agency duplicate assignment handling
-- [Assignment Rating System](docs/assignment_rating_system.md) - **NEW:** Adaptive threshold and quality scoring
+- [TutorDexAggregator/README.md](TutorDexAggregator/README.md) - Message collector and LLM parser
+- [TutorDexBackend/README.md](TutorDexBackend/README.md) - FastAPI matching engine and API
+- [TutorDexWebsite/README.md](TutorDexWebsite/README.md) - React + Firebase website
+- [observability/](observability/) - Prometheus, Grafana, Loki, Tempo stack
 
-**Strategic Context:**
-- [Strategic Vision](TutorDex%20background%20info.txt) - Business goals and monetization strategy
-- [Observability Status](TODO_OBSERVABILITY.md) - Monitoring and analytics capabilities
-- [Duplicate Detection Plan](docs/DUPLICATE_DETECTION.md) - Comprehensive plan for handling duplicate assignments
+**Feature Documentation:**
+- [docs/DUPLICATE_DETECTION_INDEX.md](docs/DUPLICATE_DETECTION_INDEX.md) - Duplicate detection hub
+- [docs/assignment_rating_system.md](docs/assignment_rating_system.md) - Assignment rating and feedback
+- [docs/signals.md](docs/signals.md) - Signal extraction (tutor types, rates)
+- [docs/TELEGRAM_WEBHOOK_SETUP.md](docs/TELEGRAM_WEBHOOK_SETUP.md) - Telegram integration
+
+**Quality & Testing:**
+- [docs/CODEBASE_QUALITY_AUDIT_2026-01.md](docs/CODEBASE_QUALITY_AUDIT_2026-01.md) - Full audit report
+- [docs/AUDIT_CHECKLIST.md](docs/AUDIT_CHECKLIST.md) - Audit completion status (16/16 ✅)
+- [tests/](tests/) - Test suite (70+ tests)
+- [.githooks/](.githooks/) - Pre-commit hooks for code quality
 
 ---
 
@@ -71,13 +55,20 @@ We've completed a comprehensive project review and identified the next three str
 - Docker Desktop (recommended)
 - Local LLM server (LM Studio or compatible)
 
-### Start All Services
+### Automated Setup (Recommended)
 
 ```bash
 # Clone the repository
 git clone https://github.com/DarkNubi/TutorDexMonoRepo.git
 cd TutorDexMonoRepo
 
+# Run the bootstrap script (checks prereqs, starts services, installs deps)
+./scripts/bootstrap.sh
+```
+
+### Manual Setup
+
+```bash
 # Configure environment variables
 cp TutorDexAggregator/.env.example TutorDexAggregator/.env
 cp TutorDexBackend/.env.example TutorDexBackend/.env
@@ -91,12 +82,15 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
+See [DEPENDENCIES.md](DEPENDENCIES.md) for detailed setup instructions.
+
 ### Access Services
 
 - **Backend API:** http://localhost:8000/docs (Swagger UI)
 - **Website:** http://localhost:5173 (development) or deploy to Firebase
-- **Grafana:** http://localhost:3300 (admin/admin)
+- **Grafana:** http://localhost:3300 (default: admin/admin)
 - **Prometheus:** http://localhost:9090
+- **Tempo:** http://localhost:3200 (distributed tracing)
 - **Alertmanager:** http://localhost:9093
 
 ---
@@ -170,32 +164,61 @@ docker compose logs -f
 All services emit metrics and structured logs:
 - **Metrics:** Scraped by Prometheus, visualized in Grafana
 - **Logs:** Collected by Promtail, stored in Loki, queried in Grafana
+- **Traces:** Collected by OTEL Collector, stored in Tempo (enabled by default)
 - **Alerts:** Defined in Prometheus, routed by Alertmanager to Telegram
 
-See [observability/CAPABILITIES.md](observability/CAPABILITIES.md) for full details.
+See [observability/](observability/) for configuration details.
 
 ---
 
-## 🎯 Current Priority: Start Milestone 2.1
+## 🧪 Testing
 
-**This Week:** Implement frontend analytics events
+```bash
+# Run all tests
+pytest tests/
 
-Add event tracking to the website:
-```javascript
-// TutorDexWebsite/src/page-assignments.js
-await trackEvent({
-  event_type: "assignment_list_view",
-  meta: { filters, sort, surface: "website" }
-});
+# Run specific test file
+pytest tests/test_backend_api.py
 
-await trackEvent({
-  event_type: "assignment_view",
-  assignment_external_id: assignment.external_id,
-  agency_name: assignment.agency_name
-});
+# Run with coverage
+pytest --cov=TutorDexAggregator --cov=TutorDexBackend tests/
 ```
 
-See [MILESTONES_VISUAL.md](MILESTONES_VISUAL.md#what-to-build-first-this-week) for implementation guide.
+**Test Coverage:**
+- 40+ Backend API integration tests
+- 16 Assignment state machine tests
+- 17 Supabase client tests
+- Total: 70+ tests
+
+See [tests/](tests/) for more details.
+
+---
+
+## 🔒 Security & Quality
+
+- **Pre-commit hooks:** Installed via `.githooks/` - warns on large files (>500 lines)
+- **Rate limiting:** Implemented for all public API endpoints
+- **Authentication:** Firebase Auth with admin verification
+- **Configuration:** Type-safe with pydantic-settings validation
+- **Circuit breakers:** LLM API protection against failures
+- **RPC 300 detection:** Prevents silent Supabase RPC failures
+
+---
+
+## 🎯 Recent Improvements (January 2026)
+
+✅ **Codebase Quality Audit Complete (16/16 priorities)**
+- HTTP integration tests for all 30 API endpoints
+- Centralized configuration with pydantic-settings
+- End-to-end distributed tracing (Tempo + OTEL)
+- Assignment state machine with enforced transitions
+- Business metrics dashboard (9 KPIs)
+- Rate limiting middleware with Redis backend
+- Unified Supabase client with RPC 300 detection
+- Comprehensive dependency documentation
+- Pre-commit hooks for code quality
+
+See [docs/AUDIT_CHECKLIST.md](docs/AUDIT_CHECKLIST.md) for details.
 
 ---
 

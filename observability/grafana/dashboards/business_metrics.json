@@ -1,0 +1,137 @@
+{
+  "dashboard": {
+    "title": "TutorDex Business Metrics",
+    "tags": ["business", "kpis"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Assignments Created (Last Hour)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "tutordex_assignments_created_per_hour",
+            "legendFormat": "Assignments/hour"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Active Tutors with DM Subscriptions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "tutordex_tutors_with_active_dm_subscriptions",
+            "legendFormat": "Active Tutors"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Tutors with Profiles",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "tutordex_tutors_with_profiles",
+            "legendFormat": "Tutors"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Tutors with Telegram Linked",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "tutordex_tutors_with_telegram_linked",
+            "legendFormat": "Linked"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "Time to First Match (p50, p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(tutordex_assignment_time_to_first_match_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(tutordex_assignment_time_to_first_match_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Time to Match"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Assignments by Status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "tutordex_assignments_by_status",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 7,
+        "title": "Assignment Quality: Rate Parsed",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "tutordex_assignments_with_parsed_rate",
+            "legendFormat": "Rate Parsed %"
+          }
+        ],
+        "options": {
+          "min": 0,
+          "max": 100,
+          "unit": "percent"
+        },
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Assignment Quality: Location",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "tutordex_assignments_with_location",
+            "legendFormat": "Location %"
+          }
+        ],
+        "options": {
+          "min": 0,
+          "max": 100,
+          "unit": "percent"
+        },
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "Average Matches per Assignment",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "tutordex_average_matches_per_assignment",
+            "legendFormat": "Avg Matches"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 16}
+      }
+    ]
+  }
+}
