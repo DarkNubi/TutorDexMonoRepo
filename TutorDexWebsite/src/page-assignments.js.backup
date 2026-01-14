@@ -14,23 +14,13 @@ import {
   searchSubjects,
 } from "./taxonomy/subjectsTaxonomyV2.js";
 import { matchesFilters } from "./lib/filterUtils.js";
-import { parseRate, pickFirst, toText, toStringList, formatRelativeTime, formatShortDate, formatDistanceKm } from "./lib/assignmentFormatters.js";
-import { readViewMode, writeViewMode, readLastVisitMs, writeLastVisitMs, clearSavedFiltersData } from "./lib/assignmentStorage.js";
-import { $id, setElementVisible, setElementText, setElementHTML, emptyElement } from "./lib/domUtils.js";
-import {
-  subjectKey,
-  normalizeSubjectType,
-  subjectLabel,
-  ensureSubjectStateInitialized,
-  removeSubjectSelection,
-  addSubjectSelection,
-  collectSubjectCsv
-} from "./lib/subjectUtils.js";
 
 const BUILD_TIME = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
 
 const specificLevelsData = SPECIFIC_LEVELS || {};
 const FILTERS_STORAGE_KEY = "tutordex_assignments_filters_v1";
+const VIEW_MODE_STORAGE_KEY = "tutordex_assignments_view_mode_v1";
+const LAST_VISIT_STORAGE_KEY = "tutordex_assignments_last_visit_ms_v1";
 
 const MAX_SUBJECT_CHIPS = 3;
 let selectedSubjects = { general: [], canonical: [] };
