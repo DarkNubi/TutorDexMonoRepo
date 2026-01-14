@@ -12,6 +12,35 @@ from workers.utils import coerce_list_of_str, extract_sg_postal_codes
 logger = logging.getLogger("enrichment_pipeline")
 
 
+def _build_signals_summary(signals: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Build summary of signals for metadata.
+    
+    Args:
+        signals: Signals dict
+        
+    Returns:
+        Summary dict with counts and flags
+    """
+    if not isinstance(signals, dict):
+        return {
+            "subjects": 0,
+            "levels": 0,
+            "academic_requests": 0,
+            "ambiguous": False,
+        }
+    
+    academic_requests = signals.get("academic_requests")
+    confidence_flags = signals.get("confidence_flags") or {}
+    
+    return {
+        "subjects": len(signals.get("subjects") or []),
+        "levels": len(signals.get("levels") or []),
+        "academic_requests": len(academic_requests) if isinstance(academic_requests, list) else 0,
+        "ambiguous": bool(confidence_flags.get("ambiguous_academic_mapping")),
+    }
+
+
 def fill_postal_code_from_text(parsed: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
     """
     Best-effort, deterministic enrichment for postal codes.
@@ -202,12 +231,7 @@ def build_signals(
             signals_meta = {
                 "ok": True,
                 "signals": signals,
-                "summary": {
-                    "subjects": len((signals or {}).get("subjects") or []) if isinstance(signals, dict) else 0,
-                    "levels": len((signals or {}).get("levels") or []) if isinstance(signals, dict) else 0,
-                    "academic_requests": len((signals or {}).get("academic_requests") or []) if isinstance((signals or {}).get("academic_requests"), list) else 0,
-                    "ambiguous": bool(((signals or {}).get("confidence_flags") or {}).get("ambiguous_academic_mapping")) if isinstance(signals, dict) else False,
-                },
+                "summary": _build_signals_summary(signals),
             }
     except Exception as e:
         signals_meta = {"ok": False, "error": str(e)}

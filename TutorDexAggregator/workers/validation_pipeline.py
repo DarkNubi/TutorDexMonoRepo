@@ -10,6 +10,13 @@ from typing import Any, Dict, Optional, Tuple
 logger = logging.getLogger("validation_pipeline")
 
 
+# Academic level constants for quality checks
+ACADEMIC_LEVELS_CHECK = {
+    "ib": "IB",
+    "igcse": "IGCSE",
+}
+
+
 def validate_schema(
     parsed: Dict[str, Any],
     validate_func: Any
@@ -135,8 +142,6 @@ def run_quality_checks(
     headline = academic.lower()
     sig_levels = {str(x).strip() for x in levels} if isinstance(levels, list) else set()
     
-    if "ib" in headline and "IB" not in sig_levels:
-        increment_quality_inconsistency("headline_ib_no_signal", channel, metrics)
-    
-    if "igcse" in headline and "IGCSE" not in sig_levels:
-        increment_quality_inconsistency("headline_igcse_no_signal", channel, metrics)
+    for headline_term, signal_level in ACADEMIC_LEVELS_CHECK.items():
+        if headline_term in headline and signal_level not in sig_levels:
+            increment_quality_inconsistency(f"headline_{headline_term}_no_signal", channel, metrics)
