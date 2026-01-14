@@ -84,9 +84,7 @@ export function toggleClass(el, className, force) {
  */
 export function clearChildren(el) {
   if (!el) return;
-  while (el.firstChild) {
-    el.removeChild(el.firstChild);
-  }
+  el.replaceChildren();
 }
 
 /**
