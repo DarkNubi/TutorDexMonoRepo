@@ -65,6 +65,13 @@ from workers.validation_pipeline import (
     run_quality_checks,
     validate_schema,
 )
+from workers.side_effects import (
+    broadcast_assignment,
+    execute_side_effects,
+    send_assignment_dms,
+    should_broadcast,
+    should_send_dms,
+)
 
 __all__ = [
     # job_manager
@@ -120,4 +127,10 @@ __all__ = [
     "increment_quality_missing",
     "run_quality_checks",
     "validate_schema",
+    # side_effects
+    "broadcast_assignment",
+    "execute_side_effects",
+    "send_assignment_dms",
+    "should_broadcast",
+    "should_send_dms",
 ]
