@@ -1,4 +1,3 @@
-import os
 import json
 import time
 import logging
@@ -15,21 +14,12 @@ try:
 except Exception:
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
 
-try:
-    from supabase_env import resolve_supabase_url, running_in_docker  # type: ignore
-except Exception:
-    from TutorDexAggregator.supabase_env import resolve_supabase_url, running_in_docker  # type: ignore
+from shared.config import load_aggregator_config
 
 
 setup_logging()
 logger = logging.getLogger("supabase_raw_persist")
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
+_CFG = load_aggregator_config()
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -91,25 +81,10 @@ class SupabaseRawConfig:
 
 
 def load_raw_config_from_env() -> SupabaseRawConfig:
-    url_env = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
-    url_docker_env = (os.environ.get("SUPABASE_URL_DOCKER") or "").strip().rstrip("/")
-    url_host_env = (os.environ.get("SUPABASE_URL_HOST") or "").strip().rstrip("/")
-
-    in_docker = running_in_docker()
-    if in_docker:
-        chosen = url_docker_env or url_env or url_host_env
-        source = "SUPABASE_URL_DOCKER" if url_docker_env else ("SUPABASE_URL" if url_env else ("SUPABASE_URL_HOST" if url_host_env else "missing"))
-    else:
-        chosen = url_host_env or url_env or url_docker_env
-        source = "SUPABASE_URL_HOST" if url_host_env else ("SUPABASE_URL" if url_env else ("SUPABASE_URL_DOCKER" if url_docker_env else "missing"))
-
-    url = resolve_supabase_url()
-    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
-
-    # Default to SUPABASE_ENABLED, but allow overriding independently.
-    raw_enabled_env = os.environ.get("SUPABASE_RAW_ENABLED")
-    enabled = _truthy(raw_enabled_env) if raw_enabled_env is not None else _truthy(os.environ.get("SUPABASE_ENABLED"))
-    enabled = bool(enabled and url and key)
+    in_docker = Path("/.dockerenv").exists()
+    url = _CFG.supabase_rest_url
+    key = _CFG.supabase_auth_key
+    enabled = bool(_CFG.supabase_raw_enabled and url and key)
 
     # This is intentionally INFO-level to make host-vs-docker connectivity issues obvious.
     log_event(
@@ -117,11 +92,10 @@ def load_raw_config_from_env() -> SupabaseRawConfig:
         logging.INFO,
         "supabase_raw_url_selected",
         in_docker=in_docker,
-        source=source,
-        url=chosen or None,
-        url_host_set=bool(url_host_env),
-        url_docker_set=bool(url_docker_env),
-        url_set=bool(url_env),
+        url=url or None,
+        url_host_set=bool(str(_CFG.supabase_url_host or "").strip()),
+        url_docker_set=bool(str(_CFG.supabase_url_docker or "").strip()),
+        url_set=bool(str(_CFG.supabase_url or "").strip()),
         enabled=enabled,
     )
 
@@ -129,10 +103,10 @@ def load_raw_config_from_env() -> SupabaseRawConfig:
         url=url,
         key=key,
         enabled=enabled,
-        channels_table=(os.environ.get("SUPABASE_RAW_CHANNELS_TABLE") or "telegram_channels").strip(),
-        messages_table=(os.environ.get("SUPABASE_RAW_MESSAGES_TABLE") or "telegram_messages_raw").strip(),
-        runs_table=(os.environ.get("SUPABASE_RAW_RUNS_TABLE") or "ingestion_runs").strip(),
-        progress_table=(os.environ.get("SUPABASE_RAW_PROGRESS_TABLE") or "ingestion_run_progress").strip(),
+        channels_table=str(_CFG.supabase_raw_channels_table or "telegram_channels").strip(),
+        messages_table=str(_CFG.supabase_raw_messages_table or "telegram_messages_raw").strip(),
+        runs_table=str(_CFG.supabase_raw_runs_table or "ingestion_runs").strip(),
+        progress_table=str(_CFG.supabase_raw_progress_table or "ingestion_run_progress").strip(),
     )
 
 
@@ -201,7 +175,7 @@ class SupabaseRawStore:
     def __init__(self, cfg: Optional[SupabaseRawConfig] = None):
         self.cfg = cfg or load_raw_config_from_env()
         self.client = SupabaseRestClient(self.cfg) if self.cfg.enabled else None
-        fb = (os.environ.get("RAW_FALLBACK_FILE") or "").strip()
+        fb = str(_CFG.raw_fallback_file or "").strip()
         self.fallback = RawFallbackWriter(path=Path(fb)) if fb else None
 
     def enabled(self) -> bool:

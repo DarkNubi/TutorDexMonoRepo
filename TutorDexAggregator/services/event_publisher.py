@@ -4,26 +4,23 @@ Event Publisher Service
 Handles side-effect operations like duplicate detection and metrics publishing.
 These operations run asynchronously and do not block the main persistence flow.
 """
-import os
 import logging
 import threading
 from typing import TYPE_CHECKING
 
-try:
-    from utils.field_coercion import truthy
-except Exception:
-    from TutorDexAggregator.utils.field_coercion import truthy
+from shared.config import load_aggregator_config
 
 if TYPE_CHECKING:
     from utils.supabase_client import SupabaseConfig
 
 
 logger = logging.getLogger("event_publisher")
+_CFG = load_aggregator_config()
 
 
 def should_run_duplicate_detection() -> bool:
     """Check if duplicate detection should run (environment variable)"""
-    return truthy(os.environ.get("DUPLICATE_DETECTION_ENABLED"))
+    return bool(_CFG.duplicate_detection_enabled)
 
 
 def run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):

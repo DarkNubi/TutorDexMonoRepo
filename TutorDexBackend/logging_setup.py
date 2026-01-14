@@ -1,23 +1,10 @@
 import json
 import logging
-import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Optional
 
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
-def _env(name: str, default: str) -> str:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    return str(v).strip()
-
+from shared.config import load_backend_config
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -45,15 +32,17 @@ class JsonFormatter(logging.Formatter):
 
 
 def setup_logging(service_name: str = "tutordex_backend") -> None:
-    level = _env("LOG_LEVEL", "INFO").upper()
-    log_to_console = _truthy(_env("LOG_TO_CONSOLE", "true"))
-    log_to_file = _truthy(_env("LOG_TO_FILE", "true"))
-    log_json = _truthy(_env("LOG_JSON", "false"))
+    cfg = load_backend_config()
+    level = str(cfg.log_level or "INFO").upper()
+    log_to_console = bool(cfg.log_to_console)
+    log_to_file = bool(cfg.log_to_file)
+    log_json = bool(cfg.log_json)
 
-    log_dir = Path(_env("LOG_DIR", str(Path(__file__).resolve().parent / "logs")))
-    log_file = _env("LOG_FILE", f"{service_name}.log")
-    max_bytes = int(_env("LOG_MAX_BYTES", "5000000"))
-    backup_count = int(_env("LOG_BACKUP_COUNT", "5"))
+    default_dir = str(Path(__file__).resolve().parent / "logs")
+    log_dir = Path(str(cfg.log_dir or default_dir))
+    log_file = str(cfg.log_file or f"{service_name}.log")
+    max_bytes = int(cfg.log_max_bytes or 5_000_000)
+    backup_count = int(cfg.log_backup_count or 5)
 
     fmt = JsonFormatter() if log_json else logging.Formatter(
         fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -75,9 +64,9 @@ def setup_logging(service_name: str = "tutordex_backend") -> None:
             if not hasattr(record, "channel"):
                 record.channel = "-"
             if not hasattr(record, "pipeline_version"):
-                record.pipeline_version = (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "").strip() or "-"
+                record.pipeline_version = str(cfg.extraction_pipeline_version or "").strip() or "-"
             if not hasattr(record, "schema_version"):
-                record.schema_version = os.environ.get("SCHEMA_VERSION") or "-"
+                record.schema_version = str(cfg.schema_version or "-")
             if not hasattr(record, "trace_id"):
                 record.trace_id = "-"
             if not hasattr(record, "span_id"):

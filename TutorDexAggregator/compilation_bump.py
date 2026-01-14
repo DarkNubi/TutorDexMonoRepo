@@ -72,8 +72,9 @@ def bump_assignments_by_codes(
     if not supabase_url:
         supabase_url = resolve_supabase_url()
     if not supabase_key:
-        import os
-        supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or ""
+        from shared.config import load_aggregator_config
+
+        supabase_key = load_aggregator_config().supabase_auth_key or ""
     
     if not supabase_url or not supabase_key:
         return {

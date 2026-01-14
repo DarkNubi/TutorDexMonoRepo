@@ -1,7 +1,7 @@
 # Environment Configuration: Current State & Migration Plan
 
 **Last Updated:** 2026-01-14  
-**Status:** 📋 Planning Phase - Pydantic Infrastructure Ready
+**Status:** ✅ Implemented (Pydantic config in use)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **What you asked:** "Explain the new shared Pydantic environment system fully."
 
-**Answer:** The Pydantic-based configuration system exists in `shared/config.py` but **is not yet in use**. It was created as part of the January 2026 audit (Priority 9) to replace the current manual environment variable parsing scattered across 10+ files.
+**Answer:** The Pydantic-based configuration system lives in `shared/config.py` and is now **actively used** by the Aggregator and Backend services to replace scattered manual environment parsing.
 
 **Why Pydantic?** Industry best practice (used by FastAPI, Prefect, Starlette) that provides:
 - ✅ Type safety (no more `"true"` vs `True` bugs)
@@ -76,22 +76,15 @@ These are still the active templates. Do not delete them until migration is comp
    - Migration plan in audit docs
    - This README explaining the current state
 
-### ❌ What Doesn't Exist Yet
+### ✅ What Exists Now
 
-1. **No Active Usage**
-   - No Python files import `load_aggregator_config()` or `load_backend_config()`
-   - All services still use `os.getenv()` directly
-   - Manual helper functions (`_truthy`, `_env_int`) still in use
+1. **Active Usage**
+   - Aggregator/Backend code paths load settings via `shared.config.load_aggregator_config()` / `shared.config.load_backend_config()`
+   - Direct `os.getenv()` parsing is removed from runtime code paths (tests/docs may still reference it as examples)
 
-2. **No Migration**
-   - Services haven't been converted to use Pydantic config
-   - Legacy `.env.example` files still in use
-   - No validation at startup
-
-3. **No Testing**
-   - No tests for Pydantic config loading
-   - No CI/CD validation of config schema
-   - No automated `.env.example` generation
+2. **Migration**
+   - `.env` files can be migrated to the Pydantic schema using the repo scripts/templates
+   - Configuration validation happens at settings load time (Pydantic-Settings)
 
 ---
 

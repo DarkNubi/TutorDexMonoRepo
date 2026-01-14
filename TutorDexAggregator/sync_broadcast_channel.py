@@ -18,7 +18,6 @@ Usage:
 import argparse
 import json
 import logging
-import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -26,6 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
+
+from shared.config import load_aggregator_config
 
 # Setup path for local imports
 HERE = Path(__file__).resolve().parent
@@ -35,23 +36,18 @@ if str(HERE) not in sys.path:
 from logging_setup import log_event, setup_logging
 from supabase_env import resolve_supabase_url
 
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    load_dotenv = None
-
-# Load environment
-if load_dotenv and (HERE / '.env').exists():
-    load_dotenv(dotenv_path=HERE / '.env')
-
 setup_logging()
 logger = logging.getLogger('sync_broadcast_channel')
+
+
+def _cfg():
+    return load_aggregator_config()
 
 
 def _parse_chat_ids() -> List[Any]:
     """Parse broadcast channel IDs from environment."""
     # Try plural first (AGGREGATOR_CHANNEL_IDS)
-    multi = os.environ.get('AGGREGATOR_CHANNEL_IDS')
+    multi = _cfg().aggregator_channel_ids
     if multi:
         try:
             parsed = json.loads(multi)
@@ -63,13 +59,13 @@ def _parse_chat_ids() -> List[Any]:
             return [multi] if multi else []
     
     # Fallback to singular (AGGREGATOR_CHANNEL_ID)
-    single = os.environ.get('AGGREGATOR_CHANNEL_ID')
+    single = _cfg().aggregator_channel_id
     return [single] if single else []
 
 
 def _get_bot_token() -> str:
     """Get bot token from environment. Raises if not found."""
-    token = os.environ.get('GROUP_BOT_TOKEN')
+    token = _cfg().group_bot_token
     if not token:
         raise RuntimeError('GROUP_BOT_TOKEN not configured')
     return token
@@ -90,7 +86,7 @@ def _telegram_api(method: str, token: str, **params) -> Dict[str, Any]:
 def fetch_broadcast_messages_from_db(chat_id: Any) -> List[Dict[str, Any]]:
     """Fetch broadcast messages from Supabase for a specific chat."""
     url = resolve_supabase_url()
-    key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_KEY')
+    key = _cfg().supabase_auth_key
     if not url or not key:
         logger.warning('Supabase not configured, skipping DB fetch')
         return []
@@ -117,7 +113,7 @@ def fetch_broadcast_messages_from_db(chat_id: Any) -> List[Dict[str, Any]]:
 def fetch_open_assignments() -> List[Dict[str, Any]]:
     """Fetch all open assignments from Supabase."""
     url = resolve_supabase_url()
-    key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_KEY')
+    key = _cfg().supabase_auth_key
     if not url or not key:
         logger.error('Supabase not configured')
         return []
@@ -130,7 +126,7 @@ def fetch_open_assignments() -> List[Dict[str, Any]]:
     
     try:
         # Fetch open assignments with necessary fields
-        table = os.environ.get('SUPABASE_ASSIGNMENTS_TABLE', 'assignments')
+        table = str(_cfg().supabase_assignments_table or 'assignments').strip() or 'assignments'
         query_url = f'{url}/rest/v1/{table}?status=eq.open&select=id,external_id,channel_id,message_id,message_link,raw_text,canonical_json,created_at,published_at'
         resp = requests.get(query_url, headers=headers, timeout=30)
         if resp.status_code >= 400:
@@ -155,7 +151,7 @@ def delete_telegram_message(chat_id: Any, message_id: int, token: str) -> bool:
 def mark_broadcast_message_deleted(chat_id: Any, message_id: int) -> bool:
     """Mark a broadcast message as deleted in Supabase."""
     url = resolve_supabase_url()
-    key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_KEY')
+    key = _cfg().supabase_auth_key
     if not url or not key:
         return False
     

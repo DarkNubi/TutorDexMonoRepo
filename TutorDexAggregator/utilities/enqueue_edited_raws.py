@@ -12,13 +12,14 @@ via RPC `enqueue_telegram_extractions` with `force=true`.
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
+
+from shared.config import load_aggregator_config
 
 HERE = Path(__file__).resolve().parent
 PARENT = HERE.parent
@@ -58,7 +59,7 @@ def _iso(dt: datetime) -> str:
 
 def _pipeline_version() -> str:
     # Keep consistent with collector/worker; any unique string works.
-    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "").strip() or "default"
+    return str(load_aggregator_config().extraction_pipeline_version or "").strip() or "default"
 
 
 def _load_state(path: Path) -> Dict[str, Any]:
@@ -159,7 +160,7 @@ def main() -> int:
 
     channels = _parse_channels_arg(args.channels) if args.channels else []
     if not channels:
-        channels = _parse_channels_arg(os.environ.get("CHANNEL_LIST") or "")
+        channels = _parse_channels_arg(load_aggregator_config().channel_list or "")
     channels = [_normalize_channel_ref(c) for c in channels]
     channels = [c for c in channels if c]
     if not channels:

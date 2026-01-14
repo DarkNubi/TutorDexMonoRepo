@@ -21,7 +21,6 @@ Environment Variables:
     WEBHOOK_SECRET_TOKEN: Secret token for webhook verification (recommended)
 """
 
-import os
 import sys
 import json
 import argparse
@@ -31,37 +30,21 @@ from pathlib import Path
 
 import requests
 
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    load_dotenv = None
-
-# Load .env from TutorDexBackend directory if present
-HERE = Path(__file__).resolve().parent
-ENV_PATH = HERE / '.env'
-if load_dotenv and ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH)
+from shared.config import load_backend_config
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('telegram_webhook_setup')
-
-
-def _env(name: str, default: str = "") -> str:
-    """Get environment variable value."""
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    return str(v).strip()
+_CFG = load_backend_config()
 
 
 def get_bot_token() -> str:
     """Get bot token from environment."""
     # Use TRACKING_EDIT_BOT_TOKEN first (for edits), fallback to GROUP_BOT_TOKEN (for broadcasts)
     # This matches the precedence in _bot_token_for_edits() in app.py
-    token = _env("TRACKING_EDIT_BOT_TOKEN") or _env("GROUP_BOT_TOKEN")
+    token = str(_CFG.tracking_edit_bot_token or "").strip() or str(_CFG.group_bot_token or "").strip()
     if not token:
         raise ValueError(
             "Bot token not found. Set GROUP_BOT_TOKEN or TRACKING_EDIT_BOT_TOKEN environment variable.\n"
@@ -72,7 +55,8 @@ def get_bot_token() -> str:
 
 def get_webhook_secret() -> Optional[str]:
     """Get webhook secret token from environment."""
-    return _env("WEBHOOK_SECRET_TOKEN") or None
+    v = str(_CFG.webhook_secret_token or "").strip()
+    return v or None
 
 
 def telegram_api_url(token: str) -> str:

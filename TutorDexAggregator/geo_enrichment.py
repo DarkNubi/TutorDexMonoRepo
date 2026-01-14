@@ -3,27 +3,18 @@ from __future__ import annotations
 import json
 import logging
 import math
-import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from shared.config import load_aggregator_config
 
 logger = logging.getLogger("geo_enrichment")
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
+_CFG = load_aggregator_config()
 
 def _enabled() -> bool:
-    v = os.environ.get("GEO_ENRICHMENT_ENABLED")
-    if v is None:
-        return True
-    return _truthy(v)
+    return bool(_CFG.geo_enrichment_enabled)
 
 
 def _default_data_dir() -> Path:
@@ -31,12 +22,12 @@ def _default_data_dir() -> Path:
 
 
 def _region_geojson_path() -> Path:
-    p = (os.environ.get("REGION_GEOJSON_PATH") or "").strip()
+    p = str(_CFG.region_geojson_path or "").strip()
     return Path(p) if p else (_default_data_dir() / "2019_region_boundary.geojson")
 
 
 def _mrt_data_path() -> Path:
-    p = (os.environ.get("MRT_DATA_JSON_PATH") or "").strip()
+    p = str(_CFG.mrt_data_json_path or "").strip()
     return Path(p) if p else (_default_data_dir() / "mrt_data.json")
 
 

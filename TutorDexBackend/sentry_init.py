@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-import os
 import logging
-from typing import Optional
+
+from shared.config import load_backend_config
 
 
 logger = logging.getLogger("tutordex_backend.sentry_init")
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def setup_sentry(*, service_name: str = "tutordex-backend") -> None:
@@ -22,7 +16,8 @@ def setup_sentry(*, service_name: str = "tutordex-backend") -> None:
     - Enable with `SENTRY_DSN` environment variable.
     - Configure environment, release, and sampling via environment variables.
     """
-    dsn = os.environ.get("SENTRY_DSN", "").strip()
+    cfg = load_backend_config()
+    dsn = str(cfg.sentry_dsn or "").strip()
     
     if not dsn:
         logger.info("sentry_disabled_no_dsn")
@@ -36,10 +31,10 @@ def setup_sentry(*, service_name: str = "tutordex-backend") -> None:
         logger.info("sentry_disabled_missing_package")
         return
 
-    environment = os.environ.get("SENTRY_ENVIRONMENT", os.environ.get("APP_ENV", "development")).strip()
-    release = os.environ.get("SENTRY_RELEASE", "").strip() or None
-    traces_sample_rate = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
-    profiles_sample_rate = float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))
+    environment = str(cfg.sentry_environment or cfg.app_env or "development").strip()
+    release = str(cfg.sentry_release or "").strip() or None
+    traces_sample_rate = float(cfg.sentry_traces_sample_rate if cfg.sentry_traces_sample_rate is not None else 0.1)
+    profiles_sample_rate = float(cfg.sentry_profiles_sample_rate if cfg.sentry_profiles_sample_rate is not None else 0.1)
 
     # Configure integrations
     integrations = [

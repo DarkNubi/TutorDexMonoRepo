@@ -23,13 +23,14 @@ Env (same as supabase_persist):
 
 import argparse
 import logging
-import os
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
 from pathlib import Path
+
+from shared.config import load_aggregator_config
 
 HERE = Path(__file__).resolve().parent
 PARENT = HERE.parent
@@ -48,7 +49,7 @@ def _geocode_sg_postal_force(postal_code: str, *, timeout: int = 10) -> Optional
         return None
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
-    headers = {"User-Agent": os.environ.get("NOMINATIM_USER_AGENT") or "TutorDexAggregator/1.0"}
+    headers = {"User-Agent": (str(load_aggregator_config().nominatim_user_agent or "").strip() or "TutorDexAggregator/1.0")}
 
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=timeout)

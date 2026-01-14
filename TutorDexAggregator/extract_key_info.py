@@ -1,6 +1,5 @@
 import json
 import hashlib
-import os
 import requests
 from pathlib import Path
 from functools import lru_cache
@@ -9,9 +8,11 @@ import logging
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_examples_key
+from shared.config import load_aggregator_config
 
 setup_logging()
 logger = logging.getLogger("extract_key_info")
+_CFG = load_aggregator_config()
 
 # Reuse HTTP sessions for better throughput (keep-alive) when doing large backfills.
 _LLM_SESSION = requests.Session()
@@ -45,11 +46,11 @@ def get_system_prompt_text() -> str:
 
     Falls back to `prompts/system_prompt_live.txt`.
     """
-    inline = (os.environ.get("LLM_SYSTEM_PROMPT_TEXT") or "").strip()
+    inline = str(_CFG.llm_system_prompt_text or "").strip()
     if inline:
         return inline
 
-    file_path = (os.environ.get("LLM_SYSTEM_PROMPT_FILE") or "").strip()
+    file_path = str(_CFG.llm_system_prompt_file or "").strip()
     if file_path:
         p = Path(file_path).expanduser()
         if not p.is_absolute():
@@ -67,8 +68,8 @@ def get_system_prompt_meta() -> dict:
     Metadata describing the current system prompt configuration.
     Intended to be persisted (e.g., in `telegram_extractions.meta`) for A/B comparisons.
     """
-    inline = (os.environ.get("LLM_SYSTEM_PROMPT_TEXT") or "").strip()
-    file_path = (os.environ.get("LLM_SYSTEM_PROMPT_FILE") or "").strip()
+    inline = str(_CFG.llm_system_prompt_text or "").strip()
+    file_path = str(_CFG.llm_system_prompt_file or "").strip()
 
     prompt_text = get_system_prompt_text()
     meta = {
@@ -115,14 +116,14 @@ def get_examples_dir() -> Path:
     """
     base_dir = Path(__file__).resolve().parent
 
-    override = (os.environ.get("LLM_EXAMPLES_DIR") or "").strip()
+    override = str(_CFG.llm_examples_dir or "").strip()
     if override:
         p = Path(override).expanduser()
         if not p.is_absolute():
             p = (base_dir / p).resolve()
         return p
 
-    variant = (os.environ.get("LLM_EXAMPLES_VARIANT") or "").strip()
+    variant = str(_CFG.llm_examples_variant or "").strip()
     if variant:
         p = base_dir / "message_examples_variants" / variant
         if p.exists():
@@ -135,7 +136,7 @@ def get_examples_meta(chat: str) -> dict:
     """
     Metadata describing the examples context used for this chat (if enabled).
     """
-    include = _truthy(os.environ.get("LLM_INCLUDE_EXAMPLES")) if os.environ.get("LLM_INCLUDE_EXAMPLES") is not None else False
+    include = bool(_CFG.llm_include_examples)
     meta = {"enabled": bool(include)}
     if not include:
         return meta
@@ -154,7 +155,7 @@ def get_examples_meta(chat: str) -> dict:
     meta.update(
         {
             "dir": str(examples_dir),
-            "variant": (os.environ.get("LLM_EXAMPLES_VARIANT") or "").strip() or None,
+            "variant": str(_CFG.llm_examples_variant or "").strip() or None,
             "file": str(chosen),
             "sha256": _text_sha256(text),
             "chars": len(text),
@@ -241,7 +242,7 @@ def build_prompt(message: str, chat: str) -> str:
 
     `chat` is expected to look like `t.me/<ChannelUsername>`.
     """
-    include_examples = _truthy(os.environ.get("LLM_INCLUDE_EXAMPLES")) if os.environ.get("LLM_INCLUDE_EXAMPLES") is not None else False
+    include_examples = bool(_CFG.llm_include_examples)
     if include_examples:
         examples_key = get_agency_examples_key(chat) or None
         examples_text = get_examples_text(examples_key)
@@ -371,9 +372,9 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
     """
     import os
 
-    llm_api = os.environ.get("LLM_API_URL", "http://localhost:1234")
-    model_name_env = os.environ.get("LLM_MODEL_NAME", model_name)
-    timeout_s = int(os.environ.get("LLM_TIMEOUT_SECONDS") or "200")
+    llm_api = str(_CFG.llm_api_url or "http://localhost:1234")
+    model_name_env = str(_CFG.llm_model_name or model_name)
+    timeout_s = int(_CFG.llm_timeout_seconds or 200)
 
     system_prompt = get_system_prompt_text().strip()
     prompt_with_examples = build_prompt(message, chat=chat)
@@ -409,7 +410,7 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
             "max_tokens": int(max_tokens),
         }
 
-        mock_path = (os.environ.get("LLM_MOCK_OUTPUT_FILE") or "").strip()
+        mock_path = str(_CFG.llm_mock_output_file or "").strip()
         if mock_path:
             p = Path(mock_path).expanduser()
             if not p.is_absolute():

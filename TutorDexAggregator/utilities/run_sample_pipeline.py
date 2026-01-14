@@ -19,11 +19,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from shared.config import load_aggregator_config
 
 AGG_DIR = Path(__file__).resolve().parents[1]
 if str(AGG_DIR) not in sys.path:
@@ -203,7 +204,7 @@ def run_once(
             "time_deterministic": time_meta,
             "hard_validation": hard_meta,
             "signals": signals_meta,
-            "mock_llm_output_file": _safe_str(os.environ.get("LLM_MOCK_OUTPUT_FILE")),
+            "mock_llm_output_file": _safe_str(load_aggregator_config().llm_mock_output_file),
         },
     }
 

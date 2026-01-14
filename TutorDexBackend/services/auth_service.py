@@ -3,14 +3,15 @@ Authentication and authorization service.
 
 Handles Firebase token verification and admin API key validation.
 """
-import os
 import logging
 from typing import Optional
 from fastapi import HTTPException, Request
 from TutorDexBackend.firebase_auth import firebase_admin_status, verify_bearer_token
 from TutorDexBackend.utils.config_utils import is_production
+from shared.config import load_backend_config
 
 logger = logging.getLogger("tutordex_backend")
+_CFG = load_backend_config()
 
 
 class AuthService:
@@ -21,13 +22,11 @@ class AuthService:
     
     def is_auth_required(self) -> bool:
         """Check if authentication is enabled."""
-        return str(os.environ.get("AUTH_REQUIRED") or "").strip().lower() in {
-            "1", "true", "yes", "y", "on"
-        }
+        return bool(_CFG.auth_required)
     
     def get_admin_key(self) -> str:
         """Get admin API key from environment."""
-        return (os.environ.get("ADMIN_API_KEY") or "").strip()
+        return str(_CFG.admin_api_key or "").strip()
     
     def require_admin(self, request: Request) -> None:
         """

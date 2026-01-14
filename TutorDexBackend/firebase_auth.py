@@ -1,4 +1,3 @@
-import os
 import logging
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
@@ -6,14 +5,9 @@ from typing import Optional, Dict, Any
 import firebase_admin
 from firebase_admin import credentials, auth
 
+from shared.config import load_backend_config
 
 logger = logging.getLogger("firebase_auth")
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 @dataclass(frozen=True)
@@ -23,8 +17,9 @@ class FirebaseAuthConfig:
 
 
 def load_firebase_auth_config() -> FirebaseAuthConfig:
-    enabled = _truthy(os.environ.get("FIREBASE_ADMIN_ENABLED"))
-    credentials_path = (os.environ.get("FIREBASE_ADMIN_CREDENTIALS_PATH") or "").strip() or None
+    cfg = load_backend_config()
+    enabled = bool(cfg.firebase_admin_enabled)
+    credentials_path = str(cfg.firebase_admin_credentials_path or "").strip() or None
     return FirebaseAuthConfig(enabled=enabled, credentials_path=credentials_path)
 
 

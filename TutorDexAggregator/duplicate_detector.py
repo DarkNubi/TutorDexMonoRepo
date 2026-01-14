@@ -728,7 +728,10 @@ def detect_duplicates_for_assignment(assignment_id: int, supabase_url: str = Non
     from supabase_env import resolve_supabase_url  # type: ignore
     
     supabase_url = supabase_url or resolve_supabase_url()
-    supabase_key = supabase_key or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not supabase_key:
+        from shared.config import load_aggregator_config
+
+        supabase_key = load_aggregator_config().supabase_auth_key
     
     if not supabase_url or not supabase_key:
         logger.error("Supabase credentials not available")

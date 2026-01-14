@@ -1,6 +1,6 @@
 # Pydantic Environment Configuration Guide
 
-**Status:** 🚧 **Available but Not Yet Implemented**  
+**Status:** ✅ **Implemented (in active use)**  
 **Created:** 2026-01-14  
 **Purpose:** Comprehensive guide to the centralized Pydantic-based configuration system
 
@@ -181,7 +181,7 @@ The Pydantic configuration classes exist in `shared/config.py`:
 
 **However:**
 - No Python files currently import or use these classes
-- All services still use manual `os.getenv()` parsing
+- Runtime services load config via `shared/config.py` (direct `os.getenv()` parsing removed from service code paths)
 - Existing `.env.example` files don't match the Pydantic schema
 
 **Why not adopted yet?**

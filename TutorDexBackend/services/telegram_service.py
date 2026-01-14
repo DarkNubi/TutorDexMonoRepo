@@ -3,7 +3,6 @@ Telegram integration service.
 
 Handles Telegram bot operations including link codes and webhooks.
 """
-import os
 import logging
 import asyncio
 from typing import Optional
@@ -11,8 +10,10 @@ from fastapi import Request
 import requests
 from TutorDexBackend.redis_store import TutorStore
 from TutorDexBackend.utils.config_utils import get_bot_token_for_edits
+from shared.config import load_backend_config
 
 logger = logging.getLogger("tutordex_backend")
+_CFG = load_backend_config()
 
 
 class TelegramService:
@@ -34,7 +35,7 @@ class TelegramService:
         Returns:
             True if verification passes or no secret is configured (permissive mode)
         """
-        configured_secret = (os.environ.get("WEBHOOK_SECRET_TOKEN") or "").strip()
+        configured_secret = str(_CFG.webhook_secret_token or "").strip()
         if not configured_secret:
             # No secret configured - allow requests (backward compatible)
             return True

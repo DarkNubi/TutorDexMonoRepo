@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import hashlib
 from dataclasses import dataclass
 from functools import lru_cache
@@ -27,8 +26,11 @@ try:
 except Exception:  # pragma: no cover
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
 
+from shared.config import load_aggregator_config
+
 setup_logging()
 logger = logging.getLogger("compilation_message_handler")
+_CFG = load_aggregator_config()
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
@@ -47,16 +49,16 @@ def build_assignment_code_extractor_prompt(*, raw_message: str) -> str:
 
 
 def _model_name() -> str:
-    return (os.environ.get("LLM_MODEL_NAME") or "").strip() or "unknown"
+    return str(_CFG.llm_model_name or "").strip() or "unknown"
 
 
 def _llm_api_url() -> str:
-    return (os.environ.get("LLM_API_URL") or "http://localhost:1234").strip().rstrip("/")
+    return str(_CFG.llm_api_url or "http://localhost:1234").strip().rstrip("/")
 
 
 def _llm_timeout_seconds() -> int:
     try:
-        return int(os.environ.get("LLM_TIMEOUT_SECONDS") or "200")
+        return int(_CFG.llm_timeout_seconds)
     except Exception:
         return 200
 
@@ -130,7 +132,7 @@ def _chat_completion(*, model_name: str, user_content: str, cid: Optional[str], 
 
 
 def _read_mock_output() -> Optional[str]:
-    p = (os.environ.get("LLM_ASSIGNMENT_CODE_EXTRACTOR_MOCK_FILE") or "").strip()
+    p = str(_CFG.llm_assignment_code_extractor_mock_file or "").strip()
     if not p:
         return None
     path = Path(p).expanduser()
@@ -155,7 +157,7 @@ def extract_assignment_identifiers_llm(
     mocked = _read_mock_output()
     if mocked is not None:
         llm_raw = mocked
-        log_event(logger, logging.WARNING, "assignment_code_extract_mocked", file=os.environ.get("LLM_ASSIGNMENT_CODE_EXTRACTOR_MOCK_FILE"), out_chars=len(llm_raw or ""))
+        log_event(logger, logging.WARNING, "assignment_code_extract_mocked", file=str(_CFG.llm_assignment_code_extractor_mock_file or ""), out_chars=len(llm_raw or ""))
     else:
         llm_raw = _chat_completion(model_name=_model_name(), user_content=prompt, cid=cid, channel=channel)
 

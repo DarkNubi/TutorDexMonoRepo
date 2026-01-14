@@ -2,20 +2,10 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from typing import Any, Dict, Optional, Tuple
 
-
-def _env_first(*names: str) -> Optional[str]:
-    for name in names:
-        v = os.environ.get(name)
-        if v is None:
-            continue
-        s = str(v).strip()
-        if s:
-            return s
-    return None
+from shared.config import load_aggregator_config, load_backend_config
 
 
 def _join_url(base: str, path: str) -> str:
@@ -69,14 +59,21 @@ def _supabase_rpc(supabase_url: str, supabase_key: str, fn: str, payload: Dict[s
 
 
 def main() -> int:
+    cfg_backend = load_backend_config()
+    cfg_agg = load_aggregator_config()
+
+    default_backend_url = str(cfg_backend.backend_url or "").strip() or "http://127.0.0.1:8000"
+    default_supabase_url = str(cfg_backend.supabase_rest_url or "").strip() or str(cfg_agg.supabase_rest_url or "").strip() or None
+    default_supabase_key = str(cfg_backend.supabase_auth_key or "").strip() or str(cfg_agg.supabase_auth_key or "").strip() or None
+
     p = argparse.ArgumentParser(description="TutorDex smoke test (backend + deps + key RPCs).")
-    p.add_argument("--backend-url", default=_env_first("BACKEND_URL") or "http://127.0.0.1:8000", help="Backend base URL.")
+    p.add_argument("--backend-url", default=default_backend_url, help="Backend base URL.")
     p.add_argument(
         "--supabase-url",
-        default=_env_first("SUPABASE_URL_HOST", "SUPABASE_URL_DOCKER", "SUPABASE_URL"),
+        default=default_supabase_url,
         help="Supabase base URL (no /rest/v1 suffix).",
     )
-    p.add_argument("--supabase-key", default=_env_first("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_KEY"), help="Supabase key for RPC checks.")
+    p.add_argument("--supabase-key", default=default_supabase_key, help="Supabase key for RPC checks.")
     p.add_argument("--skip-supabase-rpcs", action="store_true", help="Skip direct Supabase RPC checks.")
     args = p.parse_args()
 

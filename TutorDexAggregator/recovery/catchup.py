@@ -11,6 +11,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
 
+from shared.config import load_aggregator_config
+
 try:
     from logging_setup import bind_log_context, log_event  # type: ignore
 except Exception:
@@ -83,18 +85,20 @@ class CatchupConfig:
 
 
 def load_catchup_config(*, agg_dir: Path) -> CatchupConfig:
-    enabled = _truthy(os.environ.get("RECOVERY_CATCHUP_ENABLED") or "1")
-    state_rel = (os.environ.get("RECOVERY_CATCHUP_STATE_FILE") or "state/recovery_catchup_state.json").strip()
-    state_path = (agg_dir / state_rel).resolve()
+    cfg = load_aggregator_config()
+    enabled = bool(cfg.recovery_catchup_enabled)
+    state_rel = str(cfg.recovery_catchup_state_file or "state/recovery_catchup_state.json").strip()
+    state_candidate = Path(state_rel).expanduser()
+    state_path = state_candidate if state_candidate.is_absolute() else (agg_dir / state_candidate).resolve()
 
-    target_lag_minutes = int((os.environ.get("RECOVERY_CATCHUP_TARGET_LAG_MINUTES") or "2").strip() or "2")
-    overlap_minutes = int((os.environ.get("RECOVERY_CATCHUP_OVERLAP_MINUTES") or "10").strip() or "10")
-    chunk_hours = int((os.environ.get("RECOVERY_CATCHUP_CHUNK_HOURS") or "6").strip() or "6")
-    low_watermark = int((os.environ.get("RECOVERY_CATCHUP_QUEUE_LOW_WATERMARK") or "0").strip() or "0")
-    check_interval_s = float((os.environ.get("RECOVERY_CATCHUP_CHECK_INTERVAL_SECONDS") or "30").strip() or "30")
-    pipeline_version = (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
+    target_lag_minutes = int(cfg.recovery_catchup_target_lag_minutes)
+    overlap_minutes = int(cfg.recovery_catchup_overlap_minutes)
+    chunk_hours = int(cfg.recovery_catchup_chunk_hours)
+    low_watermark = int(cfg.recovery_catchup_queue_low_watermark)
+    check_interval_s = float(cfg.recovery_catchup_check_interval_seconds)
+    pipeline_version = str(cfg.extraction_pipeline_version or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
 
-    recovery_session_name = (os.environ.get("TG_SESSION_RECOVERY") or "tutordex_recovery.session").strip() or "tutordex_recovery.session"
+    recovery_session_name = str(cfg.telegram_session_recovery or "tutordex_recovery.session").strip() or "tutordex_recovery.session"
 
     return CatchupConfig(
         enabled=enabled,
@@ -228,16 +232,20 @@ async def run_catchup_until_target(
     except Exception:
         StringSession = None
 
-    # Reuse the same API ID/HASH as the main collector.
-    api_id = int(os.environ.get("TELEGRAM_API_ID") or os.environ.get("TG_API_ID") or os.environ.get("API_ID") or 0)
-    api_hash = (os.environ.get("TELEGRAM_API_HASH") or os.environ.get("TG_API_HASH") or os.environ.get("API_HASH") or "").strip()
+    cfg = load_aggregator_config()
+    api_id_raw = str(cfg.telegram_api_id or "").strip()
+    try:
+        api_id = int(api_id_raw) if api_id_raw else 0
+    except Exception:
+        api_id = 0
+    api_hash = str(cfg.telegram_api_hash or "").strip()
     if not api_id or not api_hash:
         log_event(logger, logging.WARNING, "recovery_missing_telegram_creds", api_id=bool(api_id), api_hash=bool(api_hash))
         return
 
     # If you already run tail with `SESSION_STRING`, reuse it for catchup unless explicitly overridden.
     # This avoids needing a second authenticated session in many deployments.
-    session_string = (os.environ.get("SESSION_STRING_RECOVERY") or os.environ.get("SESSION_STRING") or "").strip()
+    session_string = str(cfg.session_string_recovery or cfg.session_string or "").strip()
     if session_string and StringSession is not None:
         recovery_client = TelegramClient(StringSession(session_string), api_id, api_hash)
     else:
@@ -280,8 +288,8 @@ async def run_catchup_until_target(
                 with bind_log_context(step="raw.recovery.catchup", channel=ch):
                     log_event(logger, logging.INFO, "recovery_catchup_window_start", channel=ch, since=_iso(since), until=_iso(until), run_id=run_id)
                     # Retry/backoff wrapper for backfill to tolerate transient Telethon/network errors.
-                    max_attempts = max(1, int(os.environ.get("RECOVERY_BACKFILL_MAX_ATTEMPTS", "3") or 3))
-                    base_backoff = float(os.environ.get("RECOVERY_BACKFILL_BASE_BACKOFF_SECONDS", "5.0") or 5.0)
+                    max_attempts = max(1, int(cfg.recovery_backfill_max_attempts))
+                    base_backoff = float(cfg.recovery_backfill_base_backoff_seconds)
                     last_exc = None
                     res = None
                     for attempt in range(1, max_attempts + 1):

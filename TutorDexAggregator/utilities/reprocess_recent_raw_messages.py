@@ -31,7 +31,6 @@ from supabase_raw_persist import SupabaseRawStore
 from logging_setup import bind_log_context, log_event, setup_logging
 import json
 import logging
-import os
 import re
 import time
 from dataclasses import dataclass
@@ -40,11 +39,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
 
-
-try:
-    from dotenv import load_dotenv  # type: ignore
-except Exception:
-    load_dotenv = None
+from shared.config import load_aggregator_config
 
 # --------------------------------------------------------------------------------------
 # Edit these two values when you need to reprocess a window (no CLI args on purpose).
@@ -69,46 +64,8 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
-def _load_env() -> None:
-    agg_dir = Path(__file__).resolve().parents[1]
-    env_path = agg_dir / ".env"
-
-    if load_dotenv and env_path.exists():
-        load_dotenv(dotenv_path=env_path)
-        return
-
-    if not env_path.exists():
-        return
-
-    # Simple parser: supports KEY=VALUE or KEY: VALUE and quoted values.
-    try:
-        raw = env_path.read_text(encoding="utf8")
-        for ln in raw.splitlines():
-            line = ln.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                k, v = line.split("=", 1)
-            elif ":" in line:
-                k, v = line.split(":", 1)
-            else:
-                continue
-            k = k.strip()
-            v = v.strip().strip('"').strip("'")
-            if k and k not in os.environ:
-                os.environ[k] = v
-    except Exception:
-        logger.debug("env_parse_failed", exc_info=True)
-
-
-def _parse_channels_from_env() -> List[str]:
-    raw = (os.environ.get("CHANNEL_LIST") or os.environ.get("CHANNELS") or "").strip()
+def _parse_channels(raw: str) -> List[str]:
+    raw = str(raw or "").strip()
     if not raw:
         return []
     if raw.startswith("[") and raw.endswith("]"):
@@ -233,7 +190,7 @@ def _fetch_raw_batch(
 
 
 def main() -> None:
-    _load_env()
+    cfg = load_aggregator_config()
 
     if DAYS_BACK < 0 or HOURS_BACK < 0:
         raise SystemExit("DAYS_BACK and HOURS_BACK must be >= 0")
@@ -247,7 +204,7 @@ def main() -> None:
             "Supabase raw store not enabled. Check SUPABASE_URL_HOST/SUPABASE_URL_DOCKER/SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + SUPABASE_RAW_ENABLED."
         )
 
-    channels = [_normalize_channel_link(c) for c in _parse_channels_from_env() if str(c).strip()]
+    channels = [_normalize_channel_link(c) for c in _parse_channels(cfg.channel_list) if str(c).strip()]
     if not channels:
         raise SystemExit("No channels configured. Set CHANNEL_LIST (or CHANNELS) in TutorDexAggregator/.env.")
 
@@ -320,8 +277,7 @@ def main() -> None:
                     with bind_log_context(cid=cid, channel=ch, message_id=msg_id, step="reprocess"):
                         try:
                             normalized_text = normalize_text(raw_text)
-                            use_norm = _truthy(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM"))
-                            llm_input = normalized_text if use_norm else raw_text
+                            llm_input = normalized_text if bool(cfg.use_normalized_text_for_llm) else raw_text
 
                             parsed = extract_assignment_with_model(llm_input, chat=ch, cid=cid)
                             if not isinstance(parsed, dict):
@@ -343,7 +299,7 @@ def main() -> None:
                                 payload["parsed"] = _fill_postal_code_from_text(payload["parsed"], raw_text)
 
                             # Deterministic time overwrite (recommended).
-                            if _truthy(os.environ.get("USE_DETERMINISTIC_TIME")):
+                            if bool(cfg.use_deterministic_time):
                                 try:
                                     det_ta, det_meta = extract_time_availability(raw_text=raw_text, normalized_text=normalized_text)
                                     if isinstance(payload.get("parsed"), dict):
@@ -354,7 +310,7 @@ def main() -> None:
                                 det_meta = None
 
                             # Hard validation (default enforce for reprocessing).
-                            hard_mode = (os.environ.get("HARD_VALIDATE_MODE") or "enforce").strip().lower()
+                            hard_mode = str(cfg.hard_validate_mode or "enforce").strip().lower()
                             hard_meta = None
                             if hard_mode in {"report", "enforce"}:
                                 try:
@@ -367,7 +323,7 @@ def main() -> None:
 
                             # Deterministic signals (recommended).
                             sig_meta = None
-                            if _truthy(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS")):
+                            if bool(cfg.enable_deterministic_signals):
                                 try:
                                     sig, err = build_signals(parsed=payload.get("parsed") or {}, raw_text=raw_text, normalized_text=normalized_text)
                                     sig_meta = {"ok": False, "error": err} if err else {"ok": True, "signals": sig}

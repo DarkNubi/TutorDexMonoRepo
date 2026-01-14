@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-import os
 import logging
-from typing import Optional
+
+from shared.config import load_aggregator_config
 
 
 logger = logging.getLogger("tutordex_aggregator.otel")
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
 
 def setup_otel(*, service_name: str) -> None:
     """
@@ -22,7 +15,8 @@ def setup_otel(*, service_name: str) -> None:
     - Enable with `OTEL_ENABLED=1`.
     - Export via OTLP to `OTEL_EXPORTER_OTLP_ENDPOINT` (defaults to http://otel-collector:4318).
     """
-    if not _truthy(os.environ.get("OTEL_ENABLED")):
+    cfg = load_aggregator_config()
+    if not bool(cfg.otel_enabled):
         return
 
     try:
@@ -35,8 +29,8 @@ def setup_otel(*, service_name: str) -> None:
         logger.info("otel_disabled_missing_packages")
         return
 
-    endpoint = (os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or "http://otel-collector:4318").strip()
-    name = (service_name or os.environ.get("OTEL_SERVICE_NAME") or "tutordex").strip() or "tutordex"
+    endpoint = str(cfg.otel_exporter_otlp_endpoint or "http://otel-collector:4318").strip()
+    name = str(service_name or cfg.otel_service_name or "tutordex").strip() or "tutordex"
 
     try:
         resource = Resource.create({"service.name": name})

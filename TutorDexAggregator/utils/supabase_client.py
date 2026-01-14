@@ -5,23 +5,13 @@ Extracted from supabase_persist.py.
 Provides configuration dataclass and HTTP client for Supabase REST API.
 """
 
-import os
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import requests
-
-try:
-    from supabase_env import resolve_supabase_url  # type: ignore
-except Exception:
-    from TutorDexAggregator.supabase_env import resolve_supabase_url  # type: ignore
-
-try:
-    from utils.field_coercion import truthy
-except Exception:
-    from TutorDexAggregator.utils.field_coercion import truthy
+from shared.config import load_aggregator_config
 
 logger = logging.getLogger("supabase_persist")
 
@@ -47,11 +37,12 @@ def load_config_from_env() -> SupabaseConfig:
     - SUPABASE_ENABLED (must be truthy)
     - SUPABASE_BUMP_MIN_SECONDS (default: 21600 = 6 hours)
     """
-    url = resolve_supabase_url()
-    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
-    assignments_table = (os.environ.get("SUPABASE_ASSIGNMENTS_TABLE") or "assignments").strip()
-    enabled = truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key and assignments_table)
-    bump_min_seconds = int(os.environ.get("SUPABASE_BUMP_MIN_SECONDS") or str(6 * 60 * 60))
+    cfg = load_aggregator_config()
+    url = cfg.supabase_rest_url
+    key = cfg.supabase_auth_key
+    assignments_table = str(cfg.supabase_assignments_table or "assignments").strip()
+    enabled = bool(cfg.supabase_enabled) and bool(url and key and assignments_table)
+    bump_min_seconds = int(cfg.supabase_bump_min_seconds or (6 * 60 * 60))
     return SupabaseConfig(
         url=url,
         key=key,

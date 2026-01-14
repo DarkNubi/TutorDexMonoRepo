@@ -4,7 +4,6 @@ Rate Limiting Middleware for TutorDex Backend.
 Uses slowapi to provide rate limiting for public endpoints.
 Protects against abuse and ensures fair usage.
 """
-import os
 import logging
 from typing import Optional
 
@@ -17,6 +16,9 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
+from shared.config import load_backend_config
+
+_CFG = load_backend_config()
 
 def _get_rate_limit_key(request: Request) -> str:
     """
@@ -47,8 +49,7 @@ def _is_rate_limit_enabled() -> bool:
     Returns:
         True if rate limiting should be active
     """
-    enabled = os.environ.get("RATE_LIMIT_ENABLED", "1").strip()
-    return enabled.lower() in ("1", "true", "yes", "on")
+    return bool(_CFG.rate_limit_enabled)
 
 
 def _get_redis_url() -> Optional[str]:
@@ -61,7 +62,7 @@ def _get_redis_url() -> Optional[str]:
     Returns:
         Redis URL or None
     """
-    return os.environ.get("REDIS_URL")
+    return str(_CFG.redis_url or "").strip() or None
 
 
 # Rate limit configurations for different endpoint types

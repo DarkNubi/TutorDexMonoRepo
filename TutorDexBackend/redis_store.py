@@ -1,4 +1,3 @@
-import os
 import json
 import secrets
 from dataclasses import dataclass
@@ -8,16 +7,10 @@ from typing import Any, Dict, Optional, List
 
 import redis
 
+from shared.config import load_backend_config
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _env(name: str, default: str = "") -> str:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    return str(v).strip()
 
 
 def _json_dumps(value: Any) -> str:
@@ -82,9 +75,10 @@ def load_redis_config() -> RedisConfig:
     # Prefer the local docker-compose Redis service when running inside Docker.
     in_docker = Path("/.dockerenv").exists()
     default_url = "redis://redis:6379/0" if in_docker else "redis://localhost:6379/0"
+    cfg = load_backend_config()
     return RedisConfig(
-        url=_env("REDIS_URL", default_url),
-        prefix=_env("REDIS_PREFIX", "tutordex"),
+        url=str(cfg.redis_url or default_url).strip() or default_url,
+        prefix=str(cfg.redis_prefix or "tutordex").strip() or "tutordex",
     )
 
 

@@ -1,7 +1,10 @@
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from functools import lru_cache
+
+from shared.config import load_aggregator_config
 
 
 logger = logging.getLogger("taxonomy")
@@ -24,20 +27,17 @@ try:
 except Exception as e:  # pragma: no cover
     _canonicalize_subjects_v2 = None  # type: ignore
     logger.warning("shared_taxonomy_import_failed error=%s", e)
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+@lru_cache(maxsize=1)
+def _cfg():
+    return load_aggregator_config()
 
 
 def subject_taxonomy_enabled() -> bool:
-    return _truthy(os.environ.get("SUBJECT_TAXONOMY_ENABLED"))
+    return bool(_cfg().subject_taxonomy_enabled)
 
 
 def subject_taxonomy_debug_enabled() -> bool:
-    return _truthy(os.environ.get("SUBJECT_TAXONOMY_DEBUG"))
+    return bool(_cfg().subject_taxonomy_debug)
 
 
 def _safe_str(value: Any) -> Optional[str]:
@@ -71,7 +71,7 @@ def _coerce_text_list(value: Any) -> List[str]:
 
 
 def _taxonomy_path() -> str:
-    p = _safe_str(os.environ.get("SUBJECT_TAXONOMY_PATH"))
+    p = _safe_str(_cfg().subject_taxonomy_path)
     if p:
         return str(Path(p))
     return str(DEFAULT_TAXONOMY_PATH)

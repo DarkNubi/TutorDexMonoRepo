@@ -1,16 +1,17 @@
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import requests
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
+from shared.config import load_aggregator_config
 
 
 setup_logging()
 logger = logging.getLogger("llm_client")
+_CFG = load_aggregator_config()
 
 
 def _safe_parse_json(json_string: str) -> Any:
@@ -59,8 +60,8 @@ class LlmConfig:
 
 
 def load_llm_config() -> LlmConfig:
-    base = (os.environ.get("LLM_API_URL") or "http://localhost:1234").strip().rstrip("/")
-    timeout_s = int(os.environ.get("LLM_TIMEOUT_SECONDS") or "200")
+    base = str(_CFG.llm_api_url or "http://localhost:1234").strip().rstrip("/")
+    timeout_s = int(_CFG.llm_timeout_seconds or 200)
     return LlmConfig(api_url=base, timeout_s=timeout_s)
 
 

@@ -1,6 +1,7 @@
-import os
 import re
 from typing import Any, Optional, Tuple, List
+
+from shared.config import load_aggregator_config
 
 try:
     # When running inside TutorDexAggregator (worker adds this dir to sys.path)
@@ -15,53 +16,25 @@ URL_RE = re.compile(r"https?://|t\.me/|www\.", re.I)
 APPLY_NOW_RE = re.compile(r"(?i)\bapply\s+now\b")
 
 
-def _env_int(name: str, default: int) -> int:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    try:
-        return int(str(v).strip())
-    except Exception:
-        return default
-
-
-def _env_int_optional(name: str) -> Optional[int]:
-    v = os.environ.get(name)
-    if v is None:
-        return None
-    s = str(v).strip()
-    if not s:
-        return None
-    try:
-        return int(s)
-    except Exception:
-        return None
-
-
 def load_compilation_thresholds() -> dict[str, int]:
     """
     Default thresholds used by the queue worker pipeline.
     Override via env vars if needed.
     """
-    distinct_codes = _env_int_optional("COMPILATION_DISTINCT_CODES")
-    # Back-compat: older configs used COMPILATION_CODE_HITS (counting "ID:" fields).
-    # We now interpret it as the distinct-codes threshold when the new var isn't set.
-    if distinct_codes is None:
-        distinct_codes = _env_int_optional("COMPILATION_CODE_HITS")
-    if distinct_codes is None:
-        distinct_codes = 2
+    cfg = load_aggregator_config()
+    distinct_codes = int(cfg.compilation_distinct_codes or 2)
 
     return {
         # Distinct assignment codes extracted via compilation_extractor (more reliable than counting "ID:" fields).
         "distinct_codes": distinct_codes,
         # Enumerated "slot A:", "assignment 1:", etc. Avoid generic section headers like "Available assignment:".
-        "label_hits": _env_int("COMPILATION_LABEL_HITS", 2),
-        "postal_hits": _env_int("COMPILATION_POSTAL_HITS", 2),
-        "url_hits": _env_int("COMPILATION_URL_HITS", 2),
+        "label_hits": int(cfg.compilation_label_hits or 2),
+        "postal_hits": int(cfg.compilation_postal_hits or 2),
+        "url_hits": int(cfg.compilation_url_hits or 2),
         # A conservative default: many single-assignment posts are 3 blocks (title/details/footer).
-        "block_count": _env_int("COMPILATION_BLOCK_COUNT", 5),
+        "block_count": int(cfg.compilation_block_count or 5),
         # "Apply now" repeats frequently in compilation/list posts.
-        "apply_now_hits": _env_int("COMPILATION_APPLY_NOW_HITS", 2),
+        "apply_now_hits": int(cfg.compilation_apply_now_hits or 2),
     }
 
 

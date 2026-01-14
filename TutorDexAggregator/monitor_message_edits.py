@@ -24,7 +24,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import os
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -35,43 +34,10 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from telethon import TelegramClient, events
 
 from logging_setup import log_event, setup_logging, timed
+from shared.config import load_aggregator_config
 
-
-# Load .env if present (use python-dotenv if available, and fallback to simple parser)
-try:
-    from dotenv import load_dotenv  # type: ignore
-except Exception:
-    load_dotenv = None
 
 HERE = Path(__file__).resolve().parent
-ENV_PATH = HERE / ".env"
-if ENV_PATH.exists():
-    if load_dotenv:
-        load_dotenv(dotenv_path=ENV_PATH)
-    try:
-        raw = ENV_PATH.read_text(encoding="utf8")
-        for ln in raw.splitlines():
-            line = ln.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                k, v = line.split("=", 1)
-            elif ":" in line:
-                k, v = line.split(":", 1)
-            else:
-                continue
-            k = k.strip()
-            v = v.strip().strip('"').strip("'")
-            if k and k not in os.environ:
-                os.environ[k] = v
-    except Exception:
-        pass
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def _safe_str(value: Any) -> str:
@@ -122,7 +88,8 @@ def _change_stats(old: str, new: str) -> Dict[str, Any]:
 
 
 def _parse_channels() -> List[str]:
-    raw = (os.environ.get("CHANNEL_LIST") or os.environ.get("CHANNELS") or "").strip()
+    cfg = load_aggregator_config()
+    raw = str(cfg.channel_list or "").strip()
     if not raw:
         return []
     if raw.startswith("[") and raw.endswith("]"):
@@ -165,20 +132,26 @@ class MonitorConfig:
 
 
 def load_config() -> MonitorConfig:
-    api_id = int(os.environ.get("TELEGRAM_API_ID") or os.environ.get("TG_API_ID") or os.environ.get("API_ID") or 0)
-    api_hash = os.environ.get("TELEGRAM_API_HASH") or os.environ.get("TG_API_HASH") or os.environ.get("API_HASH") or ""
-    session_string = os.environ.get("SESSION_STRING") or os.environ.get("TG_SESSION_STRING") or os.environ.get("SESSION") or ""
-    session_name = os.environ.get("TG_SESSION") or "tutordex.session"
+    cfg = load_aggregator_config()
+    api_id_raw = str(cfg.telegram_api_id or "").strip()
+    try:
+        api_id = int(api_id_raw) if api_id_raw else 0
+    except Exception:
+        api_id = 0
+    api_hash = str(cfg.telegram_api_hash or "").strip()
+    session_string = str(cfg.session_string or "").strip()
+    session_name = str(cfg.telegram_session_name or "tutordex.session").strip() or "tutordex.session"
     channels = [_normalize_channel_ref(x) for x in _parse_channels()]
 
-    db_path = Path(os.environ.get("EDIT_MONITOR_DB_PATH") or (HERE / "monitoring" / "telegram_message_edits.sqlite"))
-    events_jsonl_raw = (os.environ.get("EDIT_MONITOR_EVENTS_JSONL") or "").strip()
+    db_path_raw = str(cfg.edit_monitor_db_path or "").strip()
+    db_path = Path(db_path_raw) if db_path_raw else (HERE / "monitoring" / "telegram_message_edits.sqlite")
+    events_jsonl_raw = str(cfg.edit_monitor_events_jsonl or "").strip()
     events_jsonl_path = Path(events_jsonl_raw) if events_jsonl_raw else None
 
-    include_text = _truthy(os.environ.get("EDIT_MONITOR_INCLUDE_TEXT") or "true")
-    max_text_chars = int(os.environ.get("EDIT_MONITOR_MAX_TEXT_CHARS") or "20000")
-    historic_fetch = int(os.environ.get("EDIT_MONITOR_HISTORIC_FETCH") or "50")
-    summary_interval_s = int(os.environ.get("EDIT_MONITOR_SUMMARY_INTERVAL_SECONDS") or "600")
+    include_text = bool(cfg.edit_monitor_include_text)
+    max_text_chars = int(cfg.edit_monitor_max_text_chars)
+    historic_fetch = int(cfg.edit_monitor_historic_fetch)
+    summary_interval_s = int(cfg.edit_monitor_summary_interval_seconds)
 
     if not api_id or not api_hash or not channels:
         raise SystemExit("Set TELEGRAM_API_ID, TELEGRAM_API_HASH and CHANNEL_LIST in .env or environment")

@@ -19,13 +19,14 @@ This script:
 
 import argparse
 import logging
-import os
 import sys
 from typing import Any, Dict, List, Optional
 
 import requests
 
 from pathlib import Path
+
+from shared.config import load_aggregator_config
 
 HERE = Path(__file__).resolve().parent
 PARENT = HERE.parent
@@ -302,16 +303,6 @@ TUTORCITY_LEVEL_ID_MAP: Dict[str, str] = {
 }
 
 
-def _env_int(name: str, default: int) -> int:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    try:
-        return int(str(v).strip())
-    except Exception:
-        return default
-
-
 def _first(value: Any) -> Optional[str]:
     if value is None:
         return None
@@ -461,12 +452,11 @@ def _map_row(row: Dict[str, Any], source_label: str) -> Dict[str, Any]:
     return payload
 
 
-def fetch_api(url: str, limit: int, timeout_s: int) -> List[Dict[str, Any]]:
+def fetch_api(url: str, limit: int, timeout_s: int, *, user_agent: str) -> List[Dict[str, Any]]:
     params = {"limit": limit}
-    ua = os.environ.get("TUTORCITY_USER_AGENT") or "TutorDexTutorCityFetcher/1.0"
     headers = {
         "accept": "application/json",
-        "user-agent": ua,
+        "user-agent": user_agent or "TutorDexTutorCityFetcher/1.0",
     }
     resp = requests.get(url, params=params, headers=headers, timeout=timeout_s)
     if resp.status_code >= 400:
@@ -516,9 +506,11 @@ def main() -> None:
     p.add_argument("--limit", type=int, default=None, help="Number of rows to fetch (default from env or 50)")
     args = p.parse_args()
 
-    url = (os.environ.get("TUTORCITY_API_URL") or DEFAULT_URL).strip()
-    limit = args.limit if args.limit is not None else _env_int("TUTORCITY_LIMIT", 50)
-    timeout_s = _env_int("TUTORCITY_TIMEOUT_SECONDS", 30)
+    cfg = load_aggregator_config()
+    url = str(cfg.tutorcity_api_url or DEFAULT_URL).strip() or DEFAULT_URL
+    limit = int(args.limit) if args.limit is not None else int(cfg.tutorcity_limit)
+    timeout_s = int(cfg.tutorcity_timeout_seconds)
+    user_agent = str(cfg.tutorcity_user_agent or "").strip() or "TutorDexTutorCityFetcher/1.0"
     source_label = "TutorCity"
     # Disable bumping for API rows: set bump_min_seconds extremely high.
     base_cfg = load_config_from_env()
@@ -530,7 +522,7 @@ def main() -> None:
         bump_min_seconds=10**9,
     )
 
-    rows = fetch_api(url, limit, timeout_s)
+    rows = fetch_api(url, limit, timeout_s, user_agent=user_agent)
     if not rows:
         print("No rows returned from API.")
         return

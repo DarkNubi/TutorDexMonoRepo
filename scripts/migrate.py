@@ -13,7 +13,6 @@ Environment Variables:
     SUPABASE_SERVICE_ROLE_KEY: Service role key with full database access
 """
 
-import os
 import sys
 import hashlib
 import logging
@@ -24,6 +23,8 @@ import argparse
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from shared.config import load_aggregator_config
 
 try:
     from supabase import create_client, Client
@@ -42,11 +43,12 @@ logger = logging.getLogger("migrate")
 
 def get_supabase_client() -> Client:
     """Create Supabase client from environment variables."""
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    cfg = load_aggregator_config()
+    url = str(cfg.supabase_rest_url or "").strip()
+    key = str(cfg.supabase_service_role_key or "").strip()
     
     if not url or not key:
-        logger.error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+        logger.error("SUPABASE_URL_* and SUPABASE_SERVICE_ROLE_KEY must be set")
         sys.exit(1)
     
     return create_client(url, key)

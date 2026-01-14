@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
 import time
 from dataclasses import dataclass
@@ -9,6 +8,8 @@ from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+
+from shared.config import load_aggregator_config
 
 try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.
@@ -23,18 +24,17 @@ logger = logging.getLogger("postal_code_estimated")
 _SG_POSTAL_RE = re.compile(r"\b(\d{6})\b")
 
 
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+@lru_cache(maxsize=1)
+def _cfg():
+    return load_aggregator_config()
 
 
 def _nominatim_disabled() -> bool:
-    return _truthy(os.environ.get("DISABLE_NOMINATIM"))
+    return bool(_cfg().disable_nominatim)
 
 
 def _nominatim_user_agent() -> str:
-    return (os.environ.get("NOMINATIM_USER_AGENT") or "TutorDexAggregator/1.0").strip() or "TutorDexAggregator/1.0"
+    return (str(_cfg().nominatim_user_agent or "").strip() or "TutorDexAggregator/1.0")
 
 
 def _extract_sg_postal_codes(text: Any) -> List[str]:
@@ -135,8 +135,8 @@ def _estimate_postal_from_cleaned_address(cleaned_address: str, *, timeout_s: fl
     }
     headers = {"User-Agent": _nominatim_user_agent()}
 
-    max_attempts = int(os.environ.get("NOMINATIM_RETRIES") or "3")
-    backoff_s = float(os.environ.get("NOMINATIM_BACKOFF_SECONDS") or "1.0")
+    max_attempts = int(_cfg().nominatim_retries)
+    backoff_s = float(_cfg().nominatim_backoff_seconds)
 
     last_err: Optional[str] = None
     for attempt in range(max(1, min(max_attempts, 6))):

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import csv
 import json
-import os
 import re
 import sys
 import time
@@ -25,6 +24,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote
 
 import requests
+
+from shared.config import load_aggregator_config
 
 AGG_DIR = Path(__file__).resolve().parents[1]
 if str(AGG_DIR) not in sys.path:
@@ -47,9 +48,10 @@ def _truthy(value: Optional[str]) -> bool:
 
 
 def _supabase_cfg() -> Tuple[str, str]:
+    cfg = load_aggregator_config()
     url = resolve_supabase_url()
-    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
-    enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
+    key = str(cfg.supabase_auth_key or "").strip()
+    enabled = bool(cfg.supabase_enabled) and bool(url and key)
     if not enabled:
         raise SystemExit(
             "Supabase not enabled. Set SUPABASE_ENABLED=1, SUPABASE_SERVICE_ROLE_KEY, and one of SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL."
@@ -302,7 +304,7 @@ def compare_runs(cfg: CompareConfig) -> Dict[str, Any]:
 
     # Optional deeper metrics that require joining raw_text from `telegram_messages_raw`.
     # Enable with `AB_EXTRA_METRICS=1`.
-    if _truthy(os.environ.get("AB_EXTRA_METRICS")):
+    if _truthy(str(load_aggregator_config().ab_extra_metrics or "").strip()):
         url, key = _supabase_cfg()
 
         def _chunks(xs: List[str], n: int) -> Iterable[List[str]]:
@@ -608,14 +610,15 @@ def write_reports(out_dir: Path, cfg: CompareConfig, result: Dict[str, Any]) -> 
 def main() -> None:
     # Minimal "standalone" usage via env vars.
     # Prefer the experiment runner for a full workflow.
-    pipeline_a = (os.environ.get("AB_PIPELINE_A") or "").strip()
-    pipeline_b = (os.environ.get("AB_PIPELINE_B") or "").strip()
+    cfg0 = load_aggregator_config()
+    pipeline_a = str(cfg0.ab_pipeline_a or "").strip()
+    pipeline_b = str(cfg0.ab_pipeline_b or "").strip()
     if not pipeline_a or not pipeline_b:
         raise SystemExit("Set AB_PIPELINE_A and AB_PIPELINE_B to compare.")
 
-    since = (os.environ.get("AB_SINCE_ISO") or "").strip() or None
-    until = (os.environ.get("AB_UNTIL_ISO") or "").strip() or None
-    out_dir = Path(os.environ.get("AB_OUT_DIR") or f"utilities/out/ab_compare_{int(time.time())}")
+    since = str(cfg0.ab_since_iso or "").strip() or None
+    until = str(cfg0.ab_until_iso or "").strip() or None
+    out_dir = Path(str(cfg0.ab_out_dir or "").strip() or f"utilities/out/ab_compare_{int(time.time())}")
 
     cfg = CompareConfig(pipeline_a=pipeline_a, pipeline_b=pipeline_b, since_iso=since, until_iso=until)
     res = compare_runs(cfg)

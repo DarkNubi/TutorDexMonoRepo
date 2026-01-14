@@ -13,13 +13,14 @@ are missing, the script exits with a message.
 """
 
 import argparse
-import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Tuple
 
 import requests
+
+from shared.config import load_aggregator_config
 
 AGG_DIR = Path(__file__).resolve().parents[1]
 if str(AGG_DIR) not in sys.path:
@@ -30,7 +31,7 @@ from supabase_env import resolve_supabase_url  # noqa: E402
 
 def _supabase_cfg() -> Optional[Tuple[str, str]]:
     url = resolve_supabase_url()
-    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
+    key = str(load_aggregator_config().supabase_auth_key or "").strip()
     if not (url and key):
         return None
     return url, key

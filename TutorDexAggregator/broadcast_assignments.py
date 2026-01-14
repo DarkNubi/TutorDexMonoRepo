@@ -1,7 +1,6 @@
 # broadcast_assignments.py
 # Send extracted assignment JSON to a target Telegram channel using Bot API.
 
-import os
 import json
 import logging
 import random
@@ -16,34 +15,27 @@ import html
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_display_name
 from observability_metrics import broadcast_fail_reason_total, broadcast_fail_total, broadcast_sent_total, versions as _obs_versions
+from shared.config import load_aggregator_config
 
-try:
-    from dotenv import load_dotenv
-except Exception:
-    load_dotenv = None
-
-# Load .env located next to this script, if present
 HERE = Path(__file__).resolve().parent
-ENV_PATH = HERE / '.env'
-if load_dotenv and ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH)
 
 setup_logging()
 logger = logging.getLogger('broadcast_assignments')
+_CFG = load_aggregator_config()
 
 # Configuration: support new env names from your .env
 # Prefer explicit BOT_API_URL, otherwise build from available tokens.
-BOT_API_URL = os.environ.get('BOT_API_URL') or os.environ.get('TG_BOT_API_URL')
+BOT_API_URL = str(_CFG.bot_api_url or '').strip() or None
 # tokens provided in .env: DM_BOT_TOKEN, GROUP_BOT_TOKEN
-BOT_TOKEN = os.environ.get('GROUP_BOT_TOKEN')
+BOT_TOKEN = str(_CFG.group_bot_token or '').strip() or None
 # target channel(s): prefer explicit AGGREGATOR_CHANNEL_IDS (plural, JSON list), fallback to AGGREGATOR_CHANNEL_ID (singular)
-_target_chat_single = os.environ.get('AGGREGATOR_CHANNEL_ID')
-_target_chat_multi = os.environ.get('AGGREGATOR_CHANNEL_IDS')
+_target_chat_single = _CFG.aggregator_channel_id
+_target_chat_multi = _CFG.aggregator_channel_ids
 TARGET_CHATS = []  # Will be populated below
 _default_fallback_file = str(HERE / 'outgoing_broadcasts.jsonl')
-FALLBACK_FILE = os.environ.get('BROADCAST_FALLBACK_FILE', _default_fallback_file)
+FALLBACK_FILE = str(_CFG.broadcast_fallback_file or _default_fallback_file)
 # Enable broadcast message tracking (for sync/reconciliation)
-ENABLE_BROADCAST_TRACKING = os.environ.get('ENABLE_BROADCAST_TRACKING', '1').strip().lower() in ('1', 'true', 'yes', 'on')
+ENABLE_BROADCAST_TRACKING = bool(_CFG.enable_broadcast_tracking)
 
 # normalize TARGET_CHAT: convert t.me/username or https://t.me/username to @username
 
@@ -133,11 +125,19 @@ def _escape(text: Optional[str]) -> str:
 
 
 def _coerce_hours_env(name: str, default: int) -> int:
-    try:
-        v = int(str(os.environ.get(name, "")).strip() or default)
-    except Exception:
-        v = default
-    return max(1, v)
+    mapping = {
+        "FRESHNESS_GREEN_HOURS": "freshness_green_hours",
+        "FRESHNESS_YELLOW_HOURS": "freshness_yellow_hours",
+        "FRESHNESS_ORANGE_HOURS": "freshness_orange_hours",
+        "FRESHNESS_RED_HOURS": "freshness_red_hours",
+    }
+    field = mapping.get(str(name or "").strip().upper())
+    if field:
+        try:
+            return max(1, int(getattr(_CFG, field)))
+        except Exception:
+            return max(1, int(default))
+    return max(1, int(default))
 
 
 def _parse_payload_date(value: Any) -> Optional[datetime]:
@@ -463,7 +463,7 @@ def build_message_text(
                 rate_line = ""
     remarks = _escape(parsed.get('additional_remarks'))
 
-    max_remarks = int(os.environ.get('BROADCAST_MAX_REMARKS_LEN', '700'))
+    max_remarks = int(_CFG.broadcast_max_remarks_len)
     if remarks and len(remarks) > max_remarks:
         remarks = _escape(_truncate_middle(html.unescape(remarks), max_remarks))
 
@@ -558,7 +558,7 @@ def build_message_text(
     footer_lines: list[str] = []
     footer = "\n".join(footer_lines).strip()
 
-    max_len = int(os.environ.get('BROADCAST_MAX_MESSAGE_LEN', '3900'))
+    max_len = int(_CFG.broadcast_max_message_len)
 
     # Try to keep within Telegram limits without breaking HTML tags.
     # Prune less important fields first (in this order):
@@ -607,9 +607,9 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
         logger.exception('callback_reply_markup_error')
     
     try:
-        max_attempts = max(1, int(os.environ.get("BROADCAST_MAX_ATTEMPTS", "4") or 4))
-        base_sleep_s = float(os.environ.get("BROADCAST_RETRY_BASE_SECONDS", "2.0") or 2.0)
-        max_sleep_s = float(os.environ.get("BROADCAST_RETRY_MAX_SLEEP_SECONDS", "60.0") or 60.0)
+        max_attempts = max(1, int(_CFG.broadcast_max_attempts))
+        base_sleep_s = float(_CFG.broadcast_retry_base_seconds)
+        max_sleep_s = float(_CFG.broadcast_retry_max_sleep_seconds)
 
         def _sleep(s: float) -> None:
             s = max(0.0, float(s))
@@ -780,7 +780,7 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     assignment_id = _derive_external_id_for_tracking(payload)
     
     # Check duplicate filtering mode
-    duplicate_mode = os.environ.get("BROADCAST_DUPLICATE_MODE", "all").strip().lower()
+    duplicate_mode = str(_CFG.broadcast_duplicate_mode or "all").strip().lower()
     if duplicate_mode in ("primary_only", "primary_with_note"):
         parsed = payload.get("parsed") or {}
         is_primary = parsed.get("is_primary_in_group", True)

@@ -16,7 +16,6 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -39,44 +38,20 @@ from observability_metrics import (
     set_version_metrics,
 )
 from supabase_raw_persist import SupabaseRawStore, build_raw_row
+from shared.config import load_aggregator_config
 
-try:
-    from dotenv import load_dotenv  # type: ignore
-except Exception:
-    load_dotenv = None
+
 
 setup_logging()
 logger = logging.getLogger("collector")
 _V = set_version_metrics(component="collector")
-setup_sentry(service_name=os.environ.get("SENTRY_SERVICE_NAME") or "tutordex-collector")
-setup_otel(service_name=os.environ.get("OTEL_SERVICE_NAME") or "tutordex-collector")
+_CFG = load_aggregator_config()
+setup_sentry(service_name=_CFG.sentry_service_name or "tutordex-collector")
+setup_otel(service_name=_CFG.otel_service_name or "tutordex-collector")
 _DEFAULT_LOG_CTX = bind_log_context(component="collector", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version)
 _DEFAULT_LOG_CTX.__enter__()
 
 HERE = Path(__file__).resolve().parent
-ENV_PATH = HERE / ".env"
-if ENV_PATH.exists():
-    if load_dotenv:
-        load_dotenv(dotenv_path=ENV_PATH)
-    else:
-        try:
-            raw = ENV_PATH.read_text(encoding="utf8")
-            for ln in raw.splitlines():
-                line = ln.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                elif ":" in line:
-                    k, v = line.split(":", 1)
-                else:
-                    continue
-                k = k.strip()
-                v = v.strip().strip('"').strip("'")
-                if k and k not in os.environ:
-                    os.environ[k] = v
-        except Exception:
-            pass
 
 try:
     from telethon.sessions import StringSession
@@ -116,7 +91,7 @@ def _parse_iso_dt(value: Optional[str]) -> Optional[datetime]:
 
 
 def _parse_channels_from_env() -> List[str]:
-    raw = (os.environ.get("CHANNEL_LIST") or os.environ.get("CHANNELS") or "").strip()
+    raw = str(_CFG.channel_list or "").strip()
     if not raw:
         return []
     if raw.startswith("[") and raw.endswith("]"):
@@ -148,12 +123,11 @@ def _normalize_channel_ref(ch: str) -> str:
 
 def _enqueue_enabled() -> bool:
     # Default to enabled; allow explicit opt-out via env.
-    v = os.environ.get("EXTRACTION_QUEUE_ENABLED")
-    return _truthy(v) if v is not None else True
+    return bool(_CFG.extraction_queue_enabled)
 
 
 def _pipeline_version() -> str:
-    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
+    return str(_CFG.extraction_pipeline_version or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
 
 
 def _enqueue_extraction_jobs(store: SupabaseRawStore, *, channel_link: str, message_ids: List[str], force: bool = False) -> None:
@@ -220,10 +194,10 @@ def _channel_link_from_entity(entity: Any, fallback: str) -> str:
 
 
 def _get_telegram_config() -> Tuple[int, str, str, str]:
-    api_id = int(os.environ.get("TELEGRAM_API_ID") or os.environ.get("TG_API_ID") or os.environ.get("API_ID") or 0)
-    api_hash = (os.environ.get("TELEGRAM_API_HASH") or os.environ.get("TG_API_HASH") or os.environ.get("API_HASH") or "").strip()
-    session_string = (os.environ.get("SESSION_STRING") or os.environ.get("TG_SESSION_STRING") or os.environ.get("SESSION") or "").strip()
-    session_name = (os.environ.get("TG_SESSION") or "tutordex.session").strip()
+    api_id = int(_CFG.telegram_api_id or 0)
+    api_hash = str(_CFG.telegram_api_hash or "").strip()
+    session_string = str(_CFG.session_string or "").strip()
+    session_name = str(_CFG.telegram_session_name or "tutordex.session").strip()
     if not api_id or not api_hash:
         raise SystemExit("Set TELEGRAM_API_ID and TELEGRAM_API_HASH in TutorDexAggregator/.env or environment.")
     return api_id, api_hash, session_string, session_name
@@ -237,10 +211,10 @@ def _build_client() -> TelegramClient:
 
 
 # Rate limiting and retry configuration (shared with the queue worker pipeline)
-MAX_RETRIES = int(os.environ.get("TELEGRAM_MAX_RETRIES", "5"))
-INITIAL_RETRY_DELAY = float(os.environ.get("TELEGRAM_INITIAL_RETRY_DELAY", "1.0"))
-MAX_RETRY_DELAY = float(os.environ.get("TELEGRAM_MAX_RETRY_DELAY", "300.0"))
-BACKOFF_MULTIPLIER = float(os.environ.get("TELEGRAM_BACKOFF_MULTIPLIER", "2.0"))
+MAX_RETRIES = int(_CFG.telegram_max_retries)
+INITIAL_RETRY_DELAY = float(_CFG.telegram_initial_retry_delay)
+MAX_RETRY_DELAY = float(_CFG.telegram_max_retry_delay)
+BACKOFF_MULTIPLIER = float(_CFG.telegram_backoff_multiplier)
 
 
 async def _retry_with_backoff(func, *args, **kwargs):

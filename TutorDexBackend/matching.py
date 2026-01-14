@@ -1,22 +1,14 @@
-import os
 import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Protocol
 
+from shared.config import load_backend_config
+
+_CFG = load_backend_config()
 
 class TutorStore(Protocol):
     def list_tutor_ids(self) -> List[str]: ...
     def get_tutor(self, tutor_id: str) -> Optional[Dict[str, Any]]: ...
-
-
-def _env_int(name: str, default: int) -> int:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    try:
-        return int(str(v).strip())
-    except Exception:
-        return default
 
 
 def _norm_text(value: Any) -> str:
@@ -182,7 +174,7 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
     The caller can filter by rating threshold rather than using min_score.
     """
     query = _payload_to_query(payload)
-    min_score = _env_int("MATCH_MIN_SCORE", 3)
+    min_score = int(_CFG.match_min_score)
 
     assignment_lat, assignment_lon = _extract_assignment_coords(payload)
     include_distance = (

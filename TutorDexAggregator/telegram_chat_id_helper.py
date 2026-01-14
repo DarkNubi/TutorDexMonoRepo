@@ -1,4 +1,3 @@
-import os
 import json
 import argparse
 import logging
@@ -6,6 +5,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+
+from shared.config import load_aggregator_config
 
 from logging_setup import log_event, setup_logging, timed
 
@@ -15,13 +16,6 @@ logger = logging.getLogger("telegram_chat_id_helper")
 
 HERE = Path(__file__).resolve().parent
 OFFSET_FILE = HERE / "dm_bot_offset.json"
-
-
-def _env(name: str, default: str = "") -> str:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    return str(v).strip()
 
 
 def _load_offset() -> int:
@@ -96,7 +90,8 @@ def main() -> None:
     p.add_argument("--commit-offset", action="store_true", help="Persist next offset (max_update_id + 1) to dm_bot_offset.json")
     args = p.parse_args()
 
-    token = (args.token or _env("DM_BOT_TOKEN") or _env("GROUP_BOT_TOKEN")).strip()
+    cfg = load_aggregator_config()
+    token = (args.token or cfg.dm_bot_token or cfg.group_bot_token or "").strip()
     if not token:
         raise SystemExit("Set DM_BOT_TOKEN (preferred) or pass --token.")
 

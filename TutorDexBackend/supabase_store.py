@@ -1,4 +1,3 @@
-import os
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -7,19 +6,13 @@ from typing import Any, Dict, Optional, List
 import requests
 from urllib.parse import urlparse
 
-from supabase_env import resolve_supabase_url
+from shared.config import load_backend_config
 
 logger = logging.getLogger("supabase_store")
 
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 @dataclass(frozen=True)
@@ -30,9 +23,10 @@ class SupabaseConfig:
 
 
 def load_supabase_config() -> SupabaseConfig:
-    url = resolve_supabase_url()
-    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
-    enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
+    cfg = load_backend_config()
+    url = cfg.supabase_rest_url
+    key = cfg.supabase_auth_key
+    enabled = bool(cfg.supabase_enabled) and bool(url and key)
     return SupabaseConfig(url=url, key=key, enabled=enabled)
 
 

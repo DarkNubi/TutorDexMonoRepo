@@ -20,13 +20,14 @@ Usage:
 
 import argparse
 import logging
-import os
 import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List
 
 import requests
+
+from shared.config import load_aggregator_config
 
 # Setup path
 HERE = Path(__file__).resolve().parent
@@ -36,21 +37,17 @@ if str(HERE) not in sys.path:
 from logging_setup import log_event, setup_logging
 from supabase_env import resolve_supabase_url
 
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    load_dotenv = None
-
-if load_dotenv and (HERE / '.env').exists():
-    load_dotenv(dotenv_path=HERE / '.env')
-
 setup_logging()
 logger = logging.getLogger('migrate_broadcast_channel')
 
 
+def _cfg():
+    return load_aggregator_config()
+
+
 def _get_bot_token() -> str:
     """Get bot token from environment. Raises if not found."""
-    token = os.environ.get('GROUP_BOT_TOKEN')
+    token = _cfg().group_bot_token
     if not token:
         raise RuntimeError('GROUP_BOT_TOKEN not configured')
     return token
@@ -59,7 +56,7 @@ def _get_bot_token() -> str:
 def fetch_broadcast_messages(chat_id: Any) -> List[Dict[str, Any]]:
     """Fetch all broadcast messages for a channel."""
     url = resolve_supabase_url()
-    key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_KEY')
+    key = _cfg().supabase_auth_key
     if not url or not key:
         raise RuntimeError('Supabase not configured')
     
@@ -78,7 +75,7 @@ def fetch_broadcast_messages(chat_id: Any) -> List[Dict[str, Any]]:
 def fetch_open_assignments() -> List[Dict[str, Any]]:
     """Fetch all open assignments."""
     url = resolve_supabase_url()
-    key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_KEY')
+    key = _cfg().supabase_auth_key
     if not url or not key:
         raise RuntimeError('Supabase not configured')
     
@@ -88,7 +85,7 @@ def fetch_open_assignments() -> List[Dict[str, Any]]:
         'content-type': 'application/json',
     }
     
-    table = os.environ.get('SUPABASE_ASSIGNMENTS_TABLE', 'assignments')
+    table = str(_cfg().supabase_assignments_table or 'assignments').strip() or 'assignments'
     query_url = f'{url}/rest/v1/{table}?status=eq.open&select=*'
     resp = requests.get(query_url, headers=headers, timeout=30)
     resp.raise_for_status()

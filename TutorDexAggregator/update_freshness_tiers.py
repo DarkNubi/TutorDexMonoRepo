@@ -1,12 +1,13 @@
 import argparse
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
 import re
+
+from shared.config import load_aggregator_config
 
 from logging_setup import log_event, setup_logging, timed
 from supabase_persist import SupabaseRestClient, load_config_from_env
@@ -15,15 +16,7 @@ from supabase_persist import SupabaseRestClient, load_config_from_env
 setup_logging()
 logger = logging.getLogger("update_freshness_tiers")
 
-try:
-    from dotenv import load_dotenv  # type: ignore
-except Exception:
-    load_dotenv = None
-
 HERE = Path(__file__).resolve().parent
-ENV_PATH = HERE / ".env"
-if load_dotenv and ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH)
 
 
 def _iso(dt: datetime) -> str:
@@ -267,7 +260,7 @@ def update_tiers(
 
 
 def _bot_token() -> str:
-    return (os.environ.get("GROUP_BOT_TOKEN") or os.environ.get("TG_GROUP_BOT_TOKEN") or "").strip()
+    return str(load_aggregator_config().group_bot_token or "").strip()
 
 
 def _telegram_api_base(token: str) -> str:
@@ -318,6 +311,8 @@ def delete_expired_broadcast_messages(
     limit: int,
 ) -> Dict[str, Any]:
     token = _bot_token()
+    if not token:
+        return {"ok": False, "skipped": True, "reason": "missing_group_bot_token"}
     if not token:
         return {"ok": False, "reason": "missing_GROUP_BOT_TOKEN"}
 

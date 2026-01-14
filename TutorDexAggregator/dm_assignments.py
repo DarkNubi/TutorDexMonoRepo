@@ -1,4 +1,3 @@
-import os
 import json
 import time
 import logging
@@ -9,40 +8,28 @@ import requests
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from observability_metrics import dm_fail_reason_total, dm_fail_total, dm_rate_limited_total, dm_sent_total, versions as _obs_versions
-
-try:
-    from dotenv import load_dotenv
-except Exception:
-    load_dotenv = None
+from shared.config import load_aggregator_config
 
 HERE = Path(__file__).resolve().parent
-ENV_PATH = HERE / ".env"
-if load_dotenv and ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH)
+_CFG = load_aggregator_config()
 
 setup_logging()
 logger = logging.getLogger("dm_assignments")
 
 
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+DM_BOT_TOKEN = str(_CFG.dm_bot_token or "").strip()
+DM_BOT_API_URL = str(_CFG.dm_bot_api_url or "").strip()
+TUTOR_MATCH_URL = str(_CFG.tutor_match_url or "http://127.0.0.1:8000/match/payload").strip()
+BACKEND_API_KEY = str(_CFG.backend_api_key or "").strip()
 
-
-DM_BOT_TOKEN = (os.environ.get("DM_BOT_TOKEN") or "").strip()
-DM_BOT_API_URL = (os.environ.get("DM_BOT_API_URL") or "").strip()
-TUTOR_MATCH_URL = (os.environ.get("TUTOR_MATCH_URL") or "http://127.0.0.1:8000/match/payload").strip()
-BACKEND_API_KEY = (os.environ.get("BACKEND_API_KEY") or "").strip()
-
-DM_ENABLED = _truthy(os.environ.get("DM_ENABLED")) and bool(DM_BOT_TOKEN and TUTOR_MATCH_URL)
-DM_MAX_RECIPIENTS = int(os.environ.get("DM_MAX_RECIPIENTS") or "50")
-DM_FALLBACK_FILE = os.environ.get("DM_FALLBACK_FILE") or str(HERE / "outgoing_dm.jsonl")
+DM_ENABLED = bool(_CFG.dm_enabled) and bool(DM_BOT_TOKEN and TUTOR_MATCH_URL)
+DM_MAX_RECIPIENTS = int(_CFG.dm_max_recipients or 50)
+DM_FALLBACK_FILE = str(_CFG.dm_fallback_file or str(HERE / "outgoing_dm.jsonl"))
 
 # Adaptive threshold settings
-DM_USE_ADAPTIVE_THRESHOLD = _truthy(os.environ.get("DM_USE_ADAPTIVE_THRESHOLD", "true"))
-DM_RATING_LOOKBACK_DAYS = int(os.environ.get("DM_RATING_LOOKBACK_DAYS") or "7")
-DM_RATING_AVG_RATE_LOOKBACK_DAYS = int(os.environ.get("DM_RATING_AVG_RATE_LOOKBACK_DAYS") or "30")
+DM_USE_ADAPTIVE_THRESHOLD = bool(_CFG.dm_use_adaptive_threshold)
+DM_RATING_LOOKBACK_DAYS = int(_CFG.dm_rating_lookback_days or 7)
+DM_RATING_AVG_RATE_LOOKBACK_DAYS = int(_CFG.dm_rating_avg_rate_lookback_days or 30)
 
 
 if not DM_BOT_API_URL and DM_BOT_TOKEN:
@@ -395,7 +382,7 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
     Environment variable DM_FILTER_DUPLICATES (default: true) controls this behavior.
     """
     # Check if DM duplicate filtering is enabled
-    filter_enabled = _truthy(os.environ.get("DM_FILTER_DUPLICATES", "true"))
+    filter_enabled = bool(_CFG.dm_filter_duplicates)
     if not filter_enabled:
         return True
     

@@ -11,21 +11,8 @@ This allows for adaptive thresholds based on assignment volume rather than
 fixed minimum scores.
 """
 
-import os
 import math
 from typing import Any, Dict, Optional
-
-
-def _env_float(name: str, default: float) -> float:
-    """Get environment variable as float with fallback."""
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    try:
-        return float(str(v).strip())
-    except Exception:
-        return default
-
 
 # Distance scoring parameters - Singapore-optimized breakpoints
 # Based on SG transport reality: walkability, bus/MRT connections, peak-hour pain

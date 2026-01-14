@@ -4,22 +4,26 @@ Merge Policy Service
 Conservative merge logic for assignment updates.
 Handles quality-based overwrites, timestamp comparisons, and signal unions.
 """
-import os
 from typing import Any, Dict, Optional
+
+from shared.config import load_aggregator_config
 
 try:
     from utils.timestamp_utils import parse_iso_dt
-    from utils.field_coercion import truthy, coerce_text_list
+    from utils.field_coercion import coerce_text_list
     from services.row_builder import compute_parse_quality
 except Exception:
     from TutorDexAggregator.utils.timestamp_utils import parse_iso_dt
-    from TutorDexAggregator.utils.field_coercion import truthy, coerce_text_list
+    from TutorDexAggregator.utils.field_coercion import coerce_text_list
     from TutorDexAggregator.services.row_builder import compute_parse_quality
 
 
 def _freshness_enabled() -> bool:
     """Check if freshness tier feature is enabled."""
-    return truthy(os.environ.get("FRESHNESS_TIER_ENABLED"))
+    try:
+        return bool(load_aggregator_config().freshness_tier_enabled)
+    except Exception:
+        return False
 
 
 def merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any], force_upgrade: bool = False) -> Dict[str, Any]:

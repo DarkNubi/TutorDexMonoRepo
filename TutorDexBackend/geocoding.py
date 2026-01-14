@@ -1,24 +1,19 @@
 import logging
-import os
 import re
 from functools import lru_cache
 from typing import Optional, Tuple
 
 import requests
 
+from shared.config import load_backend_config
 
 logger = logging.getLogger("geocoding")
 _POSTAL_RE = re.compile(r"\b(\d{6})\b")
-
-
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+_CFG = load_backend_config()
 
 
 def _nominatim_disabled() -> bool:
-    return _truthy(os.environ.get("DISABLE_NOMINATIM"))
+    return bool(_CFG.disable_nominatim)
 
 
 def normalize_sg_postal_code(value: Optional[str]) -> Optional[str]:
@@ -50,7 +45,7 @@ def geocode_sg_postal_code(postal_code: str, *, timeout: int = 10) -> Optional[T
 
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
-    headers = {"User-Agent": os.environ.get("NOMINATIM_USER_AGENT") or "TutorDexBackend/1.0"}
+    headers = {"User-Agent": str(_CFG.nominatim_user_agent or "TutorDexBackend/1.0")}
 
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=timeout)
@@ -79,4 +74,3 @@ def geocode_sg_postal_code(postal_code: str, *, timeout: int = 10) -> Optional[T
         return (lat, lon)
     except Exception:
         return None
-

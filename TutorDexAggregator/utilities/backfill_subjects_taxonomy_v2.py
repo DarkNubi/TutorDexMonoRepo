@@ -21,11 +21,12 @@ Env (same as supabase_persist):
 
 import argparse
 import logging
-import os
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 from pathlib import Path
+
+from shared.config import load_aggregator_config
 
 HERE = Path(__file__).resolve().parent
 PARENT = HERE.parent
@@ -99,7 +100,7 @@ def patch_row(
         "subjects_general": subjects_general,
         "canonicalization_version": int(canonicalization_version),
     }
-    if canonicalization_debug and os.environ.get("SUBJECT_TAXONOMY_DEBUG"):
+    if canonicalization_debug and bool(load_aggregator_config().subject_taxonomy_debug):
         body["canonicalization_debug"] = canonicalization_debug
     resp = client.patch(f"{table}?id=eq.{int(row_id)}", body, timeout=20, prefer="return=minimal")
     if resp.status_code >= 400:

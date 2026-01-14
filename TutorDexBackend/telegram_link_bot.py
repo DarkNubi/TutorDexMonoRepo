@@ -1,4 +1,3 @@
-import os
 import json
 import time
 import argparse
@@ -9,20 +8,14 @@ from typing import Any, Dict, Optional, Tuple
 import requests
 
 from TutorDexBackend.logging_setup import setup_logging
+from shared.config import load_backend_config
 
 
 HERE = Path(__file__).resolve().parent
-
-
-def _env(name: str, default: str = "") -> str:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    return str(v).strip()
-
+_CFG = load_backend_config()
 
 def _offset_file_path() -> Path:
-    override = _env("LINK_BOT_OFFSET_FILE") or ""
+    override = str(_CFG.link_bot_offset_file or "").strip()
     if override.strip():
         return Path(override.strip())
     return HERE / "telegram_link_bot_offset.json"
@@ -105,13 +98,13 @@ def main() -> None:
     p.add_argument("--poll-seconds", type=float, default=2.0, help="Polling interval (default 2s)")
     args = p.parse_args()
 
-    token = (args.token or _env("DM_BOT_TOKEN") or "").strip()
+    token = (args.token or str(_CFG.dm_bot_token or "")).strip()
     if not token:
         raise SystemExit("Set DM_BOT_TOKEN or pass --token.")
 
-    backend = (args.backend_url or _env("BACKEND_URL") or "http://127.0.0.1:8000").strip().rstrip("/")
+    backend = (args.backend_url or str(_CFG.backend_url or "") or "http://127.0.0.1:8000").strip().rstrip("/")
     claim_url = f"{backend}/telegram/claim"
-    api_key = (_env("BACKEND_API_KEY") or _env("ADMIN_API_KEY") or "").strip()
+    api_key = str(_CFG.admin_api_key or "").strip()
 
     offset = _load_offset()
     logger.info("starting", extra={"offset": offset, "claim_url": claim_url})

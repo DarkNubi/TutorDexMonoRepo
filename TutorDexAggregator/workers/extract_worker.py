@@ -14,7 +14,6 @@ This is designed to be run continuously.
 import json
 import hashlib
 import logging
-import os
 import re
 import sys
 import time
@@ -37,7 +36,7 @@ from compilation_message_handler import (  # noqa: E402
 from extractors.non_assignment_detector import is_non_assignment, detection_meta  # noqa: E402
 from extract_key_info import extract_assignment_with_model, get_examples_meta, get_system_prompt_meta  # noqa: E402
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
-from supabase_env import resolve_supabase_url  # noqa: E402
+from shared.config import load_aggregator_config  # noqa: E402
 from supabase_persist import mark_assignment_closed, persist_assignment_to_supabase  # noqa: E402
 from schema_validation import validate_parsed_assignment  # noqa: E402
 from normalize import normalize_text  # noqa: E402
@@ -81,10 +80,7 @@ try:
 except Exception:
     send_dms = None  # type: ignore
 
-try:
-    from dotenv import load_dotenv  # type: ignore
-except Exception:
-    load_dotenv = None
+_CFG = None
 
 # --------------------------------------------------------------------------------------
 # Easy knobs (no required CLI args; runnable via VS Code “Run”)
@@ -120,16 +116,20 @@ USE_DETERMINISTIC_TIME = DEFAULT_USE_DETERMINISTIC_TIME
 ENABLE_POSTAL_CODE_ESTIMATED = DEFAULT_ENABLE_POSTAL_CODE_ESTIMATED
 
 
+def _cfg():
+    global _CFG
+    if _CFG is None:
+        _CFG = load_aggregator_config()
+    return _CFG
+
+
 # Initialize circuit breaker for LLM calls
 from circuit_breaker import CircuitBreaker, CircuitBreakerOpenError  # noqa: E402
 
 # Circuit breaker prevents queue burn when LLM API is down
-# Default: open after 5 consecutive failures, reset after 60 seconds
-_LLM_CIRCUIT_BREAKER_THRESHOLD = int(os.environ.get("LLM_CIRCUIT_BREAKER_THRESHOLD", "5"))
-_LLM_CIRCUIT_BREAKER_TIMEOUT = int(os.environ.get("LLM_CIRCUIT_BREAKER_TIMEOUT_SECONDS", "60"))
 llm_circuit_breaker = CircuitBreaker(
-    failure_threshold=_LLM_CIRCUIT_BREAKER_THRESHOLD,
-    timeout_seconds=_LLM_CIRCUIT_BREAKER_TIMEOUT
+    failure_threshold=int(_cfg().llm_circuit_breaker_threshold),
+    timeout_seconds=int(_cfg().llm_circuit_breaker_timeout_seconds),
 )
 
 
@@ -137,29 +137,19 @@ setup_logging()
 logger = logging.getLogger("extract_worker")
 _V = set_version_metrics(component="worker")
 from sentry_init import setup_sentry  # noqa: E402
-setup_sentry(service_name=os.environ.get("SENTRY_SERVICE_NAME") or "tutordex-aggregator-worker")
-setup_otel(service_name=os.environ.get("OTEL_SERVICE_NAME") or "tutordex-aggregator-worker")
+setup_sentry(service_name=_cfg().sentry_service_name or "tutordex-aggregator-worker")
+setup_otel(service_name=_cfg().otel_service_name or "tutordex-aggregator-worker")
 _DEFAULT_LOG_CTX = bind_log_context(component="worker", pipeline_version=_V.pipeline_version, schema_version=_V.schema_version)
 
 
 def _skipped_messages_chat_id() -> Optional[str]:
-    v = (os.environ.get("SKIPPED_MESSAGES_CHAT_ID") or "").strip()
+    v = str(_cfg().skipped_messages_chat_id or "").strip()
     return v or None
-
-
-def _parse_int_env(name: str) -> Optional[int]:
-    v = (os.environ.get(name) or "").strip()
-    if not v:
-        return None
-    try:
-        return int(v)
-    except Exception:
-        return None
 
 
 def _default_skipped_messages_thread_id() -> Optional[int]:
     # Legacy single-thread fallback for all triage messages.
-    return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID")
+    return _cfg().skipped_messages_thread_id
 
 
 def _triage_thread_id(kind: str) -> Optional[int]:
@@ -170,22 +160,23 @@ def _triage_thread_id(kind: str) -> Optional[int]:
     """
     k = str(kind or "").strip().lower()
     if k in {"extraction_error", "extraction_errors", "extraction"}:
-        return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_EXTRACTION_ERRORS") or _default_skipped_messages_thread_id()
+        return _cfg().skipped_messages_thread_id_extraction_errors or _default_skipped_messages_thread_id()
     if k in {"non_assignment", "non-assignments", "nonassignment"}:
-        return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_NON_ASSIGNMENT") or _default_skipped_messages_thread_id()
+        return _cfg().skipped_messages_thread_id_non_assignment or _default_skipped_messages_thread_id()
     if k in {"compilation", "compilations"}:
-        return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_COMPILATIONS") or _default_skipped_messages_thread_id()
+        return _cfg().skipped_messages_thread_id_compilations or _default_skipped_messages_thread_id()
     return _default_skipped_messages_thread_id()
 
 
 def _skipped_messages_bot_token() -> Optional[str]:
     # Prefer the broadcast/group bot for channel forwarding; fallback to DM bot.
-    return (os.environ.get("GROUP_BOT_TOKEN") or os.environ.get("DM_BOT_TOKEN") or "").strip() or None
+    v = str(_cfg().group_bot_token or "").strip() or str(_cfg().dm_bot_token or "").strip()
+    return v or None
 
 
 def _telegram_bot_api_base() -> Optional[str]:
     # Allow override, but default to standard Telegram Bot API.
-    return (os.environ.get("BOT_API_URL") or os.environ.get("TG_BOT_API_URL") or "").strip() or None
+    return str(_cfg().bot_api_url or "").strip() or None
 
 
 def _telegram_send_message(*, to_chat_id: str, text: str, thread_id: Optional[int] = None) -> Dict[str, Any]:
@@ -371,47 +362,17 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _truthy(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
 def _load_env() -> None:
-    env_path = AGG_DIR / ".env"
-    if load_dotenv and env_path.exists():
-        load_dotenv(dotenv_path=env_path)
-        return
-    if not env_path.exists():
-        return
-    try:
-        raw = env_path.read_text(encoding="utf8")
-        for ln in raw.splitlines():
-            line = ln.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                k, v = line.split("=", 1)
-            elif ":" in line:
-                k, v = line.split(":", 1)
-            else:
-                continue
-            k = k.strip()
-            v = v.strip().strip('"').strip("'")
-            if k and k not in os.environ:
-                os.environ[k] = v
-    except Exception:
-        logger.debug("env_parse_failed", exc_info=True)
+    # Legacy hook (removed): config is loaded via `shared.config` and `_env_file` now.
+    return
 
 
 def _supabase_cfg() -> Tuple[str, str]:
-    url = resolve_supabase_url()
-    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
-    enabled = _truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
-    if not enabled:
-        raise SystemExit(
-            "Supabase not enabled. Set SUPABASE_ENABLED=1, SUPABASE_SERVICE_ROLE_KEY, and one of SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL."
-        )
+    cfg = _cfg()
+    url = cfg.supabase_rest_url
+    key = cfg.supabase_auth_key
+    if not (cfg.supabase_enabled and url and key):
+        raise SystemExit("Supabase not enabled/misconfigured. Check SUPABASE_* settings in .env.")
     return url, key
 
 
@@ -563,7 +524,7 @@ def _extract_sg_postal_codes(text: str) -> List[str]:
 
 
 def _llm_model_name() -> str:
-    return (os.environ.get("LLM_MODEL_NAME") or "").strip() or "unknown"
+    return str(_cfg().llm_model_name or "").strip() or "unknown"
 
 
 def _classify_llm_error(err: Exception) -> str:
@@ -682,24 +643,15 @@ def _hard_mode() -> str:
 
 
 def _signals_enabled() -> bool:
-    v = os.environ.get("ENABLE_DETERMINISTIC_SIGNALS")
-    if v is None:
-        return bool(ENABLE_DETERMINISTIC_SIGNALS)
-    return _truthy(v)
+    return bool(_cfg().enable_deterministic_signals)
 
 
 def _deterministic_time_enabled() -> bool:
-    v = os.environ.get("USE_DETERMINISTIC_TIME")
-    if v is None:
-        return bool(USE_DETERMINISTIC_TIME)
-    return _truthy(v)
+    return bool(_cfg().use_deterministic_time)
 
 
 def _postal_code_estimated_enabled() -> bool:
-    v = os.environ.get("ENABLE_POSTAL_CODE_ESTIMATED")
-    if v is None:
-        return bool(ENABLE_POSTAL_CODE_ESTIMATED)
-    return _truthy(v)
+    return bool(_cfg().enable_postal_code_estimated)
 
 
 def _requeue_stale_processing(url: str, key: str, *, older_than_s: int) -> Optional[int]:
@@ -846,7 +798,7 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
     message_id = str(job.get("message_id") or "").strip()
     cid = f"worker:{channel_link}:{message_id}:{extraction_id}"
     existing_meta = job.get("meta")
-    llm_model = (os.environ.get("LLM_MODEL_NAME") or "").strip() or None
+    llm_model = str(_cfg().llm_model_name or "").strip() or None
     try:
         prompt_meta = get_system_prompt_meta()
         if not isinstance(prompt_meta, dict) or not prompt_meta:
@@ -1641,7 +1593,6 @@ def _work_one(url: str, key: str, job: Dict[str, Any]) -> str:
 
 
 def main() -> None:
-    _load_env()
     url, key = _supabase_cfg()
 
     def _dep_health() -> tuple[bool, Dict[str, Any]]:
@@ -1662,8 +1613,10 @@ def main() -> None:
         },
     )
 
+    cfg = _cfg()
+
     # Optional: Auto-sync broadcast channels on startup
-    sync_on_startup = str(os.environ.get("BROADCAST_SYNC_ON_STARTUP", "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
+    sync_on_startup = bool(cfg.broadcast_sync_on_startup)
     if sync_on_startup:
         try:
             log_event(logger, logging.INFO, "broadcast_sync_startup_begin")
@@ -1683,28 +1636,23 @@ def main() -> None:
         except Exception as e:
             log_event(logger, logging.WARNING, "broadcast_sync_startup_error", error=str(e))
 
-    pipeline_version = (os.environ.get("EXTRACTION_PIPELINE_VERSION") or DEFAULT_PIPELINE_VERSION).strip() or DEFAULT_PIPELINE_VERSION
-    claim_batch_size = int(os.environ.get("EXTRACTION_WORKER_BATCH", str(DEFAULT_CLAIM_BATCH_SIZE)) or DEFAULT_CLAIM_BATCH_SIZE)
-    idle_sleep_s = float(os.environ.get("EXTRACTION_WORKER_IDLE_S", str(DEFAULT_IDLE_SLEEP_SECONDS)) or DEFAULT_IDLE_SLEEP_SECONDS)
-    max_attempts = int(os.environ.get("EXTRACTION_MAX_ATTEMPTS", str(DEFAULT_MAX_ATTEMPTS)) or DEFAULT_MAX_ATTEMPTS)
-    backoff_base_s = float(os.environ.get("EXTRACTION_BACKOFF_BASE_S", str(DEFAULT_BACKOFF_BASE_S)) or DEFAULT_BACKOFF_BASE_S)
-    backoff_max_s = float(os.environ.get("EXTRACTION_BACKOFF_MAX_S", str(DEFAULT_BACKOFF_MAX_S)) or DEFAULT_BACKOFF_MAX_S)
-    stale_processing_s = int(os.environ.get("EXTRACTION_STALE_PROCESSING_SECONDS", str(
-        DEFAULT_STALE_PROCESSING_SECONDS)) or DEFAULT_STALE_PROCESSING_SECONDS)
+    pipeline_version = str(cfg.extraction_pipeline_version or DEFAULT_PIPELINE_VERSION).strip() or DEFAULT_PIPELINE_VERSION
+    claim_batch_size = int(cfg.extraction_worker_batch_size or DEFAULT_CLAIM_BATCH_SIZE)
+    idle_sleep_s = float(cfg.extraction_worker_idle_s or DEFAULT_IDLE_SLEEP_SECONDS)
+    max_attempts = int(cfg.extraction_max_attempts or DEFAULT_MAX_ATTEMPTS)
+    backoff_base_s = float(cfg.extraction_backoff_base_s or DEFAULT_BACKOFF_BASE_S)
+    backoff_max_s = float(cfg.extraction_backoff_max_s or DEFAULT_BACKOFF_MAX_S)
+    stale_processing_s = int(cfg.extraction_stale_processing_seconds or DEFAULT_STALE_PROCESSING_SECONDS)
 
-    enable_broadcast = str(os.environ.get("EXTRACTION_WORKER_BROADCAST", "1" if DEFAULT_ENABLE_BROADCAST else "0")
-                           ).strip().lower() in {"1", "true", "yes", "y", "on"}
-    enable_dms = str(os.environ.get("EXTRACTION_WORKER_DMS", "1" if DEFAULT_ENABLE_DMS else "0")).strip().lower() in {"1", "true", "yes", "y", "on"}
-    use_norm = str(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM", "1" if DEFAULT_USE_NORMALIZED_TEXT_FOR_LLM else "0")
-                   ).strip().lower() in {"1", "true", "yes", "y", "on"}
-    hard_mode = (os.environ.get("HARD_VALIDATE_MODE") or DEFAULT_HARD_VALIDATE_MODE).strip()
-    enable_signals = str(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS", "1" if DEFAULT_ENABLE_DETERMINISTIC_SIGNALS else "0")
-                         ).strip().lower() in {"1", "true", "yes", "y", "on"}
-    use_det_time = str(os.environ.get("USE_DETERMINISTIC_TIME", "1" if DEFAULT_USE_DETERMINISTIC_TIME else "0")
-                       ).strip().lower() in {"1", "true", "yes", "y", "on"}
+    enable_broadcast = bool(cfg.enable_broadcast)
+    enable_dms = bool(cfg.enable_dms)
+    use_norm = bool(cfg.use_normalized_text_for_llm)
+    hard_mode = str(cfg.hard_validate_mode or DEFAULT_HARD_VALIDATE_MODE).strip() or DEFAULT_HARD_VALIDATE_MODE
+    enable_signals = bool(cfg.enable_deterministic_signals)
+    use_det_time = bool(cfg.use_deterministic_time)
 
-    oneshot = str(os.environ.get("EXTRACTION_WORKER_ONESHOT", "")).strip().lower() in {"1", "true", "yes", "y", "on"}
-    max_jobs = int(os.environ.get("EXTRACTION_WORKER_MAX_JOBS") or "0")
+    oneshot = bool(cfg.extraction_worker_oneshot)
+    max_jobs = int(cfg.extraction_worker_max_jobs or 0)
     if max_jobs < 0:
         max_jobs = 0
 

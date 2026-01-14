@@ -3,11 +3,12 @@ import contextvars
 import asyncio
 import json
 import logging
-import os
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Iterator, Optional
+
+from shared.config import load_aggregator_config
 
 
 _cid_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_cid", default="-")
@@ -20,20 +21,6 @@ _schema_version_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutor
 _component_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_component", default="-")
 _trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_trace_id", default="-")
 _span_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_span_id", default="-")
-
-
-def _env_bool(name: str, default: bool) -> bool:
-    val = os.environ.get(name)
-    if val is None:
-        return default
-    return str(val).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
-def _env_str(name: str, default: str) -> str:
-    val = os.environ.get(name)
-    if val is None:
-        return default
-    return str(val).strip()
 
 
 @contextlib.contextmanager
@@ -177,29 +164,27 @@ def setup_logging(
     """
     Configure project-wide logging (console + rotating file).
 
-    Environment variables:
-      - LOG_LEVEL: DEBUG/INFO/WARNING/ERROR/CRITICAL (default INFO)
-      - LOG_DIR: directory to write logs (default: TutorDexAggregator/logs)
-      - LOG_FILE: filename (default: tutordex_aggregator.log)
-      - LOG_MAX_BYTES: max size per file (default: 5_000_000)
-      - LOG_BACKUP_COUNT: rotated backups to keep (default: 5)
-      - LOG_TO_CONSOLE: enable console logging (default: true)
-      - LOG_TO_FILE: enable file logging (default: true)
-      - LOG_JSON: write JSON logs (default: false)
+    Configuration is loaded via `shared.config.load_aggregator_config()` with the usual `.env` and
+    environment variable priority (Pydantic-Settings). CLI args override config values.
 
     Notes:
       - Idempotent; calling multiple times is safe.
       - Avoid logging secrets (bot tokens, session strings, API keys).
     """
+    try:
+        cfg = load_aggregator_config()
+    except Exception:
+        cfg = None
+
     root = logging.getLogger()
     if getattr(root, "_tutordex_configured", False):
         return
 
-    level_name = (level or os.environ.get("LOG_LEVEL") or "INFO").upper().strip()
+    level_name = (level or (cfg.log_level if cfg else None) or "INFO").upper().strip()
     log_level = getattr(logging, level_name, logging.INFO)
     root.setLevel(log_level)
 
-    log_json = _env_bool("LOG_JSON", False)
+    log_json = bool(cfg.log_json) if cfg else False
     context_filter = _ContextFilter()
 
     base_fmt = (
@@ -218,19 +203,19 @@ def setup_logging(
         h.setFormatter(formatter)
         root.addHandler(h)
 
-    if _env_bool("LOG_TO_CONSOLE", True):
+    if (bool(cfg.log_to_console) if cfg else True):
         _add_handler(logging.StreamHandler())
 
-    if _env_bool("LOG_TO_FILE", True):
+    if (bool(cfg.log_to_file) if cfg else True):
         here = Path(__file__).resolve().parent
-        chosen_dir = Path(log_dir or os.environ.get("LOG_DIR") or (here / "logs"))
+        chosen_dir = Path(log_dir or (cfg.log_dir if cfg else None) or (here / "logs"))
         chosen_dir.mkdir(parents=True, exist_ok=True)
 
-        filename = log_file or os.environ.get("LOG_FILE") or "tutordex_aggregator.log"
+        filename = log_file or (cfg.log_file if cfg else None) or "tutordex_aggregator.log"
         path = chosen_dir / filename
 
-        max_bytes = int(_env_str("LOG_MAX_BYTES", "5000000"))
-        backup_count = int(_env_str("LOG_BACKUP_COUNT", "5"))
+        max_bytes = int(cfg.log_max_bytes) if cfg else 5_000_000
+        backup_count = int(cfg.log_backup_count) if cfg else 5
 
         try:
             _add_handler(

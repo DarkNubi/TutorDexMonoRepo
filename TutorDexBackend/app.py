@@ -4,7 +4,6 @@ TutorDex Backend API.
 FastAPI service providing HTTP endpoints for the TutorDex website.
 Refactored to extract services for better organization and maintainability.
 """
-import os
 import time
 import uuid
 import logging
@@ -45,6 +44,7 @@ from TutorDexBackend.utils.request_utils import (
     clean_optional_string,
 )
 from TutorDexBackend.utils.database_utils import count_matching_assignments
+from shared.config import load_backend_config
 
 
 # Setup logging and monitoring
@@ -57,6 +57,7 @@ setup_otel()
 app = FastAPI(title="TutorDex Backend", version="0.1.0")
 store = TutorStore()
 sb = SupabaseStore()
+_CFG = load_backend_config()
 
 # Initialize services
 _auth_service = AuthService()
@@ -66,7 +67,7 @@ _telegram_service = TelegramService(store)
 _analytics_service = AnalyticsService(sb, store)
 
 # Configure CORS
-_cors_origins = (os.environ.get("CORS_ALLOW_ORIGINS") or "*").strip()
+_cors_origins = str(_CFG.cors_allow_origins or "*").strip()
 origins = ["*"] if _cors_origins == "*" else [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,

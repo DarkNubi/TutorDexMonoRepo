@@ -3,23 +3,29 @@ Geocoding Service
 
 Geocode Singapore postal codes using Nominatim API with caching and retry logic.
 """
-import os
 import logging
 from functools import lru_cache
 from typing import Optional, Tuple
 
+from shared.config import load_aggregator_config
+
 try:
-    from utils.field_coercion import truthy, normalize_sg_postal_code
+    from utils.field_coercion import normalize_sg_postal_code
 except Exception:
-    from TutorDexAggregator.utils.field_coercion import truthy, normalize_sg_postal_code
+    from TutorDexAggregator.utils.field_coercion import normalize_sg_postal_code
 
 
 logger = logging.getLogger("geocoding_service")
 
 
+@lru_cache(maxsize=1)
+def _cfg():
+    return load_aggregator_config()
+
+
 def nominatim_disabled() -> bool:
     """Check if Nominatim geocoding is disabled."""
-    return truthy(os.environ.get("DISABLE_NOMINATIM"))
+    return bool(_cfg().disable_nominatim)
 
 
 @lru_cache(maxsize=2048)
@@ -48,10 +54,10 @@ def geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[
     
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
-    headers = {"User-Agent": os.environ.get("NOMINATIM_USER_AGENT") or "TutorDexAggregator/1.0"}
+    headers = {"User-Agent": (str(_cfg().nominatim_user_agent or "").strip() or "TutorDexAggregator/1.0")}
 
-    max_attempts = int(os.environ.get("NOMINATIM_RETRIES") or "3")
-    backoff_s = float(os.environ.get("NOMINATIM_BACKOFF_SECONDS") or "1.0")
+    max_attempts = int(_cfg().nominatim_retries)
+    backoff_s = float(_cfg().nominatim_backoff_seconds)
 
     resp = None
     for attempt in range(max(1, min(max_attempts, 6))):

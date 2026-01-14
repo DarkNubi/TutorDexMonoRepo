@@ -4,11 +4,11 @@ Row Builder Service
 Builds assignment row dictionaries from raw payloads for database persistence.
 Handles field extraction, sanitization, geocoding, and signal computation.
 """
-import os
 import json
 import hashlib
 from typing import Any, Dict, Optional, List, Tuple
 from datetime import datetime, timezone
+from shared.config import load_aggregator_config
 
 try:
     from utils.field_coercion import (
@@ -28,7 +28,7 @@ except Exception:
 
 def _freshness_enabled() -> bool:
     """Check if freshness tier feature is enabled."""
-    return truthy(os.environ.get("FRESHNESS_TIER_ENABLED"))
+    return bool(load_aggregator_config().freshness_tier_enabled)
 
 
 def derive_agency(payload: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
@@ -464,7 +464,7 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
         "subjects_canonical": subjects_canonical,
         "subjects_general": subjects_general,
         "canonicalization_version": int(canonicalization_version) if isinstance(canonicalization_version, (int, float)) else None,
-        "canonicalization_debug": canonicalization_debug if truthy(os.environ.get("SUBJECT_TAXONOMY_DEBUG")) and isinstance(canonicalization_debug, dict) else None,
+        "canonicalization_debug": canonicalization_debug if bool(load_aggregator_config().subject_taxonomy_debug) and isinstance(canonicalization_debug, dict) else None,
         "canonical_json": parsed if isinstance(parsed, dict) else None,
         "meta": meta if isinstance(meta, dict) else None,
     }

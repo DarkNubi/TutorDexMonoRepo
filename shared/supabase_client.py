@@ -5,11 +5,12 @@ Consolidates Supabase interactions across all services.
 Handles auth, error handling, retries, and RPC 300 detection.
 """
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -399,22 +400,27 @@ def create_client_from_env() -> SupabaseClient:
     Returns:
         Configured SupabaseClient
     """
-    url = os.environ.get("SUPABASE_URL", "").strip()
-    key = (
-        os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or
-        os.environ.get("SUPABASE_KEY") or
-        ""
-    ).strip()
-    timeout = int(os.environ.get("SUPABASE_TIMEOUT", "30"))
-    max_retries = int(os.environ.get("SUPABASE_MAX_RETRIES", "3"))
-    enabled_str = os.environ.get("SUPABASE_ENABLED", "1").strip()
-    enabled = enabled_str.lower() in ("1", "true", "yes", "on") and bool(url and key)
+
+    class _SupabaseEnvSettings(BaseSettings):
+        model_config = SettingsConfigDict(case_sensitive=False, extra="ignore", env_file=None)
+
+        supabase_url: str = Field(default="", validation_alias=AliasChoices("SUPABASE_URL"))
+        supabase_service_role_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("SUPABASE_SERVICE_ROLE_KEY"))
+        supabase_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("SUPABASE_KEY"))
+        supabase_timeout: int = Field(default=30, validation_alias=AliasChoices("SUPABASE_TIMEOUT"))
+        supabase_max_retries: int = Field(default=3, validation_alias=AliasChoices("SUPABASE_MAX_RETRIES"))
+        supabase_enabled: bool = Field(default=True, validation_alias=AliasChoices("SUPABASE_ENABLED"))
+
+    s = _SupabaseEnvSettings()
+    url = str(s.supabase_url or "").strip()
+    key = str(s.supabase_service_role_key or s.supabase_key or "").strip()
+    enabled = bool(s.supabase_enabled) and bool(url and key)
     
     config = SupabaseConfig(
         url=url,
         key=key,
-        timeout=timeout,
-        max_retries=max_retries,
+        timeout=int(s.supabase_timeout),
+        max_retries=int(s.supabase_max_retries),
         enabled=enabled
     )
     

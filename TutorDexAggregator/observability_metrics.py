@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Optional
 
 from prometheus_client import Counter, Gauge, Histogram
+from shared.config import load_aggregator_config
 
 
 def pipeline_version() -> str:
-    return (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
+    cfg = load_aggregator_config()
+    return str(cfg.extraction_pipeline_version or "2026-01-02_det_time_v1").strip() or "2026-01-02_det_time_v1"
 
 
 def schema_version() -> str:
-    # Bump when the `canonical_json` contract changes in a way that affects downstream consumers/alerts.
-    return "v2"
+    cfg = load_aggregator_config()
+    return str(cfg.schema_version or "v2")
 
 
 @dataclass(frozen=True)
