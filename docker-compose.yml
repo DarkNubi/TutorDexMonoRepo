@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     depends_on:
       - collector-tail
+      - otel-collector
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
@@ -15,6 +16,8 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
+      OTEL_ENABLED: "${OTEL_ENABLED:-1}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-aggregator-worker"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -28,6 +31,8 @@ services:
       - ./TutorDexAggregator/.env
     command: ["python", "collector.py", "live"]
     restart: unless-stopped
+    depends_on:
+      - otel-collector
     volumes:
       - ./TutorDexAggregator:/app
       - ./TutorDexAggregator/logs:/app/logs
@@ -36,6 +41,8 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
+      OTEL_ENABLED: "${OTEL_ENABLED:-1}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-collector"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -51,6 +58,7 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
+      - otel-collector
     ports:
       - "0.0.0.0:8000:8000"
     volumes:
@@ -59,6 +67,8 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
+      OTEL_ENABLED: "${OTEL_ENABLED:-1}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-backend"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -76,6 +86,8 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
+      OTEL_ENABLED: "${OTEL_ENABLED:-1}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-telegram-link-bot"
     command: ["python", "telegram_link_bot.py", "--poll-seconds", "2"]
     restart: unless-stopped
@@ -273,6 +285,35 @@ services:
     networks:
       - tutordex
 
+  tempo:
+    image: grafana/tempo:latest
+    pull_policy: always
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      - tutordex
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    pull_policy: always
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./observability/tempo/otel-collector.yaml:/etc/otel-collector.yaml:ro
+    environment:
+      ENVIRONMENT: ${APP_ENV:-production}
+    depends_on:
+      - tempo
+    networks:
+      - tutordex
+
 networks:
   tutordex:
     name: tutordex
@@ -287,3 +328,4 @@ volumes:
   alertmanager_data:
   grafana_data:
   redis_data:
+  tempo_data:

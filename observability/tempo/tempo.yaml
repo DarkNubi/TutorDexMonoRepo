@@ -1,0 +1,46 @@
+---
+# Tempo Configuration
+# Distributed tracing backend for TutorDex
+
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 24h  # Keep traces for 24 hours
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/traces
+    wal:
+      path: /tmp/tempo/wal
+    pool:
+      max_workers: 100
+      queue_depth: 10000
+
+query_frontend:
+  search:
+    max_duration: 0s  # No limit
+
+overrides:
+  defaults:
+    # Global limits
+    max_traces_per_user: 10000
+    max_bytes_per_trace: 5000000  # 5MB
+    ingestion_burst_size_bytes: 20000000  # 20MB
+    ingestion_rate_limit_bytes: 15000000  # 15MB/s
