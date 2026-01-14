@@ -4,10 +4,16 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .mypy_cache/
+*.egg-info/
+dist/
+build/
+*.so
+*.egg
 
 # Env / secrets
 .env
 .env.*
+!.env.example
 
 # Logs / runtime artifacts
 TutorDexAggregator/logs/
@@ -21,4 +27,46 @@ TutorDexAggregator/processed_ids.json
 
 # Node
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+*.pyc
+*.pyo
+dist/
+build/
+
+# Test coverage
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# Temporary files
+*.tmp
+*.bak
+*.old
+tmp/
+temp/
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# Docker volumes (if using local bind mounts)
+# Uncomment if needed:
+# observability/prometheus/data/
+# observability/grafana/data/
+# observability/loki/data/
 
