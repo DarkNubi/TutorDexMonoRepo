@@ -91,6 +91,9 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 - **[../DEPENDENCIES.md](../DEPENDENCIES.md)** - External dependencies documentation
 - **[../scripts/bootstrap.sh](../scripts/bootstrap.sh)** - One-command environment setup
 - **[../docker-compose.yml](../docker-compose.yml)** - Docker Compose configuration
+- **[ENV_CONFIG_README.md](ENV_CONFIG_README.md)** - Pydantic environment configuration overview
+- **[PYDANTIC_CONFIG_QUICKSTART.md](PYDANTIC_CONFIG_QUICKSTART.md)** - Quick start guide for Pydantic config
+- **[PYDANTIC_CONFIG.md](PYDANTIC_CONFIG.md)** - Complete Pydantic-Settings guide (24KB)
 
 ### Testing & Quality
 - **[../tests/](../tests/)** - Test suite (70+ tests)
@@ -110,6 +113,11 @@ docs/
 │   ├── signals.md                           # Signal extraction
 │   ├── time_availability.md                 # Time parsing
 │   └── recovery_catchup.md                  # Backfill procedures
+│
+├── Configuration
+│   ├── ENV_CONFIG_README.md                 # Pydantic config overview
+│   ├── PYDANTIC_CONFIG_QUICKSTART.md        # Quick start guide
+│   └── PYDANTIC_CONFIG.md                   # Complete Pydantic guide
 │
 ├── Audit (2026-01)
 │   ├── CODEBASE_QUALITY_AUDIT_2026-01.md   # Full audit report
