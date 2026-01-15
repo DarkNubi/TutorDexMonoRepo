@@ -17,6 +17,7 @@ def upsert_tutor(request: Request, tutor_id: str, req: TutorUpsert) -> Dict[str,
     return store.upsert_tutor(
         tutor_id,
         chat_id=req.chat_id,
+        dm_max_distance_km=req.dm_max_distance_km,
         subjects=req.subjects,
         levels=req.levels,
         subject_pairs=getattr(req, "subject_pairs", None),
@@ -68,4 +69,3 @@ def match_payload(request: Request, req: MatchPayloadRequest) -> Dict[str, Any]:
         ],
         "chat_ids": [r.chat_id for r in results],
     }
-

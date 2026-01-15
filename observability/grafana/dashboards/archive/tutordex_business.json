@@ -98,7 +98,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(worker_parse_success_total[5m])) * 3600",
+          "expr": "sum(rate(worker_parse_success_total{channel=~\"$channel\"}[5m])) * 3600",
           "legendFormat": "Assignments Created/Hour",
           "refId": "A",
           "datasource": {
@@ -107,7 +107,7 @@
           }
         },
         {
-          "expr": "sum(rate(collector_messages_seen_total[5m])) * 3600",
+          "expr": "sum(rate(collector_messages_seen_total{channel=~\"$channel\"}[5m])) * 3600",
           "legendFormat": "Messages Seen/Hour",
           "refId": "B",
           "datasource": {
@@ -172,7 +172,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(worker_parse_success_total[1h])) / (sum(rate(worker_parse_success_total[1h])) + sum(rate(worker_parse_failure_total[1h])))",
+          "expr": "sum(rate(worker_parse_success_total{channel=~\"$channel\"}[1h])) / (sum(rate(worker_parse_success_total{channel=~\"$channel\"}[1h])) + sum(rate(worker_parse_failure_total{channel=~\"$channel\"}[1h])))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -236,7 +236,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(worker_parse_failure_total[1h])) / (sum(rate(worker_parse_success_total[1h])) + sum(rate(worker_parse_failure_total[1h])))",
+          "expr": "sum(rate(worker_parse_failure_total{channel=~\"$channel\"}[1h])) / (sum(rate(worker_parse_success_total{channel=~\"$channel\"}[1h])) + sum(rate(worker_parse_failure_total{channel=~\"$channel\"}[1h])))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -509,7 +509,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(worker_parse_success_total[1h]))",
+          "expr": "sum(increase(worker_parse_success_total{channel=~\"$channel\"}[1h]))",
           "legendFormat": "Assignments Created (hourly)",
           "refId": "A",
           "datasource": {
@@ -591,7 +591,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(collector_messages_seen_total[5m]))",
+          "expr": "sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\"}[5m]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -758,6 +758,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           }
+        },
+        {
+          "expr": "sum(increase(broadcast_sent_total[24h] offset $compare_period))",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
       ],
       "title": "Broadcasts (Last 24h)",
@@ -815,6 +823,14 @@
         {
           "expr": "sum(increase(dm_sent_total[24h]))",
           "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum(increase(dm_sent_total[24h] offset $compare_period))",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"

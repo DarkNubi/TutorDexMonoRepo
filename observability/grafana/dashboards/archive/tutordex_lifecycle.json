@@ -106,7 +106,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(collector_messages_seen_total[$__range]))",
+          "expr": "sum(increase(collector_messages_seen_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "refId": "A"
         }
       ],
@@ -172,7 +172,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_parse_success_total[$__range]))",
+          "expr": "sum(increase(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "refId": "A"
         }
       ],
@@ -230,7 +230,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_parse_success_total[$__range]))",
+          "expr": "sum(increase(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "refId": "A"
         }
       ],
@@ -288,7 +288,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(broadcast_sent_total[$__range]))",
+          "expr": "sum(increase(broadcast_sent_total{pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "refId": "A"
         }
       ],
@@ -346,7 +346,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(dm_sent_total[$__range]))",
+          "expr": "sum(increase(dm_sent_total{pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "refId": "A"
         }
       ],
@@ -438,7 +438,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(worker_parse_success_total[5m])) / sum(rate(collector_messages_seen_total[5m]))",
+          "expr": "sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m])) / sum(rate(collector_messages_seen_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "Parse Success Rate",
           "refId": "A"
         },
@@ -447,7 +447,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(broadcast_sent_total[5m])) / sum(rate(worker_parse_success_total[5m]))",
+          "expr": "sum(rate(broadcast_sent_total{pipeline_version=~\"$pipeline_version\"}[5m])) / sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "Broadcast Rate",
           "refId": "B"
         },
@@ -456,7 +456,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(dm_sent_total[5m])) / sum(rate(worker_parse_success_total[5m]))",
+          "expr": "sum(rate(dm_sent_total{pipeline_version=~\"$pipeline_version\"}[5m])) / sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "DM Delivery Rate",
           "refId": "C"
         }
@@ -520,7 +520,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(collector_messages_seen_total[$__range]))",
+          "expr": "sum(increase(collector_messages_seen_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "legendFormat": "Messages Received",
           "refId": "A"
         },
@@ -529,7 +529,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_parse_success_total[$__range]))",
+          "expr": "sum(increase(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "legendFormat": "Parsed Successfully",
           "refId": "B"
         },
@@ -538,7 +538,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(broadcast_sent_total[$__range]))",
+          "expr": "sum(increase(broadcast_sent_total{pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "legendFormat": "Broadcasts Sent",
           "refId": "C"
         },
@@ -547,7 +547,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(dm_sent_total[$__range]))",
+          "expr": "sum(increase(dm_sent_total{pipeline_version=~\"$pipeline_version\"}[$__range]))",
           "legendFormat": "DMs Sent",
           "refId": "D"
         }
@@ -638,7 +638,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (channel) (rate(collector_messages_seen_total[5m]))",
+          "expr": "sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }
@@ -737,7 +737,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(worker_parse_success_total[5m]))",
+          "expr": "sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "Parse Success",
           "refId": "A"
         },
@@ -746,7 +746,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(worker_parse_failure_total[5m]))",
+          "expr": "sum(rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "Parse Failures",
           "refId": "B"
         }

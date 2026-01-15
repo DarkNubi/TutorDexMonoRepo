@@ -453,27 +453,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "up{job=\"tutordex_collector\"}",
-          "legendFormat": "Collector",
+          "expr": "up{job=~\"$service\"}",
+          "legendFormat": "{{job}}",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "up{job=\"tutordex_worker\"}",
-          "legendFormat": "Worker",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "up{job=\"tutordex_backend\"}",
-          "legendFormat": "Backend",
-          "refId": "C"
         }
       ],
       "title": "Service Status",
@@ -732,7 +714,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(up{job=~\"tutordex.*\"}, job)",
+        "definition": "label_values(up, job)",
         "hide": 0,
         "includeAll": true,
         "label": "Service",
@@ -740,7 +722,7 @@
         "name": "service",
         "options": [],
         "query": {
-          "query": "label_values(up{job=~\"tutordex.*\"}, job)",
+          "query": "label_values(up, job)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,

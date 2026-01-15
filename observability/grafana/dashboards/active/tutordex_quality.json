@@ -50,7 +50,7 @@
       },
       "targets": [
         {
-          "expr": "tutordex:worker:parse_error_fraction",
+          "expr": "sum(rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m])) / clamp_min(sum(rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m])) + sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m])), 0.000001)",
           "legendFormat": "error_fraction",
           "refId": "A",
           "datasource": {
@@ -118,7 +118,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (reason) (rate(worker_parse_failure_total[10m]))",
+          "expr": "sum by (reason) (rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m]))",
           "legendFormat": "{{reason}}",
           "refId": "A",
           "datasource": {
@@ -187,7 +187,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (field) (rate(assignment_quality_missing_field_total[30m]))",
+          "expr": "sum by (field) (rate(assignment_quality_missing_field_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[30m]))",
           "legendFormat": "{{field}}",
           "refId": "A",
           "datasource": {
@@ -242,7 +242,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (kind) (rate(assignment_quality_inconsistency_total[30m]))",
+          "expr": "sum by (kind) (rate(assignment_quality_inconsistency_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[30m]))",
           "legendFormat": "{{kind}}",
           "refId": "A",
           "datasource": {
@@ -297,7 +297,7 @@
       },
       "targets": [
         {
-          "expr": "rate(worker_parse_failure_total[5m])",
+          "expr": "sum(rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "parse_fail/s",
           "refId": "A",
           "datasource": {

@@ -153,7 +153,7 @@ class SupabaseStore:
             # Backward-compatible retry when DB schema hasn't been migrated yet.
             if resp.status_code == 400 and ("PGRST204" in resp.text or "schema cache" in resp.text):
                 retry_body = dict(body)
-                for k in ("postal_code", "postal_lat", "postal_lon", "desired_assignments_per_day"):
+                for k in ("postal_code", "postal_lat", "postal_lon", "dm_max_distance_km", "desired_assignments_per_day"):
                     retry_body.pop(k, None)
                 if retry_body != body:
                     try:
@@ -176,7 +176,7 @@ class SupabaseStore:
         if not self.client:
             return None
         base = f"user_preferences?user_id=eq.{int(user_id)}&limit=1"
-        q1 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,postal_code,postal_lat,postal_lon,desired_assignments_per_day,updated_at"
+        q1 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,postal_code,postal_lat,postal_lon,dm_max_distance_km,desired_assignments_per_day,updated_at"
         r = self.client.get(q1, timeout=15)
         if r.status_code == 400 and ("PGRST204" in r.text or "schema cache" in r.text):
             q2 = base + "&select=subjects,levels,subject_pairs,assignment_types,tutor_kinds,learning_modes,updated_at"
@@ -647,4 +647,3 @@ class SupabaseStore:
             pass
         
         return None
-

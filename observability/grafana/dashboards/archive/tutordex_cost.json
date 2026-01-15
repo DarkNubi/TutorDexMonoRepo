@@ -79,7 +79,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_llm_request_total[$__range]))",
+          "expr": "sum(increase(worker_llm_requests_total[$__range]))",
           "refId": "A"
         }
       ],
@@ -145,7 +145,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_supabase_request_total[$__range]))",
+          "expr": "sum(increase(worker_supabase_requests_total[$__range]))",
           "refId": "A"
         }
       ],
@@ -277,8 +277,16 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(worker_llm_request_total[24h])) * 0.001 * 86400",
+          "expr": "sum(rate(worker_llm_requests_total[24h])) * 0.001 * 86400",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(worker_llm_requests_total[24h] offset $compare_period)) * 0.001 * 86400",
+          "refId": "B"
         }
       ],
       "title": "Est. Daily LLM Cost",
@@ -368,7 +376,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(worker_llm_request_total[5m]))",
+          "expr": "sum by (model) (rate(worker_llm_requests_total[5m]))",
           "legendFormat": "{{model}}",
           "refId": "A"
         }
@@ -459,7 +467,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (operation) (rate(worker_supabase_request_total[5m]))",
+          "expr": "sum by (operation) (rate(worker_supabase_requests_total[5m]))",
           "legendFormat": "{{operation}}",
           "refId": "A"
         }
@@ -550,7 +558,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(worker_llm_request_total[1h])) * 0.001 * 3600",
+          "expr": "sum(rate(worker_llm_requests_total[1h])) * 0.001 * 3600",
           "legendFormat": "LLM Hourly Cost (estimated)",
           "refId": "A"
         }
@@ -635,7 +643,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_llm_request_total[$__range]))",
+          "expr": "sum(increase(worker_llm_requests_total[$__range]))",
           "legendFormat": "LLM API Calls",
           "refId": "A"
         },
@@ -644,7 +652,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_supabase_request_total[$__range]))",
+          "expr": "sum(increase(worker_supabase_requests_total[$__range]))",
           "legendFormat": "Database Operations",
           "refId": "B"
         },
@@ -744,7 +752,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_llm_request_total[1h]))",
+          "expr": "sum(increase(worker_llm_requests_total[1h]))",
           "legendFormat": "LLM",
           "refId": "A"
         },
@@ -753,7 +761,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(worker_supabase_request_total[1h]))",
+          "expr": "sum(increase(worker_supabase_requests_total[1h]))",
           "legendFormat": "Database",
           "refId": "B"
         },

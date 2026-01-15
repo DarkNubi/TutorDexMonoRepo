@@ -54,10 +54,12 @@ def _payload_to_query(payload: Dict[str, Any]) -> Dict[str, Any]:
     # Hardened pipeline: deterministic match rollups live in `meta.signals`.
     subjects: Any = []
     levels: Any = []
+    specific_student_levels: Any = []
     if isinstance(signals_obj, dict):
         # Prefer v2 taxonomy stable codes when present; fallback to legacy subject labels.
         subjects = signals_obj.get("subjects_canonical") or signals_obj.get("subjects") or []
         levels = signals_obj.get("levels") or []
+        specific_student_levels = signals_obj.get("specific_student_levels") or []
 
     lm_val = parsed.get("learning_mode") if isinstance(parsed, dict) else None
     if isinstance(lm_val, dict):
@@ -68,6 +70,7 @@ def _payload_to_query(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "subjects": subjects or [],
         "levels": levels or [],
+        "specific_student_levels": specific_student_levels or [],
         "types": [],
         "learning_modes": learning_modes,
         "tutor_type": [],
@@ -127,6 +130,63 @@ class MatchResult:
     rate_max: Optional[int] = None
 
 
+def _safe_radius_km(value: Any) -> float:
+    try:
+        v = float(value)
+    except Exception:
+        return 5.0
+    if not (v > 0):
+        return 5.0
+    return max(0.5, min(50.0, v))
+
+
+def _tutor_subject_level_match(*, tutor: Dict[str, Any], query: Dict[str, Any]) -> bool:
+    q_subjects = {_norm_text(s) for s in _as_list(query.get("subjects")) if _norm_text(s)}
+    q_levels = {_norm_text(s) for s in _as_list(query.get("levels")) if _norm_text(s)}
+    q_specific = {_norm_text(s) for s in _as_list(query.get("specific_student_levels")) if _norm_text(s)}
+
+    subject_pairs = tutor.get("subject_pairs")
+    if isinstance(subject_pairs, list) and subject_pairs:
+        for pair in subject_pairs:
+            if not isinstance(pair, dict):
+                continue
+            subj = _norm_text(pair.get("subject"))
+            lvl = _norm_text(pair.get("level"))
+            spec = _norm_text(pair.get("specific_level"))
+            if not subj or not lvl:
+                continue
+            if subj not in q_subjects:
+                continue
+            if spec:
+                if spec in q_specific:
+                    return True
+                continue
+            if lvl in q_levels:
+                return True
+        return False
+
+    t_subjects = {_norm_text(s) for s in _as_list(tutor.get("subjects")) if _norm_text(s)}
+    t_levels = {_norm_text(s) for s in _as_list(tutor.get("levels")) if _norm_text(s)}
+    if not t_subjects or not t_levels:
+        return False
+    return bool((q_subjects & t_subjects) and (q_levels & t_levels))
+
+
+def _passes_distance_filter(*, tutor: Dict[str, Any], payload: Dict[str, Any], distance_km: Optional[float]) -> bool:
+    tutor_lat = _safe_float(tutor.get("postal_lat"))
+    tutor_lon = _safe_float(tutor.get("postal_lon"))
+    if tutor_lat is None or tutor_lon is None:
+        return True
+    if _learning_mode_is_online_only(payload):
+        return True
+    # If the tutor provided a location, enforce a radius for in-person/hybrid assignments.
+    # When we can't compute distance (missing coords), treat it as non-matching to avoid spurious DMs.
+    if distance_km is None:
+        return False
+    radius_km = _safe_radius_km(tutor.get("dm_max_distance_km"))
+    return float(distance_km) <= radius_km
+
+
 def score_tutor(tutor: Dict[str, Any], query: Dict[str, Any]) -> Tuple[int, List[str]]:
     reasons: List[str] = []
     score = 0
@@ -174,14 +234,9 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
     The caller can filter by rating threshold rather than using min_score.
     """
     query = _payload_to_query(payload)
-    min_score = int(_CFG.match_min_score)
 
     assignment_lat, assignment_lon = _extract_assignment_coords(payload)
-    include_distance = (
-        not _learning_mode_is_online_only(payload)
-        and assignment_lat is not None
-        and assignment_lon is not None
-    )
+    include_distance = assignment_lat is not None and assignment_lon is not None
     
     # Extract rate information from payload
     parsed = payload.get("parsed") or {}
@@ -196,30 +251,34 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
         chat_id = tutor.get("chat_id")
         if not chat_id:
             continue
-        score, reasons = score_tutor(tutor, query)
-        if score >= min_score:
-            distance_km: Optional[float] = None
-            if include_distance:
-                tutor_lat = _safe_float(tutor.get("postal_lat"))
-                tutor_lon = _safe_float(tutor.get("postal_lon"))
-                if tutor_lat is not None and tutor_lon is not None:
-                    try:
-                        distance_km = _haversine_km(tutor_lat, tutor_lon, float(assignment_lat), float(assignment_lon))
-                    except Exception:
-                        distance_km = None
+        if not _tutor_subject_level_match(tutor=tutor, query=query):
+            continue
 
-            results.append(
-                MatchResult(
-                    tutor_id=tutor_id,
-                    chat_id=str(chat_id),
-                    score=score,
-                    reasons=reasons,
-                    distance_km=distance_km,
-                    rating=None,  # Will be calculated by caller if needed
-                    rate_min=rate_min,
-                    rate_max=rate_max,
-                )
+        distance_km: Optional[float] = None
+        if include_distance:
+            tutor_lat = _safe_float(tutor.get("postal_lat"))
+            tutor_lon = _safe_float(tutor.get("postal_lon"))
+            if tutor_lat is not None and tutor_lon is not None:
+                try:
+                    distance_km = _haversine_km(tutor_lat, tutor_lon, float(assignment_lat), float(assignment_lon))
+                except Exception:
+                    distance_km = None
+
+        if not _passes_distance_filter(tutor=tutor, payload=payload, distance_km=distance_km):
+            continue
+
+        results.append(
+            MatchResult(
+                tutor_id=tutor_id,
+                chat_id=str(chat_id),
+                score=1,
+                reasons=["subject", "level"],
+                distance_km=distance_km,
+                rating=None,
+                rate_min=rate_min,
+                rate_max=rate_max,
             )
+        )
 
     results.sort(key=lambda r: (r.score, r.tutor_id), reverse=True)
     return results

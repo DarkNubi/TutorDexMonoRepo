@@ -467,13 +467,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             return {"ok": False, "error": str(e)}
         
         initial_match_count = len(matches)
-        
-        # Calculate assignment ratings for each match
-        matches = _calculate_match_ratings(matches, payload)
-        
-        # Apply adaptive threshold filtering
-        matches = _filter_by_adaptive_threshold(matches)
-        
+
         # Apply hard cap on recipients
         matches = matches[:DM_MAX_RECIPIENTS]
         

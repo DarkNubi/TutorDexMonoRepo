@@ -34,6 +34,9 @@ def me_get_tutor(request: Request) -> Dict[str, Any]:
                         "postal_code": prefs.get("postal_code") if prefs.get("postal_code") is not None else tutor.get("postal_code") or "",
                         "postal_lat": prefs.get("postal_lat") if prefs.get("postal_lat") is not None else tutor.get("postal_lat"),
                         "postal_lon": prefs.get("postal_lon") if prefs.get("postal_lon") is not None else tutor.get("postal_lon"),
+                        "dm_max_distance_km": prefs.get("dm_max_distance_km")
+                        if prefs.get("dm_max_distance_km") is not None
+                        else tutor.get("dm_max_distance_km", 5.0),
                         "subjects": prefs.get("subjects") or tutor.get("subjects") or [],
                         "levels": prefs.get("levels") or tutor.get("levels") or [],
                         "subject_pairs": prefs.get("subject_pairs") or tutor.get("subject_pairs") or [],
@@ -113,6 +116,7 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
         postal_code=postal_code,
         postal_lat=postal_lat,
         postal_lon=postal_lon,
+        dm_max_distance_km=req.dm_max_distance_km,
         subjects=req.subjects,
         levels=req.levels,
         subject_pairs=getattr(req, "subject_pairs", None),
@@ -140,6 +144,8 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
                 prefs["postal_code"] = postal_code
                 prefs["postal_lat"] = postal_lat
                 prefs["postal_lon"] = postal_lon
+            if "dm_max_distance_km" in getattr(req, "model_fields_set", set()):
+                prefs["dm_max_distance_km"] = req.dm_max_distance_km
             if req.desired_assignments_per_day is not None:
                 prefs["desired_assignments_per_day"] = req.desired_assignments_per_day
             sb.upsert_preferences(user_id=user_id, prefs=prefs)
@@ -151,4 +157,3 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
 def me_telegram_link_code(request: Request) -> Dict[str, Any]:
     uid = auth_service.require_uid(request)
     return store.create_telegram_link_code(uid, ttl_seconds=600)
-

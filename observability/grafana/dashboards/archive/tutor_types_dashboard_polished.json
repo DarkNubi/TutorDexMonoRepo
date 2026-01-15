@@ -24,7 +24,7 @@
       },
       "targets": [
         {
-          "expr": "increase(worker_tutor_types_extracted_total[5m])",
+          "expr": "increase(worker_tutor_types_extracted_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m])",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -72,7 +72,7 @@
       },
       "targets": [
         {
-          "expr": "sum by(channel)(rate(worker_tutor_types_extracted_total[5m]))",
+          "expr": "sum by(channel)(rate(worker_tutor_types_extracted_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -125,7 +125,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(worker_tutor_types_low_confidence_total[5m])) or 0) / (sum(rate(worker_tutor_types_extracted_total[5m])) or 1)",
+          "expr": "(sum(rate(worker_tutor_types_low_confidence_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m])) or 0) / (sum(rate(worker_tutor_types_extracted_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m])) or 1)",
           "legendFormat": "low_conf_ratio",
           "refId": "A",
           "datasource": {
@@ -185,7 +185,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(worker_tutor_types_unmapped_total[5m])) or 0) / (sum(rate(worker_tutor_types_extracted_total[5m])) or 1)",
+          "expr": "(sum(rate(worker_tutor_types_unmapped_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m])) or 0) / (sum(rate(worker_tutor_types_extracted_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[5m])) or 1)",
           "legendFormat": "unmapped_ratio",
           "refId": "A",
           "datasource": {
@@ -245,7 +245,7 @@
       },
       "targets": [
         {
-          "expr": "sum by(pipeline_version, schema_version, channel)(increase(worker_tutor_types_extracted_total[1h]))",
+          "expr": "sum by(pipeline_version, schema_version, channel)(increase(worker_tutor_types_extracted_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[1h]))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -284,7 +284,7 @@
       },
       "targets": [
         {
-          "expr": "increase(worker_tutor_types_low_confidence_total[1h])",
+          "expr": "increase(worker_tutor_types_low_confidence_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[1h])",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -330,7 +330,7 @@
       },
       "targets": [
         {
-          "expr": "increase(worker_tutor_types_unmapped_total[1h])",
+          "expr": "increase(worker_tutor_types_unmapped_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[1h])",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -376,7 +376,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(worker_tutor_types_extracted_total[1m]))",
+          "expr": "sum(rate(worker_tutor_types_extracted_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[1m]))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",

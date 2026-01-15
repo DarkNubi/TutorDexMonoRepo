@@ -375,6 +375,15 @@ async function saveProfile() {
     return;
   }
 
+  const dmRadiusEl = document.getElementById("dm-max-distance-km");
+  let dmMaxDistanceKm = 5;
+  if (dmRadiusEl) {
+    const v = parseFloat(String(dmRadiusEl.value || "").trim());
+    if (!Number.isNaN(v) && v > 0) {
+      dmMaxDistanceKm = Math.max(0.5, Math.min(50, v));
+    }
+  }
+
   // Canonicalize subject pairs where necessary before saving
   const canonicalPairs = [];
   for (const p of subjectPairs || []) {
@@ -414,6 +423,7 @@ async function saveProfile() {
     learning_modes: learningModes,
     teaching_locations: teachingLocations,
     postal_code: postalNormalized,
+    dm_max_distance_km: dmMaxDistanceKm,
     contact_phone: contactPhone || null,
     desired_assignments_per_day: desiredPerDay,
   });
@@ -488,6 +498,12 @@ async function loadProfile() {
   const postalEl = document.getElementById("tutor-postal-code");
   if (postalEl && typeof profile.postal_code === "string") {
     postalEl.value = profile.postal_code;
+  }
+
+  const dmRadiusEl = document.getElementById("dm-max-distance-km");
+  if (dmRadiusEl) {
+    const v = profile?.dm_max_distance_km;
+    dmRadiusEl.value = String(typeof v === "number" && Number.isFinite(v) ? v : 5);
   }
 
   const desiredPerDayEl = document.getElementById("desired-assignments-per-day");

@@ -91,7 +91,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (field) (rate(assignment_quality_missing_field_total[10m]))",
+          "expr": "sum by (field) (rate(assignment_quality_missing_field_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m]))",
           "legendFormat": "{{field}}",
           "refId": "A",
           "datasource": {
@@ -159,7 +159,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(assignment_quality_missing_field_total{field=\"signals_subjects\"}[30m])) / sum(rate(worker_parse_success_total[30m]))",
+          "expr": "sum(rate(assignment_quality_missing_field_total{field=\"signals_subjects\", channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[30m])) / sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[30m]))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -226,7 +226,7 @@
       },
       "targets": [
         {
-          "expr": "1 - (sum(rate(assignment_quality_missing_field_total[30m])) / (sum(rate(worker_parse_success_total[30m])) * 5))",
+          "expr": "1 - (sum(rate(assignment_quality_missing_field_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[30m])) / (sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[30m])) * 5))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -308,7 +308,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (kind) (rate(assignment_quality_inconsistency_total[10m]))",
+          "expr": "sum by (kind) (rate(assignment_quality_inconsistency_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m]))",
           "legendFormat": "{{kind}}",
           "refId": "A",
           "datasource": {
@@ -399,7 +399,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (reason) (rate(worker_parse_failure_total[10m]))",
+          "expr": "sum by (reason) (rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m]))",
           "legendFormat": "{{reason}}",
           "refId": "A",
           "datasource": {
@@ -492,7 +492,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(worker_parse_success_total[10m])) / (sum(rate(worker_parse_success_total[10m])) + sum(rate(worker_parse_failure_total[10m])))",
+          "expr": "sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m])) / (sum(rate(worker_parse_success_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m])) + sum(rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m])))",
           "legendFormat": "Parse Success Rate",
           "refId": "A",
           "datasource": {
@@ -575,7 +575,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(assignment_quality_missing_field_total[10m]))",
+          "expr": "sum by (channel) (rate(assignment_quality_missing_field_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -666,7 +666,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(worker_parse_failure_total[10m]))",
+          "expr": "sum by (channel) (rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[10m]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -733,7 +733,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(assignment_quality_missing_field_total[24h])) + sum(increase(assignment_quality_inconsistency_total[24h]))",
+          "expr": "sum(increase(assignment_quality_missing_field_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[24h])) + sum(increase(assignment_quality_inconsistency_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[24h]))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",

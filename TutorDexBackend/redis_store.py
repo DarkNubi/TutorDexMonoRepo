@@ -41,6 +41,20 @@ def _safe_float(value: Optional[str]) -> Optional[float]:
         return None
 
 
+def _clamp_float(value: Optional[float], *, lo: float, hi: float) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except Exception:
+        return None
+    if v < lo:
+        return lo
+    if v > hi:
+        return hi
+    return v
+
+
 def _as_text_list(value: Any) -> List[str]:
     if value is None:
         return []
@@ -104,6 +118,7 @@ class TutorStore:
         postal_code: Optional[str] = None,
         postal_lat: Optional[float] = None,
         postal_lon: Optional[float] = None,
+        dm_max_distance_km: Optional[float] = None,
         subjects: Any = None,
         levels: Any = None,
         subject_pairs: Any = None,
@@ -137,6 +152,12 @@ class TutorStore:
                     doc["postal_lon"] = str(float(postal_lon))
                 else:
                     clear_postal_coords = True
+
+        if dm_max_distance_km is not None:
+            # Clamp to avoid pathological values.
+            km = _clamp_float(dm_max_distance_km, lo=0.5, hi=50.0)
+            if km is not None:
+                doc["dm_max_distance_km"] = str(float(km))
 
         if subjects is not None:
             doc["subjects"] = _json_dumps(_as_text_list(subjects))
@@ -219,6 +240,7 @@ class TutorStore:
             "postal_code": raw.get("postal_code") or "",
             "postal_lat": _safe_float(raw.get("postal_lat")),
             "postal_lon": _safe_float(raw.get("postal_lon")),
+            "dm_max_distance_km": _safe_float(raw.get("dm_max_distance_km")) or 5.0,
             "subjects": _json_loads(raw.get("subjects")) or [],
             "levels": _json_loads(raw.get("levels")) or [],
             "subject_pairs": _json_loads(raw.get("subject_pairs")) or [],

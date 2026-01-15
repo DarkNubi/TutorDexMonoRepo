@@ -83,7 +83,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "time() - collector_last_message_timestamp_seconds",
+          "expr": "time() - collector_last_message_timestamp_seconds{channel=~\"$channel\"}",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }
@@ -157,7 +157,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (channel) (rate(worker_parse_success_total[1h])) / (sum by (channel) (rate(worker_parse_success_total[1h])) + sum by (channel) (rate(worker_parse_failure_total[1h])))",
+          "expr": "sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[1h])) / (sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[1h])) + sum by (channel) (rate(worker_parse_failure_total{channel=~\"$channel\"}[1h])))",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }
@@ -249,7 +249,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (channel) (rate(collector_messages_seen_total[5m])) * 60",
+          "expr": "sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\"}[5m])) * 60",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }
@@ -332,7 +332,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum by (channel) (rate(collector_messages_seen_total[24h])) - sum by (channel) (rate(collector_messages_seen_total[24h] offset 7d))) / sum by (channel) (rate(collector_messages_seen_total[24h] offset 7d))",
+          "expr": "(sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\"}[24h])) - sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\"}[24h] offset $compare_period))) / sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\"}[24h] offset $compare_period))",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }
@@ -432,7 +432,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (channel) (rate(worker_parse_failure_total[5m])) * 60",
+          "expr": "sum by (channel) (rate(worker_parse_failure_total{channel=~\"$channel\"}[5m])) * 60",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }
@@ -506,7 +506,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum by (channel) (rate(worker_parse_success_total[1h])) / (sum by (channel) (rate(worker_parse_success_total[1h])) + sum by (channel) (rate(worker_parse_failure_total[1h])))) * 100",
+          "expr": "(sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[1h])) / (sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[1h])) + sum by (channel) (rate(worker_parse_failure_total{channel=~\"$channel\"}[1h])))) * 100",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }
@@ -579,7 +579,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (channel) (increase(collector_messages_seen_total[$__range]))",
+          "expr": "sum by (channel) (increase(collector_messages_seen_total{channel=~\"$channel\"}[$__range]))",
           "legendFormat": "{{channel}}",
           "refId": "A"
         }

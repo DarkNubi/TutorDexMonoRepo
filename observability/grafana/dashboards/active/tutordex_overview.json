@@ -62,7 +62,7 @@
       },
       "targets": [
         {
-          "expr": "time() - collector_last_message_timestamp_seconds",
+          "expr": "time() - collector_last_message_timestamp_seconds{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -117,7 +117,7 @@
       },
       "targets": [
         {
-          "expr": "queue_pending",
+          "expr": "queue_pending{pipeline_version=~\"$pipeline_version\"}",
           "legendFormat": "pending",
           "refId": "A",
           "datasource": {
@@ -126,7 +126,7 @@
           }
         },
         {
-          "expr": "queue_processing",
+          "expr": "queue_processing{pipeline_version=~\"$pipeline_version\"}",
           "legendFormat": "processing",
           "refId": "B",
           "datasource": {
@@ -135,7 +135,7 @@
           }
         },
         {
-          "expr": "queue_failed",
+          "expr": "queue_failed{pipeline_version=~\"$pipeline_version\"}",
           "legendFormat": "failed",
           "refId": "C",
           "datasource": {
@@ -144,7 +144,7 @@
           }
         },
         {
-          "expr": "queue_ok",
+          "expr": "queue_ok{pipeline_version=~\"$pipeline_version\"}",
           "legendFormat": "ok",
           "refId": "D",
           "datasource": {
@@ -200,7 +200,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(worker_jobs_processed_total[5m]))",
+          "expr": "sum(rate(worker_jobs_processed_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "jobs/s",
           "refId": "A",
           "datasource": {
@@ -255,7 +255,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(worker_job_latency_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(worker_job_latency_seconds_bucket{pipeline_version=~\"$pipeline_version\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95",
           "refId": "A",
           "datasource": {
@@ -310,7 +310,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(worker_llm_call_latency_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(worker_llm_call_latency_seconds_bucket{pipeline_version=~\"$pipeline_version\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95",
           "refId": "A",
           "datasource": {
@@ -378,7 +378,7 @@
       },
       "targets": [
         {
-          "expr": "rate(worker_llm_fail_total[5m])",
+          "expr": "sum(rate(worker_llm_fail_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "llm_fail/s",
           "refId": "A",
           "datasource": {
@@ -387,7 +387,7 @@
           }
         },
         {
-          "expr": "sum(rate(worker_supabase_fail_total[5m]))",
+          "expr": "sum(rate(worker_supabase_fail_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "supabase_fail/s",
           "refId": "B",
           "datasource": {
@@ -396,7 +396,7 @@
           }
         },
         {
-          "expr": "rate(broadcast_fail_total[5m])",
+          "expr": "sum(rate(broadcast_fail_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "broadcast_fail/s",
           "refId": "C",
           "datasource": {
@@ -405,7 +405,7 @@
           }
         },
         {
-          "expr": "rate(dm_fail_total[5m])",
+          "expr": "sum(rate(dm_fail_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "dm_fail/s",
           "refId": "D",
           "datasource": {
@@ -414,7 +414,7 @@
           }
         },
         {
-          "expr": "rate(dm_rate_limited_total[5m])",
+          "expr": "sum(rate(dm_rate_limited_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "dm_rate_limited/s",
           "refId": "E",
           "datasource": {
@@ -457,7 +457,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (compose_service) (rate(worker_parse_failure_total[5m]))",
+          "expr": "sum by (channel) (rate(worker_parse_failure_total{channel=~\"$channel\", pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "{{compose_service}}",
           "refId": "A",
           "datasource": {
@@ -466,7 +466,7 @@
           }
         }
       ],
-      "title": "Failures by service (metric)",
+      "title": "Failures by channel (rate)",
       "type": "timeseries",
       "fieldConfig": {
         "defaults": {

@@ -374,7 +374,12 @@
           <div class="mt-6">
             <label class="block text-xs font-bold uppercase mb-2">Postal Code (Optional)</label>
             <input id="tutor-postal-code" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 560105" class="nike-input rounded-lg" />
-            <p class="mt-2 text-xs text-gray-500">Used to calculate distance-based matching later. Leave blank if you only teach online.</p>
+            <p class="mt-2 text-xs text-gray-500">If set, in-person/hybrid DMs are filtered by distance. Leave blank to disable distance filtering.</p>
+          </div>
+          <div class="mt-6">
+            <label class="block text-xs font-bold uppercase mb-2">DM Distance Radius (km)</label>
+            <input id="dm-max-distance-km" type="number" min="0.5" max="50" step="0.5" placeholder="5" class="nike-input rounded-lg" />
+            <p class="mt-2 text-xs text-gray-500">Defaults to 5km (min 0.5, max 50).</p>
           </div>
         </section>
 

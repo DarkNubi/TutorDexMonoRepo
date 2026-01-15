@@ -111,7 +111,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(worker_jobs_failed_total[5m])",
+          "expr": "sum(rate(worker_jobs_processed_total{status=~\"failed|error\"}[5m]))",
           "refId": "B",
           "legendFormat": "Jobs Failed"
         }
@@ -179,7 +179,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(extraction_queue_pending)",
+          "expr": "sum(queue_pending)",
           "refId": "A"
         }
       ],
@@ -329,7 +329,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(worker_queue_wait_seconds)",
+          "expr": "sum(rate(worker_job_stage_latency_seconds_sum[5m])) by (stage) / sum(rate(worker_job_stage_latency_seconds_count[5m])) by (stage)",
           "refId": "A",
           "legendFormat": "Queue Wait"
         },
@@ -338,7 +338,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(worker_llm_processing_seconds)",
+          "expr": "histogram_quantile(0.95, sum(rate(worker_llm_call_latency_seconds_bucket[5m])) by (le))",
           "refId": "B",
           "legendFormat": "LLM Processing"
         },
@@ -347,7 +347,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(worker_database_seconds)",
+          "expr": "histogram_quantile(0.95, sum(rate(worker_supabase_latency_seconds_bucket[5m])) by (le, operation))",
           "refId": "C",
           "legendFormat": "Database Operations"
         },
@@ -356,7 +356,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(worker_broadcast_seconds)",
+          "expr": "sum(rate(broadcast_sent_total[5m]))",
           "refId": "D",
           "legendFormat": "Broadcast/DM"
         }
@@ -544,7 +544,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(worker_jobs_processed_total[5m]) * 60 / count(up{job=\"worker\"})",
+          "expr": "sum(rate(worker_jobs_processed_total[5m])) * 60 / count(up{job=\"tutordex_worker\"})",
           "refId": "A",
           "legendFormat": "Efficiency (jobs/min/worker)"
         }
@@ -634,7 +634,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(rate(process_cpu_seconds_total{job=\"worker\"}[5m])) * 100",
+          "expr": "avg(rate(process_cpu_seconds_total{job=\"tutordex_worker\"}[5m])) * 100",
           "refId": "A",
           "legendFormat": "CPU Usage"
         }
@@ -724,7 +724,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(process_resident_memory_bytes{job=\"worker\"})",
+          "expr": "avg(process_resident_memory_bytes{job=\"tutordex_worker\"})",
           "refId": "A",
           "legendFormat": "Memory Usage"
         }

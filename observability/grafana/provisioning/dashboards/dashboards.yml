@@ -8,5 +8,4 @@ providers:
     disableDeletion: true
     editable: false
     options:
-      path: /var/lib/grafana/dashboards
-
+      path: /var/lib/grafana/dashboards/active

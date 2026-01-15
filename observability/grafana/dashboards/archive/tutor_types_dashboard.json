@@ -15,7 +15,7 @@
       "id": 1,
       "targets": [
         {
-          "expr": "worker_tutor_types_extracted_total",
+          "expr": "sum by (channel) (rate(worker_tutor_types_extracted_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "channel={{channel}}",
           "refId": "A",
           "datasource": {
@@ -58,7 +58,7 @@
       "id": 2,
       "targets": [
         {
-          "expr": "worker_tutor_types_low_confidence_total",
+          "expr": "sum by (channel) (rate(worker_tutor_types_low_confidence_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "channel={{channel}}",
           "refId": "A",
           "datasource": {
@@ -100,7 +100,7 @@
       "id": 3,
       "targets": [
         {
-          "expr": "worker_tutor_types_unmapped_total",
+          "expr": "sum by (channel) (rate(worker_tutor_types_unmapped_total{pipeline_version=~\"$pipeline_version\"}[$__rate_interval]))",
           "legendFormat": "channel={{channel}}",
           "refId": "A",
           "datasource": {

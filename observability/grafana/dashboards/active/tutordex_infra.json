@@ -50,7 +50,7 @@
       },
       "targets": [
         {
-          "expr": "up{job=~\"tutordex_collector|tutordex_worker|tutordex_backend|prometheus|cadvisor|node_exporter|blackbox_http\"}",
+          "expr": "up{job=~\"$service\"}",
           "legendFormat": "{{job}} {{instance}}",
           "refId": "A",
           "datasource": {
@@ -118,7 +118,7 @@
       },
       "targets": [
         {
-          "expr": "probe_success",
+          "expr": "probe_success{job=~\"$service\"}",
           "legendFormat": "{{instance}}",
           "refId": "A",
           "datasource": {
@@ -185,7 +185,7 @@
       },
       "targets": [
         {
-          "expr": "100 * (node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\"})",
+          "expr": "100 * (node_filesystem_avail_bytes{job=~\"$service\", fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{job=~\"$service\", fstype!~\"tmpfs|overlay\"})",
           "legendFormat": "{{mountpoint}}",
           "refId": "A",
           "datasource": {
@@ -229,7 +229,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(up{job=~\"tutordex.*\"}, job)",
+        "definition": "label_values(up, job)",
         "hide": 0,
         "includeAll": true,
         "label": "Service",
@@ -237,7 +237,7 @@
         "name": "service",
         "options": [],
         "query": {
-          "query": "label_values(up{job=~\"tutordex.*\"}, job)",
+          "query": "label_values(up, job)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,

@@ -1158,6 +1158,7 @@ create table if not exists public.user_preferences (
   postal_code text,
   postal_lat double precision,
   postal_lon double precision,
+  dm_max_distance_km double precision not null default 5,
   desired_assignments_per_day integer default 10,
   updated_at timestamptz not null default now()
 );
@@ -1191,6 +1192,9 @@ alter table public.user_preferences
 
 alter table public.user_preferences
   add column if not exists postal_lon double precision;
+
+alter table public.user_preferences
+  add column if not exists dm_max_distance_km double precision;
 
 alter table public.user_preferences
   add column if not exists desired_assignments_per_day integer;

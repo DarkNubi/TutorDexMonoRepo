@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 class TutorUpsert(BaseModel):
     chat_id: Optional[str] = Field(None, description="Telegram chat id to DM (required to receive DMs)")
     postal_code: Optional[str] = None
+    dm_max_distance_km: Optional[float] = Field(None, description="Max distance radius in km for DM alerts (default: 5)")
     subjects: Optional[List[str]] = None
     levels: Optional[List[str]] = None
     subject_pairs: Optional[List[Dict[str, str]]] = None
@@ -117,4 +118,3 @@ class MatchCountsRequest(BaseModel):
     subjects: Optional[List[str]] = None
     subjects_canonical: Optional[List[str]] = None
     subjects_general: Optional[List[str]] = None
-

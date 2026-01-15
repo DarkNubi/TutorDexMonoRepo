@@ -76,7 +76,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (error_reason) (increase(worker_parse_failures_total[1h]))",
+          "expr": "sum by (reason) (increase(worker_parse_failure_total[1h]))",
           "refId": "A",
           "legendFormat": "{{error_reason}}"
         }
@@ -166,7 +166,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (error_reason) (rate(worker_parse_failures_total[5m]))",
+          "expr": "sum by (reason) (rate(worker_parse_failure_total[5m]))",
           "refId": "A",
           "legendFormat": "{{error_reason}}"
         }
@@ -645,7 +645,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, sum by (error_reason) (increase(worker_parse_failures_total[24h])))",
+          "expr": "topk(10, sum by (reason) (increase(worker_parse_failure_total[24h])))",
           "refId": "A",
           "legendFormat": "{{error_reason}}"
         }
@@ -796,7 +796,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(worker_parse_failures_total[5m])) / (sum(rate(worker_parse_success_total[5m])) + sum(rate(worker_parse_failures_total[5m]))) * 100",
+          "expr": "sum(rate(worker_parse_failure_total[5m])) / (sum(rate(worker_parse_success_total[5m])) + sum(rate(worker_parse_failure_total[5m]))) * 100",
           "refId": "A",
           "legendFormat": "Parse Error Rate"
         },

@@ -91,7 +91,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(collector_messages_seen_total[5m])) * 60",
+          "expr": "sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\"}[5m])) * 60",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -149,7 +149,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (increase(collector_messages_seen_total[24h]))",
+          "expr": "sum by (channel) (increase(collector_messages_seen_total{channel=~\"$channel\"}[24h]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -242,7 +242,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(worker_parse_success_total[10m])) / (sum by (channel) (rate(worker_parse_success_total[10m])) + sum by (channel) (rate(worker_parse_failure_total[10m])))",
+          "expr": "sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[10m])) / (sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[10m])) + sum by (channel) (rate(worker_parse_failure_total{channel=~\"$channel\"}[10m])))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -312,7 +312,7 @@
       },
       "targets": [
         {
-          "expr": "time() - collector_last_message_timestamp_seconds",
+          "expr": "time() - collector_last_message_timestamp_seconds{channel=~\"$channel\"}",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -395,7 +395,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(worker_parse_success_total[5m])) * 60",
+          "expr": "sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[5m])) * 60",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -486,7 +486,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(collector_errors_total[5m]))",
+          "expr": "sum by (channel) (rate(collector_errors_total{channel=~\"$channel\"}[5m]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -571,7 +571,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (rate(worker_parse_success_total[30m])) / sum by (channel) (rate(collector_messages_seen_total[30m]))",
+          "expr": "sum by (channel) (rate(worker_parse_success_total{channel=~\"$channel\"}[30m])) / sum by (channel) (rate(collector_messages_seen_total{channel=~\"$channel\"}[30m]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
@@ -629,7 +629,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (channel) (increase(worker_parse_success_total[24h]))",
+          "expr": "sum by (channel) (increase(worker_parse_success_total{channel=~\"$channel\"}[24h]))",
           "legendFormat": "{{channel}}",
           "refId": "A",
           "datasource": {
