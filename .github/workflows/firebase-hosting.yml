@@ -30,7 +30,7 @@ jobs:
       - name: Install (monorepo)
         if: ${{ hashFiles('TutorDexWebsite/package-lock.json') != '' }}
         working-directory: TutorDexWebsite
-        run: npm ci --no-audit --no-fund
+        run: npm ci
 
       - name: Build (monorepo)
         if: ${{ hashFiles('TutorDexWebsite/package.json') != '' }}
@@ -39,7 +39,7 @@ jobs:
 
       - name: Install (root)
         if: ${{ hashFiles('TutorDexWebsite/package-lock.json') == '' }}
-        run: npm ci --no-audit --no-fund
+        run: npm ci
 
       - name: Build (root)
         if: ${{ hashFiles('TutorDexWebsite/package.json') == '' }}
