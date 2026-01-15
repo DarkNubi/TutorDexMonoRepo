@@ -300,7 +300,7 @@ See [CAPABILITIES.md](CAPABILITIES.md) section "Long-Term Metrics Storage" for d
 | Add metrics | Edit `TutorDexAggregator/observability_metrics.py` or `TutorDexBackend/metrics.py` |
 | Add alerts | Edit `observability/prometheus/alert_rules.yml` |
 | Add recording rules | Edit `observability/prometheus/recording_rules.yml` |
-| Add dashboards | Edit `observability/grafana/dashboards/*.json` |
+| Add dashboards | Edit `observability/grafana/dashboards/active/*.json` (keep experiments in `observability/grafana/dashboards/archive/`) |
 | Configure scrapes | Edit `observability/prometheus/prometheus.yml` |
 | Configure alerting | Edit `observability/alertmanager/alertmanager.yml` |
 | Reload Prometheus | Run `./observability/reload_prometheus.sh` |

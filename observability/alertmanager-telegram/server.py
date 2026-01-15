@@ -40,6 +40,8 @@ def _format_alertmanager(payload: Dict[str, Any]) -> str:
 
     lines: List[str] = []
     lines.append(f"<b>{PREFIX}</b> <b>{status}</b>: {alertname}")
+    if status == "RESOLVED":
+        lines.append("<i>Note: RESOLVED messages include the last observed value before the alert cleared.</i>")
     lines.append(f"<b>Component</b>: {component}")
     if channel:
         lines.append(f"<b>Channel</b>: {channel}")
@@ -123,4 +125,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

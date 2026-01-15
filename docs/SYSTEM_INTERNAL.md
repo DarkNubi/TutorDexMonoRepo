@@ -469,64 +469,29 @@ Auth enforcement is optional.
 - Implementation: `TutorDexBackend/matching.py` → `match_from_payload(store, payload)`.
 - Critical expectation: the Aggregator worker provides deterministic signals in `meta.signals` (Supabase row `meta.signals` contains `{ "ok": true, "signals": { ... } }`) — the actual signal map lives under `meta.signals.signals` (subjects + levels). Matching relies on these deterministic rollups for stability.
 
-#### Assignment rating system (NEW 2026-01-09)
+#### Assignment DM routing (launch-simple default, 2026-01-15)
 
-TutorDex implements an intelligent assignment rating and adaptive threshold system to deliver personalized assignment recommendations.
+TutorDex currently uses a conservative “launch-simple” DM routing rule:
+- Must match **level + subject** the tutor selected.
+- If the tutor has a postal code/coords saved, only send if **distance ≤ dm_max_distance_km** (default 5km).
+- If the tutor has **no postal code**, distance filtering is skipped (send all subject+level matches).
+- If the tutor has coords but the assignment is in-person/hybrid and distance cannot be computed, it does **not** match (avoid false positives).
 
-**Purpose:**
-- Calculate a quality score for each tutor-assignment pair
-- Reduce spam by filtering out low-value matches
-- Prioritize nearby, high-paying assignments
-- Adapt to each tutor's desired assignment volume
+**Where this lives:**
+- Backend matching: `TutorDexBackend/matching.py`
+- Tutor preference field: `public.user_preferences.dm_max_distance_km` (default 5)
+- Website profile: `TutorDexWebsite/profile.html` + `TutorDexWebsite/src/page-profile.js`
+- DB migration: `TutorDexAggregator/supabase sqls/2026-01-15_add_dm_max_distance_km.sql`
 
-**Components:**
+#### Assignment rating system (optional / future-facing)
 
-1. **Rating calculation** (`TutorDexBackend/assignment_rating.py`):
-   - `calculate_assignment_rating(match_score, distance_km, assignment_rate_min, assignment_rate_max, tutor_avg_rate)` → rating score
-   - Formula: `Rating = Base_Score + Distance_Score + Rate_Score`
-   - Base score: 0-8 points from matching (subjects, levels, type, mode, tutor kind)
-   - Distance score: +5.0 for <1km, declining to -1.5 for >12km (Singapore-optimized breakpoints)
-   - Rate score: +2.0 for assignments paying 25%+ above tutor's history, declining to -2.0 for 30%+ below
-   - Singapore-specific distance breakpoints account for walkability, MRT accessibility, peak-hour travel pain
-   - Rate scoring anchors to tutor's historical average to detect attractive opportunities
+The assignment rating + adaptive threshold system from 2026-01-09 remains in the repo (schema + functions + code), but is not the default routing strategy for launch.
 
-2. **Adaptive threshold** (`TutorDexAggregator/supabase sqls/2026-01-09_assignment_ratings.sql`):
-   - Function: `calculate_tutor_rating_threshold(user_id, desired_per_day, lookback_days)`
-   - Uses past 7 days of assignment ratings to calculate threshold
-   - Sets threshold to achieve tutor's `desired_assignments_per_day` preference (default: 10)
-   - New tutors start with threshold=0 (permissive) to build history
-   - Adapts automatically to market supply/demand
-
-3. **DM integration** (`TutorDexAggregator/dm_assignments.py`):
-   - Toggle: `DM_USE_ADAPTIVE_THRESHOLD` (default: true)
-   - For each match, calculates rating and fetches tutor's threshold
-   - Only sends DM if `rating >= threshold`
-   - Records sent ratings to `tutor_assignment_ratings` table for future threshold calculations
-   - Env vars: `DM_RATING_LOOKBACK_DAYS` (default: 7), `DM_RATING_AVG_RATE_LOOKBACK_DAYS` (default: 30)
-
-4. **Database schema** (`public.tutor_assignment_ratings`):
-   - Tracks: `user_id`, `assignment_id`, `rating_score`, `distance_km`, `rate_min/max`, `match_score`, `sent_at`
-   - Unique constraint on (user_id, assignment_id) prevents duplicates
-   - Indexed for efficient threshold calculation queries
-   - User preferences extended with `desired_assignments_per_day` column
-
-5. **Tutor preferences** (`public.user_preferences`):
-   - New column: `desired_assignments_per_day` (integer, default: 10)
-   - Tutors can adjust this via profile page to control assignment volume
-   - Used by `calculate_tutor_rating_threshold` to personalize filtering
-
-**Documentation:**
-- System design: `docs/assignment_rating_system.md`
-- Implementation summary: `docs/ASSIGNMENT_RATING_IMPLEMENTATION_SUMMARY.md`
+If you re-enable it later, see:
+- Design: `docs/assignment_rating_system.md`
+- Implementation: `docs/ASSIGNMENT_RATING_IMPLEMENTATION_SUMMARY.md`
 - Migration: `TutorDexAggregator/supabase sqls/2026-01-09_assignment_ratings.sql`
-- Tests: `tests/test_assignment_rating.py`
-
-**Operational notes:**
-- Apply SQL migration before enabling adaptive thresholds
-- Monitor `tutor_assignment_ratings` table growth (one row per DM sent)
-- Threshold calculation is fast (indexed queries on 7-day window)
-- Disable with `DM_USE_ADAPTIVE_THRESHOLD=false` to revert to base score matching
-- Rating calculation requires Supabase connection for historical rate lookups; gracefully degrades if unavailable
+- Env toggle: `DM_USE_ADAPTIVE_THRESHOLD` (repo examples set this to `false`)
 
 ### 3.8 Frontend consumption
 
@@ -1171,6 +1136,9 @@ Matching assignment type / tutor kind (not implemented yet):
   - Supabase historical rate lookup (`SupabaseStore.get_tutor_avg_rate`)
   - Threshold RPC for adaptive filtering
 - If the rating table or RPC is missing, DM system gracefully degrades to base score matching (no adaptive thresholds)
+
+### Contract H: DM distance radius (NEW 2026-01-15)
+- If you want distance-gated DMs, the DB must include `public.user_preferences.dm_max_distance_km` (default 5). Apply `TutorDexAggregator/supabase sqls/2026-01-15_add_dm_max_distance_km.sql` on existing DBs.
 
 ### Contract G: shared taxonomy and contracts
 - The `shared/contracts/assignment_row.schema.json` must stay in sync with synced copies in Backend/Website

@@ -29,7 +29,7 @@ Minimal FastAPI service that stores tutor preferences in Redis and returns match
 - `ADMIN_API_KEY`: if set, requires `x-api-key` on bot/admin endpoints
 
 **Assignment Rating System** (see [docs/assignment_rating_system.md](../docs/assignment_rating_system.md)):
-- `DM_USE_ADAPTIVE_THRESHOLD`: enable adaptive threshold (default `true`)
+- `DM_USE_ADAPTIVE_THRESHOLD`: enable adaptive threshold (repo `.env.example` sets `false`, recommended for launch)
 - `DM_RATING_LOOKBACK_DAYS`: days of history for threshold calculation (default `7`)
 - `DM_RATING_AVG_RATE_LOOKBACK_DAYS`: days for avg rate calculation (default `30`)
 - `RATING_DISTANCE_*`: distance scoring tiers and bonuses (see docs)

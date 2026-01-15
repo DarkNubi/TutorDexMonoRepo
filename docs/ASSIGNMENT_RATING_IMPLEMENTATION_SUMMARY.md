@@ -4,6 +4,8 @@
 **Branch:** `copilot/update-assignment-matching-algorithm`  
 **Status:** ✅ Complete and Ready for Review
 
+**Status update (2026-01-15):** TutorDex switched the default DM routing to a “launch-simple” rule (subject+level + optional distance radius) for launch reliability. The adaptive threshold system described in this doc remains in the repo for future use, but is not the default path.
+
 ---
 
 ## 🎯 Problem Statement
@@ -209,7 +211,7 @@ dm_summary initial_matched=50 matched=30 sent=30
 
 **Core Settings:**
 ```bash
-DM_USE_ADAPTIVE_THRESHOLD=true  # Enable/disable (default: true)
+DM_USE_ADAPTIVE_THRESHOLD=false  # Recommended for launch (repo examples set false)
 DM_RATING_LOOKBACK_DAYS=7       # History for threshold (default: 7)
 DM_RATING_AVG_RATE_LOOKBACK_DAYS=30  # History for rate avg (default: 30)
 ```

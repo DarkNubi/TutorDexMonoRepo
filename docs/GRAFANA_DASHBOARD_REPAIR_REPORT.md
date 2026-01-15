@@ -4,6 +4,10 @@
 
 All 10 Grafana dashboards have been audited, repaired, and modernized for Grafana 12.3.1 compatibility.
 
+**Repo layout update (2026-01-15):**
+- Provisioned dashboards live in `observability/grafana/dashboards/active/`
+- Archived dashboards live in `observability/grafana/dashboards/archive/` (kept in repo, not provisioned by default)
+
 ### Changes Applied
 
 1. **Schema Version Upgrades**: 6 dashboards upgraded from v27/v36 to v41
@@ -22,7 +26,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex Overview
 
-**File**: `observability/grafana/dashboards/tutordex_overview.json`
+**File**: `observability/grafana/dashboards/active/tutordex_overview.json`
 
 **UID**: `tutordex-overview`
 
@@ -93,7 +97,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex Business Metrics
 
-**File**: `observability/grafana/dashboards/tutordex_business.json`
+**File**: `observability/grafana/dashboards/archive/tutordex_business.json`
 
 **UID**: `tutordex_business`
 
@@ -197,7 +201,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex Channel Performance
 
-**File**: `observability/grafana/dashboards/tutordex_channels.json`
+**File**: `observability/grafana/dashboards/archive/tutordex_channels.json`
 
 **UID**: `tutordex_channels`
 
@@ -280,7 +284,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex Data Quality & Completeness
 
-**File**: `observability/grafana/dashboards/tutordex_data_quality.json`
+**File**: `observability/grafana/dashboards/active/tutordex_data_quality.json`
 
 **UID**: `tutordex_data_quality`
 
@@ -371,7 +375,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex Matching & Notifications
 
-**File**: `observability/grafana/dashboards/tutordex_matching.json`
+**File**: `observability/grafana/dashboards/active/tutordex_matching.json`
 
 **UID**: `tutordex_matching`
 
@@ -464,7 +468,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex Infra
 
-**File**: `observability/grafana/dashboards/tutordex_infra.json`
+**File**: `observability/grafana/dashboards/active/tutordex_infra.json`
 
 **UID**: `tutordex-infra`
 
@@ -510,7 +514,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex LLM + Supabase
 
-**File**: `observability/grafana/dashboards/tutordex_llm_supabase.json`
+**File**: `observability/grafana/dashboards/active/tutordex_llm_supabase.json`
 
 **UID**: `tutordex-llm-supabase`
 
@@ -566,7 +570,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: TutorDex Quality
 
-**File**: `observability/grafana/dashboards/tutordex_quality.json`
+**File**: `observability/grafana/dashboards/active/tutordex_quality.json`
 
 **UID**: `tutordex-quality`
 
@@ -630,7 +634,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: Tutor Types Extraction Metrics
 
-**File**: `observability/grafana/dashboards/tutor_types_dashboard.json`
+**File**: `observability/grafana/dashboards/archive/tutor_types_dashboard.json`
 
 **UID**: `tutor-types-dashboard`
 
@@ -676,7 +680,7 @@ All 10 Grafana dashboards have been audited, repaired, and modernized for Grafan
 
 ## Dashboard: Tutor Types - Extraction Overview
 
-**File**: `observability/grafana/dashboards/tutor_types_dashboard_polished.json`
+**File**: `observability/grafana/dashboards/archive/tutor_types_dashboard_polished.json`
 
 **UID**: `tutor-types-polished`
 

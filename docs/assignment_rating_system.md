@@ -2,12 +2,14 @@
 
 ## Overview
 
+**Status (2026-01-15):** TutorDex currently ships with a “launch-simple” DM rule (subject+level + optional distance radius) for reliability at launch. The adaptive threshold system documented here remains available for future re-enablement, but is not the default routing strategy.
+
 The Assignment Rating System provides intelligent, personalized assignment distribution to tutors based on:
 - **Quality scoring**: Combines matching accuracy, distance convenience, and pay rate attractiveness
 - **Adaptive thresholds**: Each tutor receives assignments tailored to their desired volume
 - **Historical learning**: System learns from past assignments to improve recommendations over time
 
-This replaces the previous fixed threshold system (`MATCH_MIN_SCORE=3`) with a dynamic, tutor-specific approach.
+This was designed to replace the previous fixed threshold system (`MATCH_MIN_SCORE=3`) with a dynamic, tutor-specific approach when enabled.
 
 ## Key Benefits
 
@@ -145,9 +147,9 @@ Used to:
 ### Environment Variables
 
 **Core Settings:**
-- `DM_USE_ADAPTIVE_THRESHOLD` (default: `true`)
+- `DM_USE_ADAPTIVE_THRESHOLD`
   - Enable/disable adaptive filtering
-  - Set to `false` to use old fixed-threshold behavior
+  - **Recommended for launch**: `false` (this is what the repo `.env.example` files set)
 
 - `DM_RATING_LOOKBACK_DAYS` (default: `7`)
   - Days of history for threshold calculation

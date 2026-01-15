@@ -5,15 +5,20 @@
 **Auditor**: GitHub Copilot Observability Agent
 **Status**: ✅ **ALL DASHBOARDS VALIDATED AND PRODUCTION READY**
 
+**Repo layout update (2026-01-15):** Dashboards are now organized into:
+- `observability/grafana/dashboards/active/` (provisioned by default)
+- `observability/grafana/dashboards/archive/` (kept in repo, not provisioned by default)
+
 ---
 
 ## Executive Summary
 
-Successfully audited, repaired, and modernized all 10 Grafana dashboards in the TutorDex monorepo. All dashboards now comply with Grafana 12.3.1 requirements and are forward-compatible with future versions.
+Successfully audited, repaired, and modernized the TutorDex Grafana dashboards for Grafana 12.3.1 compatibility. A curated “active” set is provisioned by default; the remaining dashboards are archived to reduce maintenance and duplication for a solo-founder workflow.
 
-### Key Metrics
+### Key Metrics (updated for current repo layout)
 
-- **Dashboards Audited**: 10
+- **Dashboards Provisioned (active)**: 9
+- **Dashboards Archived (not provisioned)**: 10
 - **Panels Inspected**: 66
 - **Query Targets Validated**: 81
 - **Critical Issues Found**: 0 (after fixes)
@@ -230,8 +235,7 @@ open http://localhost:3300
 ### 2. Automated Validation
 ```bash
 # Validate dashboard JSON structure
-cd observability/grafana/dashboards
-for dash in *.json; do
+for dash in observability/grafana/dashboards/active/*.json observability/grafana/dashboards/archive/*.json; do
   echo "Validating $dash..."
   python3 -m json.tool "$dash" > /dev/null && echo "  ✓ Valid JSON"
 done
@@ -248,19 +252,32 @@ curl -G http://localhost:9090/api/v1/query \
 
 ---
 
-## Files Modified
+## Files Modified (paths updated)
 
-### Dashboard Files (10 files)
-- `observability/grafana/dashboards/tutordex_overview.json`
-- `observability/grafana/dashboards/tutordex_business.json`
-- `observability/grafana/dashboards/tutordex_channels.json`
-- `observability/grafana/dashboards/tutordex_data_quality.json`
-- `observability/grafana/dashboards/tutordex_matching.json`
-- `observability/grafana/dashboards/tutordex_infra.json`
-- `observability/grafana/dashboards/tutordex_llm_supabase.json`
-- `observability/grafana/dashboards/tutordex_quality.json`
-- `observability/grafana/dashboards/tutor_types_dashboard.json`
-- `observability/grafana/dashboards/tutor_types_dashboard_polished.json`
+### Dashboard Files
+
+**Active (provisioned):**
+- `observability/grafana/dashboards/active/tutordex_home.json`
+- `observability/grafana/dashboards/active/tutordex_realtime.json`
+- `observability/grafana/dashboards/active/tutordex_overview.json`
+- `observability/grafana/dashboards/active/tutordex_infra.json`
+- `observability/grafana/dashboards/active/tutordex_channel_health.json`
+- `observability/grafana/dashboards/active/tutordex_data_quality.json`
+- `observability/grafana/dashboards/active/tutordex_llm_supabase.json`
+- `observability/grafana/dashboards/active/tutordex_matching.json`
+- `observability/grafana/dashboards/active/tutordex_quality.json`
+
+**Archived (not provisioned by default):**
+- `observability/grafana/dashboards/archive/tutordex_business.json`
+- `observability/grafana/dashboards/archive/tutordex_channels.json`
+- `observability/grafana/dashboards/archive/tutor_types_dashboard.json`
+- `observability/grafana/dashboards/archive/tutor_types_dashboard_polished.json`
+- `observability/grafana/dashboards/archive/business_metrics.json`
+- `observability/grafana/dashboards/archive/tutordex_cost.json`
+- `observability/grafana/dashboards/archive/tutordex_error_analysis.json`
+- `observability/grafana/dashboards/archive/tutordex_lifecycle.json`
+- `observability/grafana/dashboards/archive/tutordex_slo.json`
+- `observability/grafana/dashboards/archive/tutordex_worker_performance.json`
 
 ### Documentation (2 files)
 - `GRAFANA_DASHBOARD_REPAIR_REPORT.md` (new - detailed per-dashboard report)
@@ -277,7 +294,7 @@ If issues arise, rollback is simple:
 git revert <commit-hash>
 
 # Or restore specific dashboards
-git checkout HEAD~1 observability/grafana/dashboards/*.json
+git checkout HEAD~1 observability/grafana/dashboards/active/*.json observability/grafana/dashboards/archive/*.json
 
 # Restart Grafana
 docker compose restart grafana

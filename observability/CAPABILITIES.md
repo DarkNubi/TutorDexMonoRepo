@@ -88,65 +88,60 @@ Your stack monitors critical conditions and sends **Telegram notifications** via
 
 Centralized log aggregation via Loki/Promtail is optional and not included in the default local stack. Services emit structured JSON logs to stdout; to inspect logs locally use `docker compose logs <service>`. If you need centralized log search, reintroduce Loki/Promtail and configure the Grafana datasource accordingly.
 
-### 5. **Visual Dashboards (8 Grafana Dashboards)**
+### 5. **Visual Dashboards (Grafana)**
 
-Your stack provides **pre-built operational and business dashboards**:
+The repo keeps a small, curated set of dashboards **provisioned by default** (for a solo-founder ops workflow) under `observability/grafana/dashboards/active/`.
 
-#### Operational Dashboards
+#### Provisioned Dashboards (active)
 
-1. **TutorDex Overview** (`tutordex_overview.json`)
+1. **TutorDex Home** (`active/tutordex_home.json`)
+   - Single entry point / links to key views
+
+2. **TutorDex Realtime** (`active/tutordex_realtime.json`)
+   - Live ingestion + processing signals
+
+3. **TutorDex Overview** (`active/tutordex_overview.json`)
    - High-level system health
    - Message ingestion rates
    - Queue status and throughput
    - Component uptime
 
-2. **TutorDex Infra** (`tutordex_infra.json`)
+4. **TutorDex Infra** (`active/tutordex_infra.json`)
    - Container resource usage
    - Host metrics (CPU, memory, disk)
    - Network traffic
    - Service availability
 
-3. **TutorDex LLM + Supabase** (`tutordex_llm_supabase.json`)
+5. **TutorDex Channel Health** (`active/tutordex_channel_health.json`)
+   - Channel staleness monitoring
+   - “nothing is flowing” early warning
+
+6. **TutorDex Data Quality** (`active/tutordex_data_quality.json`)
+   - Missing fields by type
+   - Quality inconsistencies
+   - Parse failures by reason & channel
+   - Quality trends over time
+
+7. **TutorDex LLM + Supabase** (`active/tutordex_llm_supabase.json`)
    - LLM request rates and latencies
    - LLM failure rates
    - Supabase operation metrics
    - Database latency distribution
 
-4. **TutorDex Quality** (`tutordex_quality.json`)
-   - Parse success/failure rates
-   - Parse failure reasons
-   - Missing field tracking
-   - Assignment quality issues
-
-#### Business Metrics Dashboards ✨ **NEW**
-
-5. **TutorDex Business Metrics** (`tutordex_business.json`)
-   - Assignment creation rate (hourly/daily)
-   - Parse success & error rates
-   - Broadcast & DM delivery stats
-   - Message → Assignment conversion
-   - 24h volume statistics
-
-6. **TutorDex Matching & Notifications** (`tutordex_matching.json`)
+8. **TutorDex Matching & Notifications** (`active/tutordex_matching.json`)
    - Tutors matched per assignment
    - Notification delivery by channel
    - DM rate limiting incidents
    - Failure analysis by reason
-   - Total notifications delivered
 
-7. **TutorDex Data Quality & Completeness** (`tutordex_data_quality.json`)
-   - Missing fields by type
-   - Overall completeness score
-   - Quality inconsistencies
-   - Parse failures by reason & channel
-   - Quality trends over time
+9. **TutorDex Quality** (`active/tutordex_quality.json`)
+   - Parse success/failure rates
+   - Parse failure reasons
+   - Assignment quality issues
 
-8. **TutorDex Channel Performance** (`tutordex_channels.json`)
-   - Message rate by channel
-   - Parse success rate by channel
-   - Channel staleness monitoring
-   - Message → Assignment conversion
-   - Top performing channels
+#### Archived Dashboards
+
+Additional dashboards (business metrics, cost, SLO, lifecycle, tutor-type extraction, etc.) are kept in `observability/grafana/dashboards/archive/` for reference, but are not provisioned by default to reduce duplication and maintenance overhead.
 
 **Dashboard Features**:
 - Time-range selection (default: 24h)
@@ -225,9 +220,9 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
 - **SLO dashboards**: Service Level Objectives (e.g., 99% uptime, p95 latency < 2s)
 
 **How to add**:
-- Edit JSON dashboards in `observability/grafana/dashboards/`
+- Put provisioned dashboards in `observability/grafana/dashboards/active/` (keep experiments/old copies in `observability/grafana/dashboards/archive/`)
 - Use Grafana UI to create, then export JSON
-- Dashboards auto-load on Grafana startup
+- Only `active/` dashboards auto-load by default on Grafana startup
 
 ### 3. **Advanced Alerting**
 
