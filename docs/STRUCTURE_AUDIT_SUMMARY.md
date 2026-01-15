@@ -1,5 +1,7 @@
 # Codebase Structure Audit Summary
 
+> **Status update (Jan 15, 2026):** This audit reflects a historical snapshot before the final modularization pass. Current structure/status is tracked in `docs/AGENT_HANDOVER_COMPLETE_REFACTORING.md`.
+
 **Audit Date:** 2026-01-14  
 **Auditor:** GitHub Copilot  
 **Scope:** Repository-wide structure analysis and recommendations

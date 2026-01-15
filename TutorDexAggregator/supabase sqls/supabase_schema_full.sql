@@ -1878,10 +1878,37 @@ begin
 end;
 $$;
 
+create or replace function public.requeue_stale_extractions(
+  p_older_than_seconds integer
+)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_count integer;
+begin
+  update public.telegram_extractions
+     set
+       status = 'pending',
+       updated_at = now(),
+       meta = coalesce(meta, '{}'::jsonb)
+             || jsonb_build_object('requeued_at', now(), 'requeue_reason', 'stale_processing')
+   where status = 'processing'
+     and updated_at < now() - make_interval(secs => greatest(0, p_older_than_seconds));
+
+  get diagnostics v_count = row_count;
+  return jsonb_build_object('count', v_count);
+end;
+$$;
+
 alter function public.enqueue_telegram_extractions(text, text, text[], boolean)
   set search_path = public, extensions;
 
 alter function public.claim_telegram_extractions(text, integer)
+  set search_path = public, extensions;
+
+alter function public.requeue_stale_extractions(integer)
   set search_path = public, extensions;
 
 -- Simplify `public.telegram_extractions` to a single-pass extract+canonicalize pipeline.

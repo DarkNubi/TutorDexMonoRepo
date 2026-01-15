@@ -422,6 +422,51 @@ class SupabaseRawStore:
         log_event(logger, logging.DEBUG, "raw_messages_upsert_ok", attempted=len(rows), ms=round((timed() - t0) * 1000.0, 2))
         return len(rows), len(rows)
 
+    def enqueue_extractions(self, *, channel_link: str, message_ids: List[str], pipeline_version: str, force: bool = False) -> int:
+        """
+        Enqueue extraction jobs for existing raw messages via the Supabase RPC work queue.
+
+        This calls `public.enqueue_telegram_extractions(...)` (see `supabase_schema_full.sql`).
+        """
+        ids = [str(x).strip() for x in (message_ids or []) if str(x).strip()]
+        if not ids:
+            return 0
+        if not self.client:
+            self._best_effort_fallback(
+                kind="enqueue_extractions",
+                row={"channel_link": channel_link, "message_ids": ids, "pipeline_version": pipeline_version, "force": bool(force)},
+            )
+            return 0
+
+        body = {
+            "p_pipeline_version": str(pipeline_version or "").strip(),
+            "p_channel_link": str(channel_link or "").strip(),
+            "p_message_ids": ids,
+            "p_force": bool(force),
+        }
+        try:
+            resp = self.client.post("rpc/enqueue_telegram_extractions", body, timeout=20)
+            if resp.status_code >= 400:
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    "raw_enqueue_extractions_status",
+                    status_code=resp.status_code,
+                    body=(resp.text or "")[:400],
+                )
+                return 0
+            try:
+                data = resp.json()
+            except Exception:
+                return 0
+            try:
+                return int(data or 0)
+            except Exception:
+                return 0
+        except Exception as e:
+            log_event(logger, logging.WARNING, "raw_enqueue_extractions_failed", error=str(e))
+            return 0
+
     def mark_deleted(self, *, channel_link: str, message_ids: Iterable[str], deleted_at_iso: Optional[str] = None) -> int:
         ids = [str(x).strip() for x in message_ids if str(x).strip()]
         if not ids:

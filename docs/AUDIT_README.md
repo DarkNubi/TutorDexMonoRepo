@@ -1,5 +1,7 @@
 # Codebase Quality Audit - Documentation Index
 
+> **Status update (Jan 15, 2026):** This audit index is a historical snapshot. Current refactor status is tracked in `docs/AGENT_HANDOVER_COMPLETE_REFACTORING.md`.
+
 **Audit Date:** January 2026  
 **Status:** Priorities 1-6 Complete, 10 Tasks Remaining  
 **Progress:** 6/16 items (38%)  

@@ -3,6 +3,13 @@
 **Created:** January 14, 2026  
 **Purpose:** Detailed, actionable plan for completing Phases 2-5
 
+> **Status update (Jan 15, 2026):** This plan is now mostly a historical roadmap. Phases 2–4 were completed structurally via real modular splits:
+> - Worker: `TutorDexAggregator/workers/extract_worker_*.py`
+> - Collector: `TutorDexAggregator/collection/*`
+> - Broadcast: `TutorDexAggregator/delivery/*`
+> - Frontend: assignments page split into `TutorDexWebsite/src/page-assignments.{state,render,logic}.js` + tiny `page-assignments.impl.js`; landing moved under `TutorDexWebsite/src/landing/*` with `TutorDexWebsite/index.tsx` as a re-export.
+> Remaining work is Phase 7 end-to-end verification (Telegram/Supabase/LLM + browser UI validation).
+
 ---
 
 ## Executive Summary
@@ -16,10 +23,10 @@
 - Phase 5 implementation (100%): 8-10 hours
 
 **Current Status:**
-- Phase 2: 90% complete (modules created, integration pending)
-- Phase 3: 35% complete (utilities created, integration pending)
-- Phase 4: 0% complete (not started)
-- Phase 5: 0% complete (not started)
+- Phase 2: ✅ Structurally complete (worker split); needs Phase 7 verification
+- Phase 3: ✅ Structurally complete (assignments + landing split); needs Phase 7 UI verification
+- Phase 4: ✅ Structurally complete (collector + delivery split); needs Phase 7 verification
+- Phase 5: 🟡 Optional deeper modularization (persistence) + Phase 7 verification
 
 ---
 

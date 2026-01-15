@@ -1,5 +1,7 @@
 # Phase 2 & 3 Final Summary
 
+> **Status update (Jan 15, 2026):** This summary reflects the state *before* the final modular integrations. The repo is now structurally refactored (no code files >800 lines) and split into focused modules; remaining work is Phase 7 end-to-end verification.
+
 ## Completion Status
 
 ### Phase 2: Extract Worker Refactoring - 90% COMPLETE ✅

@@ -67,8 +67,10 @@ class AggregatorConfig(BaseSettings):
     supabase_assignments_table: str = Field(default="assignments", validation_alias=AliasChoices("SUPABASE_ASSIGNMENTS_TABLE"))
     supabase_raw_messages_table: str = Field(default="telegram_messages_raw", validation_alias=AliasChoices("SUPABASE_RAW_MESSAGES_TABLE"))
     supabase_raw_channels_table: str = Field(default="telegram_channels", validation_alias=AliasChoices("SUPABASE_RAW_CHANNELS_TABLE"))
-    supabase_raw_progress_table: str = Field(default="telegram_collector_progress", validation_alias=AliasChoices("SUPABASE_RAW_PROGRESS_TABLE"))
-    supabase_raw_runs_table: str = Field(default="telegram_collector_runs", validation_alias=AliasChoices("SUPABASE_RAW_RUNS_TABLE"))
+    # Canonical ingestion tracking tables (see `TutorDexAggregator/supabase sqls/supabase_schema_full.sql`).
+    # Note: older names (`telegram_collector_*`) are not part of the canonical schema snapshot.
+    supabase_raw_progress_table: str = Field(default="ingestion_run_progress", validation_alias=AliasChoices("SUPABASE_RAW_PROGRESS_TABLE"))
+    supabase_raw_runs_table: str = Field(default="ingestion_runs", validation_alias=AliasChoices("SUPABASE_RAW_RUNS_TABLE"))
     supabase_bump_min_seconds: int = Field(default=6 * 60 * 60, validation_alias=AliasChoices("SUPABASE_BUMP_MIN_SECONDS"))
 
     # -------------------------
@@ -132,7 +134,10 @@ class AggregatorConfig(BaseSettings):
     # -------------------------
     telegram_api_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("TELEGRAM_API_ID", "TG_API_ID", "API_ID"))
     telegram_api_hash: Optional[str] = Field(default=None, validation_alias=AliasChoices("TELEGRAM_API_HASH", "TG_API_HASH", "API_HASH"))
-    session_string: Optional[str] = Field(default=None, validation_alias=AliasChoices("SESSION_STRING", "TG_SESSION_STRING", "SESSION"))
+    session_string: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("SESSION_STRING", "TELEGRAM_SESSION_STRING", "TG_SESSION_STRING", "SESSION"),
+    )
     session_string_recovery: Optional[str] = Field(default=None, validation_alias=AliasChoices("SESSION_STRING_RECOVERY", "TG_SESSION_STRING_RECOVERY", "SESSION_STRING_RECOVERY"))
     telegram_session_name: str = Field(default="tutordex.session", validation_alias=AliasChoices("TG_SESSION", "TELEGRAM_SESSION_NAME"))
     telegram_session_recovery: str = Field(default="tutordex_recovery.session", validation_alias=AliasChoices("TG_SESSION_RECOVERY"))

@@ -93,25 +93,17 @@ export function toStringList(value) {
  * @returns {string} Formatted relative time (e.g., "2h ago")
  */
 export function formatRelativeTime(isoString) {
-  if (!isoString) return "";
-  try {
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-
-    if (diffMin < 1) return "just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHour < 24) return `${diffHour}h ago`;
-    if (diffDay === 1) return "1 day ago";
-    if (diffDay < 7) return `${diffDay} days ago`;
-    
-    return date.toLocaleDateString();
-  } catch {
-    return "";
-  }
+  const t = Date.parse(String(isoString || ""));
+  if (!Number.isFinite(t)) return "";
+  const deltaMs = Date.now() - t;
+  if (!Number.isFinite(deltaMs)) return "";
+  const mins = Math.floor(deltaMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 /**
@@ -120,13 +112,11 @@ export function formatRelativeTime(isoString) {
  * @returns {string} Formatted date
  */
 export function formatShortDate(isoString) {
-  if (!isoString) return "";
+  const t = Date.parse(String(isoString || ""));
+  if (!Number.isFinite(t)) return "";
   try {
-    const date = new Date(isoString);
-    return date.toLocaleDateString("en-SG", { 
-      month: "short", 
-      day: "numeric" 
-    });
+    const d = new Date(t);
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   } catch {
     return "";
   }
@@ -139,8 +129,8 @@ export function formatShortDate(isoString) {
  * @returns {string} Formatted distance string
  */
 export function formatDistanceKm(km, isEstimated = false) {
-  if (typeof km !== "number" || !Number.isFinite(km)) return "";
-  const rounded = Math.round(km * 10) / 10;
-  const suffix = isEstimated ? " (est.)" : "";
-  return `${rounded} km${suffix}`;
+  const n = typeof km === "number" ? km : Number.parseFloat(String(km || ""));
+  if (!Number.isFinite(n)) return "";
+  const distStr = n < 10 ? `~${n.toFixed(1)} km` : `~${Math.round(n)} km`;
+  return isEstimated ? `${distStr} (estimated)` : distStr;
 }

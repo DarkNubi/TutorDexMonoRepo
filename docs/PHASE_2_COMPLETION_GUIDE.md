@@ -1,5 +1,7 @@
 # Phase 2 Completion Guide - Final Refactoring Step
 
+> **Status update (Jan 15, 2026):** This guide is now a historical plan. The worker refactor is structurally complete: `TutorDexAggregator/workers/extract_worker.py` is a thin entrypoint and the logic is split across `TutorDexAggregator/workers/extract_worker_*.py`. The remaining work is Phase 7 end-to-end verification with real Supabase + LLM + Telegram credentials.
+
 ## Status
 
 **Completed:**
@@ -9,24 +11,21 @@
 - ✅ Clean module boundaries established
 
 **Remaining:**
-- ⏳ Refactor `_work_one()` function in extract_worker.py
-- ⏳ Remove now-redundant helper functions
-- ⏳ Update imports
-- ⏳ End-to-end testing
+- ⏳ End-to-end testing (Phase 7) in a fully provisioned environment (Supabase + LLM + Telegram)
 
 ## Current State
 
-**extract_worker.py:** 1842 lines
-- Main `_work_one()` function: ~800 lines (lines 842-1642)
-- Helper functions: ~500 lines (can be removed/simplified)
-- Main loop and setup: ~500 lines (keep as-is)
+**Current structure (post-refactor):**
+- Entrypoint: `TutorDexAggregator/workers/extract_worker.py`
+- Orchestration: `TutorDexAggregator/workers/extract_worker_main.py`
+- Job processing: `TutorDexAggregator/workers/extract_worker_job.py`
+- Compilation path: `TutorDexAggregator/workers/extract_worker_compilation.py`
+- Standard path: `TutorDexAggregator/workers/extract_worker_standard.py` + `TutorDexAggregator/workers/extract_worker_standard_persist.py`
+- Supporting modules: `TutorDexAggregator/workers/extract_worker_triage.py`, `TutorDexAggregator/workers/extract_worker_store.py`, `TutorDexAggregator/workers/extract_worker_enrich.py`, `TutorDexAggregator/workers/extract_worker_metrics.py`
 
 ## Target State
 
-**extract_worker.py:** ~900 lines
-- Simplified `_work_one()`: ~150 lines (orchestration only)
-- Main loop and setup: ~500 lines (unchanged)
-- Minimal helpers: ~250 lines (compilation handling, etc.)
+**Target state:** Achieved for repo structure/size; proceed to Phase 7 verification.
 
 ## Refactoring Pattern
 

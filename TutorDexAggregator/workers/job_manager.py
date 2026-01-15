@@ -93,7 +93,7 @@ def mark_job_status(
     if merged_meta is not None:
         body["meta"] = merged_meta
     if error is not None:
-        body["error"] = error
+        body["error_json"] = error
     
     return patch_table(
         url,

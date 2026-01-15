@@ -116,10 +116,31 @@ def main() -> None:
                 params={"timeout": 0, "offset": offset, "limit": 50},
                 timeout=20,
             )
-            resp.raise_for_status()
+            if resp.status_code == 409:
+                # Common when a webhook is set (or another long-poller is running).
+                # Avoid leaking the bot token in tracebacks by handling this explicitly.
+                try:
+                    requests.post(
+                        f"{_bot_base(token)}/deleteWebhook",
+                        params={"drop_pending_updates": False},
+                        timeout=20,
+                    )
+                    logger.warning("telegram_getupdates_conflict_409_deleted_webhook")
+                except Exception as e:
+                    logger.warning("telegram_getupdates_conflict_409_delete_webhook_failed error_type=%s", type(e).__name__)
+                time.sleep(5)
+                continue
+
+            if resp.status_code >= 400:
+                logger.error("telegram_getupdates_http_error status_code=%s body=%s", resp.status_code, (resp.text or "")[:200].replace("\n", " "))
+                time.sleep(5)
+                continue
+
             data = resp.json()
             if not data.get("ok"):
-                raise RuntimeError(f"Telegram API error: {data}")
+                logger.error("telegram_getupdates_api_error payload=%s", json.dumps(data)[:500])
+                time.sleep(5)
+                continue
 
             updates = data.get("result") or []
             if not isinstance(updates, list):
@@ -165,7 +186,7 @@ def main() -> None:
                     logger.exception("claim_error", extra={"chat_id": chat_id, "username": username})
 
             _save_offset(offset)
-        except Exception as e:
+        except Exception:
             logger.exception("poll_error")
 
         time.sleep(max(0.5, float(args.poll_seconds)))

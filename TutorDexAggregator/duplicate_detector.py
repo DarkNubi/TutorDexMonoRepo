@@ -93,13 +93,13 @@ class DuplicateDetector:
         """
         self.supabase_url = supabase_url.rstrip("/")
         self.supabase_key = supabase_key
-        self.config = config or self._load_config_from_db() or DetectionConfig()
         self._headers = {
             "apikey": self.supabase_key,
             "Authorization": f"Bearer {self.supabase_key}",
             "Content-Type": "application/json",
             "Prefer": "return=representation"
         }
+        self.config = config or self._load_config_from_db() or DetectionConfig()
         
         logger.info(
             "DuplicateDetector initialized",
@@ -136,7 +136,8 @@ class DuplicateDetector:
                 logger.warning("Could not load config from DB, using defaults")
                 return None
             
-            enabled = response.json()[0]["config_value"] == "true"
+            enabled_raw = response.json()[0].get("config_value")
+            enabled = str(enabled_raw).strip().lower() in {"true", "1", "yes", "y", "on"}
             
             if not enabled:
                 logger.info("Duplicate detection is DISABLED in database config")
@@ -305,23 +306,21 @@ class DuplicateDetector:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.config.time_window_days)
             cutoff_str = cutoff_date.isoformat()
             
-            # Query for open assignments from different agencies, published within time window
-            query_params = (
-                f"status=eq.open"
-                f"&agency_id=neq.{assignment['agency_id']}"
-                f"&published_at=gte.{cutoff_str}"
-                f"&select=*"
-                f"&limit={self.config.detection_batch_size}"
-            )
-            
             response = requests.get(
-                f"{self.supabase_url}/rest/v1/assignments?{query_params}",
+                f"{self.supabase_url}/rest/v1/assignments",
                 headers=self._headers,
+                params={
+                    "status": "eq.open",
+                    "agency_id": f"neq.{assignment['agency_id']}",
+                    "published_at": f"gte.{cutoff_str}",
+                    "select": "*",
+                    "limit": str(self.config.detection_batch_size),
+                },
                 timeout=15
             )
             
             if response.status_code != 200:
-                logger.error(f"Failed to fetch candidates: {response.status_code}")
+                logger.error(f"Failed to fetch candidates: {response.status_code} body={(response.text or '')[:200]}")
                 return []
             
             candidates = response.json()

@@ -1,5 +1,7 @@
 # Codebase Structure Refactoring Guide
 
+> **Status update (Jan 15, 2026):** Structural refactor targets are now met (including 0 code files >800 lines) via real modular splits. This guide is retained as a historical roadmap; for current structure/status, start with `docs/AGENT_HANDOVER_COMPLETE_REFACTORING.md`.
+
 **Date:** 2026-01-14  
 **Status:** Phase 1 Complete - Recommendations for Future Work
 

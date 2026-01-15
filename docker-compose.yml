@@ -41,6 +41,7 @@ services:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
+      COLLECTOR_WAIT_FOR_TELEGRAM_CREDS: "true"
       OTEL_ENABLED: "${OTEL_ENABLED:-1}"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_SERVICE_NAME: "tutordex-collector"
@@ -63,6 +64,7 @@ services:
       - "0.0.0.0:8000:8000"
     volumes:
       - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+      - ./shared:/app/shared:ro
     environment:
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
@@ -95,6 +97,7 @@ services:
       - backend
     volumes:
       - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+      - ./shared:/app/shared:ro
       - telegram_link_bot_state:/state
     extra_hosts:
       - "host.docker.internal:host-gateway"

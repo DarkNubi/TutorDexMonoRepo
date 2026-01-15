@@ -1,5 +1,7 @@
 # Codebase Structure Audit - Comprehensive Work Summary
 
+> **Status update (Jan 15, 2026):** This summary includes historical planning numbers from before the final modularization pass. Current structure/status is tracked in `docs/AGENT_HANDOVER_COMPLETE_REFACTORING.md`.
+
 **Date:** January 14, 2026  
 **Status:** Phase 1 Complete (100%), Phase 2 (90%), Phase 3 (35%), Phase 4 (Assessed)  
 **Time Invested:** ~16 hours  
@@ -214,8 +216,7 @@ Completed comprehensive codebase structure audit with substantial refactoring pr
     - Path to completion
 
 **Plus Backup Files:**
-- `extract_worker.py.backup` - Original file backed up for safe Phase 2 integration
-- `page-assignments.js.backup` - Original file backed up for safe Phase 3 integration
+- Backup files were previously used during the refactor, but are no longer kept in-repo; use `git` to restore prior versions when needed.
 
 ---
 

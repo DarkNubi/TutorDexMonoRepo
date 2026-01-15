@@ -1,5 +1,7 @@
 # Codebase Structure Audit - January 2026
 
+> **Status update (Jan 15, 2026):** This audit pack is a historical snapshot. Current structure/status is tracked in `docs/AGENT_HANDOVER_COMPLETE_REFACTORING.md`.
+
 **Status:** ✅ Phase 1 Complete  
 **Date:** January 14, 2026
 

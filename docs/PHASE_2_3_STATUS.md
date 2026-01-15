@@ -1,5 +1,7 @@
 # Phase 2 & 3 Completion Status
 
+> **Status update (Jan 15, 2026):** This doc is historical. Phase 2–4 structural refactors are now complete via real modular splits; remaining work is Phase 7 end-to-end verification (Supabase + LLM + Telegram + browser UI checks).
+
 ## Phase 2 Status: 90% Complete
 
 ### What Was Accomplished

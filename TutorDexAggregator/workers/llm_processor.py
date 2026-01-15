@@ -84,19 +84,13 @@ def extract_with_llm(
             pass
     
     try:
-        # Check circuit breaker
         if circuit_breaker:
-            circuit_breaker.call(lambda: None)  # Test if circuit is open
-        
-        # Call extraction function
-        parsed = extract_func(text, chat=channel, cid=cid)
+            parsed = circuit_breaker.call(extract_func, text, chat=channel, cid=cid)
+        else:
+            parsed = extract_func(text, chat=channel, cid=cid)
         
         if not isinstance(parsed, dict):
             parsed = {}
-        
-        # Record success
-        if circuit_breaker:
-            circuit_breaker.record_success()
         
         latency = time.perf_counter() - t0
         
@@ -133,10 +127,6 @@ def extract_with_llm(
         error_type = classify_llm_error(e)
         logger.warning(f"LLM extraction failed: {error_type} - {e}")
         latency = time.perf_counter() - t0
-        
-        # Record failure for circuit breaker
-        if circuit_breaker:
-            circuit_breaker.record_failure()
         
         if metrics and "llm_fail_total" in metrics:
             try:

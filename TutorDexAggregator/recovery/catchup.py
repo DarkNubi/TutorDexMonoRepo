@@ -253,8 +253,17 @@ async def run_catchup_until_target(
 
     await recovery_client.connect()
     try:
-        # Import backfill helper from collector (single source of truth for backfill semantics).
-        import collector as collector_mod  # type: ignore
+        # Reuse the collector's backfill implementation (single source of truth for backfill semantics).
+        from collection.backfill import backfill_channel as backfill_channel_fn
+        from collection.types import CollectorContext
+        from workers.extract_worker_types import VersionInfo
+
+        ctx = CollectorContext(
+            cfg=cfg,
+            logger=logging.getLogger("collector"),
+            version=VersionInfo(str(cfg.extraction_pipeline_version or "unknown"), str(cfg.schema_version or "unknown")),
+            here=Path(agg_dir),
+        )
 
         run_id = store.create_run(
             run_type="recovery_catchup",
@@ -294,7 +303,8 @@ async def run_catchup_until_target(
                     res = None
                     for attempt in range(1, max_attempts + 1):
                         try:
-                            res = await collector_mod.backfill_channel(  # type: ignore[attr-defined]
+                            res = await backfill_channel_fn(
+                                ctx=ctx,
                                 client=recovery_client,
                                 store=store,
                                 run_id=run_id,

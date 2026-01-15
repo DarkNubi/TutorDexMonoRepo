@@ -32,19 +32,15 @@ exporters:
     endpoint: tempo:4317
     tls:
       insecure: true
-  
-  # Optional: Export to console for debugging
-  logging:
-    loglevel: info
-    sampling_initial: 10
-    sampling_thereafter: 100
+  debug:
+    verbosity: basic
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, attributes]
-      exporters: [otlp, logging]
+      exporters: [otlp, debug]
   
   telemetry:
     logs:

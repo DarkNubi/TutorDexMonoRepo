@@ -3,6 +3,7 @@ import contextvars
 import asyncio
 import json
 import logging
+import os
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -21,6 +22,16 @@ _schema_version_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutor
 _component_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_component", default="-")
 _trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_trace_id", default="-")
 _span_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("tutordex_span_id", default="-")
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    s = str(v).strip().lower()
+    if not s:
+        return default
+    return s in {"1", "true", "t", "yes", "y", "on"}
 
 
 @contextlib.contextmanager
