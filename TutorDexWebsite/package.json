@@ -6,7 +6,7 @@
     "@sentry/browser": "^7.99.0",
     "framer-motion": "^12.0.0",
     "lucide-react": "^0.474.0",
-    "react": "^18.3.1",
+    "react": "^19.2.3",
     "react-dom": "^18.3.1"
   },
   "scripts": {
@@ -17,7 +17,7 @@
     "test": "mocha --ui bdd --recursive test --reporter spec"
   },
   "devDependencies": {
-    "@types/react": "^18.3.18",
+    "@types/react": "^19.2.8",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^5.1.2",
     "chai": "^4.3.8",
