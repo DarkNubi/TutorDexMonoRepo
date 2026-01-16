@@ -10,6 +10,7 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 
 - **New Developer?** Start with [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md) for architecture overview
 - **Setting up environment?** See [../DEPENDENCIES.md](../DEPENDENCIES.md) and [../scripts/bootstrap.sh](../scripts/bootstrap.sh)
+- **What to work on?** See [OUTSTANDING_TASKS_SUMMARY.md](OUTSTANDING_TASKS_SUMMARY.md) ⭐ for prioritized task list
 - **Audit tasks?** See [Audit Documentation](#audit-documentation) section
 
 ---
@@ -69,8 +70,10 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 **Implementation Planning:**
 - **[IMPLEMENTATION_PLAN_2026-01-16.md](IMPLEMENTATION_PLAN_2026-01-16.md)** - Current implementation plan
 - **[CONSOLIDATION_PLAN.md](CONSOLIDATION_PLAN.md)** - Documentation consolidation strategy
+- **[OUTSTANDING_TASKS_SUMMARY.md](OUTSTANDING_TASKS_SUMMARY.md)** - ⭐ **Quick reference for outstanding work** (6 min read)
+- **[OUTSTANDING_TASKS_2026-01-16.md](OUTSTANDING_TASKS_2026-01-16.md)** - Comprehensive outstanding tasks list (15 min read)
 
-**Status:** ✅ 16/16 audit priorities complete, implementation plan in progress
+**Status:** ✅ 16/16 audit priorities complete, 3 new critical risks identified
 
 **Note:** Additional audit docs archived in [archive/audit-2026-01/](archive/audit-2026-01/)
 
