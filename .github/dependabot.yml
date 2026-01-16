@@ -1,45 +1,105 @@
 version: 2
+
 updates:
+  # =========================
   # Backend Python dependencies
+  # =========================
   - package-ecosystem: "pip"
     directory: "/TutorDexBackend"
     schedule:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+
     labels:
       - "dependencies"
       - "backend"
+      - "dependabot"
 
+    groups:
+      backend-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+          - "minor"
+
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # =========================
   # Aggregator Python dependencies
+  # =========================
   - package-ecosystem: "pip"
     directory: "/TutorDexAggregator"
     schedule:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+
     labels:
       - "dependencies"
       - "aggregator"
+      - "dependabot"
 
+    groups:
+      aggregator-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+          - "minor"
+
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # =========================
   # Website npm dependencies
+  # =========================
   - package-ecosystem: "npm"
     directory: "/TutorDexWebsite"
     schedule:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+
     labels:
       - "dependencies"
       - "frontend"
+      - "dependabot"
 
+    groups:
+      frontend-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+          - "minor"
+
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # =========================
   # GitHub Actions
+  # =========================
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+
     labels:
       - "dependencies"
       - "ci"
+      - "dependabot"
+
+    groups:
+      ci-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+          - "minor"
