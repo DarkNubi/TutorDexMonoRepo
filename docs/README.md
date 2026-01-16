@@ -32,12 +32,7 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 ### Duplicate Detection
 - **[DUPLICATE_DETECTION_INDEX.md](DUPLICATE_DETECTION_INDEX.md)** - Main index for duplicate detection documentation
 - **[DUPLICATE_DETECTION.md](DUPLICATE_DETECTION.md)** - Comprehensive duplicate detection guide (1,453 lines)
-- **[DUPLICATE_DETECTION_QUICKSTART.md](DUPLICATE_DETECTION_QUICKSTART.md)** - Quick start guide (764 lines)
-- **[DUPLICATE_DETECTION_ADMIN.md](DUPLICATE_DETECTION_ADMIN.md)** - Admin operations guide
-- **[DUPLICATE_DETECTION_SUMMARY.md](DUPLICATE_DETECTION_SUMMARY.md)** - Summary document
-- **[DUPLICATE_DETECTION_ASSUMPTIONS_VALIDATION.md](DUPLICATE_DETECTION_ASSUMPTIONS_VALIDATION.md)** - Validation results
-- **[DUPLICATE_DETECTION_VALIDATION_RESULTS.md](DUPLICATE_DETECTION_VALIDATION_RESULTS.md)** - Test results
-- **[DUPLICATE_DETECTION_FLOW.txt](DUPLICATE_DETECTION_FLOW.txt)** - Flow diagram
+- **Note:** Additional duplicate detection docs archived in [archive/duplicate-detection/](archive/duplicate-detection/)
 
 ### Assignment Features
 - **[assignment_rating_system.md](assignment_rating_system.md)** - Assignment rating and feedback system
@@ -61,29 +56,43 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 
 ### January 2026 Codebase Quality Audits
 
-**Latest Audit (January 15, 2026):**
-- **[CODEBASE_QUALITY_AUDIT_2026-01-15.md](CODEBASE_QUALITY_AUDIT_2026-01-15.md)** - Updated comprehensive audit (35,000+ words)
-  - **Status:** Good (3 critical new risks identified)
+**Current Audit (January 15, 2026):**
+- **[CODEBASE_QUALITY_AUDIT_2026-01-15.md](CODEBASE_QUALITY_AUDIT_2026-01-15.md)** - Latest comprehensive audit
+  - **Status:** Good (3 critical risks identified)
   - Overall quality assessment after 16 priorities completed
   - Risk map with 10 critical zones
-  - Concrete improvement plan (short/medium/long term)
-- **[AUDIT_ACTION_PLAN_2026-01-15.md](AUDIT_ACTION_PLAN_2026-01-15.md)** - Actionable priorities with owners and deadlines
+- **[AUDIT_ACTION_PLAN_2026-01-15.md](AUDIT_ACTION_PLAN_2026-01-15.md)** - Actionable priorities
   - 9 prioritized actions (3 critical, 3 high-priority, 3 medium-priority)
   - Week-by-week tracking with success metrics
-  - Estimated ROI: 5× faster incident resolution, 3× fewer bugs
+- **[AUDIT_CHECKLIST.md](AUDIT_CHECKLIST.md)** - Progress tracking (16/16 complete ✅)
 
-**Previous Audit (January 12, 2026):**
-- **[CODEBASE_QUALITY_AUDIT_2026-01.md](CODEBASE_QUALITY_AUDIT_2026-01.md)** - Original audit report (1,400 lines)
-  - Identified 16 priorities for code quality improvements
-  - All 16 priorities now complete ✅
+**Implementation Planning:**
+- **[IMPLEMENTATION_PLAN_2026-01-16.md](IMPLEMENTATION_PLAN_2026-01-16.md)** - Current implementation plan
+- **[CONSOLIDATION_PLAN.md](CONSOLIDATION_PLAN.md)** - Documentation consolidation strategy
 
-**Audit Tracking & Implementation:**
-- **[AUDIT_README.md](AUDIT_README.md)** - Navigation hub for audit documentation
-- **[AUDIT_CHECKLIST.md](AUDIT_CHECKLIST.md)** - Progress tracking checklist (16/16 complete)
-- **[AUDIT_TODO_SUMMARY.md](AUDIT_TODO_SUMMARY.md)** - Quick reference summary
-- **[REMAINING_AUDIT_TASKS.md](REMAINING_AUDIT_TASKS.md)** - Detailed implementation guide (1,047 lines)
+**Status:** ✅ 16/16 audit priorities complete, implementation plan in progress
 
-**Status:** ✅ Phase 1 complete (16/16), 🔴 Phase 2 critical actions required (9 priorities)
+**Note:** Additional audit docs archived in [archive/audit-2026-01/](archive/audit-2026-01/)
+
+---
+
+## 📦 Archived Documentation
+
+Historical documentation from completed projects is preserved in the archive:
+
+- **[archive/](archive/)** - Main archive directory ([README](archive/README.md))
+  - **[archive/audit-2026-01/](archive/audit-2026-01/)** - Completed audit docs (11 files)
+  - **[archive/refactoring-2026-01/](archive/refactoring-2026-01/)** - Completed refactoring docs (7 files)
+  - **[archive/duplicate-detection/](archive/duplicate-detection/)** - Consolidated dup detection docs (5 files)
+  - **[archive/phase-tracking/](archive/phase-tracking/)** - Phase tracking documents (5 files)
+
+**Total Archived:** 28 files (preserved for historical reference)
+
+**Why Archive?**
+- Work is complete
+- Superseded by newer documentation
+- Historical value preserved
+- Cleaner active documentation structure
 
 ---
 
@@ -117,39 +126,58 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 
 ```
 docs/
-├── README.md (this file)                    # Documentation index
+├── README.md (this file)                        # Documentation index
+├── CONSOLIDATION_PLAN.md                        # Documentation consolidation strategy
+├── IMPLEMENTATION_PLAN_2026-01-16.md            # Current implementation plan
 │
-├── Core System
-│   ├── SYSTEM_INTERNAL.md                   # System architecture (primary)
-│   ├── signals.md                           # Signal extraction
-│   ├── time_availability.md                 # Time parsing
-│   └── recovery_catchup.md                  # Backfill procedures
+├── Core System (4 files)
+│   ├── SYSTEM_INTERNAL.md                       # System architecture (primary)
+│   ├── signals.md                               # Signal extraction
+│   ├── time_availability.md                     # Time parsing
+│   └── recovery_catchup.md                      # Backfill procedures
 │
-├── Configuration
-│   ├── ENV_CONFIG_README.md                 # Pydantic config overview
-│   ├── PYDANTIC_CONFIG_QUICKSTART.md        # Quick start guide
-│   └── PYDANTIC_CONFIG.md                   # Complete Pydantic guide
+├── Configuration (3 files)
+│   ├── ENV_CONFIG_README.md                     # Pydantic config overview
+│   ├── PYDANTIC_CONFIG_QUICKSTART.md            # Quick start guide
+│   └── PYDANTIC_CONFIG.md                       # Complete Pydantic guide
 │
-├── Audit (2026-01)
-│   ├── CODEBASE_QUALITY_AUDIT_2026-01-15.md # Latest audit (Jan 15)
-│   ├── AUDIT_ACTION_PLAN_2026-01-15.md      # Actionable priorities
-│   ├── CODEBASE_QUALITY_AUDIT_2026-01.md    # Original audit (Jan 12)
-│   ├── AUDIT_README.md                       # Audit documentation hub
-│   ├── AUDIT_CHECKLIST.md                    # Progress tracking (16/16 ✅)
-│   ├── AUDIT_TODO_SUMMARY.md                 # Quick reference
-│   └── REMAINING_AUDIT_TASKS.md              # Implementation guide
+├── Current Audit (3 files)
+│   ├── CODEBASE_QUALITY_AUDIT_2026-01-15.md     # Latest audit (Jan 15)
+│   ├── AUDIT_ACTION_PLAN_2026-01-15.md          # Actionable priorities
+│   └── AUDIT_CHECKLIST.md                       # Progress tracking (16/16 ✅)
 │
-├── Features
-│   ├── DUPLICATE_DETECTION_INDEX.md         # Duplicate detection hub
-│   ├── DUPLICATE_DETECTION*.md              # Duplicate detection docs
-│   ├── assignment_rating_system.md          # Rating system
-│   ├── TELEGRAM_WEBHOOK*.md                 # Telegram integration
-│   └── BROADCAST_SYNC_IMPLEMENTATION.md     # Broadcasting
+├── Features (7 files)
+│   ├── DUPLICATE_DETECTION_INDEX.md             # Duplicate detection hub
+│   ├── DUPLICATE_DETECTION.md                   # Comprehensive guide
+│   ├── assignment_rating_system.md              # Rating system
+│   ├── ASSIGNMENT_RATING_IMPLEMENTATION_SUMMARY.md
+│   ├── TELEGRAM_WEBHOOK_SETUP.md                # Telegram integration
+│   ├── TELEGRAM_WEBHOOK_QUICKREF.md             # Quick reference
+│   └── BROADCAST_SYNC_IMPLEMENTATION.md         # Broadcasting
 │
-└── Observability
-    ├── GRAFANA_AUDIT_SUMMARY.md             # Monitoring audit
-    └── GRAFANA_DASHBOARD_REPAIR_REPORT.md   # Dashboard updates
+├── Observability (2 files)
+│   ├── GRAFANA_AUDIT_SUMMARY.md                 # Monitoring audit
+│   └── GRAFANA_DASHBOARD_REPAIR_REPORT.md       # Dashboard updates
+│
+├── Current Refactoring (1 file)
+│   └── AGENT_HANDOVER_COMPLETE_REFACTORING.md   # Refactoring status
+│
+├── Database (1 file)
+│   └── MIGRATION_2026-01-07_estimated_postal_distance.md
+│
+├── AI Tools (1 file)
+│   └── codex-instructions.md                    # AI assistant instructions
+│
+└── archive/                                      # Archived documentation (28 files)
+    ├── audit-2026-01/                           # Completed audit docs (11 files)
+    ├── refactoring-2026-01/                     # Completed refactoring docs (7 files)
+    ├── duplicate-detection/                     # Consolidated dup detection docs (5 files)
+    └── phase-tracking/                          # Phase tracking documents (5 files)
 ```
+
+**Active Documentation:** ~24 files  
+**Archived Documentation:** 28 files  
+**Total:** 52 files
 
 ---
 
@@ -219,5 +247,6 @@ docs/
 
 ---
 
-**Last Updated:** 2026-01-14  
-**Documentation Version:** 1.0 (Post-Audit Cleanup)
+**Last Updated:** 2026-01-16  
+**Documentation Version:** 1.1 (Post-Consolidation)  
+**Active Files:** ~24 | **Archived Files:** 28 | **Total:** 52
