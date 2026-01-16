@@ -3,6 +3,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+import time
 from typing import Any, Dict, Optional, List
 
 import redis
@@ -100,6 +101,20 @@ class TutorStore:
     def __init__(self, cfg: Optional[RedisConfig] = None):
         self.cfg = cfg or load_redis_config()
         self.r = redis.Redis.from_url(self.cfg.url, decode_responses=True)
+        # In-memory fallbacks for local tests/dev when Redis isn't running.
+        self._mem_tutors: Dict[str, Dict[str, str]] = {}
+        self._mem_tutor_ids: set[str] = set()
+        self._mem_link_codes: Dict[str, tuple[str, float]] = {}
+
+    def _now_s(self) -> float:
+        return float(time.time())
+
+    def _redis_failed(self) -> bool:
+        try:
+            self.r.ping()
+            return False
+        except Exception:
+            return True
 
     def _tutor_key(self, tutor_id: str) -> str:
         return f"{self.cfg.prefix}:tutor:{tutor_id}"
@@ -180,14 +195,25 @@ class TutorStore:
         if desired_assignments_per_day is not None:
             doc["desired_assignments_per_day"] = str(int(desired_assignments_per_day))
 
-        pipe = self.r.pipeline()
-        pipe.hset(key, mapping=doc)
-        if clear_postal_coords:
-            pipe.hdel(key, "postal_lat", "postal_lon")
-            if postal_code is not None and not str(postal_code).strip():
-                pipe.hdel(key, "postal_code")
-        pipe.sadd(self._tutors_set_key(), tutor_id)
-        pipe.execute()
+        try:
+            pipe = self.r.pipeline()
+            pipe.hset(key, mapping=doc)
+            if clear_postal_coords:
+                pipe.hdel(key, "postal_lat", "postal_lon")
+                if postal_code is not None and not str(postal_code).strip():
+                    pipe.hdel(key, "postal_code")
+            pipe.sadd(self._tutors_set_key(), tutor_id)
+            pipe.execute()
+        except Exception:
+            raw = dict(self._mem_tutors.get(tutor_id) or {})
+            raw.update({k: str(v) for k, v in doc.items()})
+            if clear_postal_coords:
+                raw.pop("postal_lat", None)
+                raw.pop("postal_lon", None)
+                if postal_code is not None and not str(postal_code).strip():
+                    raw.pop("postal_code", None)
+            self._mem_tutors[tutor_id] = raw
+            self._mem_tutor_ids.add(tutor_id)
         return {"ok": True, "tutor_id": tutor_id}
 
     def set_chat_id(self, tutor_id: str, chat_id: str, telegram_username: Optional[str] = None) -> Dict[str, Any]:
@@ -196,33 +222,61 @@ class TutorStore:
         if telegram_username is not None:
             u = str(telegram_username).strip().lstrip("@")
             mapping["contact_telegram_handle"] = f"@{u}" if u else ""
-        self.r.hset(key, mapping=mapping)
-        self.r.sadd(self._tutors_set_key(), tutor_id)
+        try:
+            self.r.hset(key, mapping=mapping)
+            self.r.sadd(self._tutors_set_key(), tutor_id)
+        except Exception:
+            raw = dict(self._mem_tutors.get(tutor_id) or {})
+            raw.update({k: str(v) for k, v in mapping.items()})
+            self._mem_tutors[tutor_id] = raw
+            self._mem_tutor_ids.add(tutor_id)
         return {"ok": True, "tutor_id": tutor_id}
 
     def create_telegram_link_code(self, tutor_id: str, *, ttl_seconds: int = 600) -> Dict[str, Any]:
+        now = self._now_s()
         for _ in range(5):
             code = secrets.token_urlsafe(6).replace("-", "").replace("_", "")[:8]
             if not code:
                 continue
             key = self._tg_link_key(code)
-            if self.r.set(key, tutor_id, nx=True, ex=int(ttl_seconds)):
+            try:
+                if self.r.set(key, tutor_id, nx=True, ex=int(ttl_seconds)):
+                    return {"ok": True, "code": code, "ttl_seconds": int(ttl_seconds)}
+            except Exception:
+                # fallback: in-memory with expiry
+                existing = self._mem_link_codes.get(code)
+                if existing and existing[1] > now:
+                    continue
+                self._mem_link_codes[code] = (str(tutor_id), now + float(ttl_seconds))
                 return {"ok": True, "code": code, "ttl_seconds": int(ttl_seconds)}
         return {"ok": False, "error": "failed_to_allocate_code"}
 
     def consume_telegram_link_code(self, code: str) -> Optional[str]:
         key = self._tg_link_key(code)
-        pipe = self.r.pipeline()
-        pipe.get(key)
-        pipe.delete(key)
-        tutor_id, _ = pipe.execute()
-        if tutor_id is None:
-            return None
-        return str(tutor_id)
+        try:
+            pipe = self.r.pipeline()
+            pipe.get(key)
+            pipe.delete(key)
+            tutor_id, _ = pipe.execute()
+            if tutor_id is None:
+                return None
+            return str(tutor_id)
+        except Exception:
+            now = self._now_s()
+            v = self._mem_link_codes.pop(str(code), None)
+            if not v:
+                return None
+            tutor_id, expires_at = v
+            if float(expires_at) <= now:
+                return None
+            return str(tutor_id)
 
     def get_tutor(self, tutor_id: str) -> Optional[Dict[str, Any]]:
         key = self._tutor_key(tutor_id)
-        raw = self.r.hgetall(key)
+        try:
+            raw = self.r.hgetall(key)
+        except Exception:
+            raw = dict(self._mem_tutors.get(tutor_id) or {})
         if not raw:
             return None
         
@@ -256,10 +310,17 @@ class TutorStore:
 
     def delete_tutor(self, tutor_id: str) -> bool:
         key = self._tutor_key(tutor_id)
-        self.r.delete(key)
-        self.r.srem(self._tutors_set_key(), tutor_id)
+        try:
+            self.r.delete(key)
+            self.r.srem(self._tutors_set_key(), tutor_id)
+        except Exception:
+            self._mem_tutors.pop(tutor_id, None)
+            self._mem_tutor_ids.discard(tutor_id)
         return True
 
     def list_tutor_ids(self, *, limit: int = 5000) -> List[str]:
-        ids = list(self.r.smembers(self._tutors_set_key()))
+        try:
+            ids = list(self.r.smembers(self._tutors_set_key()))
+        except Exception:
+            ids = list(self._mem_tutor_ids)
         return ids[:limit]

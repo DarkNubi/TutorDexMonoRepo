@@ -420,6 +420,8 @@ When coordinates are available, geo-enrichment adds:
 #### Supabase (system DB)
 Supabase is the persistence layer for assignments and analytics.
 
+Supabase HTTP access is centralized in `shared/supabase_client.py` (single client implementation). Avoid introducing new Supabase REST wrappers in service code; extend the shared client if new capabilities are needed.
+
 Core schema file:
 - `TutorDexAggregator/supabase sqls/supabase_schema_full.sql`
 
@@ -595,7 +597,7 @@ Audit data:
 - `workers/extract_worker.py`:
   - `python workers/extract_worker.py`
 - Optional/legacy scripts:
-  - `expire_assignments.py`, `update_freshness_tiers.py`, `monitor_message_edits.py`, `utilities/run_sample_pipeline.py`
+  - `expire_assignments.py`, `update_freshness_tiers.py`, `utilities/run_sample_pipeline.py`
 
 ### Core pipelines
 
@@ -629,8 +631,7 @@ This is the path wired by root `docker-compose.yml`:
   - Docker compose service runs continuously with a sleep loop
 
 #### Pipeline B (legacy, direct ingest/extract)
-There are older scripts and directories (`setup_service/`, etc.). They exist in repo but are not the compose default.
-If you intend to delete them, confirm they aren’t referenced in any cron/service.
+Some older scripts/directories have been removed as part of legacy cleanup (see `docs/REMOVED_FILES.md`).
 
 ### LLM architecture
 
@@ -1037,7 +1038,11 @@ Apply in chronological order (date prefix). The full schema includes these migra
 **Verification:**
 Run smoke test to confirm all required RPCs exist:
 ```bash
-python scripts/smoke_test.py
+# Windows (cmd)
+scripts\\smoke_test_all.bat
+
+# Or run the Python runner directly (cross-platform)
+py -3 scripts/smoke_test.py
 ```
 
 4) Start the stack:
@@ -1202,7 +1207,8 @@ This section tracks refactors that were previously suggested and have now been i
 - Backend fails fast in `APP_ENV=prod` if auth is required but Firebase Admin config is missing/unhealthy.
 
 5) Add a “smoke test” command
-- Script: `scripts/smoke_test.py`
+- Windows cmd wrappers: `scripts/smoke_test_all.bat` (and `scripts/smoke_test_*.bat`)
+- Python runner: `scripts/smoke_test.py` (can also be run directly)
 - Checks:
   - Backend health endpoint
   - Redis connectivity

@@ -8,7 +8,9 @@ import requests
 
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from observability_metrics import dm_fail_reason_total, dm_fail_total, dm_rate_limited_total, dm_sent_total, versions as _obs_versions
+from shared.assignment_rating import calculate_assignment_rating, parse_rate_min_max
 from shared.config import load_aggregator_config
+from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
 
 HERE = Path(__file__).resolve().parent
 _CFG = load_aggregator_config()
@@ -50,27 +52,9 @@ def _calculate_match_ratings(
     
     Requires backend with rating calculation support.
     """
-    try:
-        from TutorDexBackend.assignment_rating import calculate_assignment_rating
-        from TutorDexBackend.supabase_store import SupabaseStore
-    except Exception:
-        # If imports fail, return matches unchanged (backward compatibility)
-        logger.debug("Rating calculation not available, using base scores only")
-        return matches
-    
-    # Get assignment rates from payload
     parsed = payload.get("parsed") or {}
-    assignment_rate_min = _safe_int(parsed.get("rate_min"))
-    assignment_rate_max = _safe_int(parsed.get("rate_max"))
-    
-    # Get supabase connection for historical rate lookups
-    sb = None
-    try:
-        sb = SupabaseStore()
-        if not sb.enabled():
-            sb = None
-    except Exception:
-        sb = None
+    assignment_rate_min, assignment_rate_max = parse_rate_min_max(parsed)
+    sb = _supabase_client()
     
     enriched_matches = []
     for match in matches:
@@ -79,13 +63,12 @@ def _calculate_match_ratings(
         tutor_id = match.get("tutor_id")
         if sb and tutor_id:
             try:
-                from TutorDexBackend.supabase_store import SupabaseStore
-                # Get user_id from firebase_uid
-                user_id = sb.upsert_user(firebase_uid=str(tutor_id), email=None, name=None)
-                if user_id:
-                    tutor_avg_rate = sb.get_tutor_avg_rate(
-                        user_id=user_id,
-                        lookback_days=DM_RATING_AVG_RATE_LOOKBACK_DAYS
+                user_id = _upsert_user_id(sb, firebase_uid=str(tutor_id))
+                if user_id is not None:
+                    tutor_avg_rate = _rpc_scalar_float(
+                        sb,
+                        "get_tutor_avg_rate",
+                        {"p_user_id": int(user_id), "p_lookback_days": int(DM_RATING_AVG_RATE_LOOKBACK_DAYS)},
                     )
             except Exception as e:
                 logger.debug(f"Could not get tutor avg rate for {tutor_id}: {e}")
@@ -133,22 +116,9 @@ def _filter_by_adaptive_threshold(
         # Disabled - return all matches
         return matches
     
-    try:
-        from TutorDexBackend.supabase_store import SupabaseStore
-        from TutorDexBackend.redis_store import TutorStore
-    except Exception:
-        logger.debug("Adaptive threshold not available, using all matches")
-        return matches
-    
-    sb = None
-    redis_store = None
-    try:
-        sb = SupabaseStore()
-        if not sb.enabled():
-            sb = None
-        redis_store = TutorStore()
-    except Exception:
-        logger.debug("Could not initialize stores for adaptive threshold")
+    sb = _supabase_client()
+    if not sb:
+        logger.debug("Adaptive threshold enabled but Supabase is not configured; using all matches")
         return matches
     
     filtered = []
@@ -161,29 +131,27 @@ def _filter_by_adaptive_threshold(
             filtered.append(match)
             continue
         
-        # Get tutor's desired assignments per day
-        desired_per_day = 10  # default
+        desired_per_day = 10
         try:
-            if redis_store:
-                tutor = redis_store.get_tutor(str(tutor_id))
-                if tutor:
-                    desired_per_day = tutor.get("desired_assignments_per_day", 10)
-        except Exception as e:
-            logger.debug(f"Could not get tutor preferences for {tutor_id}: {e}")
+            desired_per_day = int(match.get("desired_assignments_per_day") or 10)
+        except Exception:
+            desired_per_day = 10
         
-        # Get adaptive threshold from database
         threshold = None
-        if sb:
-            try:
-                user_id = sb.upsert_user(firebase_uid=str(tutor_id), email=None, name=None)
-                if user_id:
-                    threshold = sb.get_tutor_rating_threshold(
-                        user_id=user_id,
-                        desired_per_day=desired_per_day,
-                        lookback_days=DM_RATING_LOOKBACK_DAYS,
-                    )
-            except Exception as e:
-                logger.debug(f"Could not get threshold for {tutor_id}: {e}")
+        try:
+            user_id = _upsert_user_id(sb, firebase_uid=str(tutor_id))
+            if user_id is not None:
+                threshold = _rpc_scalar_float(
+                    sb,
+                    "calculate_tutor_rating_threshold",
+                    {
+                        "p_user_id": int(user_id),
+                        "p_desired_per_day": int(desired_per_day),
+                        "p_lookback_days": int(DM_RATING_LOOKBACK_DAYS),
+                    },
+                )
+        except Exception as e:
+            logger.debug(f"Could not get threshold for {tutor_id}: {e}")
         
         # If no threshold available (new tutor or no history), include the match
         if threshold is None:
@@ -220,6 +188,98 @@ def _safe_float(value: Any) -> Optional[float]:
         return float(value)
     except Exception:
         return None
+
+
+def _supabase_client() -> Optional[SupabaseClient]:
+    url = str(_CFG.supabase_rest_url or "").strip()
+    key = str(_CFG.supabase_auth_key or "").strip()
+    enabled = bool(getattr(_CFG, "supabase_enabled", False)) and bool(url and key)
+    if not enabled:
+        return None
+    return SupabaseClient(SupabaseConfig(url=url, key=key, enabled=True))
+
+
+def _upsert_user_id(client: SupabaseClient, *, firebase_uid: str) -> Optional[int]:
+    uid = str(firebase_uid).strip()
+    if not uid:
+        return None
+    row = {"firebase_uid": uid}
+    resp = client.post(
+        "users?on_conflict=firebase_uid",
+        [row],
+        timeout=20,
+        prefer="resolution=merge-duplicates,return=representation",
+    )
+    if resp.status_code < 400:
+        rows = coerce_rows(resp)
+        if rows:
+            try:
+                return int(rows[0].get("id"))
+            except Exception:
+                return None
+
+    q = f"users?select=id&firebase_uid=eq.{requests.utils.quote(uid, safe='')}&limit=1"
+    r2 = client.get(q, timeout=15)
+    if r2.status_code < 400:
+        rows2 = coerce_rows(r2)
+        if rows2:
+            try:
+                return int(rows2[0].get("id"))
+            except Exception:
+                return None
+    return None
+
+
+def _rpc_scalar_float(client: SupabaseClient, fn: str, payload: Dict[str, Any]) -> Optional[float]:
+    resp = client.post(f"rpc/{fn}", payload, timeout=20)
+    if resp.status_code >= 400:
+        return None
+    try:
+        data = resp.json()
+    except Exception:
+        return None
+    if isinstance(data, (int, float)):
+        return float(data)
+    if isinstance(data, list) and data and isinstance(data[0], (int, float)):
+        return float(data[0])
+    return None
+
+
+def _record_assignment_rating_best_effort(
+    client: SupabaseClient,
+    *,
+    firebase_uid: str,
+    assignment_id: int,
+    rating_score: float,
+    match: Dict[str, Any],
+) -> None:
+    user_id = _upsert_user_id(client, firebase_uid=firebase_uid)
+    if user_id is None:
+        return
+
+    row: Dict[str, Any] = {
+        "user_id": int(user_id),
+        "assignment_id": int(assignment_id),
+        "rating_score": float(rating_score),
+        "match_score": int(match.get("score") or 0),
+    }
+    if match.get("distance_km") is not None:
+        try:
+            row["distance_km"] = float(match.get("distance_km"))
+        except Exception:
+            pass
+    if match.get("rate_min") is not None:
+        try:
+            row["rate_min"] = int(match.get("rate_min"))
+        except Exception:
+            pass
+    if match.get("rate_max") is not None:
+        try:
+            row["rate_max"] = int(match.get("rate_max"))
+        except Exception:
+            pass
+
+    client.post("tutor_assignment_ratings", [row], timeout=20, prefer="return=minimal")
 
 
 def _learning_mode_is_online_only(payload: Dict[str, Any]) -> bool:
@@ -555,30 +615,21 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 pass
             
-            # Record assignment rating for this tutor (for adaptive threshold calculation)
+            # Record assignment rating for this tutor (best-effort; used for adaptive thresholds)
             try:
-                from TutorDexBackend.supabase_store import SupabaseStore
-                sb_record = SupabaseStore()
-                if sb_record.enabled():
-                    tutor_id = match.get("tutor_id")
-                    rating = match.get("rating")
-                    if tutor_id and rating is not None:
-                        # Get assignment internal ID from parsed data
-                        assignment_db_id = parsed.get("id")  # Internal DB ID
-                        if assignment_db_id:
-                            user_id = sb_record.upsert_user(firebase_uid=str(tutor_id), email=None, name=None)
-                            if user_id:
-                                sb_record.record_assignment_rating(
-                                    user_id=user_id,
-                                    assignment_id=int(assignment_db_id),
-                                    rating_score=float(rating),
-                                    distance_km=match.get("distance_km"),
-                                    rate_min=match.get("rate_min"),
-                                    rate_max=match.get("rate_max"),
-                                    match_score=match.get("score", 0),
-                                )
+                sb_record = _supabase_client()
+                tutor_id = match.get("tutor_id")
+                rating = match.get("rating")
+                assignment_db_id = parsed.get("id")
+                if sb_record and tutor_id and rating is not None and assignment_db_id:
+                    _record_assignment_rating_best_effort(
+                        sb_record,
+                        firebase_uid=str(tutor_id),
+                        assignment_id=int(assignment_db_id),
+                        rating_score=float(rating),
+                        match=match,
+                    )
             except Exception as e:
-                # Don't fail DM if rating recording fails
                 logger.debug(f"Could not record assignment rating: {e}")
             
             time.sleep(0.05)

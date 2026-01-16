@@ -48,6 +48,8 @@ class AuthService:
         provided = (
             request.headers.get("x-api-key") or 
             request.headers.get("X-Api-Key") or 
+            request.headers.get("x-admin-key") or
+            request.headers.get("X-Admin-Key") or
             ""
         ).strip()
         

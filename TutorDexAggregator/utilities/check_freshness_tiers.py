@@ -20,7 +20,7 @@ logger = logging.getLogger("check_freshness_tiers")
 def _get_exact_count(client: SupabaseRestClient, table: str, *, where_qs: str) -> Optional[int]:
     url = f"{table}?select=id&{where_qs}"
     try:
-        resp = client.session.get(client._url(url), headers={"prefer": "count=exact"}, timeout=20)
+        resp = client.head(url, prefer="count=exact", timeout=20)
     except Exception:
         logger.debug("count_request_failed", exc_info=True)
         return None

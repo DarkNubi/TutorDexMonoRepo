@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -11,10 +12,24 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from shared.config import load_aggregator_config
 
 logger = logging.getLogger("geo_enrichment")
-_CFG = load_aggregator_config()
+
+
+def _env_flag(name: str) -> Optional[bool]:
+    raw = os.environ.get(name)
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    if s in {"1", "true", "yes", "y", "on"}:
+        return True
+    if s in {"0", "false", "no", "n", "off"}:
+        return False
+    return None
 
 def _enabled() -> bool:
-    return bool(_CFG.geo_enrichment_enabled)
+    override = _env_flag("GEO_ENRICHMENT_ENABLED")
+    if override is not None:
+        return bool(override)
+    return bool(load_aggregator_config().geo_enrichment_enabled)
 
 
 def _default_data_dir() -> Path:
@@ -22,12 +37,16 @@ def _default_data_dir() -> Path:
 
 
 def _region_geojson_path() -> Path:
-    p = str(_CFG.region_geojson_path or "").strip()
+    p = str(os.environ.get("REGION_GEOJSON_PATH") or "").strip()
+    if not p:
+        p = str(load_aggregator_config().region_geojson_path or "").strip()
     return Path(p) if p else (_default_data_dir() / "2019_region_boundary.geojson")
 
 
 def _mrt_data_path() -> Path:
-    p = str(_CFG.mrt_data_json_path or "").strip()
+    p = str(os.environ.get("MRT_DATA_JSON_PATH") or "").strip()
+    if not p:
+        p = str(load_aggregator_config().mrt_data_json_path or "").strip()
     return Path(p) if p else (_default_data_dir() / "mrt_data.json")
 
 
@@ -298,4 +317,3 @@ def enrich_from_coords(*, lat: Any, lon: Any) -> GeoEnrichmentResult:
             "mrt_data_path": str(_mrt_data_path()),
         },
     )
-

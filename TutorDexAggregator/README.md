@@ -212,18 +212,6 @@ For the current hardened pipeline version (`2026-01-02_det_time_v1`), the recomm
 - `USE_DETERMINISTIC_TIME=1`
 - `HARD_VALIDATE_MODE=enforce`
 
-## Telegram edit/delete monitoring (optional)
-
-Some agencies edit or delete assignment posts after publishing. You can run a lightweight monitor to collect:
-- message first seen time (message date + first observed by the monitor)
-- every edit time + content changes (hash/length, optional full text)
-- deleted message IDs + delete time
-
-From `TutorDexAggregator/`:
-- `python monitor_message_edits.py`
-
-By default it writes to `TutorDexAggregator/monitoring/telegram_message_edits.sqlite`.
-
 ## Scheduled jobs
 
 - Close stale assignments (status=open, last_seen older than N days):

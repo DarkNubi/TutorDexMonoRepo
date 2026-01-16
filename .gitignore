@@ -55,6 +55,7 @@ coverage.xml
 
 # Temporary files
 *.tmp
+*.backup
 *.bak
 *.old
 tmp/
@@ -70,4 +71,3 @@ firebase-debug.log
 # observability/prometheus/data/
 # observability/grafana/data/
 # observability/loki/data/
-

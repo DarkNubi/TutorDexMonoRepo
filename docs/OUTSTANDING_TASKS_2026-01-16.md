@@ -16,6 +16,15 @@ Based on analysis of all planning documents, there are **3 major implementation 
 
 **Key Insight:** The audit checklist shows 16/16 priorities complete from the previous audit cycle. However, the January 15, 2026 audit identified 3 new critical risks that require immediate attention.
 
+## Status Update (2026-01-16)
+
+This task list was generated from planning docs; parts of it have since been implemented in the repo:
+
+- ✅ **B1 Supabase client consolidation**: unified under `shared/supabase_client.py` and removed duplicate client wrappers.
+- ✅ **C1 Legacy file removal**: removed `TutorDexAggregator/monitor_message_edits.py`, `TutorDexAggregator/setup_service/`, and backup artifacts (see `docs/REMOVED_FILES.md`).
+- ✅ **C2 Backend DI**: added `TutorDexBackend/app_context.py`, updated backend routes/app to use it, and marked `TutorDexBackend/runtime.py` deprecated.
+- ✅ **C3 Import linting**: added `.import-linter.ini`, CI workflow, and documentation (`docs/IMPORT_BOUNDARIES.md`).
+
 ---
 
 ## High Priority: Critical Risk Mitigation (Phase B)
@@ -28,17 +37,13 @@ Based on analysis of all planning documents, there are **3 major implementation 
 
 **Problem:** Three incompatible Supabase client implementations causing 3× maintenance burden
 
-**Current State:**
-- `shared/supabase_client.py` (450 lines) - Target implementation
-- `TutorDexAggregator/utils/supabase_client.py` (114 lines) - Duplicate to remove
-- `TutorDexBackend/supabase_store.py` (649 lines) - Embedded client to refactor
+**Current State (as of 2026-01-16):**
+- `shared/supabase_client.py` - Unified implementation
+- Duplicate wrappers removed from Aggregator and Backend
 
-**Actions Required:**
-1. Extend shared client with missing methods (2 days)
-2. Update Aggregator imports (2 days)
-3. Refactor Backend store to use shared client (3 days)
-4. Remove duplicate client (1 day)
-5. Documentation & ADR (1 day)
+**Status:** ✅ COMPLETE  
+**Artifacts:**
+- ADR: `docs/ADR-0001-SUPABASE-CLIENT-CONSOLIDATION.md`
 
 **Success Criteria:**
 - ✅ Only one Supabase client implementation exists
@@ -53,6 +58,9 @@ Based on analysis of all planning documents, there are **3 major implementation 
 ### Task B2: Fix Silent Failure Epidemic ⚠️ HIGH
 
 **Problem:** 120+ instances of `except Exception: pass` hiding production issues
+
+**Status (as of 2026-01-16):** ✅ MOSTLY COMPLETE  
+No `except Exception: pass` occurrences remain in non-doc code paths; remaining references are in documentation.
 
 **Categories:**
 1. **Critical Path** (highest priority)
@@ -94,9 +102,9 @@ Based on analysis of all planning documents, there are **3 major implementation 
 **Problem:** Key business logic has zero test coverage
 
 **Untested Components:**
-1. **Matching Algorithm** (`matching.py`, 293 lines) - 0 tests
-2. **Worker Orchestration** (`extract_worker_main.py`) - 0 tests
-3. **Frontend** (`TutorDexWebsite/src/`) - No test infrastructure
+1. **Matching Algorithm** (`TutorDexBackend/matching.py`) - ✅ tests exist (`tests/test_matching.py`)
+2. **Worker Orchestration** (`TutorDexAggregator/workers/extract_worker_main.py`) - ✅ initial orchestration tests added (`tests/test_extract_worker_orchestration.py`)
+3. **Frontend** (`TutorDexWebsite/`) - ✅ basic test infrastructure exists (Mocha; see `TutorDexWebsite/test/`)
 
 **Actions Required:**
 
@@ -113,12 +121,10 @@ Based on analysis of all planning documents, there are **3 major implementation 
 
 #### Subtask B3.2: Worker Orchestration Tests (3 days)
 - Create `tests/test_extract_worker_orchestration.py`
-- 15+ test cases covering:
-  - Job claiming (3 tests)
-  - Pipeline execution (4 tests)
-  - Error handling (3 tests)
-  - Side effects (3 tests)
-  - Oneshot mode (2 tests)
+- Initial test coverage added (expand to full 15+ cases as needed):
+  - Job claiming / oneshot exit
+  - Health handler wiring
+  - Max-jobs termination
 - Target: 70% coverage for orchestration
 
 #### Subtask B3.3: Frontend Test Infrastructure (2 days)
@@ -165,7 +171,8 @@ Based on analysis of all planning documents, there are **3 major implementation 
 - ✅ All tests pass
 - ✅ Docker Compose services start successfully
 
-**Estimated Effort:** 4.5 hours (0.5 days)
+**Status:** ✅ COMPLETE  
+**Docs:** `docs/REMOVED_FILES.md`
 
 ---
 
@@ -188,7 +195,7 @@ Based on analysis of all planning documents, there are **3 major implementation 
 - ✅ All backend tests updated and passing
 - ✅ No circular import errors
 
-**Estimated Effort:** 9.5 hours (1.5 days)
+**Status:** ✅ COMPLETE (backend now uses `TutorDexBackend/app_context.py`; `TutorDexBackend/runtime.py` deprecated)
 
 ---
 
@@ -209,7 +216,10 @@ Based on analysis of all planning documents, there are **3 major implementation 
 - ✅ Documentation complete
 - ✅ Import linter passes on current codebase
 
-**Estimated Effort:** 2.5 hours (0.5 days)
+**Status:** ✅ COMPLETE  
+**Config:** `.import-linter.ini`  
+**CI:** `.github/workflows/import-lint.yml`  
+**Docs:** `docs/IMPORT_BOUNDARIES.md`
 
 ---
 
@@ -220,13 +230,15 @@ Based on analysis of all planning documents, there are **3 major implementation 
 
 ### Task A: Documentation Consolidation
 
-**Status:** Archive structure created, but consolidation not fully executed
+**Status (as of 2026-01-16):** ✅ COMPLETE
 
 **Remaining Actions:**
 1. Execute file moves to archive directories (30 min)
 2. Create README files for each archive directory (1 hour)
 3. Update `docs/README.md` with archive references (30 min)
 4. Update `DUPLICATE_DETECTION_INDEX.md` (30 min)
+
+**Note:** Archive directories and READMEs exist under `docs/archive/` and `docs/README.md` links to them.
 
 **Success Criteria:**
 - ✅ 28 files moved to archive directories
@@ -244,13 +256,15 @@ Based on analysis of all planning documents, there are **3 major implementation 
 
 #### E1: End-to-End Smoke Testing (4 hours)
 - Create smoke test scripts:
-  - `scripts/smoke_test_backend.sh`
-  - `scripts/smoke_test_aggregator.sh`
-  - `scripts/smoke_test_observability.sh`
-  - `scripts/smoke_test_integration.sh`
-  - `scripts/smoke_test_all.sh`
+  - `scripts/smoke_test_backend.bat`
+  - `scripts/smoke_test_aggregator.bat`
+  - `scripts/smoke_test_observability.bat`
+  - `scripts/smoke_test_integration.bat`
+  - `scripts/smoke_test_all.bat`
 - Run full test suite
 - Validate all services healthy
+
+**Status (as of 2026-01-16):** ✅ COMPLETE (scripts created and validated on a running stack via `scripts\\smoke_test_all.bat`)
 
 #### E2: Update System Documentation (3 hours)
 - Update `docs/SYSTEM_INTERNAL.md` with recent changes
@@ -258,11 +272,16 @@ Based on analysis of all planning documents, there are **3 major implementation 
 - Create `docs/MIGRATION_GUIDE_2026-01.md`
 - Update component READMEs
 
+**Status (as of 2026-01-16):** ⏳ Partially complete
+**Notes:** Unit tests require `pytest-asyncio` for `@pytest.mark.asyncio` tests (install with `py -3.12 -m pip install pytest-asyncio`).
+
 #### E3: Create Completion Report (4 hours)
 - Create `docs/IMPLEMENTATION_COMPLETION_REPORT_2026-01.md`
 - Document all changes and metrics
 - Provide deployment checklist
 - Document rollback procedures
+
+**Status (as of 2026-01-16):** ✅ COMPLETE (updated after smoke tests + full pytest pass)
 
 **Success Criteria:**
 - ✅ All smoke tests passing

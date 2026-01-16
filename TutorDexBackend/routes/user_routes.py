@@ -2,31 +2,31 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from TutorDexBackend.geocoding import geocode_sg_postal_code, normalize_sg_postal_code
 from TutorDexBackend.models import MatchCountsRequest, TutorUpsert
-from TutorDexBackend.runtime import auth_service, sb, store
+from TutorDexBackend.app_context import AppContext, get_app_context
 from TutorDexBackend.utils.database_utils import count_matching_assignments
 
 router = APIRouter()
 
 
 @router.get("/me")
-def me(request: Request) -> Dict[str, Any]:
-    uid = auth_service.require_uid(request)
+def me(request: Request, ctx: AppContext = Depends(get_app_context)) -> Dict[str, Any]:
+    uid = ctx.auth_service.require_uid(request)
     return {"ok": True, "uid": uid}
 
 
 @router.get("/me/tutor")
-def me_get_tutor(request: Request) -> Dict[str, Any]:
-    uid = auth_service.require_uid(request)
-    tutor = store.get_tutor(uid) or {"tutor_id": uid, "desired_assignments_per_day": 10}
+def me_get_tutor(request: Request, ctx: AppContext = Depends(get_app_context)) -> Dict[str, Any]:
+    uid = ctx.auth_service.require_uid(request)
+    tutor = ctx.store.get_tutor(uid) or {"tutor_id": uid, "desired_assignments_per_day": 10}
 
-    if sb.enabled():
-        user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
+    if ctx.sb.enabled():
+        user_id = ctx.sb.upsert_user(firebase_uid=uid, email=None, name=None)
         if user_id:
-            prefs = sb.get_preferences(user_id=user_id)
+            prefs = ctx.sb.get_preferences(user_id=user_id)
             if prefs:
                 tutor = dict(tutor)
                 tutor.update(
@@ -54,9 +54,9 @@ def me_get_tutor(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/me/assignments/match-counts")
-def me_assignment_match_counts(request: Request, req: MatchCountsRequest) -> Dict[str, Any]:
-    _ = auth_service.require_uid(request)
-    if not sb.enabled():
+def me_assignment_match_counts(request: Request, req: MatchCountsRequest, ctx: AppContext = Depends(get_app_context)) -> Dict[str, Any]:
+    _ = ctx.auth_service.require_uid(request)
+    if not ctx.sb.enabled():
         raise HTTPException(status_code=503, detail="supabase_disabled")
 
     levels = [str(x).strip() for x in (req.levels or []) if str(x).strip()]
@@ -75,7 +75,7 @@ def me_assignment_match_counts(request: Request, req: MatchCountsRequest) -> Dic
     counts: Dict[str, Any] = {}
     for d in (7, 14, 30):
         c = count_matching_assignments(
-            sb,
+            ctx.sb,
             days=d,
             levels=levels,
             specific_student_levels=specific_student_levels,
@@ -95,8 +95,8 @@ def me_assignment_match_counts(request: Request, req: MatchCountsRequest) -> Dic
 
 
 @router.put("/me/tutor")
-def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
-    uid = auth_service.require_uid(request)
+def me_upsert_tutor(request: Request, req: TutorUpsert, ctx: AppContext = Depends(get_app_context)) -> Dict[str, Any]:
+    uid = ctx.auth_service.require_uid(request)
 
     postal_code: Optional[str] = None
     postal_lat: Optional[float] = None
@@ -110,7 +110,7 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
             if coords:
                 postal_lat, postal_lon = coords
 
-    store.upsert_tutor(
+    ctx.store.upsert_tutor(
         uid,
         chat_id=req.chat_id,
         postal_code=postal_code,
@@ -129,8 +129,8 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
         desired_assignments_per_day=req.desired_assignments_per_day,
     )
 
-    if sb.enabled():
-        user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
+    if ctx.sb.enabled():
+        user_id = ctx.sb.upsert_user(firebase_uid=uid, email=None, name=None)
         if user_id:
             prefs: Dict[str, Any] = {
                 "subjects": req.subjects,
@@ -148,12 +148,12 @@ def me_upsert_tutor(request: Request, req: TutorUpsert) -> Dict[str, Any]:
                 prefs["dm_max_distance_km"] = req.dm_max_distance_km
             if req.desired_assignments_per_day is not None:
                 prefs["desired_assignments_per_day"] = req.desired_assignments_per_day
-            sb.upsert_preferences(user_id=user_id, prefs=prefs)
+            ctx.sb.upsert_preferences(user_id=user_id, prefs=prefs)
 
     return {"ok": True, "tutor_id": uid}
 
 
 @router.post("/me/telegram/link-code")
-def me_telegram_link_code(request: Request) -> Dict[str, Any]:
-    uid = auth_service.require_uid(request)
-    return store.create_telegram_link_code(uid, ttl_seconds=600)
+def me_telegram_link_code(request: Request, ctx: AppContext = Depends(get_app_context)) -> Dict[str, Any]:
+    uid = ctx.auth_service.require_uid(request)
+    return ctx.store.create_telegram_link_code(uid, ttl_seconds=600)

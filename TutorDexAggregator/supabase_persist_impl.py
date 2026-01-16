@@ -1,45 +1,107 @@
 import os
 import logging
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 
 import requests
+from shared.config import load_aggregator_config
+from shared.supabase_client import SupabaseClient, SupabaseConfig as ClientConfig, coerce_rows
 
 try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
     from utils.field_coercion import truthy, safe_str  # type: ignore
-    from utils.supabase_client import (  # type: ignore
-        SupabaseConfig, load_config_from_env, SupabaseRestClient, coerce_rows
-    )
     from services.row_builder import build_assignment_row  # type: ignore
     from services.merge_policy import merge_patch_body  # type: ignore
     from services.persistence_operations import upsert_agency  # type: ignore
     from services.geocoding_service import geocode_sg_postal  # type: ignore
     from services.event_publisher import should_run_duplicate_detection, run_duplicate_detection_async  # type: ignore
+    from utils.field_coercion import normalize_sg_postal_code  # type: ignore
 except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from TutorDexAggregator.utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
     from TutorDexAggregator.utils.field_coercion import truthy, safe_str  # type: ignore
-    from TutorDexAggregator.utils.supabase_client import (  # type: ignore
-        SupabaseConfig, load_config_from_env, SupabaseRestClient, coerce_rows
-    )
     from TutorDexAggregator.services.row_builder import build_assignment_row  # type: ignore
     from TutorDexAggregator.services.merge_policy import merge_patch_body  # type: ignore
     from TutorDexAggregator.services.persistence_operations import upsert_agency  # type: ignore
     from TutorDexAggregator.services.geocoding_service import geocode_sg_postal  # type: ignore
     from TutorDexAggregator.services.event_publisher import should_run_duplicate_detection, run_duplicate_detection_async  # type: ignore
+    from TutorDexAggregator.utils.field_coercion import normalize_sg_postal_code  # type: ignore
 
 setup_logging()
 logger = logging.getLogger("supabase_persist")
+_CFG = load_aggregator_config()
 
 try:
     from observability_metrics import worker_supabase_fail_total, versions as _obs_versions  # type: ignore
 except Exception:
     worker_supabase_fail_total = None  # type: ignore
     _obs_versions = None  # type: ignore
+
+
+def _normalize_sg_postal_code(postal_code: str) -> str:
+    """Compatibility shim for legacy callers/tests."""
+    return str(normalize_sg_postal_code(postal_code) or "").strip()
+
+
+def _geocode_sg_postal(postal_code: str, *, timeout: int = 10):
+    """Compatibility shim for legacy callers/tests."""
+    return geocode_sg_postal(postal_code, timeout=timeout)
+
+
+def _build_assignment_row(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Compatibility shim for legacy callers/tests."""
+    return build_assignment_row(payload, geocode_func=_geocode_sg_postal)
+
+
+def _merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any], force_upgrade: bool = False) -> Dict[str, Any]:
+    """Compatibility shim for legacy callers/tests."""
+    return merge_patch_body(existing=existing, incoming_row=incoming_row, force_upgrade=force_upgrade)
+
+
+@dataclass(frozen=True)
+class SupabaseConfig:
+    """Configuration for Supabase persistence."""
+
+    url: str
+    key: str
+    assignments_table: str = "assignments"
+    enabled: bool = False
+    bump_min_seconds: int = 6 * 60 * 60  # 6 hours
+    timeout: int = 30
+    max_retries: int = 3
+
+    def to_client_config(self) -> ClientConfig:
+        return ClientConfig(
+            url=self.url,
+            key=self.key,
+            timeout=int(self.timeout),
+            max_retries=int(self.max_retries),
+            enabled=bool(self.enabled),
+        )
+
+
+def load_config_from_env() -> SupabaseConfig:
+    url = _CFG.supabase_rest_url
+    key = _CFG.supabase_auth_key
+    assignments_table = str(_CFG.supabase_assignments_table or "assignments").strip()
+    enabled = bool(_CFG.supabase_enabled) and bool(url and key and assignments_table)
+    bump_min_seconds = int(_CFG.supabase_bump_min_seconds or (6 * 60 * 60))
+    return SupabaseConfig(
+        url=url,
+        key=key,
+        assignments_table=assignments_table,
+        enabled=enabled,
+        bump_min_seconds=bump_min_seconds,
+    )
+
+
+def SupabaseRestClient(cfg: SupabaseConfig) -> SupabaseClient:
+    """Compatibility shim: returns the unified shared Supabase client."""
+    return SupabaseClient(cfg.to_client_config())
 
 
 def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[SupabaseConfig] = None) -> Dict[str, Any]:

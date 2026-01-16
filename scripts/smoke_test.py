@@ -2,10 +2,23 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
+from pathlib import Path
+import urllib.error
+import urllib.request
 from typing import Any, Dict, Optional, Tuple
 
-from shared.config import load_aggregator_config, load_backend_config
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+try:
+    from shared.config import load_aggregator_config, load_backend_config
+except Exception:
+    load_aggregator_config = None  # type: ignore[assignment]
+    load_backend_config = None  # type: ignore[assignment]
 
 
 def _join_url(base: str, path: str) -> str:
@@ -22,49 +35,75 @@ def _print_result(ok: bool, name: str, detail: str = "") -> None:
     print(msg)
 
 
-def _require_requests():
-    try:
-        import requests  # type: ignore
-
-        return requests
-    except Exception:
-        print("FAIL: python dependency missing: requests")
-        print("Install with: pip install requests")
-        raise SystemExit(2)
-
-
 def _http_get(url: str, *, timeout_s: int = 10) -> Tuple[bool, str]:
-    requests = _require_requests()
     try:
-        resp = requests.get(url, timeout=timeout_s)
-        ok = resp.status_code < 300
-        return ok, f"status={resp.status_code}"
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            status = int(getattr(resp, "status", 200) or 200)
+            ok = status < 300
+            return ok, f"status={status}"
+    except urllib.error.HTTPError as e:
+        return False, f"status={getattr(e, 'code', 'unknown')}"
     except Exception as e:
         return False, f"error={e}"
 
 
 def _supabase_rpc(supabase_url: str, supabase_key: str, fn: str, payload: Dict[str, Any]) -> Tuple[bool, str]:
-    requests = _require_requests()
     url = _join_url(supabase_url, f"rest/v1/rpc/{fn}")
     headers = {"apikey": supabase_key, "authorization": f"Bearer {supabase_key}", "content-type": "application/json"}
     try:
-        resp = requests.post(url, json=payload, headers=headers, timeout=20)
-        ok = resp.status_code < 300
-        detail = f"status={resp.status_code}"
-        if not ok:
-            detail += f" body={resp.text[:300]}"
-        return ok, detail
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            status = int(getattr(resp, "status", 200) or 200)
+            ok = status < 300
+            return ok, f"status={status}"
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", errors="ignore")[:300] if hasattr(e, "read") else ""
+        except Exception:
+            body = ""
+        detail = f"status={getattr(e, 'code', 'unknown')}"
+        if body:
+            detail += f" body={body}"
+        return False, detail
     except Exception as e:
         return False, f"error={e}"
 
 
 def main() -> int:
-    cfg_backend = load_backend_config()
-    cfg_agg = load_aggregator_config()
+    default_backend_url = "http://127.0.0.1:8000"
+    default_supabase_url: Optional[str] = None
+    default_supabase_key: Optional[str] = None
 
-    default_backend_url = str(cfg_backend.backend_url or "").strip() or "http://127.0.0.1:8000"
-    default_supabase_url = str(cfg_backend.supabase_rest_url or "").strip() or str(cfg_agg.supabase_rest_url or "").strip() or None
-    default_supabase_key = str(cfg_backend.supabase_auth_key or "").strip() or str(cfg_agg.supabase_auth_key or "").strip() or None
+    if callable(load_backend_config) and callable(load_aggregator_config):
+        cfg_backend = load_backend_config()
+        cfg_agg = load_aggregator_config()
+        default_backend_url = str(getattr(cfg_backend, "backend_url", "") or "").strip() or default_backend_url
+        default_supabase_url = (
+            str(getattr(cfg_backend, "supabase_rest_url", "") or "").strip()
+            or str(getattr(cfg_agg, "supabase_rest_url", "") or "").strip()
+            or None
+        )
+        default_supabase_key = (
+            str(getattr(cfg_backend, "supabase_auth_key", "") or "").strip()
+            or str(getattr(cfg_agg, "supabase_auth_key", "") or "").strip()
+            or None
+        )
+    else:
+        # Minimal mode: avoid pydantic-settings dependency; use env vars only.
+        default_backend_url = str(os.environ.get("BACKEND_URL") or "").strip() or default_backend_url
+        default_supabase_url = (
+            str(os.environ.get("SUPABASE_URL") or "").strip()
+            or str(os.environ.get("SUPABASE_URL_HOST") or "").strip()
+            or str(os.environ.get("SUPABASE_URL_DOCKER") or "").strip()
+            or None
+        )
+        default_supabase_key = (
+            str(os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+            or str(os.environ.get("SUPABASE_KEY") or "").strip()
+            or None
+        )
 
     p = argparse.ArgumentParser(description="TutorDex smoke test (backend + deps + key RPCs).")
     p.add_argument("--backend-url", default=default_backend_url, help="Backend base URL.")
@@ -115,4 +154,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

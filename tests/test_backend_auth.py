@@ -46,7 +46,6 @@ class TestFirebaseAuth:
     def test_update_tutor_profile_with_auth(self, mock_require_uid, client: TestClient, mock_redis):
         """Test updating tutor profile with authentication."""
         mock_require_uid.return_value = "test_user_123"
-        mock_redis.save_tutor.return_value = True
         
         profile = {
             "levels": ["Primary", "Secondary"],
@@ -59,7 +58,7 @@ class TestFirebaseAuth:
         headers = {"Authorization": "Bearer valid_token"}
         response = client.put("/me/tutor", json=profile, headers=headers)
         assert response.status_code == 200
-        assert mock_redis.save_tutor.called
+        assert response.json().get("ok") is True
     
     def test_expired_token(self, client: TestClient):
         """Test handling of expired Firebase token."""

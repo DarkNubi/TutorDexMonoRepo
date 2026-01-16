@@ -102,6 +102,115 @@ class SupabaseClient:
         if extra:
             headers.update(extra)
         return headers
+
+    def _url(self, path: str) -> str:
+        """Build a fully-qualified PostgREST URL from a rest/v1-relative path."""
+        return f"{self.base_url}/{path.lstrip('/')}"
+
+    def get(
+        self,
+        path: str,
+        *,
+        timeout: Optional[int] = None,
+        prefer: Optional[str] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> requests.Response:
+        headers: Dict[str, str] = {}
+        if prefer:
+            headers["Prefer"] = prefer
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.session.get(
+            self._url(path),
+            headers=self._headers(headers),
+            params=params,
+            timeout=self.config.timeout if timeout is None else timeout,
+        )
+
+    def post(
+        self,
+        path: str,
+        json_body: Any,
+        *,
+        timeout: Optional[int] = None,
+        prefer: Optional[str] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
+    ) -> requests.Response:
+        headers: Dict[str, str] = {}
+        if prefer:
+            headers["Prefer"] = prefer
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.session.post(
+            self._url(path),
+            headers=self._headers(headers),
+            json=json_body,
+            timeout=self.config.timeout if timeout is None else timeout,
+        )
+
+    def patch(
+        self,
+        path: str,
+        json_body: Any,
+        *,
+        timeout: Optional[int] = None,
+        prefer: Optional[str] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
+    ) -> requests.Response:
+        headers: Dict[str, str] = {}
+        if prefer:
+            headers["Prefer"] = prefer
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.session.patch(
+            self._url(path),
+            headers=self._headers(headers),
+            json=json_body,
+            timeout=self.config.timeout if timeout is None else timeout,
+        )
+
+    def head(
+        self,
+        path: str,
+        *,
+        timeout: Optional[int] = None,
+        prefer: Optional[str] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> requests.Response:
+        headers: Dict[str, str] = {}
+        if prefer:
+            headers["Prefer"] = prefer
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.session.head(
+            self._url(path),
+            headers=self._headers(headers),
+            params=params,
+            timeout=self.config.timeout if timeout is None else timeout,
+        )
+
+    def delete_raw(
+        self,
+        path: str,
+        *,
+        timeout: Optional[int] = None,
+        prefer: Optional[str] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> requests.Response:
+        headers: Dict[str, str] = {}
+        if prefer:
+            headers["Prefer"] = prefer
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.session.delete(
+            self._url(path),
+            headers=self._headers(headers),
+            params=params,
+            timeout=self.config.timeout if timeout is None else timeout,
+        )
     
     def select(
         self,
@@ -425,3 +534,12 @@ def create_client_from_env() -> SupabaseClient:
     )
     
     return SupabaseClient(config)
+
+
+def coerce_rows(resp: requests.Response) -> List[Dict[str, Any]]:
+    """Best-effort list[dict] parsing for PostgREST responses."""
+    try:
+        data = resp.json()
+    except Exception:
+        return []
+    return data if isinstance(data, list) else []

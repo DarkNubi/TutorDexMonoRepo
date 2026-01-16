@@ -9,31 +9,19 @@
 
 **Current Status:** 16/16 audit priorities from previous cycle complete ✅  
 **New Status:** 3 critical risks identified in Jan 15, 2026 audit ⚠️  
-**Total Outstanding Work:** 4-6 weeks depending on parallelization
+**Status Update (2026-01-16):** Supabase client consolidation + Phase C cleanup/linting completed; see `docs/OUTSTANDING_TASKS_2026-01-16.md`
 
 ---
 
 ## Critical Tasks (Start Immediately)
 
-### 🔴 Task B1: Consolidate Supabase Clients (2 weeks)
-**Problem:** 3 incompatible Supabase implementations → 3× maintenance burden  
-**Impact:** Bug fixes must be applied 3 times independently  
-**Effort:** 9 days (~2 weeks)
-
-**Quick Action:**
-```bash
-# Files to consolidate:
-- shared/supabase_client.py (KEEP - extend)
-- TutorDexAggregator/utils/supabase_client.py (REMOVE)
-- TutorDexBackend/supabase_store.py (REFACTOR to use shared)
-```
+### ✅ Task B1: Consolidate Supabase Clients
+Completed: unified under `shared/supabase_client.py`, removed duplicate wrappers, and documented in `docs/ADR-0001-SUPABASE-CLIENT-CONSOLIDATION.md`.
 
 ---
 
-### 🔴 Task B2: Fix Silent Failures (2 weeks)
-**Problem:** 120+ `except Exception: pass` hiding production errors  
-**Impact:** Incidents go undetected until data loss noticed  
-**Effort:** 9 days (~2 weeks)
+### 🟡 Task B2: Fix Silent Failures
+Status update: no `except Exception: pass` instances remain in non-doc code paths; remaining references are in documentation.
 
 **Quick Action:**
 ```bash
@@ -48,10 +36,8 @@ grep -r "except Exception:" --include="*.py" TutorDexBackend TutorDexAggregator
 
 ---
 
-### 🔴 Task B3: Add Critical Tests (2 weeks)
-**Problem:** Matching algorithm (293 lines), worker orchestration, frontend have 0 tests  
-**Impact:** Cannot refactor safely, high regression risk  
-**Effort:** 10 days (~2 weeks)
+### 🟡 Task B3: Add Critical Tests
+Status update: matching tests exist (`tests/test_matching.py`); frontend has Mocha tests (`TutorDexWebsite/test/`); remaining gap is orchestration-level tests for the extraction worker.
 
 **Quick Action:**
 ```bash
@@ -149,14 +135,14 @@ vim docs/README.md
 **Quick Action:**
 ```bash
 # Create test scripts:
-touch scripts/smoke_test_backend.sh
-touch scripts/smoke_test_aggregator.sh
-touch scripts/smoke_test_observability.sh
-touch scripts/smoke_test_integration.sh
-touch scripts/smoke_test_all.sh
+touch scripts/smoke_test_backend.bat
+touch scripts/smoke_test_aggregator.bat
+touch scripts/smoke_test_observability.bat
+touch scripts/smoke_test_integration.bat
+touch scripts/smoke_test_all.bat
 
 # Run full validation:
-./scripts/smoke_test_all.sh
+scripts\\smoke_test_all.bat
 ```
 
 ---

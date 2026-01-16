@@ -20,12 +20,23 @@ http_request_latency_seconds = Histogram(
 )
 
 
-def observe_request(*, method: str, path: str, status_code: int, latency_s: float) -> None:
-    http_requests_total.labels(method=method, path=path, status_code=str(status_code)).inc()
+def observe_request(
+    *,
+    method: str,
+    path: str,
+    status_code: Optional[int] = None,
+    status: Optional[int] = None,
+    latency_s: Optional[float] = None,
+    latency_ms: Optional[float] = None,
+    **_: object,
+) -> None:
+    code = int(status_code if status_code is not None else (status if status is not None else 200))
+    if latency_s is None:
+        latency_s = (float(latency_ms) / 1000.0) if latency_ms is not None else 0.0
+    http_requests_total.labels(method=method, path=path, status_code=str(code)).inc()
     http_request_latency_seconds.labels(method=method, path=path).observe(max(0.0, float(latency_s)))
 
 
 def metrics_payload() -> tuple[bytes, str]:
     data = generate_latest()
     return data, CONTENT_TYPE_LATEST
-

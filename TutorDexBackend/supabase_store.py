@@ -1,25 +1,17 @@
 import logging
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, List
 
 import requests
-from urllib.parse import urlparse
 
 from shared.config import load_backend_config
+from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
 
 logger = logging.getLogger("supabase_store")
 
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-@dataclass(frozen=True)
-class SupabaseConfig:
-    url: str
-    key: str
-    enabled: bool = False
 
 
 def load_supabase_config() -> SupabaseConfig:
@@ -30,63 +22,10 @@ def load_supabase_config() -> SupabaseConfig:
     return SupabaseConfig(url=url, key=key, enabled=enabled)
 
 
-class SupabaseRestClient:
-    def __init__(self, cfg: SupabaseConfig):
-        self.cfg = cfg
-        self.base = f"{cfg.url}/rest/v1"
-        self.session = requests.Session()
-        try:
-            host = (urlparse(cfg.url).hostname or "").lower()
-            if host in {"127.0.0.1", "localhost", "::1"}:
-                self.session.trust_env = False
-        except Exception:
-            pass
-        self.session.headers.update(
-            {
-                "apikey": cfg.key,
-                "authorization": f"Bearer {cfg.key}",
-                "content-type": "application/json",
-            }
-        )
-
-    def _url(self, path: str) -> str:
-        return f"{self.base}/{path.lstrip('/')}"
-
-    def get(self, path: str, *, timeout: int = 15, prefer: Optional[str] = None, extra_headers: Optional[Dict[str, str]] = None) -> requests.Response:
-        headers = {}
-        if prefer:
-            headers["prefer"] = prefer
-        if extra_headers:
-            headers.update(extra_headers)
-        return self.session.get(self._url(path), headers=headers, timeout=timeout)
-
-    def post(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None, extra_headers: Optional[Dict[str, str]] = None) -> requests.Response:
-        headers = {}
-        if prefer:
-            headers["prefer"] = prefer
-        if extra_headers:
-            headers.update(extra_headers)
-        return self.session.post(self._url(path), json=json_body, headers=headers, timeout=timeout)
-
-    def patch(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None) -> requests.Response:
-        headers = {}
-        if prefer:
-            headers["prefer"] = prefer
-        return self.session.patch(self._url(path), json=json_body, headers=headers, timeout=timeout)
-
-
-def _coerce_rows(resp: requests.Response) -> List[Dict[str, Any]]:
-    try:
-        data = resp.json()
-    except Exception:
-        return []
-    return data if isinstance(data, list) else []
-
-
 class SupabaseStore:
     def __init__(self, cfg: Optional[SupabaseConfig] = None):
         self.cfg = cfg or load_supabase_config()
-        self.client = SupabaseRestClient(self.cfg) if self.cfg.enabled else None
+        self.client = SupabaseClient(self.cfg) if self.cfg.enabled else None
 
     def enabled(self) -> bool:
         return bool(self.client)
@@ -119,7 +58,7 @@ class SupabaseStore:
             logger.warning("Supabase users upsert status=%s body=%s", resp.status_code, resp.text[:500])
             return None
 
-        rows = _coerce_rows(resp)
+        rows = coerce_rows(resp)
         if rows:
             return rows[0].get("id")
 
@@ -127,7 +66,7 @@ class SupabaseStore:
         q = f"users?select=id&firebase_uid=eq.{requests.utils.quote(uid, safe='')}&limit=1"
         r2 = self.client.get(q, timeout=15)
         if r2.status_code < 400:
-            rr = _coerce_rows(r2)
+            rr = coerce_rows(r2)
             if rr:
                 return rr[0].get("id")
         return None
@@ -183,7 +122,7 @@ class SupabaseStore:
             r = self.client.get(q2, timeout=15)
         if r.status_code >= 400:
             return None
-        rows = _coerce_rows(r)
+        rows = coerce_rows(r)
         return rows[0] if rows else None
 
     def insert_event(self, *, user_id: Optional[int], assignment_id: Optional[int], event_type: str, meta: Optional[Dict[str, Any]] = None) -> bool:
@@ -217,7 +156,7 @@ class SupabaseStore:
         r = self.client.get(q, timeout=15)
         if r.status_code >= 400:
             return None
-        rows = _coerce_rows(r)
+        rows = coerce_rows(r)
         if rows:
             return rows[0].get("id")
         return None
@@ -236,7 +175,7 @@ class SupabaseStore:
 
         body = {"p_external_id": ext, "p_original_url": url, "p_delta": int(delta)}
         try:
-            resp = self.client.post("rpc/increment_assignment_clicks", body, timeout=20)  # type: ignore[arg-type]
+            resp = self.client.post("rpc/increment_assignment_clicks", body, timeout=20)
         except Exception as e:
             logger.warning("Supabase increment clicks rpc failed external_id=%s error=%s", ext, e)
             return None
@@ -300,7 +239,7 @@ class SupabaseStore:
         payload = {k: v for k, v in payload.items() if v is not None}
 
         try:
-            resp = self.client.post("rpc/list_open_assignments", payload, timeout=25)  # type: ignore[arg-type]
+            resp = self.client.post("rpc/list_open_assignments", payload, timeout=25)
         except Exception as e:
             logger.warning("Supabase list_open_assignments rpc failed error=%s", e)
             return None
@@ -308,7 +247,7 @@ class SupabaseStore:
             logger.warning("Supabase list_open_assignments rpc status=%s body=%s", resp.status_code, resp.text[:500])
             return None
 
-        rows = _coerce_rows(resp)
+        rows = coerce_rows(resp)
         total = 0
         if rows:
             try:
@@ -375,7 +314,7 @@ class SupabaseStore:
         payload = {k: v for k, v in payload.items() if v is not None}
 
         try:
-            resp = self.client.post("rpc/list_open_assignments_v2", payload, timeout=25)  # type: ignore[arg-type]
+            resp = self.client.post("rpc/list_open_assignments_v2", payload, timeout=25)
         except Exception as e:
             logger.warning("Supabase list_open_assignments_v2 rpc failed error=%s", e)
             return None
@@ -383,7 +322,7 @@ class SupabaseStore:
             logger.warning("Supabase list_open_assignments_v2 rpc status=%s body=%s", resp.status_code, resp.text[:500])
             return None
 
-        rows = _coerce_rows(resp)
+        rows = coerce_rows(resp)
         total = 0
         if rows:
             try:
@@ -431,7 +370,7 @@ class SupabaseStore:
         payload = {k: v for k, v in payload.items() if v is not None}
 
         try:
-            resp = self.client.post("rpc/open_assignment_facets", payload, timeout=25)  # type: ignore[arg-type]
+            resp = self.client.post("rpc/open_assignment_facets", payload, timeout=25)
         except Exception as e:
             logger.warning("Supabase open_assignment_facets rpc failed error=%s", e)
             return None
@@ -502,7 +441,7 @@ class SupabaseStore:
             return None
         if resp.status_code >= 400:
             return None
-        rows = _coerce_rows(resp)
+        rows = coerce_rows(resp)
         return rows[0] if rows else None
 
     def mark_broadcast_edited(self, *, external_id: str, clicks: int, message_html: str) -> bool:

@@ -8,16 +8,13 @@ import logging
 from typing import Optional
 import requests
 
-try:
-    from utils.supabase_client import SupabaseRestClient, coerce_rows
-except Exception:
-    from TutorDexAggregator.utils.supabase_client import SupabaseRestClient, coerce_rows
+from shared.supabase_client import SupabaseClient, coerce_rows
 
 
 logger = logging.getLogger("persistence_operations")
 
 
-def upsert_agency(client: SupabaseRestClient, *, name: str, channel_link: Optional[str]) -> Optional[int]:
+def upsert_agency(client: SupabaseClient, *, name: str, channel_link: Optional[str]) -> Optional[int]:
     """
     Find or create agency by name/channel_link.
     

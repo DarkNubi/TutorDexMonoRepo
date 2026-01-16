@@ -344,7 +344,7 @@
 
 #### Task E1: End-to-End Smoke Test
 - **Description**: Verify all services work together after changes
-- **Files Involved**: `scripts/smoke_test.py`
+- **Files Involved**: `scripts/smoke_test.py` and Windows wrappers `scripts/smoke_test_*.bat`
 - **Actions**:
   1. Start all services with `docker compose up -d`
   2. Run smoke test script

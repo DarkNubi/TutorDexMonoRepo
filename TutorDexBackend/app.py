@@ -20,8 +20,15 @@ from TutorDexBackend.routes.duplicates_routes import router as duplicates_router
 from TutorDexBackend.routes.health_routes import router as health_router
 from TutorDexBackend.routes.telegram_routes import router as telegram_router
 from TutorDexBackend.routes.user_routes import router as user_router
-from TutorDexBackend.runtime import auth_service, cfg, logger, sb, store
+from TutorDexBackend.app_context import get_app_context
 from TutorDexBackend.utils.request_utils import get_client_ip, parse_traceparent
+
+_ctx = get_app_context()
+auth_service = _ctx.auth_service
+cfg = _ctx.cfg
+logger = _ctx.logger
+sb = _ctx.sb
+store = _ctx.store
 
 app = FastAPI(title="TutorDex Backend", version="0.1.0")
 
@@ -120,4 +127,3 @@ app.include_router(admin_router)
 app.include_router(user_router)
 app.include_router(analytics_router)
 app.include_router(telegram_router)
-

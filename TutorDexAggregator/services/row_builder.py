@@ -294,9 +294,9 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
         if isinstance(signals_obj, dict):
             sig_tt = signals_obj.get("tutor_types")
             sig_rb = signals_obj.get("rate_breakdown")
-            if sig_tt:
+            if sig_tt and not tutor_types:
                 tutor_types = sig_tt
-            if sig_rb:
+            if sig_rb and not rate_breakdown:
                 rate_breakdown = sig_rb
     except Exception:
         pass

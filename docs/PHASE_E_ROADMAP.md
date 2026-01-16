@@ -69,7 +69,7 @@ docker-compose logs --tail=50 grafana
 
 #### Step 2: Backend API Smoke Tests (1 hour)
 
-**Create**: `scripts/smoke_test_backend.sh`
+**Create**: `scripts/smoke_test_backend.bat` (Windows cmd)
 
 **Content**:
 ```bash
@@ -146,13 +146,12 @@ fi
 
 **Run**:
 ```bash
-chmod +x scripts/smoke_test_backend.sh
-./scripts/smoke_test_backend.sh
+Windows: `scripts\\smoke_test_backend.bat`
 ```
 
 #### Step 3: Aggregator Smoke Tests (1 hour)
 
-**Create**: `scripts/smoke_test_aggregator.sh`
+**Create**: `scripts/smoke_test_aggregator.bat` (Windows cmd)
 
 **Content**:
 ```bash
@@ -215,9 +214,11 @@ else
 fi
 ```
 
+**Note:** In the default `docker-compose.yml`, the worker health port is not published on the host. The Windows smoke suite checks worker/collector health via backend endpoints (`/health/worker` and `/health/collector`) by default.
+
 #### Step 4: Observability Smoke Tests (30 minutes)
 
-**Create**: `scripts/smoke_test_observability.sh`
+**Create**: `scripts/smoke_test_observability.bat` (Windows cmd)
 
 **Content**:
 ```bash
@@ -286,7 +287,7 @@ fi
 
 #### Step 5: Integration Tests (1 hour)
 
-**Create**: `scripts/smoke_test_integration.sh`
+**Create**: `scripts/smoke_test_integration.bat` (Windows cmd)
 
 **Content**:
 ```bash
@@ -367,7 +368,7 @@ fi
 
 #### Step 6: Run Full Smoke Test Suite (15 minutes)
 
-**Create**: `scripts/smoke_test_all.sh`
+**Create**: `scripts/smoke_test_all.bat` (Windows cmd)
 
 **Content**:
 ```bash
@@ -380,16 +381,16 @@ echo ""
 FAILED_TESTS=0
 
 # Run each test suite
-./scripts/smoke_test_backend.sh || FAILED_TESTS=$((FAILED_TESTS+1))
+scripts\\smoke_test_backend.bat
 echo ""
 
-./scripts/smoke_test_aggregator.sh || FAILED_TESTS=$((FAILED_TESTS+1))
+scripts\\smoke_test_aggregator.bat
 echo ""
 
-./scripts/smoke_test_observability.sh || FAILED_TESTS=$((FAILED_TESTS+1))
+scripts\\smoke_test_observability.bat
 echo ""
 
-./scripts/smoke_test_integration.sh || FAILED_TESTS=$((FAILED_TESTS+1))
+scripts\\smoke_test_integration.bat
 echo ""
 
 echo "============================="
@@ -411,8 +412,7 @@ fi
 
 **Run**:
 ```bash
-chmod +x scripts/smoke_test_*.sh
-./scripts/smoke_test_all.sh
+Windows: `scripts\\smoke_test_all.bat`
 ```
 
 ### Acceptance Criteria
@@ -704,7 +704,7 @@ A: Yes, run `pip install -r requirements.txt` to get import-linter.
 A: `runtime.py` still works but shows deprecation warning. Update when convenient.
 
 **Q: How do I test my changes?**
-A: Run smoke tests: `./scripts/smoke_test_all.sh`
+A: Run smoke tests: `scripts\\smoke_test_all.bat`
 
 **Q: Where can I get help?**
 A: Check `docs/SYSTEM_INTERNAL.md` or ask in team chat.
@@ -1014,8 +1014,8 @@ Successfully completed all phases of the implementation plan addressing critical
 - ✅ Component READMEs updated
 
 **Deliverables**:
-- `scripts/smoke_test_all.sh`
-- `scripts/smoke_test_*.sh` (4 scripts)
+- `scripts/smoke_test_all.bat`
+- `scripts/smoke_test_*.bat` (cmd scripts)
 - `docs/MIGRATION_GUIDE_2026-01.md`
 - This completion report
 
@@ -1087,7 +1087,7 @@ Successfully completed all phases of the implementation plan addressing critical
 3. **Validate Deployment**
    ```bash
    # Run smoke tests
-   ./scripts/smoke_test_all.sh
+   scripts\\smoke_test_all.bat
    
    # Check service health
    curl http://localhost:8000/health/full
@@ -1108,7 +1108,7 @@ docker-compose down
 docker-compose up -d --build
 
 # Verify rollback
-./scripts/smoke_test_all.sh
+scripts\\smoke_test_all.bat
 ```
 
 ---

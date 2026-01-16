@@ -11,7 +11,10 @@ from typing import TYPE_CHECKING
 from shared.config import load_aggregator_config
 
 if TYPE_CHECKING:
-    from utils.supabase_client import SupabaseConfig
+    try:
+        from supabase_persist import SupabaseConfig  # type: ignore
+    except Exception:
+        from TutorDexAggregator.supabase_persist_impl import SupabaseConfig  # type: ignore
 
 
 logger = logging.getLogger("event_publisher")

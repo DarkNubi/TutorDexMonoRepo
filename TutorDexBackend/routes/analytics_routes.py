@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
 from TutorDexBackend.models import AnalyticsEventRequest, ClickTrackRequest
-from TutorDexBackend.runtime import analytics_service, auth_service, sb
+from TutorDexBackend.app_context import AppContext, get_app_context
 
 router = APIRouter()
 
@@ -21,21 +21,20 @@ async def track_click(request: Request, req: ClickTrackRequest) -> Dict[str, Any
 
 
 @router.post("/analytics/event")
-def analytics_event(request: Request, req: AnalyticsEventRequest) -> Dict[str, Any]:
-    uid = auth_service.require_uid(request)
-    if not sb.enabled():
+def analytics_event(request: Request, req: AnalyticsEventRequest, ctx: AppContext = Depends(get_app_context)) -> Dict[str, Any]:
+    uid = ctx.auth_service.require_uid(request)
+    if not ctx.sb.enabled():
         return {"ok": False, "skipped": True, "reason": "supabase_disabled"}
 
-    user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
+    user_id = ctx.sb.upsert_user(firebase_uid=uid, email=None, name=None)
     assignment_id = None
     if req.assignment_external_id:
-        assignment_id = sb.resolve_assignment_id(external_id=req.assignment_external_id, agency_name=req.agency_name)
+        assignment_id = ctx.sb.resolve_assignment_id(external_id=req.assignment_external_id, agency_name=req.agency_name)
 
-    analytics_service.insert_analytics_event(
+    ctx.analytics_service.insert_analytics_event(
         user_id=user_id,
         assignment_id=assignment_id,
         event_type=req.event_type,
         meta=req.meta or {"external_id": req.assignment_external_id, "agency_name": req.agency_name},
     )
     return {"ok": True}
-

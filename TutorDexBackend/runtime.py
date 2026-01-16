@@ -7,32 +7,24 @@ without circular imports against `app.py`.
 
 from __future__ import annotations
 
-import logging
+import warnings
 
-from TutorDexBackend.logging_setup import setup_logging
-from TutorDexBackend.otel import setup_otel
-from TutorDexBackend.redis_store import TutorStore
-from TutorDexBackend.sentry_init import setup_sentry
-from TutorDexBackend.services.analytics_service import AnalyticsService
-from TutorDexBackend.services.auth_service import AuthService
-from TutorDexBackend.services.cache_service import CacheService
-from TutorDexBackend.services.health_service import HealthService
-from TutorDexBackend.services.telegram_service import TelegramService
-from TutorDexBackend.supabase_store import SupabaseStore
-from shared.config import load_backend_config
+from TutorDexBackend.app_context import get_app_context
 
-setup_logging()
-logger = logging.getLogger("tutordex_backend")
-setup_sentry(service_name="tutordex-backend")
-setup_otel()
+warnings.warn(
+    "TutorDexBackend.runtime is deprecated. Use TutorDexBackend.app_context instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-cfg = load_backend_config()
-store = TutorStore()
-sb = SupabaseStore()
+_ctx = get_app_context()
 
-auth_service = AuthService()
-health_service = HealthService(store, sb)
-cache_service = CacheService(store)
-telegram_service = TelegramService(store)
-analytics_service = AnalyticsService(sb, store)
-
+logger = _ctx.logger
+cfg = _ctx.cfg
+store = _ctx.store
+sb = _ctx.sb
+auth_service = _ctx.auth_service
+health_service = _ctx.health_service
+cache_service = _ctx.cache_service
+telegram_service = _ctx.telegram_service
+analytics_service = _ctx.analytics_service

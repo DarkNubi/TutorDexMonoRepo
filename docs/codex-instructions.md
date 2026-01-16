@@ -183,7 +183,8 @@ python -m py_compile TutorDexAggregator/*.py TutorDexAggregator/workers/*.py Tut
 - Include edge cases (empty input, malformed data)
 
 ### Validation Scripts
-- `scripts/smoke_test.py` - End-to-end health checks
+- Windows cmd smoke suite: `scripts\\smoke_test_all.bat`
+- Python smoke runner: `scripts/smoke_test.py`
 - `shared/contracts/validate_contracts.py` - Contract validation
 - `shared/taxonomy/subjects/validate_taxonomy.py` - Taxonomy validation
 
@@ -320,7 +321,7 @@ firebase deploy --only hosting
 1. Check logs in Grafana/Loki or `docker compose logs`
 2. Verify environment variables are set correctly
 3. Test connectivity to external services (Supabase, Redis, LLM API)
-4. Use smoke test: `python scripts/smoke_test.py`
+4. Use smoke tests: `scripts\\smoke_test_all.bat` (Windows cmd) or `py -3 scripts/smoke_test.py`
 5. Check observability health: `./observability/doctor.sh`
 
 ## Important Files and Directories

@@ -131,6 +131,9 @@ def _chat_completion(*, model_name: str, user_content: str, cid: Optional[str], 
         return out
 
 
+chat_completion = _chat_completion
+
+
 def _read_mock_output() -> Optional[str]:
     p = str(_CFG.llm_assignment_code_extractor_mock_file or "").strip()
     if not p:
@@ -159,7 +162,7 @@ def extract_assignment_identifiers_llm(
         llm_raw = mocked
         log_event(logger, logging.WARNING, "assignment_code_extract_mocked", file=str(_CFG.llm_assignment_code_extractor_mock_file or ""), out_chars=len(llm_raw or ""))
     else:
-        llm_raw = _chat_completion(model_name=_model_name(), user_content=prompt, cid=cid, channel=channel)
+        llm_raw = chat_completion(model_name=_model_name(), user_content=prompt, cid=cid, channel=channel)
 
     llm_raw_s = str(llm_raw or "")
     llm_raw_sha256 = hashlib.sha256(llm_raw_s.encode("utf-8")).hexdigest()

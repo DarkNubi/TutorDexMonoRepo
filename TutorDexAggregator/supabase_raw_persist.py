@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
-from urllib.parse import urlparse
 
 try:
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
@@ -15,6 +14,7 @@ except Exception:
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
 
 from shared.config import load_aggregator_config
+from shared.supabase_client import SupabaseClient, SupabaseConfig as ClientConfig, coerce_rows
 
 
 setup_logging()
@@ -110,57 +110,6 @@ def load_raw_config_from_env() -> SupabaseRawConfig:
     )
 
 
-class SupabaseRestClient:
-    def __init__(self, cfg: SupabaseRawConfig):
-        self.cfg = cfg
-        self.base = f"{cfg.url}/rest/v1"
-        self.session = requests.Session()
-        # On some Windows setups, global proxy env vars can cause requests to proxy even localhost
-        # traffic, leading to confusing "RemoteDisconnected" errors. For local Supabase (Kong on
-        # 127.0.0.1/localhost), disable trusting env proxy vars.
-        try:
-            host = (urlparse(cfg.url).hostname or "").lower()
-            if host in {"127.0.0.1", "localhost", "::1"}:
-                self.session.trust_env = False
-        except Exception:
-            pass
-        self.session.headers.update(
-            {
-                "apikey": cfg.key,
-                "authorization": f"Bearer {cfg.key}",
-                "content-type": "application/json",
-            }
-        )
-
-    def _url(self, path: str) -> str:
-        return f"{self.base}/{path.lstrip('/')}"
-
-    def get(self, path: str, *, timeout: int = 15) -> requests.Response:
-        return self.session.get(self._url(path), timeout=timeout)
-
-    def post(
-        self,
-        path: str,
-        json_body: Any,
-        *,
-        timeout: int = 15,
-        prefer: Optional[str] = None,
-        extra_headers: Optional[Dict[str, str]] = None,
-    ) -> requests.Response:
-        headers: Dict[str, str] = {}
-        if prefer:
-            headers["prefer"] = prefer
-        if extra_headers:
-            headers.update(extra_headers)
-        return self.session.post(self._url(path), json=json_body, headers=headers, timeout=timeout)
-
-    def patch(self, path: str, json_body: Any, *, timeout: int = 15, prefer: Optional[str] = None) -> requests.Response:
-        headers: Dict[str, str] = {}
-        if prefer:
-            headers["prefer"] = prefer
-        return self.session.patch(self._url(path), json=json_body, headers=headers, timeout=timeout)
-
-
 class RawFallbackWriter:
     def __init__(self, *, path: Path):
         self.path = path
@@ -174,7 +123,11 @@ class RawFallbackWriter:
 class SupabaseRawStore:
     def __init__(self, cfg: Optional[SupabaseRawConfig] = None):
         self.cfg = cfg or load_raw_config_from_env()
-        self.client = SupabaseRestClient(self.cfg) if self.cfg.enabled else None
+        self.client = (
+            SupabaseClient(ClientConfig(url=self.cfg.url, key=self.cfg.key, enabled=self.cfg.enabled))
+            if self.cfg.enabled
+            else None
+        )
         fb = str(_CFG.raw_fallback_file or "").strip()
         self.fallback = RawFallbackWriter(path=Path(fb)) if fb else None
 
@@ -226,12 +179,9 @@ class SupabaseRawStore:
             return None
         if resp.status_code >= 400:
             return None
-        try:
-            data = resp.json()
-        except Exception:
-            return None
-        if isinstance(data, list) and data:
-            rid = data[0].get("id")
+        rows = coerce_rows(resp)
+        if rows:
+            rid = rows[0].get("id")
             try:
                 return int(rid)
             except Exception:
@@ -247,13 +197,8 @@ class SupabaseRawStore:
             return None
         if resp.status_code >= 400:
             return None
-        try:
-            data = resp.json()
-        except Exception:
-            return None
-        if isinstance(data, list) and data:
-            return data[0]
-        return None
+        rows = coerce_rows(resp)
+        return rows[0] if rows else None
 
     def list_progress(self, *, run_id: int) -> List[Dict[str, Any]]:
         if not self.client:
@@ -267,11 +212,7 @@ class SupabaseRawStore:
             return []
         if resp.status_code >= 400:
             return []
-        try:
-            data = resp.json()
-        except Exception:
-            return []
-        return data if isinstance(data, list) else []
+        return coerce_rows(resp)
 
     def create_run(self, *, run_type: str, channels: List[str], meta: Optional[Dict[str, Any]] = None) -> Optional[int]:
         if not self.client:

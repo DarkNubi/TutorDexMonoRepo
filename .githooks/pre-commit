@@ -109,5 +109,19 @@ if [ "$found_large_files" = false ]; then
     echo -e "${GREEN}✅ No large files detected${NC}"
 fi
 
+# Import linting (best-effort; requires `lint-imports` to be installed)
+echo -e "${BLUE}🔍 Running import-linter...${NC}"
+if command -v lint-imports >/dev/null 2>&1; then
+    if ! lint-imports --config .import-linter.ini; then
+        echo -e "${RED}❌ Import linting failed${NC}"
+        echo "Fix import boundary violations or run with --no-verify to skip"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Import linting passed${NC}"
+else
+    echo -e "${YELLOW}⚠️  Skipping import-linter (lint-imports not found).${NC}"
+    echo "Install: pip install import-linter"
+fi
+
 echo ""
 exit 0

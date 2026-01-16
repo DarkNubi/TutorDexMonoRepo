@@ -341,6 +341,7 @@ firebase deploy --only hosting
 - `TutorDexBackend/matching.py` - Tutor matching algorithm
 - `TutorDexWebsite/src/` - Website source code
 - `shared/contracts/` - Shared data contracts
+- `shared/supabase_client.py` - Unified Supabase PostgREST client (single implementation)
 - `shared/taxonomy/subjects/` - Subject taxonomy and canonicalization
 - `observability/` - Full observability stack configuration
 

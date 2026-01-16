@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 
 from TutorDexBackend.models import AssignmentFacetsResponse, AssignmentListResponse
-from TutorDexBackend.runtime import auth_service, cache_service, logger, sb, store
+from TutorDexBackend.app_context import AppContext, get_app_context
 from TutorDexBackend.utils.request_utils import clean_optional_string
 
 router = APIRouter()
@@ -15,6 +15,7 @@ router = APIRouter()
 @router.get("/assignments", response_model=AssignmentListResponse)
 async def list_assignments(
     request: Request,
+    ctx: AppContext = Depends(get_app_context),
     limit: int = 50,
     sort: Optional[str] = None,
     cursor_last_seen: Optional[str] = None,
@@ -32,38 +33,40 @@ async def list_assignments(
     show_duplicates: Optional[bool] = True,
     tutor_type: Optional[str] = None,
 ) -> Response:
-    if not sb.enabled():
+    if not ctx.sb.enabled():
         raise HTTPException(status_code=503, detail="supabase_disabled")
 
+    if int(limit) <= 0:
+        raise HTTPException(status_code=400, detail="invalid_limit")
     lim = max(1, min(int(limit), 200))
     cursor_last_seen_s = clean_optional_string(cursor_last_seen)
     sort_s = (sort or "newest").strip().lower()
     if sort_s not in {"newest", "distance"}:
         raise HTTPException(status_code=400, detail="invalid_sort")
 
-    uid_hint = auth_service.get_uid_from_request(request)
+    uid_hint = ctx.auth_service.get_uid_from_request(request)
     is_anon = uid_hint is None
     if is_anon:
-        await cache_service.enforce_rate_limit(request, "assignments")
-        lim = min(lim, cache_service.get_public_limit_cap())
+        await ctx.cache_service.enforce_rate_limit(request, "assignments")
+        lim = min(lim, ctx.cache_service.get_public_limit_cap())
 
     uid = None
     if not is_anon:
-        uid = auth_service.require_uid(request)
+        uid = ctx.auth_service.require_uid(request)
 
-    cache_ttl_s = cache_service.get_cache_ttl("assignments") if is_anon else 0
+    cache_ttl_s = ctx.cache_service.get_cache_ttl("assignments") if is_anon else 0
     cache_key = ""
     cache_eligible = is_anon and cache_ttl_s > 0
     if cache_eligible:
         q_items = list(request.query_params.multi_items())
         q_items = [(k, v) for (k, v) in q_items if str(k) != "limit"]
         q_items.append(("limit", str(lim)))
-        cache_key = cache_service.build_cache_key_for_request(
+        cache_key = ctx.cache_service.build_cache_key_for_request(
             request,
             namespace="pubcache:assignments",
             extra_items=[("limit", str(lim))],
         )
-        cached = await cache_service.get_cached(cache_key)
+        cached = await ctx.cache_service.get_cached(cache_key)
         if cached:
             return JSONResponse(
                 content=cached,
@@ -76,13 +79,13 @@ async def list_assignments(
     tutor_lat: Optional[float] = None
     tutor_lon: Optional[float] = None
     if uid:
-        t = store.get_tutor(uid) or {}
+        t = ctx.store.get_tutor(uid) or {}
         tutor_lat = t.get("postal_lat")
         tutor_lon = t.get("postal_lon")
-        if (tutor_lat is None or tutor_lon is None) and sb.enabled():
-            user_id = sb.upsert_user(firebase_uid=uid, email=None, name=None)
+        if (tutor_lat is None or tutor_lon is None) and ctx.sb.enabled():
+            user_id = ctx.sb.upsert_user(firebase_uid=uid, email=None, name=None)
             if user_id:
-                prefs = sb.get_preferences(user_id=user_id)
+                prefs = ctx.sb.get_preferences(user_id=user_id)
                 if prefs:
                     tutor_lat = prefs.get("postal_lat") if prefs.get("postal_lat") is not None else tutor_lat
                     tutor_lon = prefs.get("postal_lon") if prefs.get("postal_lon") is not None else tutor_lon
@@ -90,7 +93,7 @@ async def list_assignments(
     if sort_s == "distance" and (tutor_lat is None or tutor_lon is None):
         raise HTTPException(status_code=400, detail="postal_required_for_distance")
 
-    result = sb.list_open_assignments_v2(
+    result = ctx.sb.list_open_assignments_v2(
         limit=lim,
         sort=sort_s,
         tutor_lat=float(tutor_lat) if tutor_lat is not None else None,
@@ -149,7 +152,7 @@ async def list_assignments(
     ).model_dump()
 
     if cache_eligible and cache_key:
-        await cache_service.set_cached(cache_key, payload, ttl_s=int(cache_ttl_s))
+        await ctx.cache_service.set_cached(cache_key, payload, ttl_s=int(cache_ttl_s))
         return JSONResponse(
             content=payload,
             headers={
@@ -164,6 +167,7 @@ async def list_assignments(
 @router.get("/assignments/facets", response_model=AssignmentFacetsResponse)
 async def assignment_facets(
     request: Request,
+    ctx: AppContext = Depends(get_app_context),
     level: Optional[str] = None,
     specific_student_level: Optional[str] = None,
     subject: Optional[str] = None,
@@ -174,19 +178,19 @@ async def assignment_facets(
     location: Optional[str] = None,
     min_rate: Optional[int] = None,
 ) -> Response:
-    if not sb.enabled():
+    if not ctx.sb.enabled():
         raise HTTPException(status_code=503, detail="supabase_disabled")
 
-    uid_hint = auth_service.get_uid_from_request(request)
+    uid_hint = ctx.auth_service.get_uid_from_request(request)
     is_anon = uid_hint is None
     if is_anon:
-        await cache_service.enforce_rate_limit(request, "facets")
+        await ctx.cache_service.enforce_rate_limit(request, "facets")
 
-    cache_ttl_s = cache_service.get_cache_ttl("facets") if is_anon else 0
+    cache_ttl_s = ctx.cache_service.get_cache_ttl("facets") if is_anon else 0
     cache_key = ""
     if is_anon and cache_ttl_s > 0:
-        cache_key = cache_service.build_cache_key_for_request(request, namespace="pubcache:facets")
-        cached = await cache_service.get_cached(cache_key)
+        cache_key = ctx.cache_service.build_cache_key_for_request(request, namespace="pubcache:facets")
+        cached = await ctx.cache_service.get_cached(cache_key)
         if cached:
             return JSONResponse(
                 content=cached,
@@ -196,7 +200,7 @@ async def assignment_facets(
                 },
             )
 
-    facets = sb.open_assignment_facets(
+    facets = ctx.sb.open_assignment_facets(
         level=clean_optional_string(level),
         specific_student_level=clean_optional_string(specific_student_level),
         subject=clean_optional_string(subject),
@@ -212,7 +216,7 @@ async def assignment_facets(
 
     payload = AssignmentFacetsResponse(ok=True, facets=facets).model_dump()
     if cache_key and cache_ttl_s > 0:
-        await cache_service.set_cached(cache_key, payload, ttl_s=int(cache_ttl_s))
+        await ctx.cache_service.set_cached(cache_key, payload, ttl_s=int(cache_ttl_s))
         return JSONResponse(
             content=payload,
             headers={
@@ -221,4 +225,3 @@ async def assignment_facets(
             },
         )
     return JSONResponse(content=payload)
-
