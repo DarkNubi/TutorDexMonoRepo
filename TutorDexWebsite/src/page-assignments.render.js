@@ -152,7 +152,7 @@ function getOrCreateStatusEl() {
   if (el) return el;
   el = document.createElement("div");
   el.id = "data-source-status";
-  el.className = "text-sm font-medium text-gray-500 mt-2 flex items-center gap-3";
+  el.className = "text-sm font-medium text-muted-foreground mt-2 flex items-center gap-3";
 
   const text = document.createElement("span");
   text.id = "data-source-status-text";
@@ -180,10 +180,10 @@ function setStatus(message, kind = "info", { showRetry = false } = {}) {
   if (retry) retry.classList.toggle("hidden", !showRetry);
 
   el.className = "text-sm font-medium mt-2 flex items-center gap-3";
-  if (kind === "error") el.className += " text-red-600";
-  else if (kind === "success") el.className += " text-green-600";
-  else if (kind === "warning") el.className += " text-yellow-700";
-  else el.className += " text-gray-500";
+  if (kind === "error") el.className += " text-red-400";
+  else if (kind === "success") el.className += " text-emerald-300";
+  else if (kind === "warning") el.className += " text-amber-300";
+  else el.className += " text-muted-foreground";
 }
 
 function updateGridLayout() {
@@ -206,10 +206,9 @@ function setViewMode(next) {
 function updateViewToggleUI() {
   const fullBtn = document.getElementById("view-toggle-full");
   const compactBtn = document.getElementById("view-toggle-compact");
-  if (fullBtn) fullBtn.classList.toggle("bg-black", S.viewMode === "full");
-  if (fullBtn) fullBtn.classList.toggle("text-white", S.viewMode === "full");
-  if (compactBtn) compactBtn.classList.toggle("bg-black", S.viewMode === "compact");
-  if (compactBtn) compactBtn.classList.toggle("text-white", S.viewMode === "compact");
+  const activeClasses = ["bg-gradient-to-r", "from-blue-600", "to-indigo-600", "text-white", "border-transparent"];
+  if (fullBtn) activeClasses.forEach((cls) => fullBtn.classList.toggle(cls, S.viewMode === "full"));
+  if (compactBtn) activeClasses.forEach((cls) => compactBtn.classList.toggle(cls, S.viewMode === "compact"));
 }
 
 function setResultsSummary(showing, total) {
@@ -357,23 +356,23 @@ function renderSkeleton(count = 6) {
 
   for (let i = 0; i < count; i++) {
     const card = document.createElement("div");
-    card.className = "job-card bg-white dark:bg-gray-800 rounded-xl p-6 relative flex flex-col justify-between h-full animate-pulse";
+    card.className = "job-card rounded-2xl p-6 relative flex flex-col justify-between h-full animate-pulse";
     card.innerHTML = `
       <div>
         <div class="flex justify-between items-start mb-4">
-          <div class="h-6 w-24 bg-gray-100 dark:bg-gray-700 rounded-full"></div>
-          <div class="h-6 w-16 bg-gray-100 dark:bg-gray-700 rounded-full"></div>
-          <div class="h-6 w-14 bg-gray-100 dark:bg-gray-700 rounded"></div>
+          <div class="h-6 w-24 bg-muted/60 rounded-full"></div>
+          <div class="h-6 w-16 bg-muted/60 rounded-full"></div>
+          <div class="h-6 w-14 bg-muted/60 rounded"></div>
         </div>
-        <div class="h-8 w-2/3 bg-gray-100 dark:bg-gray-700 rounded mb-3"></div>
-        <div class="h-4 w-1/2 bg-gray-100 dark:bg-gray-700 rounded mb-6"></div>
+        <div class="h-8 w-2/3 bg-muted/60 rounded mb-3"></div>
+        <div class="h-4 w-1/2 bg-muted/60 rounded mb-6"></div>
         <div class="space-y-3 mb-8">
-          <div class="h-4 w-5/6 bg-gray-100 dark:bg-gray-700 rounded"></div>
-          <div class="h-4 w-4/6 bg-gray-100 dark:bg-gray-700 rounded"></div>
-          <div class="h-4 w-3/6 bg-gray-100 dark:bg-gray-700 rounded"></div>
+          <div class="h-4 w-5/6 bg-muted/60 rounded"></div>
+          <div class="h-4 w-4/6 bg-muted/60 rounded"></div>
+          <div class="h-4 w-3/6 bg-muted/60 rounded"></div>
         </div>
       </div>
-      <div class="h-12 w-full bg-gray-100 dark:bg-gray-700 rounded-lg"></div>
+      <div class="h-12 w-full bg-muted/60 rounded-lg"></div>
     `.trim();
     E.grid.appendChild(card);
   }
@@ -404,8 +403,7 @@ function renderCards(data) {
       const messageLink = rawMessageLink.startsWith("t.me/") ? `https://${rawMessageLink}` : rawMessageLink;
 
       const row = document.createElement(messageLink ? "a" : "div");
-      row.className =
-        "job-card bg-white dark:bg-gray-800 rounded-xl px-4 py-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border border-gray-100 dark:border-gray-700";
+      row.className = "job-card rounded-2xl px-4 py-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4";
       if (messageLink) {
         row.href = messageLink;
         row.target = "_blank";
@@ -469,17 +467,17 @@ function renderCards(data) {
       tierPill.textContent =
         tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
       tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
-      if (tier === "yellow") tierPill.className = "badge bg-yellow-100 text-yellow-800";
-      else if (tier === "orange") tierPill.className = "badge bg-orange-100 text-orange-800";
-      else if (tier === "red") tierPill.className = "badge bg-red-100 text-red-800";
-      else tierPill.className = "badge bg-green-100 text-green-800";
+      if (tier === "yellow") tierPill.className = "badge bg-yellow-500/20 text-yellow-200";
+      else if (tier === "orange") tierPill.className = "badge bg-orange-500/20 text-orange-200";
+      else if (tier === "red") tierPill.className = "badge bg-red-500/20 text-red-200";
+      else tierPill.className = "badge bg-emerald-500/20 text-emerald-200";
       chips.appendChild(tierPill);
 
       const postedMs = Date.parse(String(job.postedAt || ""));
       const isNew = Number.isFinite(postedMs) && S.lastVisitCutoffMs > 0 && postedMs > S.lastVisitCutoffMs;
       if (isNew) {
         const newPill = document.createElement("span");
-        newPill.className = "badge bg-blue-100 text-blue-800";
+        newPill.className = "badge bg-blue-500/20 text-blue-200";
         newPill.textContent = "New";
         newPill.title = "Posted since your last visit.";
         chips.appendChild(newPill);
@@ -487,7 +485,7 @@ function renderCards(data) {
 
       if (hasMatchForMe(job)) {
         const matchPill = document.createElement("span");
-        matchPill.className = "badge bg-purple-100 text-purple-800";
+        matchPill.className = "badge bg-purple-500/20 text-purple-200";
         matchPill.textContent = "Matches you";
         const details = matchDetails(job);
         matchPill.title =
@@ -503,14 +501,14 @@ function renderCards(data) {
       top.appendChild(header);
 
       const meta = document.createElement("div");
-      meta.className = "mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700";
+      meta.className = "mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground";
 
       function metaItem(iconClass, text) {
         const wrap = document.createElement("span");
         wrap.className = "inline-flex items-center gap-2 min-w-0";
 
         const iconWrap = document.createElement("span");
-        iconWrap.className = "w-7 h-7 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-xs shrink-0";
+        iconWrap.className = "w-7 h-7 rounded-full bg-muted/60 text-muted-foreground flex items-center justify-center text-xs shrink-0";
         const icon = document.createElement("i");
         icon.className = iconClass;
         iconWrap.appendChild(icon);
@@ -548,7 +546,7 @@ function renderCards(data) {
         : "";
 
     const card = document.createElement("div");
-    card.className = "job-card bg-white dark:bg-gray-800 rounded-xl p-6 relative flex flex-col justify-between h-full";
+    card.className = "job-card rounded-2xl p-6 relative flex flex-col justify-between h-full";
 
     const top = document.createElement("div");
 
@@ -556,7 +554,7 @@ function renderCards(data) {
     header.className = "flex justify-between items-start mb-4";
 
     const badge = document.createElement("span");
-    badge.className = "badge bg-black text-white";
+    badge.className = "badge bg-gradient-to-r from-blue-600 to-indigo-600 text-white";
     const displayId = String(job.assignmentCode || "").trim() || String(job.id || "").trim();
     badge.textContent = displayId || "ID";
     if (displayId && String(job.id || "").trim() && String(job.id || "").trim() !== displayId) {
@@ -570,10 +568,10 @@ function renderCards(data) {
     tierPill.className = "badge";
     tierPill.textContent = tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
     tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
-    if (tier === "yellow") tierPill.className = "badge bg-yellow-100 text-yellow-800";
-    else if (tier === "orange") tierPill.className = "badge bg-orange-100 text-orange-800";
-    else if (tier === "red") tierPill.className = "badge bg-red-100 text-red-800";
-    else tierPill.className = "badge bg-green-100 text-green-800";
+    if (tier === "yellow") tierPill.className = "badge bg-yellow-500/20 text-yellow-200";
+    else if (tier === "orange") tierPill.className = "badge bg-orange-500/20 text-orange-200";
+    else if (tier === "red") tierPill.className = "badge bg-red-500/20 text-red-200";
+    else tierPill.className = "badge bg-emerald-500/20 text-emerald-200";
 
     const chips = document.createElement("div");
     chips.className = "flex flex-wrap items-center justify-center gap-2 px-2";
@@ -583,7 +581,7 @@ function renderCards(data) {
     const isNew = Number.isFinite(postedMs) && S.lastVisitCutoffMs > 0 && postedMs > S.lastVisitCutoffMs;
     if (isNew) {
       const newPill = document.createElement("span");
-      newPill.className = "badge bg-blue-100 text-blue-800";
+      newPill.className = "badge bg-blue-500/20 text-blue-200";
       newPill.textContent = "New";
       newPill.title = "Posted since your last visit.";
       chips.appendChild(newPill);
@@ -591,7 +589,7 @@ function renderCards(data) {
 
     if (hasMatchForMe(job)) {
       const matchPill = document.createElement("span");
-      matchPill.className = "badge bg-purple-100 text-purple-800";
+      matchPill.className = "badge bg-purple-500/20 text-purple-200";
       matchPill.textContent = "Matches you";
       matchPill.title = "Matches your saved profile preferences.";
       chips.appendChild(matchPill);
@@ -619,7 +617,7 @@ function renderCards(data) {
     title.textContent = job.academicDisplayText || "Tuition Assignment";
 
     const subtitle = document.createElement("p");
-    subtitle.className = "text-gray-500 font-bold uppercase text-xs tracking-wider mb-6";
+    subtitle.className = "text-muted-foreground font-bold uppercase text-xs tracking-wider mb-6";
     subtitle.textContent = levelDisplay;
 
     const details = document.createElement("div");
@@ -630,7 +628,7 @@ function renderCards(data) {
       row.className = "flex items-center gap-3";
 
       const iconWrap = document.createElement("div");
-      iconWrap.className = "w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-xs";
+      iconWrap.className = "w-8 h-8 rounded-full bg-muted/60 text-muted-foreground flex items-center justify-center text-xs";
 
       const icon = document.createElement("i");
       icon.className = iconClass;
@@ -728,8 +726,8 @@ function renderCards(data) {
 
     const openBtn = document.createElement(messageLink ? "a" : "button");
     openBtn.className =
-      "flex-1 py-3 border-2 border-black rounded-lg font-bold uppercase tracking-wide transition text-center " +
-      (messageLink ? "hover:bg-black hover:text-white" : "opacity-40 cursor-not-allowed");
+      "flex-1 py-3 border border-border rounded-lg font-bold uppercase tracking-wide transition text-center " +
+      (messageLink ? "hover:bg-muted/60" : "opacity-40 cursor-not-allowed");
     openBtn.textContent = messageLink ? "Open original post" : "Link unavailable";
     if (messageLink) {
       openBtn.href = messageLink;

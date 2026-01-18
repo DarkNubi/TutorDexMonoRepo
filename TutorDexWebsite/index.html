@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -50,17 +50,6 @@
         color: hsl(var(--foreground));
       }
     </style>
-    <script>
-      // Initialize dark mode ASAP to prevent flash
-      (function() {
-        const stored = localStorage.getItem("theme");
-        // Default to dark mode
-        const shouldBeDark = stored ? stored === "dark" : true;
-        if (shouldBeDark) {
-          document.documentElement.classList.add("dark");
-        }
-      })();
-    </script>
   </head>
 
   <body>

@@ -3,8 +3,6 @@ import { useScroll } from "framer-motion"
 import { Menu, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
-
 import { goAssignments, openLogin, openSignup } from "../actions"
 import { cn } from "../utils"
 import { TutorDexLogo } from "./TutorDexLogo"
@@ -81,7 +79,6 @@ export function Header() {
               </div>
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
                 <div className="flex gap-3">
-                  <ThemeToggle />
                   <Button
                     data-auth-state="signed-out"
                     variant="outline"
@@ -117,4 +114,3 @@ export function Header() {
     </header>
   )
 }
-

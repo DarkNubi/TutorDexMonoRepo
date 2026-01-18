@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,6 +8,18 @@
     <script>
       tailwind.config = {
         darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              border: "hsl(var(--border))",
+              card: "hsl(var(--card))",
+              muted: "hsl(var(--muted))",
+              "muted-foreground": "hsl(var(--muted-foreground))",
+            },
+          },
+        },
       };
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -15,21 +27,25 @@
 
     <style>
       :root {
-        --nike-black: #111111;
-        --nike-gray: #f5f5f5;
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --border: 214.3 31.8% 91.4%;
+        --card: 0 0% 100%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
       }
       .dark {
-        --nike-black: #f5f5f5;
-        --nike-gray: #1f2937;
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --card: 222.2 84% 4.9%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
       }
       body {
-        font-family: "Inter", sans-serif;
-        background-color: white;
-        color: var(--nike-black);
-      }
-      .dark body {
-        background-color: #111827;
-        color: #f5f5f5;
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
       }
       h1,
       h2,
@@ -48,61 +64,42 @@
       .nike-input {
         width: 100%;
         padding: 1rem;
-        border: 2px solid #e5e5e5;
-        font-weight: 600;
+        border: 1px solid hsl(var(--border));
+        font-weight: 500;
         transition: all 0.2s;
         outline: none;
-        color: black;
-        background: white;
-      }
-      .dark .nike-input {
-        border-color: #374151;
-        background: #1f2937;
-        color: #f5f5f5;
+        color: hsl(var(--foreground));
+        background: hsl(var(--card));
+        border-radius: 1rem;
       }
       .nike-input:focus {
-        border-color: black;
-      }
-      .dark .nike-input:focus {
-        border-color: #60a5fa;
+        border-color: rgb(59, 130, 246);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
       }
       .nike-input::placeholder {
-        color: #9ca3af;
+        color: hsl(var(--muted-foreground));
         font-weight: 400;
       }
 
       /* Selection Button (Toggle) */
       .select-btn {
-        border: 2px solid #e5e5e5;
+        border: 1px solid hsl(var(--border));
         transition: all 0.2s;
-        background: white;
-        color: black;
-      }
-      .dark .select-btn {
-        border-color: #374151;
-        background: #1f2937;
-        color: #f5f5f5;
+        background: hsl(var(--card));
+        color: hsl(var(--foreground));
       }
       .select-btn:hover {
-        border-color: black;
-      }
-      .dark .select-btn:hover {
-        border-color: #60a5fa;
+        border-color: rgb(59, 130, 246);
       }
       .select-btn.active {
-        background-color: black;
+        background: linear-gradient(135deg, rgb(37, 99, 235), rgb(79, 70, 229));
         color: white;
-        border-color: black;
-      }
-      .dark .select-btn.active {
-        background-color: #60a5fa;
-        color: white;
-        border-color: #60a5fa;
+        border-color: rgb(59, 130, 246);
       }
 
       /* The Tray Logic */
       .tray-item {
-        background-color: black;
+        background: linear-gradient(135deg, rgb(37, 99, 235), rgb(79, 70, 229));
         color: white;
         padding: 0.5rem 1rem;
         border-radius: 9999px; /* Pill */
@@ -112,10 +109,6 @@
         font-size: 0.85rem;
         font-weight: 600;
         animation: popIn 0.2s ease-out;
-      }
-      .dark .tray-item {
-        background-color: #60a5fa;
-        color: white;
       }
       @keyframes popIn {
         0% {
@@ -128,64 +121,44 @@
         }
       }
     </style>
-    <script>
-      // Initialize dark mode ASAP to prevent flash
-      (function () {
-        const stored = localStorage.getItem("theme");
-        // Default to dark mode
-        const shouldBeDark = stored ? stored === "dark" : true;
-        if (shouldBeDark) {
-          document.documentElement.classList.add("dark");
-        }
-      })();
-    </script>
   </head>
-  <body class="overflow-x-hidden dark:bg-gray-900" data-require-auth="true">
+  <body class="overflow-x-hidden bg-background text-foreground" data-require-auth="true">
     <nav
-      class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white dark:bg-gray-800 z-50 border-b border-gray-200 dark:border-gray-800 transition duration-300"
+      class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-background/90 backdrop-blur z-50 border-b border-border transition duration-300"
     >
       <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
-        <div class="w-10 h-10 bg-black dark:bg-blue-500 text-white flex items-center justify-center font-bold rounded-lg">TD</div>
+        <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold rounded-lg">
+          TD
+        </div>
         <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
       </a>
 
       <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
-        <a href="assignments.html" class="hover:text-gray-500 dark:hover:text-gray-300 transition">Assignments</a>
-        <a href="#" class="text-gray-400 dark:text-gray-500 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
-        <a href="#" class="text-gray-400 dark:text-gray-500 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
-        <a href="profile.html" class="text-black dark:text-white transition" aria-current="page">Profile</a>
+        <a href="assignments.html" class="text-muted-foreground hover:text-foreground transition">Assignments</a>
+        <a href="#" class="text-muted-foreground/70 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
+        <a href="#" class="text-muted-foreground/70 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
+        <a href="profile.html" class="text-foreground transition" aria-current="page">Profile</a>
       </div>
 
       <div class="flex items-center gap-3 text-sm font-bold uppercase">
-        <button
-          id="theme-toggle"
-          type="button"
-          class="px-3 py-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-          aria-label="Toggle theme"
-          title="Toggle dark/light mode"
-        >
-          <i id="theme-icon-sun" class="fa-solid fa-sun text-lg hidden dark:inline"></i>
-          <i id="theme-icon-moon" class="fa-solid fa-moon text-lg inline dark:hidden"></i>
-        </button>
-
         <details class="md:hidden relative">
-          <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-gray-100 transition" aria-label="Open menu">
+          <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-muted/60 transition" aria-label="Open menu">
             <i class="fa-solid fa-bars text-lg"></i>
           </summary>
-          <div class="absolute right-0 mt-3 w-56 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-2">
-            <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">Assignments</a>
-            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition" aria-current="page"
+          <div class="absolute right-0 mt-3 w-56 bg-background border border-border rounded-xl shadow-lg p-2">
+            <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-muted/60 transition">Assignments</a>
+            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-muted/60 transition" aria-current="page"
               >Profile</a
             >
-            <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Agencies</span>
-            <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Rates</span>
+            <span class="block px-4 py-2 text-muted-foreground/70 cursor-not-allowed" title="Coming soon">Agencies</span>
+            <span class="block px-4 py-2 text-muted-foreground/70 cursor-not-allowed" title="Coming soon">Rates</span>
           </div>
         </details>
 
         <button
           type="button"
           data-auth-logout
-          class="bg-black dark:bg-blue-500 text-white px-5 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-blue-600 transition"
+          class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-full hover:from-blue-700 hover:to-indigo-700 transition"
         >
           Log Out
         </button>
@@ -198,7 +171,9 @@
           Build Your <br />
           Tutor Profile.
         </h1>
-        <p class="text-lg font-medium text-gray-500 max-w-lg">Complete your profile to get matched with the best-suited assignments in Singapore.</p>
+        <p class="text-lg font-medium text-muted-foreground max-w-lg">
+          Complete your profile to get matched with the best-suited assignments in Singapore.
+        </p>
       </div>
 
       <form id="profile-form">
@@ -207,53 +182,53 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
               <div class="brand-font text-xl mb-1">Part-Time</div>
-              <p class="text-sm text-gray-500 group-hover:text-gray-800">Student tutors or new tutors</p>
+              <p class="text-sm text-muted-foreground group-hover:text-foreground">Student tutors or new tutors</p>
             </button>
             <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
               <div class="brand-font text-xl mb-1">Full-Time</div>
-              <p class="text-sm text-gray-500 group-hover:text-gray-800">Dedicated and experienced tutors.</p>
+              <p class="text-sm text-muted-foreground group-hover:text-foreground">Dedicated and experienced tutors.</p>
             </button>
             <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
               <div class="brand-font text-xl mb-1">MOE- trained Tutors</div>
-              <p class="text-sm text-gray-500 group-hover:text-gray-800">Tutors with MOE-certification</p>
+              <p class="text-sm text-muted-foreground group-hover:text-foreground">Tutors with MOE-certification</p>
             </button>
             <button type="button" class="select-btn w-full py-4 px-6 text-left rounded-lg group" onclick="selectSingle(this, 'tutor-type')">
               <div class="brand-font text-xl mb-1">Ex-MOE Teacher</div>
-              <p class="text-sm text-gray-500 group-hover:text-gray-800">Former school teachers.</p>
+              <p class="text-sm text-muted-foreground group-hover:text-foreground">Former school teachers.</p>
             </button>
           </div>
           <input type="hidden" id="input-tutor-type" name="tutor_type" />
         </section>
 
-        <hr class="border-gray-200 mb-16" />
+        <hr class="border-border mb-16" />
 
         <section class="mb-16">
           <div class="flex justify-between items-end mb-6">
             <h2 class="text-2xl">02. Levels & Subjects</h2>
-            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Multi-Select</span>
+            <span class="text-xs font-bold text-muted-foreground uppercase tracking-widest">Multi-Select</span>
           </div>
 
           <div class="flex flex-wrap items-center gap-3 mb-4">
             <button
               id="check-match-counts"
               type="button"
-              class="px-4 py-2 border border-gray-300 rounded-lg font-bold uppercase text-xs tracking-wide hover:border-black transition"
+              class="px-4 py-2 border border-border rounded-lg font-bold uppercase text-xs tracking-wide text-muted-foreground hover:text-foreground hover:border-blue-500 transition"
               title="Count open assignments in the last 7/14/30 days that match your current tray selections"
             >
               Check Recent Matches
             </button>
-            <div id="match-counts-box" class="hidden text-sm text-gray-700">
+            <div id="match-counts-box" class="hidden text-sm text-muted-foreground">
               <span class="font-semibold">Matches (last</span>
               <span class="font-mono">7d:</span> <span id="match-count-7d" class="font-semibold">-</span>, <span class="font-mono">14d:</span>
               <span id="match-count-14d" class="font-semibold">-</span>, <span class="font-mono">30d:</span>
               <span id="match-count-30d" class="font-semibold">-</span>
-              <span id="match-counts-note" class="text-xs text-gray-500 ml-2"></span>
+              <span id="match-counts-note" class="text-xs text-muted-foreground ml-2"></span>
             </div>
           </div>
 
-          <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 mb-6">
+          <div class="bg-muted/40 p-6 rounded-2xl border border-border mb-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <select id="level-select" class="nike-input bg-white rounded-lg">
+              <select id="level-select" class="nike-input rounded-lg">
                 <option value="" disabled selected>Select Level</option>
                 <option value="Pre-School">Pre-School</option>
                 <option value="Primary">Primary</option>
@@ -270,16 +245,16 @@
                 <option value="Independent Learner - Others">Independent Learner - Others</option>
               </select>
 
-              <select id="specific-level-select" class="nike-input bg-white rounded-lg" disabled>
+              <select id="specific-level-select" class="nike-input rounded-lg" disabled>
                 <option value="" selected>Select Specific Level (Optional)</option>
               </select>
 
               <div class="flex gap-3">
-                <input id="subject-search" type="text" placeholder="Search subjects..." class="nike-input bg-white rounded-lg" autocomplete="off" />
+                <input id="subject-search" type="text" placeholder="Search subjects..." class="nike-input rounded-lg" autocomplete="off" />
                 <button
                   id="clear-subject-search"
                   type="button"
-                  class="px-4 py-2 border-2 border-gray-300 rounded-lg font-bold uppercase text-xs tracking-wide hover:border-black transition"
+                  class="px-4 py-2 border border-border rounded-lg font-bold uppercase text-xs tracking-wide text-muted-foreground hover:text-foreground hover:border-blue-500 transition"
                   title="Clear subject search"
                 >
                   Clear
@@ -288,11 +263,11 @@
             </div>
 
             <div class="mb-2 flex items-center justify-between">
-              <p class="text-xs text-gray-500">Select a level once, then click subjects to add combinations quickly.</p>
+              <p class="text-xs text-muted-foreground">Select a level once, then click subjects to add combinations quickly.</p>
               <button
                 id="clear-level-selection"
                 type="button"
-                class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full hover:bg-gray-100"
+                class="text-[11px] font-semibold px-2 py-1 border border-border rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 title="Clear the level dropdown (does not remove added combinations)"
               >
                 Clear level
@@ -301,42 +276,44 @@
 
             <div
               id="subject-buttons"
-              class="w-full bg-white border border-gray-200 rounded-xl p-3 flex flex-wrap gap-2 max-h-[220px] overflow-y-auto"
+              class="w-full bg-background border border-border rounded-2xl p-3 flex flex-wrap gap-2 max-h-[220px] overflow-y-auto"
             >
-              <span class="text-gray-400 text-sm italic w-full text-center">Pick a level to see subjects…</span>
+              <span class="text-muted-foreground text-sm italic w-full text-center">Pick a level to see subjects…</span>
             </div>
           </div>
 
           <div class="flex items-center justify-between mb-3">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Added combinations</p>
+            <p class="text-xs font-bold text-muted-foreground uppercase tracking-widest">Added combinations</p>
             <div class="flex flex-wrap items-center gap-2">
               <button
                 id="clear-this-level"
                 type="button"
-                class="px-3 py-2 border-2 border-gray-300 rounded-lg font-bold uppercase text-xs tracking-wide hover:border-black transition"
+                class="px-3 py-2 border border-border rounded-lg font-bold uppercase text-xs tracking-wide text-muted-foreground hover:text-foreground hover:border-blue-500 transition"
               >
                 Clear This Level
               </button>
               <button
                 id="clear-tray"
                 type="button"
-                class="px-3 py-2 border-2 border-black rounded-lg font-bold uppercase text-xs tracking-wide hover:bg-black hover:text-white transition"
+                class="px-3 py-2 border border-border rounded-lg font-bold uppercase text-xs tracking-wide text-foreground hover:bg-muted/60 transition"
               >
                 Clear All
               </button>
             </div>
           </div>
 
-          <div id="subjects-tray" class="min-h-[80px] w-full border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-wrap gap-2 items-center">
-            <span class="text-gray-400 text-sm italic w-full text-center" id="empty-tray-msg">Your added subjects will appear here...</span>
+          <div id="subjects-tray" class="min-h-[80px] w-full border border-dashed border-border rounded-2xl p-4 flex flex-wrap gap-2 items-center">
+            <span class="text-muted-foreground text-sm italic w-full text-center" id="empty-tray-msg">
+              Your added subjects will appear here...
+            </span>
           </div>
         </section>
 
-        <hr class="border-gray-200 mb-16" />
+        <hr class="border-border mb-16" />
 
         <section class="mb-16">
           <h2 class="text-2xl mb-6">03. Assignment Type</h2>
-          <p class="text-sm text-gray-500 mb-4">Choose what you want to receive.</p>
+          <p class="text-sm text-muted-foreground mb-4">Choose what you want to receive.</p>
           <div id="assignment-type-options" class="flex flex-wrap gap-3">
             <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">
               Private
@@ -347,7 +324,7 @@
           </div>
         </section>
 
-        <hr class="border-gray-200 mb-16" />
+        <hr class="border-border mb-16" />
 
         <section class="mb-16">
           <h2 class="text-2xl mb-6">04. Where do you teach?</h2>
@@ -374,16 +351,18 @@
           <div class="mt-6">
             <label class="block text-xs font-bold uppercase mb-2">Postal Code (Optional)</label>
             <input id="tutor-postal-code" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 560105" class="nike-input rounded-lg" />
-            <p class="mt-2 text-xs text-gray-500">If set, in-person/hybrid DMs are filtered by distance. Leave blank to disable distance filtering.</p>
+            <p class="mt-2 text-xs text-muted-foreground">
+              If set, in-person/hybrid DMs are filtered by distance. Leave blank to disable distance filtering.
+            </p>
           </div>
           <div class="mt-6">
             <label class="block text-xs font-bold uppercase mb-2">DM Distance Radius (km)</label>
             <input id="dm-max-distance-km" type="number" min="0.5" max="50" step="0.5" placeholder="5" class="nike-input rounded-lg" />
-            <p class="mt-2 text-xs text-gray-500">Defaults to 5km (min 0.5, max 50).</p>
+            <p class="mt-2 text-xs text-muted-foreground">Defaults to 5km (min 0.5, max 50).</p>
           </div>
         </section>
 
-        <hr class="border-gray-200 mb-16" />
+        <hr class="border-border mb-16" />
 
         <section class="mb-16">
           <h2 class="text-2xl mb-6">05. Contact Details</h2>
@@ -399,7 +378,7 @@
                 id="contact-email"
                 type="email"
                 placeholder="you@example.com"
-                class="nike-input rounded-lg bg-gray-50"
+                class="nike-input rounded-lg"
                 readonly
                 aria-readonly="true"
               />
@@ -410,7 +389,7 @@
 
                 <button
                   type="button"
-                  class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full flex items-center gap-1 hover:bg-gray-100"
+                  class="text-[11px] font-semibold px-2 py-1 border border-border rounded-full flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   onclick="toggleInfo('telegram-info')"
                 >
                   <i class="fa-solid fa-circle-info text-[12px]"></i>
@@ -422,12 +401,12 @@
                 id="contact-telegram-handle"
                 type="text"
                 placeholder="@username"
-                class="nike-input rounded-lg bg-gray-50"
+                class="nike-input rounded-lg"
                 readonly
                 aria-readonly="true"
               />
 
-              <p id="telegram-info" class="mt-1 text-xs text-gray-500 hidden">
+              <p id="telegram-info" class="mt-1 text-xs text-muted-foreground hidden">
                 Auto-filled after you link Telegram DMs. If your Telegram account has no username, this will stay blank.
               </p>
             </div>
@@ -439,7 +418,7 @@
 
               <button
                 type="button"
-                class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full flex items-center gap-1 hover:bg-gray-100"
+                class="text-[11px] font-semibold px-2 py-1 border border-border rounded-full flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 onclick="toggleInfo('telegram-chatid-info')"
               >
                 <i class="fa-solid fa-circle-info text-[12px]"></i>
@@ -447,9 +426,9 @@
               </button>
             </div>
 
-            <p id="telegram-link-status" class="text-sm font-semibold text-gray-700">Checking link status...</p>
+            <p id="telegram-link-status" class="text-sm font-semibold text-muted-foreground">Checking link status...</p>
 
-            <p id="telegram-chatid-info" class="mt-1 text-xs text-gray-500 hidden">
+            <p id="telegram-chatid-info" class="mt-1 text-xs text-muted-foreground hidden">
               To receive DMs, generate a link code and send <span class="font-mono">/link &lt;code&gt;</span> to
               <a id="dm-bot-link" class="font-semibold underline" href="#" target="_blank" rel="noopener noreferrer">@TutorDexSniperBot</a>. Once
               linked, we will detect it automatically.
@@ -459,14 +438,14 @@
               <button
                 id="generate-link-code"
                 type="button"
-                class="px-4 py-2 border-2 border-black rounded-lg font-bold uppercase text-xs tracking-wide hover:bg-black hover:text-white transition"
+                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-bold uppercase text-xs tracking-wide hover:from-blue-700 hover:to-indigo-700 transition"
               >
                 Generate Link Code
               </button>
               <div id="link-code-box" class="hidden flex flex-wrap items-center gap-2">
-                <span class="text-xs font-bold uppercase text-gray-500">Code</span>
-                <span id="link-code-display" class="text-sm font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded"></span>
-                <button id="copy-link-command" type="button" class="text-xs font-bold uppercase underline text-gray-700 hover:text-black">
+                <span class="text-xs font-bold uppercase text-muted-foreground">Code</span>
+                <span id="link-code-display" class="text-sm font-mono text-foreground bg-muted/60 px-2 py-1 rounded"></span>
+                <button id="copy-link-command" type="button" class="text-xs font-bold uppercase underline text-muted-foreground hover:text-foreground">
                   Copy /link
                 </button>
                 <a
@@ -474,14 +453,14 @@
                   href="#"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="text-xs font-bold uppercase underline text-gray-700 hover:text-black"
+                  class="text-xs font-bold uppercase underline text-muted-foreground hover:text-foreground"
                   title="Open Telegram DM bot (uses /start payload)"
                 >
                   Open bot
                 </a>
               </div>
             </div>
-            <p class="mt-2 text-xs text-gray-500">
+            <p class="mt-2 text-xs text-muted-foreground">
               After generating a code, send <span class="font-mono">/link &lt;code&gt;</span> to
               <a id="dm-bot-link-2" class="font-semibold underline" href="#" target="_blank" rel="noopener noreferrer">@TutorDexSniperBot</a>
               (or click “Open bot”).
@@ -489,7 +468,7 @@
           </div>
         </section>
 
-        <hr class="border-gray-200 mb-16" />
+        <hr class="border-border mb-16" />
 
         <section class="mb-16">
           <h2 class="text-2xl mb-6">06. Assignment Volume Preference</h2>
@@ -500,7 +479,7 @@
 
               <button
                 type="button"
-                class="text-[11px] font-semibold px-2 py-1 border border-gray-300 rounded-full flex items-center gap-1 hover:bg-gray-100"
+                class="text-[11px] font-semibold px-2 py-1 border border-border rounded-full flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 onclick="toggleInfo('assignments-per-day-info')"
               >
                 <i class="fa-solid fa-circle-info text-[12px]"></i>
@@ -519,23 +498,23 @@
               class="nike-input rounded-lg w-full md:w-48"
             />
 
-            <p id="assignments-per-day-info" class="mt-2 text-xs text-gray-500 hidden">
+            <p id="assignments-per-day-info" class="mt-2 text-xs text-muted-foreground hidden">
               This controls how many assignment notifications you want to receive daily. The system uses this to calculate a personalized quality
               threshold - higher values mean more assignments (including lower-quality matches), lower values mean fewer but higher-quality
               assignments. Default is 10 per day.
             </p>
 
-            <p class="mt-2 text-xs text-gray-500">
+            <p class="mt-2 text-xs text-muted-foreground">
               Set your target daily assignment volume (default: 10). The system will adaptively filter assignments to match your preference based on
               quality scores.
             </p>
           </div>
         </section>
 
-        <p id="profile-save-status" class="text-sm font-medium text-gray-600 mb-4"></p>
+        <p id="profile-save-status" class="text-sm font-medium text-muted-foreground mb-4"></p>
         <button
           type="submit"
-          class="w-full bg-black text-white py-5 rounded-full text-xl brand-font tracking-wide hover:bg-gray-800 transition transform hover:-translate-y-1"
+          class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-5 rounded-full text-xl brand-font tracking-wide hover:from-blue-700 hover:to-indigo-700 transition transform hover:-translate-y-1"
         >
           Save Profile
         </button>
@@ -544,28 +523,9 @@
 
     <script type="module" src="/src/page-profile.js"></script>
 
-    <script>
-      // Theme toggle functionality
-      (function () {
-        const themeToggle = document.getElementById("theme-toggle");
-        if (themeToggle) {
-          themeToggle.addEventListener("click", function () {
-            const isDark = document.documentElement.classList.contains("dark");
-            if (isDark) {
-              document.documentElement.classList.remove("dark");
-              localStorage.setItem("theme", "light");
-            } else {
-              document.documentElement.classList.add("dark");
-              localStorage.setItem("theme", "dark");
-            }
-          });
-        }
-      })();
-    </script>
-
     <p
       id="auth-init-error"
-      class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-white border border-red-200 text-red-700 p-4 rounded-xl shadow-lg text-sm"
+      class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-background border border-red-500/40 text-red-300 p-4 rounded-xl shadow-lg text-sm"
     >
       Authentication failed to initialize. If you're running locally, use `firebase emulators:start --only hosting`. If deployed, confirm Firebase
       Hosting is serving `__/firebase/init.js` and Auth is enabled.
