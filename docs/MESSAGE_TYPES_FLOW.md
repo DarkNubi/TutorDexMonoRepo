@@ -13,7 +13,7 @@ TutorDex comprehensively tracks **message edits**, **forwarded messages**, and *
 |--------------|---------------|------------------|-------------------------|--------|
 | **Edits** | ✅ Yes | ✅ Yes (upsert) | ✅ Yes (re-queued) | Full re-extraction triggered |
 | **Forwards** | ✅ Yes | ✅ Yes | ❌ No (filtered) | Skipped during extraction |
-| **Replies** | ✅ Yes | ✅ Yes | ✅ Yes | Processed normally |
+| **Replies** | ✅ Yes | ✅ Yes | ❌ No (bumps parent) | Bumps parent assignment instead of processing |
 
 ---
 
@@ -332,10 +332,14 @@ def filter_message(raw: dict) -> MessageFilterResult:
 ## 3. Reply Messages
 
 ### Overview
-Reply messages are **tracked AND processed normally**. When a message is a reply to another message, TutorDex:
+Reply messages are **tracked but NOT processed as new assignments**. Instead, they trigger a **bump** to the parent assignment. When a message is a reply to another message, TutorDex:
 1. Stores the `reply_to_msg_id` in the database
-2. Processes the message through normal extraction
-3. Does NOT fetch or include the parent message content in extraction
+2. Looks up the parent message in `telegram_messages_raw`
+3. Finds the corresponding assignment in the `assignments` table
+4. Bumps the parent assignment's `last_seen` and `source_last_seen` timestamps
+5. Does NOT extract or process the reply itself
+
+**Rationale:** Replies often indicate activity on an assignment (e.g., "ASSIGNMENT CLOSED", updates, clarifications). Bumping the parent keeps it fresh without creating duplicate assignments.
 
 ### Implementation
 
@@ -367,8 +371,8 @@ create table if not exists public.telegram_messages_raw (
 );
 ```
 
-#### Processing (No Special Filter)
-**File:** `TutorDexAggregator/workers/message_processor.py`
+#### Filtering (Skip and Bump)
+**File:** `TutorDexAggregator/workers/message_processor.py` (lines 119-121)
 
 ```python
 def filter_message(raw: dict) -> MessageFilterResult:
@@ -378,25 +382,70 @@ def filter_message(raw: dict) -> MessageFilterResult:
     if bool(raw.get("is_forward")):
         return MessageFilterResult(should_skip=True, reason="forward")
     
-    # Empty message check
-    if not raw.get("raw_text", "").strip():
-        return MessageFilterResult(should_skip=True, reason="empty")
-    
-    # NO EXPLICIT REPLY CHECK
-    # → Reply messages are processed normally
+    # Reply check - bump parent instead
+    if bool(raw.get("is_reply")):
+        return MessageFilterResult(should_skip=True, reason="reply")
     
     # ... other filters
 ```
 
-**Result:** Reply messages go through normal extraction pipeline.
+**Result:** Reply messages are skipped from extraction, and the parent assignment is bumped instead.
+
+#### Bump Logic
+**File:** `TutorDexAggregator/reply_bump.py`
+
+```python
+def bump_assignment_from_reply(
+    channel_link: str,
+    reply_to_msg_id: str,
+    *,
+    supabase_url: Optional[str] = None,
+    supabase_key: Optional[str] = None,
+    bump_min_seconds: int = 6 * 60 * 60,  # 6 hours default
+) -> Dict[str, Any]:
+    """
+    Bump an assignment when a reply is posted to it.
+    
+    Steps:
+    1. Find parent message in telegram_messages_raw
+    2. Find corresponding assignment by (channel_link, message_id)
+    3. Check if bump is needed (time-based throttling)
+    4. Update last_seen, source_last_seen, bump_count
+    """
+```
+
+**File:** `TutorDexAggregator/workers/extract_worker_job.py` (lines 138-170)
+
+```python
+if filter_res.should_skip:
+    # ...
+    elif filter_res.reason == "reply":
+        # Bump the parent assignment instead of processing the reply
+        try:
+            from reply_bump import bump_assignment_from_reply
+            
+            message_json = raw.get("message_json") or {}
+            reply_to_msg_id = message_json.get("reply_to_msg_id")
+            
+            if reply_to_msg_id:
+                bump_res = bump_assignment_from_reply(
+                    channel_link=channel_link,
+                    reply_to_msg_id=str(reply_to_msg_id),
+                    supabase_url=url,
+                    supabase_key=key,
+                )
+                meta["bump_res"] = bump_res
+        except Exception as e:
+            meta["bump_res"] = {"ok": False, "error": str(e)}
+```
 
 ### Flow Diagram: Reply Message
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. Telegram Agency Channel                                   │
-│    Agency posts a message that replies to another message    │
-│    (e.g., "ASSIGNMENT CLOSED" replying to original post)    │
+│    Agency posts a reply to an assignment message             │
+│    (e.g., "ASSIGNMENT CLOSED" or "Updated: Rate is $50/hr") │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
@@ -410,10 +459,9 @@ def filter_message(raw: dict) -> MessageFilterResult:
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. Supabase: telegram_messages_raw (INSERT)                 │
-│    ✅ Message IS stored with:                                │
+│    ✅ Reply message IS stored with:                          │
 │       - is_reply = true                                      │
-│       - reply_to_msg_id in message_json                     │
-│       - reply_count (replies this message has received)     │
+│       - message_json.reply_to_msg_id = parent message ID    │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
@@ -425,41 +473,57 @@ def filter_message(raw: dict) -> MessageFilterResult:
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 5. Extraction Worker (extract_worker.py)                    │
+│ 5. Extraction Worker (message_processor.py)                 │
 │    - Claims job from queue                                   │
-│    - Loads raw_text from telegram_messages_raw              │
-│    - NO REPLY FILTERING                                      │
-│    ✅ PROCESSES NORMALLY                                      │
-│    - Runs LLM extraction                                     │
-│    - Applies deterministic signals                           │
-│    - Validates output                                        │
+│    - Loads raw from telegram_messages_raw                   │
+│    - Calls filter_message()                                  │
+│    - Detects is_reply=true                                   │
+│    ❌ SKIPS EXTRACTION                                        │
+│    - Updates job status to "skipped" with reason="reply"    │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 6. Supabase: assignments (INSERT/UPDATE)                    │
-│    ✅ Assignment IS created/updated                           │
-│    - Parsed fields populated from extraction                │
-│    - reply_to_msg_id metadata available in raw table        │
+│ 6. Reply Bump Logic (reply_bump.py)                         │
+│    Step 1: Fetch parent message from telegram_messages_raw  │
+│            WHERE channel_link=X AND message_id=reply_to_id  │
+│    Step 2: Fetch assignment from assignments                 │
+│            WHERE channel_link=X AND message_id=parent_id    │
+│    Step 3: Check bump throttle (default: 6 hours)           │
+│    Step 4: PATCH assignments SET:                            │
+│            - last_seen = now()                               │
+│            - source_last_seen = now()                        │
+│            - bump_count = bump_count + 1                     │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 7. Broadcast/DM (Optional)                                   │
-│    ✅ Eligible for broadcast to aggregator channel           │
-│    ✅ Eligible for DM to matched tutors                       │
+│ 7. Result: Parent Assignment Bumped                         │
+│    ✅ Parent assignment stays fresh (bumped timestamp)        │
+│    ❌ NO new assignment created from reply                    │
+│    ❌ Reply NOT extracted by LLM (cost savings)               │
+│    ❌ Reply NOT broadcasted                                   │
+│    ❌ Reply NOT sent as DM                                    │
+│    ✅ Audit trail preserved in telegram_messages_raw         │
+│    ✅ telegram_extractions shows reason="reply" + bump_res   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Important Notes
 
-1. **No Special Treatment:** Reply messages are processed exactly like non-reply messages
-2. **Parent Context Not Fetched:** The extraction only sees the reply message text, not the original message being replied to
-3. **Use Case Examples:**
-   - Agency posts "ASSIGNMENT CLOSED" as a reply → Extracted normally (may be caught by non-assignment detector)
-   - Agency posts additional details as a reply → Extracted as standalone message
-4. **Metadata Preserved:** `reply_to_msg_id` is available in `telegram_messages_raw.message_json` for future analysis
-5. **Potential Enhancement:** Could fetch parent message and combine contexts for better extraction (not currently implemented)
+1. **Bump Instead of Process:** Reply messages trigger a bump to the parent, not a new assignment
+2. **Parent Lookup:** System automatically finds the parent message and corresponding assignment
+3. **Throttling:** Bumps are throttled to 6 hours minimum by default (configurable)
+4. **Use Case Examples:**
+   - Agency posts "ASSIGNMENT CLOSED" as a reply → Parent assignment bumped
+   - Agency posts "Rate updated to $50/hr" as a reply → Parent assignment bumped
+   - Agency posts additional details as a reply → Parent assignment bumped
+5. **Graceful Degradation:**
+   - If parent message not found → logged but no error
+   - If parent is not an assignment → logged but no error
+   - If bump fails → logged with error details in extraction meta
+6. **Cost Savings:** No LLM API calls for reply messages
+7. **Metadata Preserved:** Full reply message stored in `telegram_messages_raw` for audit
 
 ---
 
@@ -626,51 +690,25 @@ ORDER BY raw.edit_date DESC;
 
 ### Current Limitations
 
-1. **Reply Context Not Included:**
-   - Reply messages are extracted without parent message context
-   - May lead to incomplete information if the reply assumes parent context
-   - Example: Reply says "This is for Secondary 3" but doesn't include subject (which was in parent)
-
-2. **Forward Detection Not Configurable:**
+1. **Forward Detection Not Configurable:**
    - All forwards are skipped without exception
    - May miss legitimate agency posts that happen to be forwards
 
-3. **Edit Re-Extraction Always Full:**
+2. **Edit Re-Extraction Always Full:**
    - Even minor edits (typo fixes) trigger full LLM re-extraction
    - No partial update capability
 
-4. **No Edit History:**
+3. **No Edit History:**
    - Only the latest version is stored (edit_date updated)
    - Previous versions are lost (no versioning)
 
+4. **Reply Bump Throttling:**
+   - Fixed 6-hour throttle may not suit all use cases
+   - Very active threads may hit throttle frequently
+
 ### Potential Enhancements
 
-#### Enhancement 1: Smart Reply Context Inclusion
-```python
-# Proposed implementation
-async def fetch_reply_context(client, msg):
-    """Fetch parent message if this is a reply."""
-    if msg.reply_to_msg_id:
-        try:
-            parent = await client.get_messages(
-                msg.chat_id, 
-                ids=msg.reply_to_msg_id
-            )
-            return f"[Parent message]: {parent.text}\n\n[Reply]: {msg.text}"
-        except Exception:
-            return msg.text  # Fallback to reply only
-    return msg.text
-```
-
-**Benefits:**
-- Better extraction quality for reply messages
-- Captures full conversation context
-
-**Risks:**
-- Additional Telegram API calls
-- May fetch deleted parent messages (error handling needed)
-
-#### Enhancement 2: Selective Forward Processing
+#### Enhancement 1: Selective Forward Processing
 ```python
 # Proposed configuration
 ALLOW_FORWARDS_FROM = [
@@ -696,7 +734,7 @@ def should_process_forward(raw: dict) -> bool:
 **Risks:**
 - Potential for duplicate assignments if same message appears in multiple channels
 
-#### Enhancement 3: Edit History Versioning
+#### Enhancement 2: Edit History Versioning
 ```sql
 -- Proposed schema
 create table if not exists public.telegram_messages_raw_history (
@@ -720,7 +758,7 @@ create table if not exists public.telegram_messages_raw_history (
 - Storage overhead for frequently edited messages
 - Complexity in managing versions
 
-#### Enhancement 4: Smart Edit Detection (Reduce Re-Extraction)
+#### Enhancement 3: Smart Edit Detection (Reduce Re-Extraction)
 ```python
 def is_significant_edit(old_text: str, new_text: str) -> bool:
     """Determine if edit requires re-extraction."""
@@ -772,16 +810,20 @@ THEN:
   5. Job status is "skipped" with reason="forward"
 ```
 
-#### Test Case 3: Reply Message Processing
+#### Test Case 3: Reply Message Bump Flow
 ```
-GIVEN an agency posts a reply to an existing message
+GIVEN an agency posts a reply to an existing assignment message
 WHEN the collector receives the reply message
 THEN:
   1. telegram_messages_raw row is created with is_reply=true
   2. reply_to_msg_id is stored in message_json
-  3. Extraction job is created and processed normally
-  4. Assignment row is created from reply text only
-  5. Parent message context is NOT included (current behavior)
+  3. Extraction job is created and marked as "skipped" with reason="reply"
+  4. Worker fetches parent message from telegram_messages_raw
+  5. Worker finds corresponding assignment by (channel_link, message_id)
+  6. Parent assignment's last_seen and source_last_seen are bumped
+  7. Parent assignment's bump_count is incremented
+  8. NO new assignment row is created from the reply
+  9. Reply message stored for audit but not extracted
 ```
 
 ### Validation Queries
@@ -816,21 +858,22 @@ TutorDex provides comprehensive tracking of all three message types with distinc
 | Aspect | Edits | Forwards | Replies |
 |--------|-------|----------|---------|
 | **Tracked in DB** | ✅ Full | ✅ Full | ✅ Full |
-| **Extracted** | ✅ Yes (re-extracted) | ❌ No (filtered) | ✅ Yes |
-| **Updates Assignments** | ✅ Yes (upserts) | ❌ No | ✅ Yes (new) |
+| **Extracted** | ✅ Yes (re-extracted) | ❌ No (filtered) | ❌ No (bumps parent) |
+| **Updates Assignments** | ✅ Yes (upserts) | ❌ No | ✅ Yes (bumps parent) |
 | **Audit Trail** | ✅ edit_date + json | ✅ fwd_from + json | ✅ reply_to_msg_id + json |
-| **Cost Optimization** | Re-extraction cost | Saved (no LLM) | Normal cost |
+| **Cost Optimization** | Re-extraction cost | Saved (no LLM) | Saved (no LLM) |
 
 **Key Takeaways:**
 1. All message types are comprehensively tracked for audit purposes
 2. Processing behavior is intentionally different based on message type
 3. Forward filtering prevents duplicate assignments across channels
 4. Edit handling ensures assignments stay current with agency updates
-5. Reply processing could be enhanced with parent context in the future
+5. Reply handling bumps parent assignments to keep them fresh without creating duplicates
 
 **Recommendations:**
 1. ✅ Current implementation is solid for production use
-2. 💡 Consider reply context enhancement for better extraction quality
+2. ✅ Reply messages now bump parent assignments (prevents duplicate assignments)
 3. 💡 Monitor forward filtering for false negatives (legitimate cross-posts being skipped)
 4. 💡 Consider edit history versioning if audit requirements increase
 5. 💡 Add metrics/alerting for edit frequency by channel (detect suspicious behavior)
+6. 💡 Monitor bump frequency and throttling effectiveness (default: 6 hours)

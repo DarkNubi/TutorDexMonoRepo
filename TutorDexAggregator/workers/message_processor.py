@@ -84,6 +84,7 @@ def filter_message(
     Filters:
     - Deleted messages -> skip (with close payload)
     - Forwarded messages -> skip
+    - Reply messages -> skip (bump parent instead)
     - Empty text -> skip
     
     Args:
@@ -116,6 +117,10 @@ def filter_message(
     # Check if forwarded
     if bool(raw.get("is_forward")):
         return MessageFilterResult(should_skip=True, reason="forward")
+    
+    # Check if reply - bump parent assignment instead of processing
+    if bool(raw.get("is_reply")):
+        return MessageFilterResult(should_skip=True, reason="reply")
     
     # Check if empty text
     raw_text = str(raw.get("raw_text") or "").strip()
