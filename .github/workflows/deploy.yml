@@ -28,7 +28,10 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 \
               -o IdentitiesOnly=yes \
-              "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" << 'EOF'
+              "***@***" << 'EOF'
+            set -e
+            export DOCKER_CONFIG="$HOME/.docker-ci"
+
             cd /d D:/TutorDex
             git pull --ff-only
             docker compose pull
