@@ -326,7 +326,7 @@ class DuplicateDetector:
                 duplicates.append({
                     'assignment_id': candidate['id'],
                     'score': score,
-                    'agency_telegram_channel_name': candidate['agency_telegram_channel_name']
+                    'agency_display_name': candidate['agency_display_name']
                 })
         
         return duplicates
