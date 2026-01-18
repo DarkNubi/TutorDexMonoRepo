@@ -41,6 +41,7 @@ import {
   updateViewToggleUI,
   setViewMode,
   setResultsSummary,
+  mapAssignmentRow,
   setFiltersChangedHandler,
   setRetryLoadHandler,
 } from "./page-assignments.render.js";

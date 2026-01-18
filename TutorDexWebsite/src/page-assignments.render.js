@@ -760,11 +760,11 @@ function renderCards(data) {
 }
 
 function renderLoadError(message) {
-  E.grid.innerHTML = "";
-  E.noResults.classList.add("hidden");
-  if (E.E.loadErrorMessage) E.E.loadErrorMessage.textContent = message || "We couldn’t load assignments right now. Please try again.";
+  if (E.grid) E.grid.innerHTML = "";
+  if (E.noResults) E.noResults.classList.add("hidden");
+  if (E.loadErrorMessage) E.loadErrorMessage.textContent = message || "We couldn’t load assignments right now. Please try again.";
   if (E.loadError) E.loadError.classList.remove("hidden");
-  E.countLabel.innerText = "0";
+  if (E.countLabel) E.countLabel.innerText = "0";
   setResultsSummary(0, 0);
   if (E.loadMoreBtn) E.loadMoreBtn.classList.add("hidden");
   if (E.facetHint) E.facetHint.classList.add("hidden");
