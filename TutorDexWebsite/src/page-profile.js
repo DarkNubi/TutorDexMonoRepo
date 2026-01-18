@@ -373,7 +373,7 @@ async function saveProfile() {
         // fallback: keep original
       }
     }
-    if (lvl && subj) canonicalPairs.push({ level: lvl, specific_level: spec || null, subject: subj });
+    if (lvl && subj) canonicalPairs.push({ level: lvl, specific_level: spec || "", subject: subj });
   }
 
   setStatus("Saving profile...", "info");
@@ -413,9 +413,7 @@ async function loadProfile() {
   const telegramStatusEl = document.getElementById("telegram-link-status");
   if (telegramStatusEl) {
     telegramStatusEl.textContent = profile.chat_id ? "Linked to Telegram (DMs enabled)" : "Not linked to Telegram yet";
-    telegramStatusEl.className = profile.chat_id
-      ? "text-sm font-semibold text-emerald-300"
-      : "text-sm font-semibold text-muted-foreground";
+    telegramStatusEl.className = profile.chat_id ? "text-sm font-semibold text-emerald-300" : "text-sm font-semibold text-muted-foreground";
   }
 
   const locationsContainer = document.getElementById("teaching-locations");
@@ -680,7 +678,7 @@ async function initProfilePage() {
 
     await loadProfile();
     _updateEmptyTrayState();
-    
+
     // Set user context for error reporting
     const uid = await getCurrentUid();
     if (uid) {
