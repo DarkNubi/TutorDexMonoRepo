@@ -439,9 +439,8 @@ function renderCards(data) {
 
       const row = document.createElement(messageLink ? "a" : "div");
       row.className = COMPACT_CARD_CLASS;
-      // Profile/compact-specific tweaks: white outline and readable font
+      // Profile/compact-specific tweaks: readable font
       try {
-        row.style.borderColor = "#ffffff";
         row.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
       } catch (e) {}
       if (messageLink) {
@@ -464,13 +463,16 @@ function renderCards(data) {
       }
 
       const header = document.createElement("div");
+      // Use flex layout where left (title) can grow and right (tags) stays at top-right
       header.className = "flex items-start justify-between mb-3";
 
       const left = document.createElement("div");
-      left.className = "min-w-0";
+      // allow left column to grow and wrap without pushing tags out of place
+      left.className = "min-w-0 flex-1 mr-3";
 
       const title = document.createElement("h3");
-      title.className = "font-semibold text-lg truncate";
+      // show full title, allow wrapping instead of truncation
+      title.className = "text-lg whitespace-normal";
       title.textContent = job.academicDisplayText || "Tuition Assignment";
 
       left.appendChild(title);
