@@ -519,7 +519,10 @@ function renderCards(data) {
         meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
       }
       if (Array.isArray(job.scheduleNotes) && job.scheduleNotes.length) {
-        meta.appendChild(metaItem("fa-solid fa-calendar-days", job.scheduleNotes.join(" · ")));
+        const scheduleNotes = job.scheduleNotes.filter(Boolean);
+        if (scheduleNotes.length) {
+          meta.appendChild(metaItem("fa-solid fa-calendar-days", scheduleNotes.join(" · ")));
+        }
       }
       if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
         meta.appendChild(metaItem("fa-solid fa-clock", job.timeNotes.join(" · ")));
