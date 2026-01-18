@@ -197,7 +197,8 @@ function setStatus(message, kind = "info", { showRetry = false } = {}) {
 function updateGridLayout() {
   if (!E.grid) return;
   if (S.viewMode === "compact") {
-    E.grid.className = "grid grid-cols-1 gap-3";
+    // Mobile: single column. Small+ screens: two columns for compact view.
+    E.grid.className = "grid grid-cols-1 sm:grid-cols-2 gap-3";
   } else {
     E.grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
   }
@@ -438,6 +439,11 @@ function renderCards(data) {
 
       const row = document.createElement(messageLink ? "a" : "div");
       row.className = COMPACT_CARD_CLASS;
+      // Profile/compact-specific tweaks: white outline and readable font
+      try {
+        row.style.borderColor = "#ffffff";
+        row.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+      } catch (e) {}
       if (messageLink) {
         row.href = messageLink;
         row.target = "_blank";
