@@ -6,7 +6,31 @@ import requests
 
 from shared.config import load_backend_config
 from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
-from TutorDexAggregator.agency_registry import get_agency_display_name
+
+# Try importing the agency registry from the aggregator package. In some local
+# setups (e.g., when running inside Docker or different PYTHONPATHs) the
+# `TutorDexAggregator` package may not be importable. Fall back to loading the
+# module by path relative to the repo root, or a no-op function.
+try:
+    from TutorDexAggregator.agency_registry import get_agency_display_name
+except Exception:
+    try:
+        import importlib.util
+        from pathlib import Path
+
+        repo_root = Path(__file__).resolve().parents[1]
+        cand = repo_root / "TutorDexAggregator" / "agency_registry.py"
+        if cand.exists():
+            spec = importlib.util.spec_from_file_location("td_agency_registry", str(cand))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)  # type: ignore
+            get_agency_display_name = getattr(mod, "get_agency_display_name", lambda v, d="Agency": d)
+        else:
+            def get_agency_display_name(v, d="Agency"):
+                return d
+    except Exception:
+        def get_agency_display_name(v, d="Agency"):
+            return d
 
 logger = logging.getLogger("supabase_store")
 
@@ -257,11 +281,19 @@ class SupabaseStore:
                 total = 0
         for r in rows:
             r.pop("total_count", None)
-            # Normalize agency/chat reference to a human-friendly display name when possible.
+            # Prefer explicit `agency_display_name` from DB; fall back to `agency_name` and apply registry mapping
             try:
-                raw = r.get("agency_name") if isinstance(r, dict) else None
-                if raw:
-                    r["agency_name"] = get_agency_display_name(str(raw))
+                display_raw = r.get("agency_display_name") if isinstance(r, dict) else None
+                if display_raw:
+                    r["agency_name"] = str(display_raw)
+                else:
+                    raw = r.get("agency_name") if isinstance(r, dict) else None
+                    if raw:
+                        mapped = get_agency_display_name(str(raw))
+                        if mapped and mapped != "Agency":
+                            r["agency_name"] = mapped
+                        else:
+                            r["agency_name"] = str(raw)
             except Exception:
                 pass
 
@@ -339,11 +371,19 @@ class SupabaseStore:
                 total = 0
         for r in rows:
             r.pop("total_count", None)
-            # Normalize agency/chat reference to a human-friendly display name when possible.
+            # Prefer explicit `agency_display_name` from DB; fall back to `agency_name` and apply registry mapping
             try:
-                raw = r.get("agency_name") if isinstance(r, dict) else None
-                if raw:
-                    r["agency_name"] = get_agency_display_name(str(raw))
+                display_raw = r.get("agency_display_name") if isinstance(r, dict) else None
+                if display_raw:
+                    r["agency_name"] = str(display_raw)
+                else:
+                    raw = r.get("agency_name") if isinstance(r, dict) else None
+                    if raw:
+                        mapped = get_agency_display_name(str(raw))
+                        if mapped and mapped != "Agency":
+                            r["agency_name"] = mapped
+                        else:
+                            r["agency_name"] = str(raw)
             except Exception:
                 pass
 
@@ -408,7 +448,9 @@ class SupabaseStore:
                     for a in agencies:
                         if isinstance(a, dict) and "value" in a:
                             val = a.get("value")
-                            a["value"] = get_agency_display_name(str(val)) if val else val
+                            if val:
+                                mapped = get_agency_display_name(str(val))
+                                a["value"] = mapped if mapped and mapped != "Agency" else str(val)
                         new_ag.append(a)
                     data["agencies"] = new_ag
             except Exception:
@@ -423,7 +465,9 @@ class SupabaseStore:
                     for a in agencies:
                         if isinstance(a, dict) and "value" in a:
                             val = a.get("value")
-                            a["value"] = get_agency_display_name(str(val)) if val else val
+                            if val:
+                                mapped = get_agency_display_name(str(val))
+                                a["value"] = mapped if mapped and mapped != "Agency" else str(val)
                         new_ag.append(a)
                     first["agencies"] = new_ag
             except Exception:

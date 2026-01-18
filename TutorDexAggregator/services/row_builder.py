@@ -24,6 +24,14 @@ except Exception:
     )
     from TutorDexAggregator.utils.timestamp_utils import coerce_iso_ts
     from TutorDexAggregator.geo_enrichment import enrich_from_coords
+    try:
+        from agency_registry import get_agency_display_name
+    except Exception:
+        try:
+            from TutorDexAggregator.agency_registry import get_agency_display_name
+        except Exception:
+            def get_agency_display_name(v, d="Agency"):
+                return d
 
 
 def _freshness_enabled() -> bool:
@@ -34,7 +42,7 @@ def _freshness_enabled() -> bool:
 def derive_agency(payload: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     """
     Extract agency name and link from payload.
-    
+
     Returns (agency_name, agency_link) tuple.
     """
     link = safe_str(payload.get("channel_link")) or safe_str(payload.get("channel_username"))
@@ -48,7 +56,7 @@ def derive_agency(payload: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]
 def derive_external_id(payload: Dict[str, Any]) -> str:
     """
     Derive external_id from payload.
-    
+
     Priority:
     1. assignment_code from parsed data
     2. tg:channel_id:message_id
@@ -80,7 +88,7 @@ def derive_external_id(payload: Dict[str, Any]) -> str:
 def compute_parse_quality(row_like: Dict[str, Any]) -> int:
     """
     Simple heuristic score used to prevent low-quality reposts from overwriting richer data.
-    
+
     Scores:
     - academic_display_text: +3
     - assignment_code: +1
@@ -200,7 +208,7 @@ def build_signals(parsed: Dict[str, Any], raw_text: str, normalized_text: str) -
         except Exception:
             from TutorDexAggregator.signals_builder import build_signals as build_signals_impl
             from TutorDexAggregator.normalize import normalize_text
-        
+
         sig, err = build_signals_impl(parsed=parsed, raw_text=raw_text, normalized_text=normalized_text)
         if not err and isinstance(sig, dict):
             return sig, None
@@ -212,11 +220,11 @@ def build_signals(parsed: Dict[str, Any], raw_text: str, normalized_text: str) -
 def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str, Any]:
     """
     Build assignment row from payload.
-    
+
     Args:
         payload: Raw payload dict with parsed data, meta, etc.
         geocode_func: Optional geocoding function (lat, lon) = f(postal_code)
-    
+
     Returns:
         Dict suitable for database insertion/update
     """
@@ -283,12 +291,12 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
     rate_min = coerce_int_like(rate.get("min"))
     rate_max = coerce_int_like(rate.get("max"))
     rate_raw_text = safe_str(rate.get("raw_text"))
-    
+
     # New: per-type tutor types and rate breakdown (optional)
     # Prefer deterministic signals (rule-based extractor) provided in `meta.signals` over LLM `parsed` outputs.
     tutor_types = parsed.get("tutor_types") if isinstance(parsed, dict) else None
     rate_breakdown = parsed.get("rate_breakdown") if isinstance(parsed, dict) else None
-    
+
     # If signals_obj contains deterministic detections, prefer those.
     try:
         if isinstance(signals_obj, dict):
@@ -421,6 +429,9 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
         "agency_id": None,
         "agency_name": agency_name,
         "agency_link": agency_link,
+        # Human-friendly display name for the agency/channel. Prefer registry value when available,
+        # otherwise fall back to the channel title (`agency_name`).
+        "agency_display_name": (get_agency_display_name(agency_link) or agency_name) if (agency_link or agency_name) else None,
         # Source publish time (Telegram message date, or first-seen for API sources).
         "published_at": coerce_iso_ts(payload.get("date")),
         # Last upstream bump/edit/repost time (Telegram edit_date or similar).
@@ -480,7 +491,7 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
     row["parse_quality_score"] = compute_parse_quality(row)
     if _freshness_enabled():
         row["freshness_tier"] = "green"
-    
+
     # Keep empty signal rollups as empty arrays (DB defaults also do this).
     row["signals_subjects"] = row.get("signals_subjects") or []
     row["signals_levels"] = row.get("signals_levels") or []

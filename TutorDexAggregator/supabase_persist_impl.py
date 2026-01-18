@@ -184,6 +184,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 "learning_mode",
                 "learning_mode_raw_text",
                 "assignment_code",
+                "agency_display_name",
                 "academic_display_text",
                 "lesson_schedule",
                 "start_date",
@@ -340,11 +341,11 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             res = {"ok": ok, "action": "updated", "status_code": patch_resp.status_code, "get_ms": get_ms, "patch_ms": patch_ms}
             res["total_ms"] = round((timed() - t_all) * 1000.0, 2)
             log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_persist_result", **res)
-            
+
             # Duplicate detection (after successful update, only if re-extraction occurred)
             if ok and should_run_duplicate_detection():
                 run_duplicate_detection_async(existing.get("id"), cfg)
-            
+
             return res
 
         row_to_insert = dict(row)
@@ -405,13 +406,13 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         res = {"ok": ok, "action": "inserted", "status_code": insert_resp.status_code, "get_ms": get_ms, "insert_ms": insert_ms}
         res["total_ms"] = round((timed() - t_all) * 1000.0, 2)
         log_event(logger, logging.INFO if ok else logging.WARNING, "supabase_persist_result", **res)
-        
+
         # Duplicate detection (after successful insert)
         if ok and should_run_duplicate_detection():
             inserted_rows = coerce_rows(insert_resp) if insert_resp.status_code < 400 else []
             if inserted_rows and inserted_rows[0].get("id"):
                 run_duplicate_detection_async(inserted_rows[0]["id"], cfg)
-        
+
         return res
 
 

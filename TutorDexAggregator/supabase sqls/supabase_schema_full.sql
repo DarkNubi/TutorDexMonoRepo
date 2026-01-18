@@ -48,6 +48,7 @@ create table if not exists public.assignments (
 
   -- denormalized convenience fields (avoid joins for the website)
   agency_name text,
+  agency_display_name text,
   agency_link text,
 
   channel_id text,
@@ -132,6 +133,9 @@ alter table public.assignments
 
 alter table public.assignments
   add column if not exists agency_name text;
+
+alter table public.assignments
+  add column if not exists agency_display_name text;
 
 alter table public.assignments
   add column if not exists agency_link text;
@@ -312,6 +316,9 @@ create index if not exists assignments_parse_quality_score_idx
 
 create index if not exists assignments_status_agency_name_idx
   on public.assignments (status, agency_name);
+
+create index if not exists assignments_status_agency_display_name_idx
+  on public.assignments (status, agency_display_name);
 
 create index if not exists assignments_status_learning_mode_idx
   on public.assignments (status, learning_mode);
@@ -537,6 +544,7 @@ returns table(
   external_id text,
   message_link text,
   agency_name text,
+  agency_display_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -645,6 +653,7 @@ select
   id,
   external_id,
   message_link,
+  agency_display_name,
   agency_name,
   learning_mode,
   assignment_code,
@@ -712,6 +721,7 @@ returns table(
   external_id text,
   message_link text,
   agency_name text,
+  agency_display_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -871,6 +881,7 @@ select
   id,
   external_id,
   message_link,
+  agency_display_name,
   agency_name,
   learning_mode,
   assignment_code,
@@ -1078,14 +1089,14 @@ select jsonb_build_object(
   ),
   'agencies', (
     select coalesce(
-      jsonb_agg(jsonb_build_object('value', agency_name, 'count', c) order by c desc, agency_name asc),
+      jsonb_agg(jsonb_build_object('value', coalesce(agency_display_name, agency_name), 'count', c) order by c desc, coalesce(agency_display_name, agency_name) asc),
       '[]'::jsonb
     )
     from (
       select agency_name, count(*) as c
       from filtered
-      where agency_name is not null and btrim(agency_name) <> ''
-      group by agency_name
+      where (agency_display_name is not null and btrim(agency_display_name) <> '') or (agency_name is not null and btrim(agency_name) <> '')
+      group by coalesce(agency_display_name, agency_name)
     ) s
   ),
   'learning_modes', (

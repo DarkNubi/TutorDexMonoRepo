@@ -47,6 +47,7 @@
     "external_id": { "type": ["string", "null"] },
     "message_link": { "type": ["string", "null"] },
     "agency_name": { "type": ["string", "null"] },
+    "agency_display_name": { "type": ["string", "null"] },
     "learning_mode": { "type": ["string", "null"] },
     "assignment_code": { "type": ["string", "null"] },
     "academic_display_text": { "type": ["string", "null"] },
