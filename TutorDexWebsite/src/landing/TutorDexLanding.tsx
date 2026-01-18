@@ -240,7 +240,7 @@ export function TutorDexLanding() {
                           <p className="text-sm text-muted-foreground">{assignment.level}</p>
                         </div>
                         <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300">
-                          {assignment.posted || "Live"}
+                          {assignment.posted || "Recent"}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
