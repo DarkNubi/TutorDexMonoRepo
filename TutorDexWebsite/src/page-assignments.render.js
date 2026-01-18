@@ -5,18 +5,8 @@ import {
   labelsForCanonicalCodes,
   labelsForGeneralCategoryCodes,
 } from "./taxonomy/subjectsTaxonomyV2.js";
-import {
-  formatDistanceKm,
-  formatRelativeTime,
-  formatShortDate,
-  parseRate,
-  pickFirst,
-  toText,
-  toStringList,
-} from "./lib/assignmentFormatters.js";
-import {
-  writeViewMode,
-} from "./lib/assignmentStorage.js";
+import { formatDistanceKm, formatRelativeTime, formatShortDate, parseRate, pickFirst, toText, toStringList } from "./lib/assignmentFormatters.js";
+import { writeViewMode } from "./lib/assignmentStorage.js";
 
 import { E, MAX_SUBJECT_CHIPS, S } from "./page-assignments.state.js";
 
@@ -36,7 +26,9 @@ function _subjectKey(type, code) {
 }
 
 function _normalizeSubjectType(type) {
-  const t = String(type || "").trim().toLowerCase();
+  const t = String(type || "")
+    .trim()
+    .toLowerCase();
   return t === "canonical" ? "canonical" : "general";
 }
 
@@ -795,7 +787,7 @@ export {
   setViewMode,
   updateViewToggleUI,
   setResultsSummary,
-  mapAssignmentRow
+  mapAssignmentRow,
 };
 
 // Backwards-compatible globals for inline handlers or legacy bundles

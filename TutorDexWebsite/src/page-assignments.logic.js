@@ -14,15 +14,7 @@ import {
   searchSubjects,
 } from "./taxonomy/subjectsTaxonomyV2.js";
 import { matchesFilters } from "./lib/filterUtils.js";
-import {
-  formatDistanceKm,
-  formatRelativeTime,
-  formatShortDate,
-  parseRate,
-  pickFirst,
-  toText,
-  toStringList,
-} from "./lib/assignmentFormatters.js";
+import { formatDistanceKm, formatRelativeTime, formatShortDate, parseRate, pickFirst, toText, toStringList } from "./lib/assignmentFormatters.js";
 import {
   readFilters as readStoredFilters,
   readLastVisitMs,
@@ -32,7 +24,6 @@ import {
   writeViewMode,
 } from "./lib/assignmentStorage.js";
 import { $id } from "./lib/domUtils.js";
-
 
 import { BUILD_TIME, E, MAX_SUBJECT_CHIPS, S } from "./page-assignments.state.js";
 import {
@@ -293,8 +284,16 @@ function updateFilterSubjects() {
     return;
   }
 
-  const allowedGeneral = new Set(generalCategoriesForLevel(level, { includeAny: false }).map((c) => String(c?.code || "").trim()).filter(Boolean));
-  const allowedCanonical = new Set(canonicalSubjectsForLevel(level, { includeAny: false }).map((s) => String(s?.code || "").trim()).filter(Boolean));
+  const allowedGeneral = new Set(
+    generalCategoriesForLevel(level, { includeAny: false })
+      .map((c) => String(c?.code || "").trim())
+      .filter(Boolean)
+  );
+  const allowedCanonical = new Set(
+    canonicalSubjectsForLevel(level, { includeAny: false })
+      .map((s) => String(s?.code || "").trim())
+      .filter(Boolean)
+  );
 
   _ensureSubjectStateInitialized();
   const before = _collectSubjectCsv();
@@ -612,9 +611,7 @@ function mountDebugPanel() {
   host.appendChild(wrap);
 }
 
-
 export function initAssignmentsPage() {
-
   S.viewMode = readViewMode();
   S.lastVisitCutoffMs = readLastVisitMs();
 
