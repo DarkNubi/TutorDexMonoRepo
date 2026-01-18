@@ -4,33 +4,9 @@ from typing import Any, Dict, Optional, List
 
 import requests
 
+from shared.agency_registry import get_agency_display_name
 from shared.config import load_backend_config
 from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
-
-# Try importing the agency registry from the aggregator package. In some local
-# setups (e.g., when running inside Docker or different PYTHONPATHs) the
-# `TutorDexAggregator` package may not be importable. Fall back to loading the
-# module by path relative to the repo root, or a no-op function.
-try:
-    from TutorDexAggregator.agency_registry import get_agency_display_name
-except Exception:
-    try:
-        import importlib.util
-        from pathlib import Path
-
-        repo_root = Path(__file__).resolve().parents[1]
-        cand = repo_root / "TutorDexAggregator" / "agency_registry.py"
-        if cand.exists():
-            spec = importlib.util.spec_from_file_location("td_agency_registry", str(cand))
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)  # type: ignore
-            get_agency_display_name = getattr(mod, "get_agency_display_name", lambda v, d="Agency": d)
-        else:
-            def get_agency_display_name(v, d="Agency"):
-                return d
-    except Exception:
-        def get_agency_display_name(v, d="Agency"):
-            return d
 
 logger = logging.getLogger("supabase_store")
 
