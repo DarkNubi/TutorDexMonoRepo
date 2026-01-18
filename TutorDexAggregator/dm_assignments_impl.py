@@ -24,7 +24,7 @@ DM_BOT_API_URL = str(_CFG.dm_bot_api_url or "").strip()
 TUTOR_MATCH_URL = str(_CFG.tutor_match_url or "http://127.0.0.1:8000/match/payload").strip()
 BACKEND_API_KEY = str(_CFG.backend_api_key or "").strip()
 
-_CFG_FIELDS_SET = set(getattr(_CFG, "model_fields_set", set()) or [])
+_CFG_FIELDS_SET = set(getattr(_CFG, "model_fields_set", set()))
 _dm_enabled_flag = bool(_CFG.dm_enabled)
 if "dm_enabled" not in _CFG_FIELDS_SET and "enable_dms" in _CFG_FIELDS_SET:
     _dm_enabled_flag = bool(_CFG.enable_dms)
