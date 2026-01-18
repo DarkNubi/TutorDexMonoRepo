@@ -35,7 +35,7 @@ export function TutorDexLanding() {
   const [liveAssignments, setLiveAssignments] = useState<LandingAssignment[]>([])
   const [isLiveLoading, setIsLiveLoading] = useState<boolean>(false)
   const [lastLiveUpdatedMs, setLastLiveUpdatedMs] = useState<number>(0)
-  const [usingMock, setUsingMock] = useState<boolean>(!isBackendEnabled())
+  const [backendMissing, setBackendMissing] = useState<boolean>(!isBackendEnabled())
 
   const pollTimerRef = useRef<number | null>(null)
   const liveAbortRef = useRef<AbortController | null>(null)
@@ -57,7 +57,7 @@ export function TutorDexLanding() {
 
   async function refreshFromBackend({ reason }: { reason: "initial" | "poll" }): Promise<void> {
     if (!isBackendEnabled()) {
-      setUsingMock(true)
+      setBackendMissing(true)
       setHeroAssignments([])
       setLiveAssignments([])
       return
@@ -73,14 +73,14 @@ export function TutorDexLanding() {
       const page = await fetchAssignmentsPage({ limit: 50, signal: ctrl.signal })
       const rows = Array.isArray(page?.items) ? page!.items : []
       if (!rows.length) {
-        setUsingMock(false)
+        setBackendMissing(false)
         setHeroAssignments([])
         setLiveAssignments([])
         setLastLiveUpdatedMs(Date.now())
         return
       }
 
-      setUsingMock(false)
+      setBackendMissing(false)
 
       const mapped = rows.map(mapRowToLandingAssignment).filter((a) => a.id)
       // Live: latest 3 (defensive sort by published time)
@@ -120,7 +120,7 @@ export function TutorDexLanding() {
     } catch (e) {
       // Poll failures should be silent; keep the last known data.
       if (String((e as Error)?.name || "") !== "AbortError") {
-        setUsingMock(false)
+        setBackendMissing(false)
       }
     } finally {
       if (reason === "initial") setIsLiveLoading(false)
@@ -481,7 +481,7 @@ export function TutorDexLanding() {
                 Real assignments from our partner agencies, updated in real-time
               </p>
               <div className="mt-4 text-sm text-muted-foreground">
-                {usingMock
+                {backendMissing
                   ? "Connect the backend to load live assignments."
                   : isLiveLoading
                     ? "Loading live assignments…"
