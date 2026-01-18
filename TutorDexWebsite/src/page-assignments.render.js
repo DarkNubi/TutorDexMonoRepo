@@ -345,6 +345,14 @@ function matchDetails(job) {
   return out;
 }
 
+function levelDisplayText(job) {
+  return Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
+    ? job.signalsSpecificLevels.join(" / ")
+    : Array.isArray(job.signalsLevels) && job.signalsLevels.length
+    ? job.signalsLevels.join(" / ")
+    : "";
+}
+
 function renderSkeleton(count = 6) {
   E.grid.innerHTML = "";
   updateGridLayout();
@@ -398,12 +406,7 @@ function renderCards(data) {
   const compact = S.viewMode === "compact";
 
   visible.forEach((job) => {
-    const levelDisplay =
-      Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
-        ? job.signalsSpecificLevels.join(" / ")
-        : Array.isArray(job.signalsLevels) && job.signalsLevels.length
-        ? job.signalsLevels.join(" / ")
-        : "";
+    const levelDisplay = levelDisplayText(job);
 
     if (compact) {
       const rawMessageLink = typeof job.messageLink === "string" ? job.messageLink.trim() : "";
