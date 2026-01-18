@@ -463,10 +463,13 @@ function renderCards(data) {
       tierPill.textContent =
         tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
       tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
-      if (tier === "yellow") tierPill.className += " bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300";
-      else if (tier === "orange") tierPill.className += " bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300";
-      else if (tier === "red") tierPill.className += " bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300";
-      else tierPill.className += " bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300";
+      const tierClasses = {
+        yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+        orange: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+        red: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+        green: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+      };
+      tierPill.className += ` ${tierClasses[tier] || tierClasses.green}`;
       right.appendChild(tierPill);
 
       if (hasMatchForMe(job)) {
@@ -514,7 +517,7 @@ function renderCards(data) {
         const raw = String(job.rateRawText || "").trim();
         return raw || "N/A";
       })();
-      meta.appendChild(metaItem("fa-solid fa-dollar-sign", rateLabel, "font-medium text-blue-600"));
+      meta.appendChild(metaItem("fa-solid fa-dollar-sign", rateLabel, "font-medium text-blue-600 dark:text-blue-400"));
 
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
         meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
