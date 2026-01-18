@@ -13,6 +13,14 @@ import { E, MAX_SUBJECT_CHIPS, S } from "./page-assignments.state.js";
 let _onFiltersChanged = null;
 let _onRetryLoad = null;
 
+const COMPACT_CARD_CLASS = "bg-background rounded-2xl p-5 shadow-md border border-border hover:shadow-lg transition-shadow block";
+const COMPACT_TIER_CLASSES = {
+  yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+  orange: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+  red: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  green: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+};
+
 export function setFiltersChangedHandler(fn) {
   _onFiltersChanged = typeof fn === "function" ? fn : null;
 }
@@ -353,6 +361,22 @@ function levelDisplayText(job) {
     : "";
 }
 
+function createCompactMetaItem(iconClass, text, labelClass = "", wrapperClass = "") {
+  const wrap = document.createElement("div");
+  wrap.className = `flex items-center gap-2 ${wrapperClass}`.trim();
+
+  const icon = document.createElement("i");
+  icon.className = `${iconClass} h-4 w-4 text-muted-foreground`;
+
+  const label = document.createElement("span");
+  label.className = labelClass;
+  label.textContent = text;
+
+  wrap.appendChild(icon);
+  wrap.appendChild(label);
+  return wrap;
+}
+
 function renderSkeleton(count = 6) {
   E.grid.innerHTML = "";
   updateGridLayout();
@@ -413,7 +437,7 @@ function renderCards(data) {
       const messageLink = rawMessageLink.startsWith("t.me/") ? `https://${rawMessageLink}` : rawMessageLink;
 
       const row = document.createElement(messageLink ? "a" : "div");
-      row.className = "bg-background rounded-2xl p-5 shadow-md border border-border hover:shadow-lg transition-shadow block";
+      row.className = COMPACT_CARD_CLASS;
       if (messageLink) {
         row.href = messageLink;
         row.target = "_blank";
@@ -463,13 +487,7 @@ function renderCards(data) {
       tierPill.textContent =
         tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
       tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
-      const tierClasses = {
-        yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
-        orange: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-        red: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-        green: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
-      };
-      tierPill.className += ` ${tierClasses[tier] || tierClasses.green}`;
+      tierPill.className += ` ${COMPACT_TIER_CLASSES[tier] || COMPACT_TIER_CLASSES.green}`;
       right.appendChild(tierPill);
 
       if (hasMatchForMe(job)) {
@@ -489,25 +507,9 @@ function renderCards(data) {
       const meta = document.createElement("div");
       meta.className = "grid grid-cols-2 gap-3 text-sm";
 
-      function metaItem(iconClass, text, labelClass = "", wrapperClass = "") {
-        const wrap = document.createElement("div");
-        wrap.className = `flex items-center gap-2 ${wrapperClass}`.trim();
-
-        const icon = document.createElement("i");
-        icon.className = `${iconClass} h-4 w-4 text-muted-foreground`;
-
-        const label = document.createElement("span");
-        label.className = labelClass;
-        label.textContent = text;
-
-        wrap.appendChild(icon);
-        wrap.appendChild(label);
-        return wrap;
-      }
-
       // show postal (explicit or estimated), distance, and time availability in compact mode
       const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
-      meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
+      meta.appendChild(createCompactMetaItem("fa-solid fa-location-dot", postal));
       const rateLabel = (() => {
         if (typeof job.rateMin === "number" && Number.isFinite(job.rateMin) && typeof job.rateMax === "number" && Number.isFinite(job.rateMax)) {
           if (Math.abs(job.rateMin - job.rateMax) < 1e-9) return `$${job.rateMin}/hr`;
@@ -517,10 +519,10 @@ function renderCards(data) {
         const raw = String(job.rateRawText || "").trim();
         return raw || "N/A";
       })();
-      meta.appendChild(metaItem("fa-solid fa-dollar-sign", rateLabel, "font-medium text-blue-600 dark:text-blue-400"));
+      meta.appendChild(createCompactMetaItem("fa-solid fa-dollar-sign", rateLabel, "font-medium text-blue-600 dark:text-blue-400"));
 
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
-        meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
+        meta.appendChild(createCompactMetaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
       }
 
       const timingNotes = [
@@ -528,7 +530,7 @@ function renderCards(data) {
         ...(Array.isArray(job.timeNotes) ? job.timeNotes.filter(Boolean) : []),
       ];
       if (timingNotes.length) {
-        meta.appendChild(metaItem("fa-solid fa-clock", timingNotes.join(" · "), "", "col-span-2"));
+        meta.appendChild(createCompactMetaItem("fa-solid fa-clock", timingNotes.join(" · "), "", "col-span-2"));
       }
 
       row.appendChild(header);
