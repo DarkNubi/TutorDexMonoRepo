@@ -1,6 +1,6 @@
 import { cn } from "../utils"
 
-const tutorDexLogoUrl = new URL("../../../TutorDex-icon-128.png", import.meta.url).href
+const tutorDexLogoUrl = "/TutorDex-icon-128.png"
 
 export function TutorDexLogo({ className }: { className?: string }) {
   return (
