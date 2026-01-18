@@ -398,12 +398,19 @@ function renderCards(data) {
   const compact = S.viewMode === "compact";
 
   visible.forEach((job) => {
+    const levelDisplay =
+      Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
+        ? job.signalsSpecificLevels.join(" / ")
+        : Array.isArray(job.signalsLevels) && job.signalsLevels.length
+        ? job.signalsLevels.join(" / ")
+        : "";
+
     if (compact) {
       const rawMessageLink = typeof job.messageLink === "string" ? job.messageLink.trim() : "";
       const messageLink = rawMessageLink.startsWith("t.me/") ? `https://${rawMessageLink}` : rawMessageLink;
 
       const row = document.createElement(messageLink ? "a" : "div");
-      row.className = "job-card rounded-2xl px-4 py-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4";
+      row.className = "bg-background rounded-2xl p-5 shadow-md border border-border hover:shadow-lg transition-shadow block";
       if (messageLink) {
         row.href = messageLink;
         row.target = "_blank";
@@ -423,28 +430,78 @@ function renderCards(data) {
         row.className += " opacity-70";
       }
 
-      const top = document.createElement("div");
-      top.className = "flex-1 min-w-0";
-
       const header = document.createElement("div");
-      header.className = "flex items-start justify-between gap-3";
+      header.className = "flex items-start justify-between mb-3";
 
       const left = document.createElement("div");
       left.className = "min-w-0";
 
-      const title = document.createElement("div");
-      title.className = "text-lg font-bold leading-tight truncate";
+      const title = document.createElement("h3");
+      title.className = "font-semibold text-lg truncate";
       title.textContent = job.academicDisplayText || "Tuition Assignment";
 
-      // compact view: do not show level/subject here (academicDisplayText includes it)
+      left.appendChild(title);
 
-      left.prepend(title);
+      if (levelDisplay) {
+        const subtitle = document.createElement("p");
+        subtitle.className = "text-sm text-muted-foreground truncate";
+        subtitle.textContent = levelDisplay;
+        left.appendChild(subtitle);
+      }
 
       const right = document.createElement("div");
-      right.className = "flex flex-col items-end gap-2 shrink-0";
+      right.className = "flex flex-wrap items-center gap-2";
 
-      const rate = document.createElement("div");
-      rate.className = "font-bold text-base";
+      const tier = String(job?.freshnessTier || "green")
+        .trim()
+        .toLowerCase();
+      const tierPill = document.createElement("span");
+      tierPill.className = "inline-flex items-center rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-black";
+      tierPill.textContent =
+        tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
+      tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
+      if (tier === "yellow") tierPill.className += " bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300";
+      else if (tier === "orange") tierPill.className += " bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300";
+      else if (tier === "red") tierPill.className += " bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300";
+      else tierPill.className += " bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300";
+      right.appendChild(tierPill);
+
+      if (hasMatchForMe(job)) {
+        const matchPill = document.createElement("span");
+        matchPill.className =
+          "inline-flex items-center rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-black bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300";
+        matchPill.textContent = "Matches you";
+        const details = matchDetails(job);
+        matchPill.title =
+          details && details.length ? `Matches your saved profile preferences: ${details.join(", ")}` : "Matches your saved profile preferences.";
+        right.appendChild(matchPill);
+      }
+
+      header.appendChild(left);
+      header.appendChild(right);
+
+      const meta = document.createElement("div");
+      meta.className = "grid grid-cols-2 gap-3 text-sm";
+
+      function metaItem(iconClass, text, labelClass = "", wrapperClass = "") {
+        const wrap = document.createElement("div");
+        wrap.className = `flex items-center gap-2 ${wrapperClass}`.trim();
+
+        const icon = document.createElement("i");
+        icon.className = `${iconClass} h-4 w-4 text-muted-foreground`;
+
+        const label = document.createElement("span");
+        label.className = labelClass;
+        label.textContent = text;
+
+        wrap.appendChild(icon);
+        wrap.appendChild(label);
+        return wrap;
+      }
+
+      // show postal (explicit or estimated), distance, and time availability in compact mode
+      const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
+      meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
       const rateLabel = (() => {
         if (typeof job.rateMin === "number" && Number.isFinite(job.rateMin) && typeof job.rateMax === "number" && Number.isFinite(job.rateMax)) {
           if (Math.abs(job.rateMin - job.rateMax) < 1e-9) return `$${job.rateMin}/hr`;
@@ -454,92 +511,25 @@ function renderCards(data) {
         const raw = String(job.rateRawText || "").trim();
         return raw || "N/A";
       })();
-      rate.textContent = rateLabel;
+      meta.appendChild(metaItem("fa-solid fa-dollar-sign", rateLabel, "font-medium text-blue-600"));
 
-      const chips = document.createElement("div");
-      chips.className = "flex flex-wrap items-center justify-end gap-2";
-
-      const tier = String(job?.freshnessTier || "green")
-        .trim()
-        .toLowerCase();
-      const tierPill = document.createElement("span");
-      tierPill.className = "badge";
-      tierPill.textContent =
-        tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
-      tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
-      if (tier === "yellow") tierPill.className = "badge bg-yellow-500/20 text-yellow-200";
-      else if (tier === "orange") tierPill.className = "badge bg-orange-500/20 text-orange-200";
-      else if (tier === "red") tierPill.className = "badge bg-red-500/20 text-red-200";
-      else tierPill.className = "badge bg-emerald-500/20 text-emerald-200";
-      chips.appendChild(tierPill);
-
-      if (hasMatchForMe(job)) {
-        const matchPill = document.createElement("span");
-        matchPill.className = "badge bg-purple-500/20 text-purple-200";
-        matchPill.textContent = "Matches you";
-        const details = matchDetails(job);
-        matchPill.title =
-          details && details.length ? `Matches your saved profile preferences: ${details.join(", ")}` : "Matches your saved profile preferences.";
-        chips.appendChild(matchPill);
-      }
-
-      right.appendChild(rate);
-      right.appendChild(chips);
-
-      header.appendChild(left);
-      header.appendChild(right);
-      top.appendChild(header);
-
-      const meta = document.createElement("div");
-      meta.className = "mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground";
-
-      function metaItem(iconClass, text) {
-        const wrap = document.createElement("span");
-        wrap.className = "inline-flex items-center gap-2 min-w-0";
-
-        const iconWrap = document.createElement("span");
-        iconWrap.className = "w-7 h-7 rounded-full bg-muted/60 text-muted-foreground flex items-center justify-center text-xs shrink-0";
-        const icon = document.createElement("i");
-        icon.className = iconClass;
-        iconWrap.appendChild(icon);
-
-        const label = document.createElement("span");
-        label.className = "font-medium truncate";
-        label.textContent = text;
-
-        wrap.appendChild(iconWrap);
-        wrap.appendChild(label);
-        return wrap;
-      }
-
-      // show postal (explicit or estimated), distance, and time availability in compact mode
-      const postal = job.postalCode || job.postalEstimated || job.location || "Unknown";
-      meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
         meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
       }
-      if (Array.isArray(job.scheduleNotes) && job.scheduleNotes.length) {
-        const scheduleNotes = job.scheduleNotes.filter(Boolean);
-        if (scheduleNotes.length) {
-          meta.appendChild(metaItem("fa-solid fa-calendar-days", scheduleNotes.join(" · ")));
-        }
-      }
-      if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
-        meta.appendChild(metaItem("fa-solid fa-clock", job.timeNotes.join(" · ")));
+
+      const timingNotes = [
+        ...(Array.isArray(job.scheduleNotes) ? job.scheduleNotes.filter(Boolean) : []),
+        ...(Array.isArray(job.timeNotes) ? job.timeNotes.filter(Boolean) : []),
+      ];
+      if (timingNotes.length) {
+        meta.appendChild(metaItem("fa-solid fa-clock", timingNotes.join(" · "), "", "col-span-2"));
       }
 
-      top.appendChild(meta);
-      row.appendChild(top);
+      row.appendChild(header);
+      row.appendChild(meta);
       E.grid.appendChild(row);
       return;
     }
-
-    const levelDisplay =
-      Array.isArray(job.signalsSpecificLevels) && job.signalsSpecificLevels.length
-        ? job.signalsSpecificLevels.join(" / ")
-        : Array.isArray(job.signalsLevels) && job.signalsLevels.length
-        ? job.signalsLevels.join(" / ")
-        : "";
 
     const card = document.createElement("div");
     card.className = "job-card rounded-2xl p-6 relative flex flex-col justify-between h-full";
