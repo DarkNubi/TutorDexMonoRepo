@@ -135,16 +135,16 @@ function mountSubjectSearch() {
     items.forEach((item) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center justify-between gap-3";
+      btn.className = "w-full text-left px-4 py-3 hover:bg-muted/60 transition flex items-center justify-between gap-3";
       btn.setAttribute("role", "option");
       btn.tabIndex = 0;
 
       const left = document.createElement("span");
-      left.className = "text-sm font-semibold text-gray-900";
+      left.className = "text-sm font-semibold text-foreground";
       left.textContent = String(item.label || item.code || "").trim();
 
       const right = document.createElement("span");
-      right.className = "text-xs font-mono text-gray-500";
+      right.className = "text-xs font-mono text-muted-foreground";
       const t = String(item.type || "").trim();
       right.textContent = t === "general" ? `BROAD · ${String(item.code || "").trim()}` : `SPEC · ${String(item.code || "").trim()}`;
 
@@ -607,13 +607,13 @@ function mountDebugPanel() {
   wrap.className = "mt-6";
 
   wrap.innerHTML = `
-	    <details class="border border-gray-200 rounded-xl p-4 bg-white">
-	      <summary class="cursor-pointer font-bold uppercase text-xs tracking-wide text-gray-600">Debug</summary>
-	      <div class="mt-3 text-sm text-gray-700 space-y-2">
-	        <div><span class="font-semibold">Build time:</span> <span class="font-mono">${BUILD_TIME || "(unknown)"}</span></div>
-	        <div><span class="font-semibold">Backend enabled:</span> <span class="font-mono">${String(isBackendEnabled())}</span></div>
-	      </div>
-	    </details>
+    <details class="border border-border rounded-2xl p-4 bg-background">
+      <summary class="cursor-pointer font-bold uppercase text-xs tracking-wide text-muted-foreground">Debug</summary>
+      <div class="mt-3 text-sm text-muted-foreground space-y-2">
+        <div><span class="font-semibold">Build time:</span> <span class="font-mono">${BUILD_TIME || "(unknown)"}</span></div>
+        <div><span class="font-semibold">Backend enabled:</span> <span class="font-mono">${String(isBackendEnabled())}</span></div>
+      </div>
+    </details>
 	  `.trim();
 
   host.appendChild(wrap);

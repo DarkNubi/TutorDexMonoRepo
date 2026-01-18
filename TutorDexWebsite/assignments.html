@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,6 +8,18 @@
     <script>
       tailwind.config = {
         darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              border: "hsl(var(--border))",
+              card: "hsl(var(--card))",
+              muted: "hsl(var(--muted))",
+              "muted-foreground": "hsl(var(--muted-foreground))",
+            },
+          },
+        },
       };
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -15,21 +27,25 @@
 
     <style>
       :root {
-        --nike-black: #111111;
-        --nike-gray: #f5f5f5;
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --border: 214.3 31.8% 91.4%;
+        --card: 0 0% 100%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
       }
       .dark {
-        --nike-black: #f5f5f5;
-        --nike-gray: #1f2937;
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --card: 222.2 84% 4.9%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
       }
       body {
-        font-family: "Inter", sans-serif;
-        background-color: white;
-        color: var(--nike-black);
-      }
-      .dark body {
-        background-color: #111827;
-        color: #f5f5f5;
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
       }
       h1,
       h2,
@@ -57,29 +73,30 @@
         }
       }
 
-      /* Reusing User's Input Styles */
+      .tooltip-panel {
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        color: hsl(var(--foreground));
+      }
+
       .nike-input {
         width: 100%;
         padding: 0.8rem 1rem;
-        border: 2px solid #e5e5e5;
-        font-weight: 600;
+        border: 1px solid hsl(var(--border));
+        font-weight: 500;
         transition: all 0.2s;
         outline: none;
-        color: black;
-        background: white;
-        border-radius: 0.5rem;
+        color: hsl(var(--foreground));
+        background: hsl(var(--card));
+        border-radius: 1rem;
         appearance: none;
       }
-      .dark .nike-input {
-        border-color: #374151;
-        background: #1f2937;
-        color: #f5f5f5;
+      .nike-input::placeholder {
+        color: hsl(var(--muted-foreground));
       }
       .nike-input:focus {
-        border-color: black;
-      }
-      .dark .nike-input:focus {
-        border-color: #60a5fa;
+        border-color: rgb(59, 130, 246);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
       }
 
       /* Custom Select Arrow */
@@ -96,41 +113,31 @@
         transform: translateY(-50%);
         font-size: 0.8rem;
         pointer-events: none;
-        color: #9ca3af;
+        color: hsl(var(--muted-foreground));
       }
 
       /* Card Hover Effect */
       .job-card {
-        border: 2px solid #f3f4f6;
+        border: 1px solid hsl(var(--border));
+        border-radius: 1.25rem;
+        background: hsl(var(--card));
         transition: all 0.2s ease-out;
       }
-      .dark .job-card {
-        border-color: #374151;
-        background-color: #1f2937;
-      }
       .job-card:hover {
-        border-color: black;
+        border-color: rgb(59, 130, 246);
         transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-      }
-      .dark .job-card:hover {
-        border-color: #60a5fa;
-        box-shadow: 0 10px 20px rgba(96, 165, 250, 0.1);
+        box-shadow: 0 14px 28px rgba(30, 64, 175, 0.18);
       }
 
       /* Badge/Pill Styles */
       .badge {
-        background-color: #f3f4f6;
-        color: black;
+        background-color: hsl(var(--muted));
+        color: hsl(var(--foreground));
         padding: 0.25rem 0.75rem;
         border-radius: 9999px;
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
-      }
-      .dark .badge {
-        background-color: #374151;
-        color: #f5f5f5;
       }
 
       @media (max-width: 640px) {
@@ -142,71 +149,51 @@
         }
       }
     </style>
-    <script>
-      // Initialize dark mode ASAP to prevent flash
-      (function () {
-        const stored = localStorage.getItem("theme");
-        // Default to dark mode
-        const shouldBeDark = stored ? stored === "dark" : true;
-        if (shouldBeDark) {
-          document.documentElement.classList.add("dark");
-        }
-      })();
-    </script>
   </head>
-  <body class="bg-white dark:bg-gray-900" data-require-auth="false">
+  <body class="bg-background text-foreground" data-require-auth="false">
     <nav
-      class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-white dark:bg-gray-800 z-50 border-b border-gray-200 dark:border-gray-800 transition duration-300"
+      class="flex justify-between items-center px-6 md:px-12 py-5 sticky top-0 bg-background/90 backdrop-blur z-50 border-b border-border transition duration-300"
     >
       <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
-        <div class="w-10 h-10 bg-black dark:bg-blue-500 text-white flex items-center justify-center font-bold rounded-lg">TD</div>
+        <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold rounded-lg">
+          TD
+        </div>
         <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
       </a>
 
       <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
-        <a href="assignments.html" class="text-black dark:text-white transition" aria-current="page">Assignments</a>
-        <a href="#" class="text-gray-400 dark:text-gray-500 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
-        <a href="#" class="text-gray-400 dark:text-gray-500 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
-        <a href="profile.html" class="hover:text-gray-500 dark:hover:text-gray-300 transition">Profile</a>
+        <a href="assignments.html" class="text-foreground transition" aria-current="page">Assignments</a>
+        <a href="#" class="text-muted-foreground/70 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Agencies</a>
+        <a href="#" class="text-muted-foreground/70 cursor-not-allowed" aria-disabled="true" tabindex="-1" title="Coming soon">Rates</a>
+        <a href="profile.html" class="text-muted-foreground hover:text-foreground transition">Profile</a>
       </div>
 
       <div class="flex items-center gap-3 text-sm font-bold uppercase">
-        <button
-          id="theme-toggle"
-          type="button"
-          class="px-3 py-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-          aria-label="Toggle theme"
-          title="Toggle dark/light mode"
-        >
-          <i id="theme-icon-sun" class="fa-solid fa-sun text-lg hidden dark:inline"></i>
-          <i id="theme-icon-moon" class="fa-solid fa-moon text-lg inline dark:hidden"></i>
-        </button>
-
         <details class="md:hidden relative">
-          <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-gray-100 transition" aria-label="Open menu">
+          <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-full hover:bg-muted/60 transition" aria-label="Open menu">
             <i class="fa-solid fa-bars text-lg"></i>
           </summary>
-          <div class="absolute right-0 mt-3 w-56 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-2">
-            <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition" aria-current="page"
+          <div class="absolute right-0 mt-3 w-56 bg-background border border-border rounded-xl shadow-lg p-2">
+            <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-muted/60 transition" aria-current="page"
               >Assignments</a
             >
-            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">Profile</a>
-            <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Agencies</span>
-            <span class="block px-4 py-2 text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Coming soon">Rates</span>
+            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-muted/60 transition">Profile</a>
+            <span class="block px-4 py-2 text-muted-foreground/70 cursor-not-allowed" title="Coming soon">Agencies</span>
+            <span class="block px-4 py-2 text-muted-foreground/70 cursor-not-allowed" title="Coming soon">Rates</span>
           </div>
         </details>
 
         <a
           href="index.html?next=assignments.html"
           data-auth-state="signed-out"
-          class="bg-black dark:bg-blue-500 text-white px-5 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-blue-600 transition"
+          class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-full hover:from-blue-700 hover:to-indigo-700 transition"
           >Sign In</a
         >
         <button
           type="button"
           data-auth-state="signed-in"
           data-auth-logout
-          class="bg-black dark:bg-blue-500 text-white px-5 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-blue-600 transition"
+          class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-full hover:from-blue-700 hover:to-indigo-700 transition"
         >
           Log Out
         </button>
@@ -216,21 +203,23 @@
     <div class="max-w-6xl mx-auto px-6 py-10">
       <div
         data-auth-state="signed-out"
-        class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+        class="mb-6 rounded-2xl border border-border bg-muted/40 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
       >
         <div>
-          <div class="text-sm font-bold uppercase tracking-wide text-gray-700">Browse as Guest</div>
-          <div class="text-sm text-gray-600 mt-1">Sign in to save your preferences, enable Telegram DM alerts, and unlock Nearest sorting.</div>
+          <div class="text-sm font-bold uppercase tracking-wide text-foreground">Browse as Guest</div>
+          <div class="text-sm text-muted-foreground mt-1">
+            Sign in to save your preferences, enable Telegram DM alerts, and unlock Nearest sorting.
+          </div>
         </div>
         <div class="flex gap-2">
           <a
             href="index.html?next=assignments.html"
-            class="bg-black text-white px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition text-xs"
+            class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:from-blue-700 hover:to-indigo-700 transition text-xs"
             >Sign In</a
           >
           <a
             href="index.html?next=profile.html"
-            class="bg-white border-2 border-black text-black px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:bg-black hover:text-white transition text-xs"
+            class="bg-transparent border border-border text-foreground px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:bg-muted/60 transition text-xs"
             >Enable DM Alerts</a
           >
         </div>
@@ -239,18 +228,18 @@
       <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
         <div>
           <h1 class="text-5xl md:text-7xl leading-none">Tuition Assignments</h1>
-          <p class="text-gray-500 font-medium mt-2">Live assignments available for application.</p>
+          <p class="text-muted-foreground font-medium mt-2">Live assignments available for application.</p>
         </div>
         <div class="text-right">
           <span class="text-4xl brand-font" id="job-count">0</span>
-          <span class="text-sm font-bold uppercase text-gray-400 block">Active Jobs</span>
+          <span class="text-sm font-bold uppercase text-muted-foreground block">Active Jobs</span>
         </div>
       </div>
 
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <p id="results-summary" class="text-sm font-medium text-gray-500">Showing 0 of 0</p>
+        <p id="results-summary" class="text-sm font-medium text-muted-foreground">Showing 0 of 0</p>
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 sm:justify-end">
-          <div class="flex items-center gap-3 text-[11px] font-bold uppercase text-gray-500">
+          <div class="flex items-center gap-3 text-[11px] font-bold uppercase text-muted-foreground">
             <span class="inline-flex items-center gap-1" title="Likely still open (recent agency bump/update)">
               <span class="w-2 h-2 bg-green-500 rounded-full"></span>Likely open
             </span>
@@ -266,18 +255,18 @@
 
             <details class="tooltip-details relative inline-flex items-center ml-1">
               <summary
-                class="w-5 h-5 rounded-full border border-gray-300 bg-white text-gray-500 flex items-center justify-center text-[11px] font-black hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-black/20 cursor-pointer select-none"
+                class="w-5 h-5 rounded-full border border-border bg-background text-muted-foreground flex items-center justify-center text-[11px] font-black hover:bg-muted/60 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer select-none"
                 aria-label="What is Open-likelihood?"
                 title="What is Open-likelihood?"
               >
                 ?
               </summary>
               <div
-                class="tooltip-panel absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg p-4 text-sm text-gray-700 z-50"
+                class="tooltip-panel absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 rounded-xl shadow-lg p-4 text-sm z-50"
                 role="tooltip"
               >
-                <div class="font-bold uppercase text-xs tracking-wide text-gray-500 mb-2">Open-likelihood</div>
-                <div class="text-sm text-gray-700">
+                <div class="font-bold uppercase text-xs tracking-wide text-muted-foreground mb-2">Open-likelihood</div>
+                <div class="text-sm text-foreground">
                   Computed from agency reposts/edits (“bumps”). It’s a best-effort guess—agencies differ and some never bump.
                 </div>
                 <div class="mt-3 space-y-1 text-sm">
@@ -286,7 +275,7 @@
                   <div><span class="font-bold text-orange-700">Uncertain</span>: getting stale</div>
                   <div><span class="font-bold text-red-700">Likely closed</span>: no bump for a long time</div>
                 </div>
-                <div class="mt-3 text-xs text-gray-500">Tip: cards show both “Posted” and “Bumped/Updated” timestamps.</div>
+                <div class="mt-3 text-xs text-muted-foreground">Tip: cards show both “Posted” and “Bumped/Updated” timestamps.</div>
               </div>
             </details>
           </div>
@@ -295,14 +284,14 @@
             <button
               id="view-toggle-full"
               type="button"
-              class="px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold uppercase tracking-wide hover:bg-gray-50 transition"
+              class="px-3 py-2 rounded-lg border border-border text-xs font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/60 hover:text-foreground transition"
             >
               Full
             </button>
             <button
               id="view-toggle-compact"
               type="button"
-              class="px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold uppercase tracking-wide hover:bg-gray-50 transition"
+              class="px-3 py-2 rounded-lg border border-border text-xs font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/60 hover:text-foreground transition"
             >
               Compact
             </button>
@@ -310,7 +299,7 @@
         </div>
       </div>
 
-      <div class="bg-gray-50 border border-gray-100 rounded-xl p-5 sm:p-6 mb-10 shadow-sm">
+      <div class="bg-muted/40 border border-border rounded-2xl p-5 sm:p-6 mb-10 shadow-sm">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
           <div class="select-wrapper lg:col-span-2">
             <select id="filter-level" class="nike-input" onchange="updateFilterSpecificLevels(); updateFilterSubjects();">
@@ -353,23 +342,23 @@
           <div class="lg:col-span-3 flex flex-col sm:flex-row gap-2">
             <button
               onclick="applyFilters()"
-              class="w-full sm:flex-1 bg-black text-white rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition py-3"
+              class="w-full sm:flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-bold uppercase tracking-wide hover:from-blue-700 hover:to-indigo-700 transition py-3"
             >
               Filter
             </button>
             <button
               onclick="clearFilters()"
-              class="w-full sm:flex-1 bg-white border-2 border-black text-black rounded-lg font-bold uppercase tracking-wide hover:bg-black hover:text-white transition py-3"
+              class="w-full sm:flex-1 bg-transparent border border-border text-foreground rounded-lg font-bold uppercase tracking-wide hover:bg-muted/60 transition py-3"
             >
               Clear
             </button>
           </div>
         </div>
         <div class="mt-3 flex items-center justify-between gap-3">
-          <a id="postal-cta" href="index.html?next=profile.html" class="text-xs font-bold underline text-gray-700 hidden">
+          <a id="postal-cta" href="index.html?next=profile.html" class="text-xs font-bold underline text-muted-foreground hover:text-foreground hidden">
             Set postal code to enable Nearest
           </a>
-          <p id="facet-hint" class="hidden text-xs font-medium text-gray-500">
+          <p id="facet-hint" class="hidden text-xs font-medium text-muted-foreground">
             Tip: Use Subject search to add up to 3 filters (broad or specific). Subject options respect your selected Level.
           </p>
         </div>
@@ -386,13 +375,13 @@
             />
             <div
               id="subject-search-results"
-              class="hidden absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50"
+              class="hidden absolute left-0 right-0 mt-2 bg-background border border-border rounded-xl shadow-lg overflow-hidden z-50"
             ></div>
           </div>
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 w-full">
               <div id="subjects-tray" class="flex flex-wrap gap-2"></div>
-              <div id="subjects-tray-empty" class="text-xs text-gray-500 font-medium mt-2">No subjects selected.</div>
+              <div id="subjects-tray-empty" class="text-xs text-muted-foreground font-medium mt-2">No subjects selected.</div>
             </div>
           </div>
         </div>
@@ -404,51 +393,38 @@
         <button
           id="load-more"
           type="button"
-          class="hidden bg-black text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition"
+          class="hidden bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide hover:from-blue-700 hover:to-indigo-700 transition"
         >
           Load More
         </button>
       </div>
 
       <div id="load-error" class="hidden text-center py-20">
-        <h2 class="text-3xl text-gray-300">Assignments Unavailable</h2>
-        <p class="text-gray-400 mt-2" id="load-error-message">We couldn’t load assignments right now. Please try again.</p>
+        <h2 class="text-3xl text-muted-foreground">Assignments Unavailable</h2>
+        <p class="text-muted-foreground mt-2" id="load-error-message">We couldn’t load assignments right now. Please try again.</p>
         <button
           id="retry-load-assignments"
           type="button"
-          class="mt-4 bg-black text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide hover:bg-gray-800 transition"
+          class="mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-bold uppercase tracking-wide hover:from-blue-700 hover:to-indigo-700 transition"
         >
           Retry
         </button>
       </div>
 
       <div id="no-results" class="hidden text-center py-20">
-        <h2 class="text-3xl text-gray-300">No Assignments Found</h2>
-        <p class="text-gray-400 mt-2">Try adjusting your filters.</p>
-        <button onclick="clearFilters()" class="mt-4 text-sm font-bold underline">Clear All Filters</button>
+        <h2 class="text-3xl text-muted-foreground">No Assignments Found</h2>
+        <p class="text-muted-foreground mt-2">Try adjusting your filters.</p>
+        <button onclick="clearFilters()" class="mt-4 text-sm font-bold underline text-muted-foreground hover:text-foreground">
+          Clear All Filters
+        </button>
       </div>
     </div>
 
     <script type="module" src="/src/page-assignments.js"></script>
 
     <script>
-      // Theme toggle functionality
+      // Tooltip <details> behavior: tap/click to toggle, click-outside + Esc to close
       (function () {
-        const themeToggle = document.getElementById("theme-toggle");
-        if (themeToggle) {
-          themeToggle.addEventListener("click", function () {
-            const isDark = document.documentElement.classList.contains("dark");
-            if (isDark) {
-              document.documentElement.classList.remove("dark");
-              localStorage.setItem("theme", "light");
-            } else {
-              document.documentElement.classList.add("dark");
-              localStorage.setItem("theme", "dark");
-            }
-          });
-        }
-
-        // Tooltip <details> behavior: tap/click to toggle, click-outside + Esc to close
         const tooltips = Array.from(document.querySelectorAll("details.tooltip-details"));
 
         document.addEventListener("click", function (e) {
@@ -479,7 +455,7 @@
 
     <p
       id="auth-init-error"
-      class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-white border border-red-200 text-red-700 p-4 rounded-xl shadow-lg text-sm"
+      class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-background border border-red-500/40 text-red-300 p-4 rounded-xl shadow-lg text-sm"
     >
       Authentication failed to initialize. If you're running locally, use `firebase emulators:start --only hosting`. If deployed, confirm Firebase
       Hosting is serving `__/firebase/init.js` and Auth is enabled.

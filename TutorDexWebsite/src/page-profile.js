@@ -139,7 +139,7 @@ function updateSubjects() {
 
   if (!level) {
     const msg = document.createElement("span");
-    msg.className = "text-gray-400 text-sm italic w-full text-center";
+    msg.className = "text-muted-foreground text-sm italic w-full text-center";
     msg.textContent = "Pick a level to see subjects…";
     root.appendChild(msg);
     return;
@@ -147,7 +147,7 @@ function updateSubjects() {
 
   if (!filtered.length) {
     const msg = document.createElement("span");
-    msg.className = "text-gray-400 text-sm italic w-full text-center";
+    msg.className = "text-muted-foreground text-sm italic w-full text-center";
     msg.textContent = q ? "No matching subjects." : "No subjects available for this level.";
     root.appendChild(msg);
     return;
@@ -224,7 +224,7 @@ function addChipToTray({ level, specificLevel, subjectCode, subjectLabel }) {
 
   const label = document.createElement("span");
   const levelTag = document.createElement("span");
-  levelTag.className = "text-gray-400 font-normal mr-1";
+  levelTag.className = "text-muted-foreground font-normal mr-1";
   levelTag.textContent = lvl;
   label.appendChild(levelTag);
   label.appendChild(document.createTextNode(spec ? ` ${spec} - ${labelText}` : ` ${labelText}`));
@@ -334,9 +334,9 @@ function setStatus(message, kind = "info") {
   if (!el) return;
   el.textContent = message || "";
   el.className = "text-sm font-medium mb-4";
-  if (kind === "error") el.className += " text-red-600";
-  else if (kind === "success") el.className += " text-green-600";
-  else el.className += " text-gray-600";
+  if (kind === "error") el.className += " text-red-400";
+  else if (kind === "success") el.className += " text-emerald-300";
+  else el.className += " text-muted-foreground";
 }
 
 function normalizeSgPostalCode(value) {
@@ -465,7 +465,9 @@ async function loadProfile() {
   const telegramStatusEl = document.getElementById("telegram-link-status");
   if (telegramStatusEl) {
     telegramStatusEl.textContent = profile.chat_id ? "Linked to Telegram (DMs enabled)" : "Not linked to Telegram yet";
-    telegramStatusEl.className = profile.chat_id ? "text-sm font-semibold text-green-700" : "text-sm font-semibold text-gray-700";
+    telegramStatusEl.className = profile.chat_id
+      ? "text-sm font-semibold text-emerald-300"
+      : "text-sm font-semibold text-muted-foreground";
   }
 
   if (Array.isArray(profile.assignment_types)) {
