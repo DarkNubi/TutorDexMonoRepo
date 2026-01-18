@@ -787,6 +787,7 @@ function hideLoadError() {
 export {
   renderCards,
   renderSkeleton,
+  renderSubjectTray,
   renderLoadError,
   hideLoadError,
   setStatus,
@@ -796,3 +797,13 @@ export {
   setResultsSummary,
   mapAssignmentRow
 };
+
+// Backwards-compatible globals for inline handlers or legacy bundles
+try {
+  if (typeof window !== "undefined") {
+    window.renderSubjectTray = renderSubjectTray;
+    window.renderSkeleton = renderSkeleton;
+  }
+} catch (e) {
+  // ignore
+}
