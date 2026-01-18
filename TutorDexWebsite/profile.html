@@ -143,9 +143,7 @@
           </summary>
           <div class="absolute right-0 mt-3 w-56 bg-background border border-border rounded-xl shadow-lg p-2">
             <a href="assignments.html" class="block px-4 py-2 rounded-lg hover:bg-muted/60 transition">Assignments</a>
-            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-muted/60 transition" aria-current="page"
-              >Profile</a
-            >
+            <a href="profile.html" class="block px-4 py-2 rounded-lg hover:bg-muted/60 transition" aria-current="page">Profile</a>
           </div>
         </details>
 
@@ -234,7 +232,7 @@
             <div class="mb-2 flex items-center justify-between">
               <p class="text-xs text-muted-foreground">Select a level once, then click subjects to add combinations quickly.</p>
               <button
-                id="clear-level-selection"
+                id="clear-this-level"
                 type="button"
                 class="text-[11px] font-semibold px-2 py-1 border border-border rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 title="Clear the level dropdown (does not remove added combinations)"
@@ -255,13 +253,6 @@
             <p class="text-xs font-bold text-muted-foreground uppercase tracking-widest">Added combinations</p>
             <div class="flex flex-wrap items-center gap-2">
               <button
-                id="clear-this-level"
-                type="button"
-                class="px-3 py-2 border border-border rounded-lg font-bold uppercase text-xs tracking-wide text-muted-foreground hover:text-foreground hover:border-blue-500 transition"
-              >
-                Clear This Level
-              </button>
-              <button
                 id="clear-tray"
                 type="button"
                 class="px-3 py-2 border border-border rounded-lg font-bold uppercase text-xs tracking-wide text-foreground hover:bg-muted/60 transition"
@@ -272,9 +263,7 @@
           </div>
 
           <div id="subjects-tray" class="min-h-[80px] w-full border border-dashed border-border rounded-2xl p-4 flex flex-wrap gap-2 items-center">
-            <span class="text-muted-foreground text-sm italic w-full text-center" id="empty-tray-msg">
-              Your added subjects will appear here...
-            </span>
+            <span class="text-muted-foreground text-sm italic w-full text-center" id="empty-tray-msg"> Your added subjects will appear here... </span>
           </div>
         </section>
 
@@ -328,14 +317,7 @@
             </div>
             <div>
               <label class="block text-xs font-bold uppercase mb-2">Email Address</label>
-              <input
-                id="contact-email"
-                type="email"
-                placeholder="you@example.com"
-                class="nike-input rounded-lg"
-                readonly
-                aria-readonly="true"
-              />
+              <input id="contact-email" type="email" placeholder="you@example.com" class="nike-input rounded-lg" readonly aria-readonly="true" />
             </div>
             <div class="md:col-span-2">
               <div class="flex items-center justify-between mb-2">
@@ -351,14 +333,7 @@
                 </button>
               </div>
 
-              <input
-                id="contact-telegram-handle"
-                type="text"
-                placeholder="@username"
-                class="nike-input rounded-lg"
-                readonly
-                aria-readonly="true"
-              />
+              <input id="contact-telegram-handle" type="text" placeholder="@username" class="nike-input rounded-lg" readonly aria-readonly="true" />
 
               <p id="telegram-info" class="mt-1 text-xs text-muted-foreground hidden">
                 Auto-filled after you link Telegram DMs. If your Telegram account has no username, this will stay blank.
@@ -399,7 +374,11 @@
               <div id="link-code-box" class="hidden flex flex-wrap items-center gap-2">
                 <span class="text-xs font-bold uppercase text-muted-foreground">Code</span>
                 <span id="link-code-display" class="text-sm font-mono text-foreground bg-muted/60 px-2 py-1 rounded"></span>
-                <button id="copy-link-command" type="button" class="text-xs font-bold uppercase underline text-muted-foreground hover:text-foreground">
+                <button
+                  id="copy-link-command"
+                  type="button"
+                  class="text-xs font-bold uppercase underline text-muted-foreground hover:text-foreground"
+                >
                   Copy /link
                 </button>
                 <a

@@ -635,22 +635,6 @@ async function initProfilePage() {
       });
     }
 
-    const clearLevelSelBtn = document.getElementById("clear-level-selection");
-    if (clearLevelSelBtn) {
-      clearLevelSelBtn.addEventListener("click", () => {
-        const levelEl = document.getElementById("level-select");
-        const specEl = document.getElementById("specific-level-select");
-        if (levelEl) levelEl.value = "";
-        if (specEl) {
-          specEl.innerHTML = '<option value="" selected>Select Specific Level (Optional)</option>';
-          specEl.disabled = true;
-        }
-        const searchEl = document.getElementById("subject-search");
-        if (searchEl) searchEl.value = "";
-        updateSubjects();
-      });
-    }
-
     const clearAllBtn = document.getElementById("clear-tray");
     if (clearAllBtn) {
       clearAllBtn.addEventListener("click", () => {
