@@ -124,7 +124,8 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
 
     row = build_assignment_row(payload, geocode_func=geocode_sg_postal)
     external_id = row.get("external_id")
-    agency_name = row.get("agency_name")
+    agency_telegram_channel_name = row.get("agency_telegram_channel_name")
+    agency_display_name = row.get("agency_display_name")
     agency_link = row.get("agency_link")
 
     with bind_log_context(
@@ -140,13 +141,13 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         t_all = timed()
 
         client = SupabaseRestClient(cfg)
-        if not external_id or not agency_name:
+        if not external_id or not agency_telegram_channel_name:
             res = {
                 "ok": False,
                 "skipped": True,
-                "reason": "missing_external_id_or_agency_name",
+                "reason": "missing_external_id_or_agency_telegram_channel_name",
                 "external_id": external_id,
-                "agency_name": agency_name,
+                "agency_telegram_channel_name": agency_telegram_channel_name,
             }
             log_event(logger, logging.WARNING, "supabase_skipped", **res)
             return res
@@ -154,7 +155,12 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         # If the normalized schema exists, try to create/resolve agency_id.
         try:
             t0 = timed()
-            agency_id = upsert_agency(client, name=str(agency_name), channel_link=str(agency_link) if agency_link else None)
+            agency_id = upsert_agency(
+                client,
+                agency_display_name=str(agency_display_name) if agency_display_name else None,
+                agency_telegram_channel_name=str(agency_telegram_channel_name),
+                channel_link=str(agency_link) if agency_link else None,
+            )
             agency_ms = round((timed() - t0) * 1000.0, 2)
             if agency_id:
                 row["agency_id"] = agency_id
@@ -185,6 +191,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 "learning_mode_raw_text",
                 "assignment_code",
                 "agency_display_name",
+                "agency_telegram_channel_name",
                 "academic_display_text",
                 "lesson_schedule",
                 "start_date",
@@ -212,7 +219,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
         if row.get("agency_id") is not None:
             query += f"&agency_id=eq.{int(row['agency_id'])}"
         else:
-            query += f"&agency_name=eq.{requests.utils.quote(str(agency_name), safe='')}"
+            query += f"&agency_telegram_channel_name=eq.{requests.utils.quote(str(agency_telegram_channel_name), safe='')}"
         query += "&limit=1"
 
         try:
@@ -225,7 +232,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 logging.ERROR,
                 "supabase_get_failed",
                 external_id=str(external_id),
-                agency_name=str(agency_name),
+                agency_telegram_channel_name=str(agency_telegram_channel_name),
                 error=str(e),
             )
             if worker_supabase_fail_total:
@@ -263,7 +270,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                         logging.DEBUG,
                         "supabase_bump_suppressed",
                         external_id=str(external_id),
-                        agency=str(agency_name),
+                        agency=str(agency_telegram_channel_name),
                         last_seen=existing.get("last_seen"),
                         elapsed_s=round(elapsed, 2),
                         min_seconds=cfg.bump_min_seconds,
@@ -365,7 +372,14 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
             )
             insert_ms = round((timed() - t0) * 1000.0, 2)
         except Exception as e:
-            log_event(logger, logging.ERROR, "supabase_insert_failed", external_id=str(external_id), agency_name=str(agency_name), error=str(e))
+            log_event(
+                logger,
+                logging.ERROR,
+                "supabase_insert_failed",
+                external_id=str(external_id),
+                agency_telegram_channel_name=str(agency_telegram_channel_name),
+                error=str(e),
+            )
             if worker_supabase_fail_total:
                 try:
                     worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
@@ -394,7 +408,14 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 insert_ms = round((timed() - t0) * 1000.0, 2)
                 ok = insert_resp.status_code < 400
             except Exception as e:
-                log_event(logger, logging.ERROR, "supabase_insert_failed", external_id=str(external_id), agency_name=str(agency_name), error=str(e))
+                log_event(
+                    logger,
+                    logging.ERROR,
+                    "supabase_insert_failed",
+                    external_id=str(external_id),
+                    agency_telegram_channel_name=str(agency_telegram_channel_name),
+                    error=str(e),
+                )
                 if worker_supabase_fail_total:
                     try:
                         worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
@@ -433,15 +454,15 @@ def mark_assignment_closed(payload: Dict[str, Any], *, cfg: Optional[SupabaseCon
         client = SupabaseRestClient(cfg)
         row = build_assignment_row(payload, geocode_func=geocode_sg_postal)
         external_id = row.get("external_id")
-        agency_name = row.get("agency_name")
+        agency_telegram_channel_name = row.get("agency_telegram_channel_name")
         agency_link = row.get("agency_link")
-        if not external_id or not agency_name:
+        if not external_id or not agency_telegram_channel_name:
             res = {
                 "ok": False,
                 "skipped": True,
-                "reason": "missing_external_id_or_agency_name",
+                "reason": "missing_external_id_or_agency_telegram_channel_name",
                 "external_id": external_id,
-                "agency_name": agency_name,
+                "agency_telegram_channel_name": agency_telegram_channel_name,
             }
             log_event(logger, logging.DEBUG, "supabase_close_skipped", **res)
             return res
@@ -450,7 +471,7 @@ def mark_assignment_closed(payload: Dict[str, Any], *, cfg: Optional[SupabaseCon
         if row.get("agency_id") is not None:
             query += f"&agency_id=eq.{int(row['agency_id'])}"
         else:
-            query += f"&agency_name=eq.{requests.utils.quote(str(agency_name), safe='')}"
+            query += f"&agency_telegram_channel_name=eq.{requests.utils.quote(str(agency_telegram_channel_name), safe='')}"
         query += "&limit=1"
 
         try:
@@ -461,7 +482,13 @@ def mark_assignment_closed(payload: Dict[str, Any], *, cfg: Optional[SupabaseCon
             return {"ok": False, "error": str(e), "action": "lookup_failed"}
 
         if not existing_rows:
-            log_event(logger, logging.INFO, "supabase_close_not_found", external_id=external_id, agency_name=agency_name)
+            log_event(
+                logger,
+                logging.INFO,
+                "supabase_close_not_found",
+                external_id=external_id,
+                agency_telegram_channel_name=agency_telegram_channel_name,
+            )
             return {"ok": False, "skipped": True, "reason": "not_found"}
 
         row_id = existing_rows[0].get("id")

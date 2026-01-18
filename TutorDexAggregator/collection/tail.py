@@ -73,7 +73,11 @@ async def run_tail(ctx: CollectorContext, args: argparse.Namespace) -> int:
         channel_id = str(getattr(entity, "id", "") or "") or None
         channel_link = channel_link_from_entity(entity, normalize_channel_ref(ch))
         title = getattr(entity, "title", None) or None
-        store.upsert_channel(channel_link=channel_link, channel_id=channel_id, title=str(title) if title else None)
+        store.upsert_channel(
+            channel_link=channel_link,
+            channel_id=channel_id,
+            agency_telegram_channel_name=str(title) if title else None,
+        )
 
     counts: Dict[str, Counters] = {}
 

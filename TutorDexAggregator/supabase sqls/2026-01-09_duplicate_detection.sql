@@ -185,7 +185,8 @@ COMMENT ON FUNCTION public.get_duplicate_config IS
 CREATE OR REPLACE FUNCTION public.get_duplicate_group_members(p_group_id BIGINT)
 RETURNS TABLE (
     assignment_id BIGINT,
-    agency_name TEXT,
+    agency_display_name TEXT,
+    agency_telegram_channel_name TEXT,
     assignment_code TEXT,
     is_primary BOOLEAN,
     confidence_score DECIMAL(5,2),
@@ -198,7 +199,8 @@ BEGIN
     RETURN QUERY
     SELECT 
         a.id as assignment_id,
-        a.agency_name,
+        a.agency_display_name,
+        a.agency_telegram_channel_name,
         a.assignment_code,
         a.is_primary_in_group as is_primary,
         a.duplicate_confidence_score as confidence_score,

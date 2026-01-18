@@ -73,7 +73,7 @@ def fetch_candidates(client: SupabaseRestClient, *, table: str, status: str, lim
     # Prefer rows missing v2 arrays or version.
     query = (
         f"{table}"
-        "?select=id,external_id,agency_name,status,last_seen,signals_levels,signals_subjects,subjects_canonical,subjects_general,canonicalization_version,meta"
+        "?select=id,external_id,agency_telegram_channel_name,status,last_seen,signals_levels,signals_subjects,subjects_canonical,subjects_general,canonicalization_version,meta"
         f"&status=eq.{status}"
         "&or=(canonicalization_version.is.null,subjects_canonical.eq.{},subjects_general.eq.{})"
         "&order=last_seen.desc"
@@ -217,4 +217,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

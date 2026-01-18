@@ -47,7 +47,11 @@ async def backfill_channel(
     channel_link = channel_link_from_entity(entity, normalize_channel_ref(channel_ref))
     title = getattr(entity, "title", None) or None
 
-    store.upsert_channel(channel_link=channel_link, channel_id=channel_id, title=str(title) if title else None)
+    store.upsert_channel(
+        channel_link=channel_link,
+        channel_id=channel_id,
+        agency_telegram_channel_name=str(title) if title else None,
+    )
 
     rows: List[Dict[str, Any]] = []
     t0 = timed()

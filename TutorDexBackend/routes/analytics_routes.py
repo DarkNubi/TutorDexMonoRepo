@@ -29,12 +29,19 @@ def analytics_event(request: Request, req: AnalyticsEventRequest, ctx: AppContex
     user_id = ctx.sb.upsert_user(firebase_uid=uid, email=None, name=None)
     assignment_id = None
     if req.assignment_external_id:
-        assignment_id = ctx.sb.resolve_assignment_id(external_id=req.assignment_external_id, agency_name=req.agency_name)
+        assignment_id = ctx.sb.resolve_assignment_id(
+            external_id=req.assignment_external_id,
+            agency_telegram_channel_name=req.agency_telegram_channel_name,
+        )
 
     ctx.analytics_service.insert_analytics_event(
         user_id=user_id,
         assignment_id=assignment_id,
         event_type=req.event_type,
-        meta=req.meta or {"external_id": req.assignment_external_id, "agency_name": req.agency_name},
+        meta=req.meta
+        or {
+            "external_id": req.assignment_external_id,
+            "agency_telegram_channel_name": req.agency_telegram_channel_name,
+        },
     )
     return {"ok": True}

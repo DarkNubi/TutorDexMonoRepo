@@ -168,15 +168,22 @@ class SupabaseStore:
             return False
         return resp.status_code < 400
 
-    def resolve_assignment_id(self, *, external_id: str, agency_name: Optional[str] = None) -> Optional[int]:
+    def resolve_assignment_id(
+        self,
+        *,
+        external_id: str,
+        agency_telegram_channel_name: Optional[str] = None,
+    ) -> Optional[int]:
         if not self.client:
             return None
         ext = str(external_id).strip()
         if not ext:
             return None
         q = f"assignments?select=id&external_id=eq.{requests.utils.quote(ext, safe='')}"
-        if agency_name:
-            q += f"&agency_name=eq.{requests.utils.quote(str(agency_name).strip(), safe='')}"
+        if agency_telegram_channel_name:
+            q += (
+                f"&agency_telegram_channel_name=eq.{requests.utils.quote(str(agency_telegram_channel_name).strip(), safe='')}"
+            )
         q += "&limit=1"
         r = self.client.get(q, timeout=15)
         if r.status_code >= 400:
@@ -234,7 +241,7 @@ class SupabaseStore:
         level: Optional[str] = None,
         specific_student_level: Optional[str] = None,
         subject: Optional[str] = None,
-        agency_name: Optional[str] = None,
+        agency_display_name: Optional[str] = None,
         learning_mode: Optional[str] = None,
         location_query: Optional[str] = None,
         min_rate: Optional[int] = None,
@@ -254,7 +261,7 @@ class SupabaseStore:
             "p_level": level,
             "p_specific_student_level": specific_student_level,
             "p_subject": subject,
-            "p_agency_name": agency_name,
+            "p_agency_display_name": agency_display_name,
             "p_learning_mode": learning_mode,
             "p_location_query": location_query,
             "p_min_rate": int(min_rate) if min_rate is not None else None,
@@ -281,19 +288,12 @@ class SupabaseStore:
                 total = 0
         for r in rows:
             r.pop("total_count", None)
-            # Prefer explicit `agency_display_name` from DB; fall back to `agency_name` and apply registry mapping
             try:
                 display_raw = r.get("agency_display_name") if isinstance(r, dict) else None
-                if display_raw:
-                    r["agency_name"] = str(display_raw)
-                else:
-                    raw = r.get("agency_name") if isinstance(r, dict) else None
+                if not display_raw:
+                    raw = r.get("agency_telegram_channel_name") if isinstance(r, dict) else None
                     if raw:
-                        mapped = get_agency_display_name(str(raw))
-                        if mapped and mapped != "Agency":
-                            r["agency_name"] = mapped
-                        else:
-                            r["agency_name"] = str(raw)
+                        r["agency_display_name"] = str(raw)
             except Exception:
                 pass
 
@@ -314,7 +314,7 @@ class SupabaseStore:
         subject: Optional[str] = None,
         subject_general: Optional[str] = None,
         subject_canonical: Optional[str] = None,
-        agency_name: Optional[str] = None,
+        agency_display_name: Optional[str] = None,
         learning_mode: Optional[str] = None,
         location_query: Optional[str] = None,
         min_rate: Optional[int] = None,
@@ -344,7 +344,7 @@ class SupabaseStore:
             "p_subject": subject,
             "p_subject_general": subject_general,
             "p_subject_canonical": subject_canonical,
-            "p_agency_name": agency_name,
+            "p_agency_display_name": agency_display_name,
             "p_learning_mode": learning_mode,
             "p_location_query": location_query,
             "p_min_rate": int(min_rate) if min_rate is not None else None,
@@ -371,19 +371,12 @@ class SupabaseStore:
                 total = 0
         for r in rows:
             r.pop("total_count", None)
-            # Prefer explicit `agency_display_name` from DB; fall back to `agency_name` and apply registry mapping
             try:
                 display_raw = r.get("agency_display_name") if isinstance(r, dict) else None
-                if display_raw:
-                    r["agency_name"] = str(display_raw)
-                else:
-                    raw = r.get("agency_name") if isinstance(r, dict) else None
+                if not display_raw:
+                    raw = r.get("agency_telegram_channel_name") if isinstance(r, dict) else None
                     if raw:
-                        mapped = get_agency_display_name(str(raw))
-                        if mapped and mapped != "Agency":
-                            r["agency_name"] = mapped
-                        else:
-                            r["agency_name"] = str(raw)
+                        r["agency_display_name"] = str(raw)
             except Exception:
                 pass
 
@@ -397,7 +390,7 @@ class SupabaseStore:
         subject: Optional[str] = None,
         subject_general: Optional[str] = None,
         subject_canonical: Optional[str] = None,
-        agency_name: Optional[str] = None,
+        agency_display_name: Optional[str] = None,
         learning_mode: Optional[str] = None,
         location_query: Optional[str] = None,
         tutor_type: Optional[str] = None,
@@ -416,7 +409,7 @@ class SupabaseStore:
             "p_subject": subject,
             "p_subject_general": subject_general,
             "p_subject_canonical": subject_canonical,
-            "p_agency_name": agency_name,
+            "p_agency_display_name": agency_display_name,
             "p_learning_mode": learning_mode,
             "p_location_query": location_query,
             "p_tutor_type": str(tutor_type).strip() if tutor_type is not None else None,
@@ -440,7 +433,6 @@ class SupabaseStore:
 
         # PostgREST may return a JSON object or a list containing it.
         if isinstance(data, dict):
-            # Normalize agency facet values to display names when present
             try:
                 agencies = data.get("agencies") if isinstance(data, dict) else None
                 if isinstance(agencies, list):
@@ -448,9 +440,10 @@ class SupabaseStore:
                     for a in agencies:
                         if isinstance(a, dict) and "value" in a:
                             val = a.get("value")
-                            if val:
+                            if isinstance(val, str) and ("t.me/" in val or val.startswith("@")):
                                 mapped = get_agency_display_name(str(val))
-                                a["value"] = mapped if mapped and mapped != "Agency" else str(val)
+                                if mapped and mapped != "Agency":
+                                    a["value"] = mapped
                         new_ag.append(a)
                     data["agencies"] = new_ag
             except Exception:
@@ -465,9 +458,10 @@ class SupabaseStore:
                     for a in agencies:
                         if isinstance(a, dict) and "value" in a:
                             val = a.get("value")
-                            if val:
+                            if isinstance(val, str) and ("t.me/" in val or val.startswith("@")):
                                 mapped = get_agency_display_name(str(val))
-                                a["value"] = mapped if mapped and mapped != "Agency" else str(val)
+                                if mapped and mapped != "Agency":
+                                    a["value"] = mapped
                         new_ag.append(a)
                     first["agencies"] = new_ag
             except Exception:

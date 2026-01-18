@@ -8,14 +8,45 @@
 
 create table if not exists public.agencies (
   id bigserial primary key,
-  name text not null,
+  agency_display_name text not null,
+  agency_telegram_channel_name text,
   channel_link text,
   created_at timestamptz not null default now()
 );
 
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'agencies'
+      and column_name = 'name'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'agencies'
+      and column_name = 'agency_display_name'
+  ) then
+    alter table public.agencies rename column name to agency_display_name;
+  elsif exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'agencies'
+      and column_name = 'name'
+  ) then
+    update public.agencies
+      set agency_display_name = coalesce(nullif(agency_display_name, ''), name)
+      where agency_display_name is null or agency_display_name = '';
+    alter table public.agencies drop column if exists name;
+  end if;
+end $$;
+
 -- Additive upgrades for older DBs (avoid failures when creating indexes/functions).
 alter table public.agencies
-  add column if not exists name text;
+  add column if not exists agency_display_name text;
+
+alter table public.agencies
+  add column if not exists agency_telegram_channel_name text;
 
 alter table public.agencies
   add column if not exists channel_link text;
@@ -27,8 +58,10 @@ create unique index if not exists agencies_channel_link_uq
   on public.agencies (channel_link)
   where channel_link is not null;
 
-create unique index if not exists agencies_name_uq
-  on public.agencies (name);
+drop index if exists agencies_name_uq;
+
+create unique index if not exists agencies_agency_display_name_uq
+  on public.agencies (agency_display_name);
 
 -- --------------------------------------------------------------------------------
 -- Public assignments listing table (materialized from latest extraction output)
@@ -47,8 +80,8 @@ create table if not exists public.assignments (
   external_id text not null,
 
   -- denormalized convenience fields (avoid joins for the website)
-  agency_name text,
   agency_display_name text,
+  agency_telegram_channel_name text,
   agency_link text,
 
   channel_id text,
@@ -118,6 +151,33 @@ create table if not exists public.assignments (
   duplicate_confidence_score decimal(5,2)
 );
 
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'assignments'
+      and column_name = 'agency_name'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'assignments'
+      and column_name = 'agency_telegram_channel_name'
+  ) then
+    alter table public.assignments rename column agency_name to agency_telegram_channel_name;
+  elsif exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'assignments'
+      and column_name = 'agency_name'
+  ) then
+    update public.assignments
+      set agency_telegram_channel_name = coalesce(nullif(agency_telegram_channel_name, ''), agency_name)
+      where agency_telegram_channel_name is null or agency_telegram_channel_name = '';
+    alter table public.assignments drop column if exists agency_name;
+  end if;
+end $$;
+
 -- Additive upgrades for older DBs (avoid failures when creating indexes/functions).
 alter table public.assignments
   add column if not exists agency_id bigint;
@@ -132,10 +192,10 @@ alter table public.assignments
   add column if not exists source_last_seen timestamptz;
 
 alter table public.assignments
-  add column if not exists agency_name text;
+  add column if not exists agency_display_name text;
 
 alter table public.assignments
-  add column if not exists agency_display_name text;
+  add column if not exists agency_telegram_channel_name text;
 
 alter table public.assignments
   add column if not exists agency_link text;
@@ -314,8 +374,10 @@ create index if not exists assignments_open_published_at_idx
 create index if not exists assignments_parse_quality_score_idx
   on public.assignments (parse_quality_score desc);
 
-create index if not exists assignments_status_agency_name_idx
-  on public.assignments (status, agency_name);
+drop index if exists assignments_status_agency_name_idx;
+
+create index if not exists assignments_status_agency_telegram_channel_name_idx
+  on public.assignments (status, agency_telegram_channel_name);
 
 create index if not exists assignments_status_agency_display_name_idx
   on public.assignments (status, agency_display_name);
@@ -426,7 +488,8 @@ $$;
 create or replace function public.get_duplicate_group_members(p_group_id bigint)
 returns table (
   assignment_id bigint,
-  agency_name text,
+  agency_display_name text,
+  agency_telegram_channel_name text,
   assignment_code text,
   is_primary boolean,
   confidence_score decimal(5,2),
@@ -440,7 +503,8 @@ begin
   return query
   select
     a.id as assignment_id,
-    a.agency_name,
+    a.agency_display_name,
+    a.agency_telegram_channel_name,
     a.assignment_code,
     a.is_primary_in_group as is_primary,
     a.duplicate_confidence_score as confidence_score,
@@ -533,7 +597,7 @@ create or replace function public.list_open_assignments(
   p_subject text default null,
   p_subject_general text default null,
   p_subject_canonical text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_tutor_type text default null,
@@ -543,8 +607,8 @@ returns table(
   id bigint,
   external_id text,
   message_link text,
-  agency_name text,
   agency_display_name text,
+  agency_telegram_channel_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -618,7 +682,7 @@ filtered as (
           )
       )
     )
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -654,7 +718,7 @@ select
   external_id,
   message_link,
   agency_display_name,
-  agency_name,
+  agency_telegram_channel_name,
   learning_mode,
   assignment_code,
   academic_display_text,
@@ -709,7 +773,7 @@ create or replace function public.list_open_assignments_v2(
   p_subject text default null,
   p_subject_general text default null,
   p_subject_canonical text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_tutor_type text default null,
@@ -720,8 +784,8 @@ returns table(
   id bigint,
   external_id text,
   message_link text,
-  agency_name text,
   agency_display_name text,
+  agency_telegram_channel_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -798,7 +862,7 @@ filtered as (
           )
       )
     )
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -882,7 +946,7 @@ select
   external_id,
   message_link,
   agency_display_name,
-  agency_name,
+  agency_telegram_channel_name,
   learning_mode,
   assignment_code,
   academic_display_text,
@@ -934,7 +998,7 @@ create or replace function public.open_assignment_facets(
   p_subject text default null,
   p_subject_general text default null,
   p_subject_canonical text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_tutor_type text default null,
@@ -980,7 +1044,7 @@ filtered as (
           )
       )
     )
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -1089,14 +1153,15 @@ select jsonb_build_object(
   ),
   'agencies', (
     select coalesce(
-      jsonb_agg(jsonb_build_object('value', coalesce(agency_display_name, agency_name), 'count', c) order by c desc, coalesce(agency_display_name, agency_name) asc),
+      jsonb_agg(jsonb_build_object('value', agency_display_name, 'count', c) order by c desc, agency_display_name asc),
       '[]'::jsonb
     )
     from (
-      select agency_name, count(*) as c
+      select coalesce(agency_display_name, agency_telegram_channel_name) as agency_display_name, count(*) as c
       from filtered
-      where (agency_display_name is not null and btrim(agency_display_name) <> '') or (agency_name is not null and btrim(agency_name) <> '')
-      group by coalesce(agency_display_name, agency_name)
+      where (agency_display_name is not null and btrim(agency_display_name) <> '')
+        or (agency_telegram_channel_name is not null and btrim(agency_telegram_channel_name) <> '')
+      group by coalesce(agency_display_name, agency_telegram_channel_name)
     ) s
   ),
   'learning_modes', (
@@ -1390,9 +1455,36 @@ create table if not exists public.telegram_channels (
   id bigserial primary key,
   channel_link text not null,
   channel_id text,
-  title text,
+  agency_telegram_channel_name text,
   created_at timestamptz not null default now()
 );
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'telegram_channels'
+      and column_name = 'title'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'telegram_channels'
+      and column_name = 'agency_telegram_channel_name'
+  ) then
+    alter table public.telegram_channels rename column title to agency_telegram_channel_name;
+  elsif exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'telegram_channels'
+      and column_name = 'title'
+  ) then
+    update public.telegram_channels
+      set agency_telegram_channel_name = coalesce(nullif(agency_telegram_channel_name, ''), title)
+      where agency_telegram_channel_name is null or agency_telegram_channel_name = '';
+    alter table public.telegram_channels drop column if exists title;
+  end if;
+end $$;
 
 alter table public.telegram_channels
   add column if not exists channel_link text;
@@ -1401,7 +1493,7 @@ alter table public.telegram_channels
   add column if not exists channel_id text;
 
 alter table public.telegram_channels
-  add column if not exists title text;
+  add column if not exists agency_telegram_channel_name text;
 
 alter table public.telegram_channels
   add column if not exists created_at timestamptz;

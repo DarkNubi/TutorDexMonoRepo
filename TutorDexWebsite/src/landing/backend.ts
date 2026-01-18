@@ -152,7 +152,8 @@ export function mapRowToLandingAssignment(row: AssignmentRow): LandingAssignment
   const postedIso = String(row.published_at ?? row.created_at ?? row.last_seen ?? "").trim()
   const posted = postedIso ? formatRelativeTime(postedIso) : ""
 
-  const agency = String(row.agency_name ?? "").trim() || "Partner agency"
+  const agency =
+    String(row.agency_display_name ?? row.agency_telegram_channel_name ?? "").trim() || "Partner agency"
   const externalId = String(row.external_id ?? "").trim()
   const internalId = row.id != null ? String(row.id).trim() : ""
   const id = externalId || (internalId ? `DB-${internalId}` : "")

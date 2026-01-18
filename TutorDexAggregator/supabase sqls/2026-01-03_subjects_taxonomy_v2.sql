@@ -123,7 +123,7 @@ create or replace function public.list_open_assignments(
   p_subject text default null,
   p_subject_general text default null,
   p_subject_canonical text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_min_rate integer default null
@@ -132,7 +132,8 @@ returns table(
   id bigint,
   external_id text,
   message_link text,
-  agency_name text,
+  agency_display_name text,
+  agency_telegram_channel_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -196,7 +197,7 @@ filtered as (
       or p_subject = any(subjects_canonical)
       or p_subject = any(subjects_general)
     )
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -230,7 +231,8 @@ select
   id,
   external_id,
   message_link,
-  agency_name,
+  agency_display_name,
+  agency_telegram_channel_name,
   learning_mode,
   assignment_code,
   academic_display_text,
@@ -284,7 +286,7 @@ create or replace function public.list_open_assignments_v2(
   p_subject text default null,
   p_subject_general text default null,
   p_subject_canonical text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_min_rate integer default null
@@ -293,7 +295,8 @@ returns table(
   id bigint,
   external_id text,
   message_link text,
-  agency_name text,
+  agency_display_name text,
+  agency_telegram_channel_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -359,7 +362,7 @@ filtered as (
       or p_subject = any(subjects_canonical)
       or p_subject = any(subjects_general)
     )
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -434,7 +437,8 @@ select
   id,
   external_id,
   message_link,
-  agency_name,
+  agency_display_name,
+  agency_telegram_channel_name,
   learning_mode,
   assignment_code,
   academic_display_text,
@@ -486,7 +490,7 @@ create or replace function public.open_assignment_facets(
   p_subject text default null,
   p_subject_general text default null,
   p_subject_canonical text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_tutor_type text default null,
@@ -525,7 +529,7 @@ filtered as (
       or p_subject = any(subjects_canonical)
       or p_subject = any(subjects_general)
     )
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -634,14 +638,15 @@ select jsonb_build_object(
   ),
   'agencies', (
     select coalesce(
-      jsonb_agg(jsonb_build_object('value', agency_name, 'count', c) order by c desc, agency_name asc),
+      jsonb_agg(jsonb_build_object('value', agency_display_name, 'count', c) order by c desc, agency_display_name asc),
       '[]'::jsonb
     )
     from (
-      select agency_name, count(*) as c
+      select coalesce(agency_display_name, agency_telegram_channel_name) as agency_display_name, count(*) as c
       from filtered
-      where agency_name is not null and btrim(agency_name) <> ''
-      group by agency_name
+      where (agency_display_name is not null and btrim(agency_display_name) <> '')
+        or (agency_telegram_channel_name is not null and btrim(agency_telegram_channel_name) <> '')
+      group by coalesce(agency_display_name, agency_telegram_channel_name)
     ) s
   ),
   'learning_modes', (
@@ -673,4 +678,3 @@ select jsonb_build_object(
   )
 );
 $$;
-

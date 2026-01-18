@@ -43,7 +43,7 @@ class TelegramClaimRequest(BaseModel):
 class AnalyticsEventRequest(BaseModel):
     event_type: str
     assignment_external_id: Optional[str] = None
-    agency_name: Optional[str] = None
+    agency_telegram_channel_name: Optional[str] = None
     meta: Optional[Dict[str, Any]] = None
 
 
@@ -60,7 +60,8 @@ class AssignmentRow(BaseModel):
     id: int
     external_id: Optional[str] = None
     message_link: Optional[str] = None
-    agency_name: Optional[str] = None
+    agency_display_name: Optional[str] = None
+    agency_telegram_channel_name: Optional[str] = None
     learning_mode: Optional[str] = None
     assignment_code: Optional[str] = None
     academic_display_text: Optional[str] = None

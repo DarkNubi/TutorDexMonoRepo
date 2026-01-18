@@ -9,7 +9,8 @@
     "id",
     "external_id",
     "message_link",
-    "agency_name",
+    "agency_display_name",
+    "agency_telegram_channel_name",
     "learning_mode",
     "assignment_code",
     "academic_display_text",
@@ -46,8 +47,8 @@
     "id": { "type": "integer" },
     "external_id": { "type": ["string", "null"] },
     "message_link": { "type": ["string", "null"] },
-    "agency_name": { "type": ["string", "null"] },
     "agency_display_name": { "type": ["string", "null"] },
+    "agency_telegram_channel_name": { "type": ["string", "null"] },
     "learning_mode": { "type": ["string", "null"] },
     "assignment_code": { "type": ["string", "null"] },
     "academic_display_text": { "type": ["string", "null"] },
@@ -83,4 +84,3 @@
     "postal_coords_estimated": { "type": ["boolean", "null"] }
   }
 }
-

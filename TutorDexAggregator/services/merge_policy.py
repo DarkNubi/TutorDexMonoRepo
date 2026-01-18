@@ -110,7 +110,7 @@ def merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any], 
                 patch[k] = incoming_row[k]
 
     for k, v in incoming_row.items():
-        if k in {"external_id", "agency_name", "agency_id", "parse_quality_score"}:
+        if k in {"external_id", "agency_telegram_channel_name", "agency_id", "parse_quality_score"}:
             continue
         if v is None:
             continue
