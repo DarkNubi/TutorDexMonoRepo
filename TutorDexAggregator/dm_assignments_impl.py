@@ -25,9 +25,9 @@ TUTOR_MATCH_URL = str(_CFG.tutor_match_url or "http://127.0.0.1:8000/match/paylo
 BACKEND_API_KEY = str(_CFG.backend_api_key or "").strip()
 
 _CFG_FIELDS_SET = set(getattr(_CFG, "model_fields_set", set()))
-_dm_enabled_flag = bool(_CFG.dm_enabled)
+_dm_enabled_flag = _CFG.dm_enabled
 if "dm_enabled" not in _CFG_FIELDS_SET and "enable_dms" in _CFG_FIELDS_SET:
-    _dm_enabled_flag = bool(_CFG.enable_dms)
+    _dm_enabled_flag = _CFG.enable_dms
 DM_ENABLED = bool(_dm_enabled_flag) and bool(DM_BOT_TOKEN and TUTOR_MATCH_URL)
 DM_MAX_RECIPIENTS = int(_CFG.dm_max_recipients or 50)
 DM_FALLBACK_FILE = str(_CFG.dm_fallback_file or str(HERE / "outgoing_dm.jsonl"))

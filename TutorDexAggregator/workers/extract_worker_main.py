@@ -55,11 +55,11 @@ def _resolve_side_effect_toggles(cfg: Any) -> tuple[bool, bool]:
     if "enable_broadcast" not in fields_set:
         has_bot_config = bool(getattr(cfg, "group_bot_token", None) or getattr(cfg, "bot_api_url", None))
         has_target_chat = bool(getattr(cfg, "aggregator_channel_id", None) or getattr(cfg, "aggregator_channel_ids", None))
-        enable_broadcast = bool(has_bot_config and has_target_chat)
+        enable_broadcast = has_bot_config and has_target_chat
 
     enable_dms = bool(getattr(cfg, "enable_dms", DEFAULT_ENABLE_DMS))
     if "enable_dms" not in fields_set:
-        enable_dms = bool(getattr(cfg, "dm_enabled", False))
+        enable_dms = getattr(cfg, "dm_enabled", False)
 
     return enable_broadcast, enable_dms
 
