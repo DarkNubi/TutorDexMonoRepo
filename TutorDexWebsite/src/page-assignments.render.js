@@ -473,16 +473,6 @@ function renderCards(data) {
       else tierPill.className = "badge bg-emerald-500/20 text-emerald-200";
       chips.appendChild(tierPill);
 
-      const postedMs = Date.parse(String(job.postedAt || ""));
-      const isNew = Number.isFinite(postedMs) && S.lastVisitCutoffMs > 0 && postedMs > S.lastVisitCutoffMs;
-      if (isNew) {
-        const newPill = document.createElement("span");
-        newPill.className = "badge bg-blue-500/20 text-blue-200";
-        newPill.textContent = "New";
-        newPill.title = "Posted since your last visit.";
-        chips.appendChild(newPill);
-      }
-
       if (hasMatchForMe(job)) {
         const matchPill = document.createElement("span");
         matchPill.className = "badge bg-purple-500/20 text-purple-200";
@@ -527,6 +517,9 @@ function renderCards(data) {
       meta.appendChild(metaItem("fa-solid fa-location-dot", postal));
       if (typeof job.distanceKm === "number" && Number.isFinite(job.distanceKm)) {
         meta.appendChild(metaItem("fa-solid fa-ruler-combined", formatDistanceKm(job.distanceKm, job.postalCoordsEstimated)));
+      }
+      if (Array.isArray(job.scheduleNotes) && job.scheduleNotes.length) {
+        meta.appendChild(metaItem("fa-solid fa-calendar-days", job.scheduleNotes.join(" · ")));
       }
       if (Array.isArray(job.timeNotes) && job.timeNotes.length) {
         meta.appendChild(metaItem("fa-solid fa-clock", job.timeNotes.join(" · ")));
@@ -576,16 +569,6 @@ function renderCards(data) {
     const chips = document.createElement("div");
     chips.className = "flex flex-wrap items-center justify-center gap-2 px-2";
     chips.appendChild(tierPill);
-
-    const postedMs = Date.parse(String(job.postedAt || ""));
-    const isNew = Number.isFinite(postedMs) && S.lastVisitCutoffMs > 0 && postedMs > S.lastVisitCutoffMs;
-    if (isNew) {
-      const newPill = document.createElement("span");
-      newPill.className = "badge bg-blue-500/20 text-blue-200";
-      newPill.textContent = "New";
-      newPill.title = "Posted since your last visit.";
-      chips.appendChild(newPill);
-    }
 
     if (hasMatchForMe(job)) {
       const matchPill = document.createElement("span");
@@ -697,15 +680,11 @@ function renderCards(data) {
       if (entries.length) addDetail("fa-solid fa-money-bill", `Rates: ${entries.join(" · ")}`);
     }
 
-    if (job.postedAt) {
-      const rel = formatRelativeTime(job.postedAt);
-      const d = formatShortDate(job.postedAt);
-      addDetail("fa-solid fa-calendar-day", rel ? `Posted ${rel}${d ? ` (${d})` : ""}` : d ? `Posted ${d}` : "Posted");
-    }
-    if (job.bumpedAt) {
-      const rel = formatRelativeTime(job.bumpedAt);
-      const d = formatShortDate(job.bumpedAt);
-      addDetail("fa-solid fa-rotate", rel ? `Bumped/Updated ${rel}${d ? ` (${d})` : ""}` : d ? `Bumped/Updated ${d}` : "Bumped/Updated");
+    const lastUpdated = job.bumpedAt || job.postedAt;
+    if (lastUpdated) {
+      const rel = formatRelativeTime(lastUpdated);
+      const d = formatShortDate(lastUpdated);
+      addDetail("fa-solid fa-rotate", rel ? `Last updated ${rel}${d ? ` (${d})` : ""}` : d ? `Last updated ${d}` : "Last updated");
     }
 
     top.appendChild(header);

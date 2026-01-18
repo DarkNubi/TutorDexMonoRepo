@@ -31,41 +31,8 @@ import { Header } from "./components/Header"
 import { TutorDexLogo } from "./components/TutorDexLogo"
 
 export function TutorDexLanding() {
-  const sampleAssignments: LandingAssignment[] = [
-    {
-      id: "1",
-      subject: "H2 Mathematics",
-      level: "JC2",
-      location: "Bishan",
-      rate: "$80-100/hr",
-      timing: "Weekends, 2hrs/week",
-      posted: "2 hours ago",
-      agency: "Elite Tutors SG"
-    },
-    {
-      id: "2",
-      subject: "IGCSE Physics & Chemistry",
-      level: "Sec 3-4",
-      location: "Tampines",
-      rate: "$70-85/hr",
-      timing: "Weekdays after 6pm",
-      posted: "5 hours ago",
-      agency: "SmartLearn Agency"
-    },
-    {
-      id: "3",
-      subject: "Primary 5 English & Math",
-      level: "Primary 5",
-      location: "Clementi",
-      rate: "$50-60/hr",
-      timing: "Tue & Thu, 4-6pm",
-      posted: "1 day ago",
-      agency: "TutorMatch SG"
-    }
-  ]
-
-  const [heroAssignments, setHeroAssignments] = useState<LandingAssignment[]>(sampleAssignments.slice(0, 2))
-  const [liveAssignments, setLiveAssignments] = useState<LandingAssignment[]>(sampleAssignments)
+  const [heroAssignments, setHeroAssignments] = useState<LandingAssignment[]>([])
+  const [liveAssignments, setLiveAssignments] = useState<LandingAssignment[]>([])
   const [isLiveLoading, setIsLiveLoading] = useState<boolean>(false)
   const [lastLiveUpdatedMs, setLastLiveUpdatedMs] = useState<number>(0)
   const [usingMock, setUsingMock] = useState<boolean>(!isBackendEnabled())
@@ -91,6 +58,8 @@ export function TutorDexLanding() {
   async function refreshFromBackend({ reason }: { reason: "initial" | "poll" }): Promise<void> {
     if (!isBackendEnabled()) {
       setUsingMock(true)
+      setHeroAssignments([])
+      setLiveAssignments([])
       return
     }
 
@@ -104,7 +73,10 @@ export function TutorDexLanding() {
       const page = await fetchAssignmentsPage({ limit: 50, signal: ctrl.signal })
       const rows = Array.isArray(page?.items) ? page!.items : []
       if (!rows.length) {
-        setUsingMock(true)
+        setUsingMock(false)
+        setHeroAssignments([])
+        setLiveAssignments([])
+        setLastLiveUpdatedMs(Date.now())
         return
       }
 
@@ -148,7 +120,7 @@ export function TutorDexLanding() {
     } catch (e) {
       // Poll failures should be silent; keep the last known data.
       if (String((e as Error)?.name || "") !== "AbortError") {
-        setUsingMock(true)
+        setUsingMock(false)
       }
     } finally {
       if (reason === "initial") setIsLiveLoading(false)
@@ -253,39 +225,45 @@ export function TutorDexLanding() {
               >
                 <div className="relative rounded-3xl overflow-hidden border bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-6 shadow-2xl">
                   <div className="space-y-4">
-                      {heroAssignments.slice(0, 2).map((assignment, idx) => (
-                      <motion.div
-                        key={assignment.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.2 }}
-                        className="bg-background rounded-2xl p-5 shadow-md border hover:shadow-lg transition-shadow"
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h3 className="font-semibold text-lg">{assignment.subject}</h3>
-                            <p className="text-sm text-muted-foreground">{assignment.level}</p>
-                          </div>
-                          <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300">
-                            New
-                          </Badge>
+                {heroAssignments.length ? (
+                  heroAssignments.slice(0, 2).map((assignment, idx) => (
+                    <motion.div
+                      key={assignment.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.2 }}
+                      className="bg-background rounded-2xl p-5 shadow-md border hover:shadow-lg transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">{assignment.subject}</h3>
+                          <p className="text-sm text-muted-foreground">{assignment.level}</p>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span>{assignment.location}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium text-blue-600">{assignment.rate}</span>
-                          </div>
-                          <div className="flex items-center gap-2 col-span-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span>{assignment.timing}</span>
-                          </div>
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300">
+                          {assignment.posted || "Live"}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>{assignment.location}</span>
                         </div>
-                      </motion.div>
-                    ))}
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-blue-600">{assignment.rate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 col-span-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span>{assignment.timing}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border bg-background/80 p-6 text-sm text-muted-foreground">
+                    Live assignments will appear here once they are available.
+                  </div>
+                )}
                   </div>
                   <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full blur-3xl opacity-20"></div>
                   <div className="absolute -top-10 -left-10 w-40 h-40 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full blur-3xl opacity-20"></div>
@@ -504,12 +482,14 @@ export function TutorDexLanding() {
               </p>
               <div className="mt-4 text-sm text-muted-foreground">
                 {usingMock
-                  ? "Showing demo data (backend not connected)."
+                  ? "Connect the backend to load live assignments."
                   : isLiveLoading
                     ? "Loading live assignments…"
-                    : lastLiveUpdatedMs
-                      ? `Last updated ${Math.max(0, Math.round((Date.now() - lastLiveUpdatedMs) / 1000))}s ago`
-                      : ""}
+                    : liveAssignments.length
+                      ? lastLiveUpdatedMs
+                        ? `Last updated ${Math.max(0, Math.round((Date.now() - lastLiveUpdatedMs) / 1000))}s ago`
+                        : ""
+                      : "No live assignments available yet."}
               </div>
             </div>
 
@@ -520,56 +500,62 @@ export function TutorDexLanding() {
               viewport={{ once: true }}
               className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto"
             >
-              {liveAssignments.slice(0, 3).map((assignment, index) => (
-                <motion.div
-                  key={assignment.id}
-                  variants={itemFadeIn}
-                  whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                >
-                  <Card className="h-full hover:shadow-xl transition-shadow border-2 hover:border-blue-200 dark:hover:border-blue-800">
-                    <CardHeader>
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <CardTitle className="text-xl mb-1">{assignment.subject}</CardTitle>
-                          <Badge className="bg-black/5 text-black dark:bg-white/10 dark:text-white">{assignment.level}</Badge>
+              {liveAssignments.length ? (
+                liveAssignments.slice(0, 3).map((assignment, index) => (
+                  <motion.div
+                    key={assignment.id}
+                    variants={itemFadeIn}
+                    whileHover={{ y: -8, transition: { duration: 0.3 } }}
+                  >
+                    <Card className="h-full hover:shadow-xl transition-shadow border-2 hover:border-blue-200 dark:hover:border-blue-800">
+                      <CardHeader>
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <CardTitle className="text-xl mb-1">{assignment.subject}</CardTitle>
+                            <Badge className="bg-black/5 text-black dark:bg-white/10 dark:text-white">{assignment.level}</Badge>
+                          </div>
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300">
+                            {assignment.posted || ""}
+                          </Badge>
                         </div>
-                        <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300">
-                          {assignment.posted || ""}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span>{assignment.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="font-semibold text-blue-600">{assignment.rate}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span>{assignment.timing}</span>
-                      </div>
-                      <div className="pt-3 border-t">
-                        <p className="text-xs text-muted-foreground mb-3">via {assignment.agency}</p>
-                        <Button
-                          className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                          onClick={() => {
-                            if (assignment.messageLink) {
-                              window.open(assignment.messageLink, "_blank", "noopener,noreferrer")
-                            } else {
-                              goAssignments()
-                            }
-                          }}
-                        >
-                          Apply Now
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span>{assignment.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="font-semibold text-blue-600">{assignment.rate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span>{assignment.timing}</span>
+                        </div>
+                        <div className="pt-3 border-t">
+                          <p className="text-xs text-muted-foreground mb-3">via {assignment.agency}</p>
+                          <Button
+                            className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                            onClick={() => {
+                              if (assignment.messageLink) {
+                                window.open(assignment.messageLink, "_blank", "noopener,noreferrer")
+                              } else {
+                                goAssignments()
+                              }
+                            }}
+                          >
+                            Apply Now
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="md:col-span-2 lg:col-span-3 rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                  Live assignments will appear here as soon as they are available.
+                </div>
+              )}
             </motion.div>
 
             <div className="text-center mt-12">

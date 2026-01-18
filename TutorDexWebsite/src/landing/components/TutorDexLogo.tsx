@@ -1,4 +1,4 @@
-import tutorDexLogoUrl from "../../../Tutor Dex Logo.svg"
+import tutorDexLogoUrl from "../../../TutorDex-icon-128.png"
 
 import { cn } from "../utils"
 
@@ -10,4 +10,3 @@ export function TutorDexLogo({ className }: { className?: string }) {
     </div>
   )
 }
-
