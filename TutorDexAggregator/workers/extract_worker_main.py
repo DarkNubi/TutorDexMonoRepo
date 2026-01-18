@@ -50,7 +50,7 @@ def _resolve_side_effect_toggles(cfg: Any) -> tuple[bool, bool]:
     group_bot_token, bot_api_url, aggregator_channel_id, aggregator_channel_ids,
     and (optionally) model_fields_set from Pydantic BaseSettings.
     """
-    fields_set = set(getattr(cfg, "model_fields_set", set()))
+    fields_set = getattr(cfg, "model_fields_set", set())
     enable_broadcast = bool(getattr(cfg, "enable_broadcast", DEFAULT_ENABLE_BROADCAST))
     if "enable_broadcast" not in fields_set:
         has_bot_config = bool(getattr(cfg, "group_bot_token", None) or getattr(cfg, "bot_api_url", None))
