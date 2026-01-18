@@ -62,6 +62,9 @@ function snapshotFiltersForStorage() {
   };
 }
 
+// Track whether we've written last-visit timestamp this session to avoid repeated writes
+let didWriteLastVisitThisSession = false;
+
 function restoreFiltersIntoUI(stored) {
   if (!stored || typeof stored !== "object") return false;
   const levelEl = document.getElementById("filter-level");
