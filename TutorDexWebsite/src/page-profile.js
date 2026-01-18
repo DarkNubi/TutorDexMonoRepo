@@ -359,10 +359,6 @@ async function saveProfile() {
     return;
   }
 
-  const tutorTypeLabel = document.getElementById("input-tutor-type")?.value || "";
-  const tutorKinds = uniq([mapTutorKind(tutorTypeLabel)].filter(Boolean));
-
-  const assignmentTypes = uniq(getActiveButtonLabels("assignment-type-options"));
   const teachingLocations = uniq(getActiveButtonLabels("teaching-locations"));
   const learningModes = getLearningModesFromLocations();
   const { subjects, levels, subjectPairs } = parseTrayPreferences();
@@ -403,29 +399,16 @@ async function saveProfile() {
     if (lvl && subj) canonicalPairs.push({ level: lvl, specific_level: spec || null, subject: subj });
   }
 
-  // Get desired assignments per day
-  const desiredPerDayEl = document.getElementById("desired-assignments-per-day");
-  let desiredPerDay = 10;  // Default
-  if (desiredPerDayEl) {
-    const val = parseInt(desiredPerDayEl.value, 10);
-    if (!isNaN(val) && val >= 1 && val <= 50) {
-      desiredPerDay = val;
-    }
-  }
-
   setStatus("Saving profile...", "info");
   await upsertTutor(uid, {
     subjects,
     levels,
     subject_pairs: canonicalPairs,
-    assignment_types: assignmentTypes,
-    tutor_kinds: tutorKinds,
     learning_modes: learningModes,
     teaching_locations: teachingLocations,
     postal_code: postalNormalized,
     dm_max_distance_km: dmMaxDistanceKm,
     contact_phone: contactPhone || null,
-    desired_assignments_per_day: desiredPerDay,
   });
   try {
     await trackEvent({ eventType: "profile_save" });
@@ -470,16 +453,6 @@ async function loadProfile() {
       : "text-sm font-semibold text-muted-foreground";
   }
 
-  if (Array.isArray(profile.assignment_types)) {
-    const container = document.getElementById("assignment-type-options");
-    activateButtonsByText(container, profile.assignment_types);
-  }
-
-  if (Array.isArray(profile.tutor_kinds) && profile.tutor_kinds.length) {
-    const label = reverseTutorKind(profile.tutor_kinds[0]);
-    if (label) activateTutorTypeButton(label);
-  }
-
   const locationsContainer = document.getElementById("teaching-locations");
   if (Array.isArray(profile.teaching_locations) && profile.teaching_locations.length) {
     activateButtonsByText(locationsContainer, profile.teaching_locations);
@@ -506,13 +479,6 @@ async function loadProfile() {
   if (dmRadiusEl) {
     const v = profile?.dm_max_distance_km;
     dmRadiusEl.value = String(typeof v === "number" && Number.isFinite(v) ? v : 5);
-  }
-
-  const desiredPerDayEl = document.getElementById("desired-assignments-per-day");
-  if (desiredPerDayEl && typeof profile.desired_assignments_per_day === "number") {
-    desiredPerDayEl.value = String(profile.desired_assignments_per_day);
-  } else if (desiredPerDayEl) {
-    desiredPerDayEl.value = "10";  // Default value
   }
 
   if (Array.isArray(profile.subject_pairs) && profile.subject_pairs.length) {
