@@ -280,29 +280,6 @@ function getActiveButtonLabels(containerId) {
   return Array.from(el.querySelectorAll("button.select-btn.active")).map((b) => b.innerText.trim());
 }
 
-function mapTutorKind(label) {
-  const v = String(label || "")
-    .trim()
-    .toLowerCase();
-  if (!v) return "";
-  if (v.startsWith("part-time")) return "PT";
-  if (v.startsWith("full-time")) return "FT";
-  if (v.includes("ex-moe")) return "Ex-MOE";
-  if (v.includes("moe")) return "MOE";
-  return label;
-}
-
-function reverseTutorKind(kind) {
-  const k = String(kind || "")
-    .trim()
-    .toUpperCase();
-  if (k === "PT") return "Part-Time";
-  if (k === "FT") return "Full-Time";
-  if (k === "MOE") return "MOE- trained Tutors";
-  if (k === "EX-MOE" || k === "EX-MOE TEACHER") return "Ex-MOE Teacher";
-  return "";
-}
-
 function getLearningModesFromLocations() {
   const labels = getActiveButtonLabels("teaching-locations").map((s) => s.toLowerCase());
   const hasOnline = labels.includes("online");
@@ -423,18 +400,6 @@ function activateButtonsByText(containerEl, textList) {
     const label = btn.innerText.trim();
     btn.classList.toggle("active", want.has(label));
   });
-}
-
-function activateTutorTypeButton(label) {
-  if (!label) return;
-  const buttons = Array.from(document.querySelectorAll("section button.select-btn"));
-  for (const btn of buttons) {
-    const title = btn.querySelector(".brand-font")?.innerText?.trim();
-    if (title === label) {
-      selectSingle(btn, "tutor-type");
-      return;
-    }
-  }
 }
 
 async function loadProfile() {
