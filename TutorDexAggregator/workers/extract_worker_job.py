@@ -143,6 +143,43 @@ def work_one(
                 except Exception:
                     close_res = None
                 meta["close_res"] = close_res
+            elif filter_res.reason == "reply":
+                # Bump the parent assignment instead of processing the reply
+                try:
+                    from reply_bump import bump_assignment_from_reply
+                    
+                    message_json = raw.get("message_json") or {}
+                    reply_to_msg_id = message_json.get("reply_to_msg_id")
+                    
+                    if reply_to_msg_id:
+                        bump_res = bump_assignment_from_reply(
+                            channel_link=channel_link,
+                            reply_to_msg_id=str(reply_to_msg_id),
+                            supabase_url=url,
+                            supabase_key=key,
+                        )
+                        meta["bump_res"] = bump_res
+                        log_event(
+                            logger,
+                            logging.INFO,
+                            "reply_message_bumped_parent",
+                            extraction_id=extraction_id,
+                            channel_link=channel_link,
+                            message_id=raw.get("message_id"),
+                            reply_to_msg_id=reply_to_msg_id,
+                            bump_result=bump_res,
+                        )
+                    else:
+                        meta["bump_res"] = {"ok": False, "reason": "No reply_to_msg_id in message_json"}
+                except Exception as e:
+                    meta["bump_res"] = {"ok": False, "error": str(e)}
+                    log_event(
+                        logger,
+                        logging.ERROR,
+                        "reply_bump_failed",
+                        extraction_id=extraction_id,
+                        error=str(e),
+                    )
             mark_extraction(
                 url,
                 key,
