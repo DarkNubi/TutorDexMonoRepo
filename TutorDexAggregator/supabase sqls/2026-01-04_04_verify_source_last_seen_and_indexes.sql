@@ -51,7 +51,8 @@ order by p.proname, out_name;
 select
   id,
   external_id,
-  agency_name,
+  agency_display_name,
+  agency_telegram_channel_name,
   status,
   published_at,
   source_last_seen,

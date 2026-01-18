@@ -314,7 +314,8 @@ function mapAssignmentRow(row) {
     timeNotes,
     scheduleNotes,
     startDate: toText(row?.start_date),
-    agencyName: toText(row?.agency_name),
+    agencyDisplayName: toText(row?.agency_display_name || row?.agency_telegram_channel_name),
+    agencyTelegramChannelName: toText(row?.agency_telegram_channel_name),
     learningMode,
     postedAt: toText(row?.published_at || row?.created_at || row?.last_seen),
     bumpedAt: toText(row?.source_last_seen || row?.published_at || row?.last_seen),
@@ -660,7 +661,7 @@ function renderCards(data) {
     if (!compact && job.startDate) addDetail("fa-solid fa-calendar-check", job.startDate);
     if (!compact && Array.isArray(job.timeNotes) && job.timeNotes.length) job.timeNotes.forEach((line) => addDetail("fa-solid fa-clock", line));
     if (!compact && job.learningMode) addDetail("fa-solid fa-wifi", job.learningMode);
-    if (!compact && job.agencyName) addDetail("fa-solid fa-building", job.agencyName);
+    if (!compact && job.agencyDisplayName) addDetail("fa-solid fa-building", job.agencyDisplayName);
 
     if (!compact && job.rateBreakdown && typeof job.rateBreakdown === "object") {
       const entries = Object.entries(job.rateBreakdown)

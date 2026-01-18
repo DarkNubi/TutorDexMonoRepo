@@ -436,6 +436,10 @@ Key tables (from schema):
 - `public.analytics_events`: event tracking.
 - `public.assignment_clicks` and `public.broadcast_messages`: click tracking + broadcast message mapping (from `2025-12-25_click_tracking.sql`).
 
+Agency naming in persistence:
+- `agency_display_name`: user-facing agency name (from `TutorDexAggregator/agency_registry.py`).
+- `agency_telegram_channel_name`: raw Telegram channel title for internal correlation.
+
 #### Redis (backend runtime store)
 - Code: `TutorDexBackend/redis_store.py`.
 - Stores:

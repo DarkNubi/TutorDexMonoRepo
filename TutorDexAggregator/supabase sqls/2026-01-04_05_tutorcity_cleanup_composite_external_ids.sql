@@ -25,7 +25,7 @@ join public.assignment_clicks c
     c.external_id = a.assignment_code
     or c.external_id like (a.assignment_code || ':%')
   )
-where a.agency_name = 'TutorCity'
+where a.agency_telegram_channel_name = 'TutorCity'
   and a.assignment_code is not null
   and btrim(a.assignment_code) <> ''
 group by a.assignment_code
@@ -37,14 +37,14 @@ set
 
 -- 2) Delete old TutorCity assignment rows that used composite ids, but only when the canonical row exists.
 delete from public.assignments old
-where old.agency_name = 'TutorCity'
+where old.agency_telegram_channel_name = 'TutorCity'
   and old.assignment_code is not null
   and btrim(old.assignment_code) <> ''
   and position(':' in old.external_id) > 0
   and exists (
     select 1
     from public.assignments canon
-    where canon.agency_name = 'TutorCity'
+    where canon.agency_telegram_channel_name = 'TutorCity'
       and canon.assignment_code = old.assignment_code
       and canon.external_id = canon.assignment_code
   );
@@ -55,7 +55,7 @@ where position(':' in c.external_id) > 0
   and exists (
     select 1
     from public.assignments canon
-    where canon.agency_name = 'TutorCity'
+    where canon.agency_telegram_channel_name = 'TutorCity'
       and canon.external_id = canon.assignment_code
       and c.external_id like (canon.assignment_code || ':%')
   );

@@ -16,7 +16,7 @@ create or replace function public.list_open_assignments_v2(
   p_subject text default null,
   p_subject_general text default null,
   p_subject_canonical text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_min_rate integer default null
@@ -25,7 +25,8 @@ returns table(
   id bigint,
   external_id text,
   message_link text,
-  agency_name text,
+  agency_display_name text,
+  agency_telegram_channel_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -84,7 +85,7 @@ filtered as (
     and (p_subject is null or p_subject = any(signals_subjects))
     and (p_subject_general is null or p_subject_general = any(subjects_general))
     and (p_subject_canonical is null or p_subject_canonical = any(subjects_canonical))
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -161,7 +162,8 @@ select
   id,
   external_id,
   message_link,
-  agency_name,
+  agency_display_name,
+  agency_telegram_channel_name,
   learning_mode,
   assignment_code,
   academic_display_text,

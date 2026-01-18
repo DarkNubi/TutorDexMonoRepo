@@ -326,7 +326,7 @@ class DuplicateDetector:
                 duplicates.append({
                     'assignment_id': candidate['id'],
                     'score': score,
-                    'agency_name': candidate['agency_name']
+                    'agency_display_name': candidate['agency_display_name']
                 })
         
         return duplicates
@@ -443,7 +443,7 @@ async def get_assignment_duplicates(assignment_id: int):
         "members": [
             {
                 "id": 456,
-                "agency_name": "Agency A",
+                "agency_display_name": "Agency A",
                 "assignment_code": "D2388",
                 "published_at": "2026-01-08T10:00:00Z",
                 "confidence_score": 95,
@@ -451,7 +451,7 @@ async def get_assignment_duplicates(assignment_id: int):
             },
             {
                 "id": 789,
-                "agency_name": "Agency B",
+                "agency_display_name": "Agency B",
                 "assignment_code": "TUT-2388",
                 "published_at": "2026-01-08T11:30:00Z",
                 "confidence_score": 92,
@@ -548,7 +548,7 @@ RETURNS TABLE (
     group_id BIGINT,
     primary_assignment_id BIGINT,
     member_id BIGINT,
-    agency_name TEXT,
+    agency_display_name TEXT,
     assignment_code TEXT,
     published_at TIMESTAMPTZ,
     confidence_score DECIMAL,
@@ -560,7 +560,7 @@ BEGIN
         g.id AS group_id,
         g.primary_assignment_id,
         a.id AS member_id,
-        a.agency_name,
+        a.agency_display_name,
         a.assignment_code,
         a.published_at,
         a.duplicate_confidence_score AS confidence_score,
@@ -655,7 +655,7 @@ async function showDuplicateGroupModal(assignmentId) {
                 ${groupData.members.map(member => `
                     <div class="duplicate-item ${member.is_primary ? 'primary' : ''}">
                         <div class="agency-info">
-                            <strong>${member.agency_name}</strong>
+                            <strong>${member.agency_display_name}</strong>
                             ${member.is_primary ? '<span class="badge">Recommended</span>' : ''}
                         </div>
                         <div class="assignment-code">${member.assignment_code || 'N/A'}</div>
@@ -664,7 +664,7 @@ async function showDuplicateGroupModal(assignmentId) {
                             Match confidence: ${Math.round(member.confidence_score)}%
                         </div>
                         <button class="btn-apply" onclick="applyToAssignment(${member.member_id})">
-                            Apply via ${member.agency_name}
+                            Apply via ${member.agency_display_name}
                         </button>
                     </div>
                 `).join('')}

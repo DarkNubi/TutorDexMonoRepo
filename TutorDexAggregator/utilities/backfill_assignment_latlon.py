@@ -86,7 +86,7 @@ def fetch_candidates(client: SupabaseRestClient, *, table: str, status: str, lim
     # Use PostgREST filter syntax.
     query = (
         f"{table}"
-        "?select=id,external_id,agency_name,postal_code,postal_lat,postal_lon,status,last_seen"
+        "?select=id,external_id,agency_telegram_channel_name,postal_code,postal_lat,postal_lon,status,last_seen"
         f"&status=eq.{status}"
         "&postal_code=not.is.null"
         "&or=(postal_lat.is.null,postal_lon.is.null)"
@@ -168,7 +168,7 @@ def main() -> None:
                 "backfill_geocode_failed",
                 id=row_id,
                 external_id=r.get("external_id"),
-                agency_name=r.get("agency_name"),
+                agency_telegram_channel_name=r.get("agency_telegram_channel_name"),
                 postal_code=str(pc),
             )
             continue

@@ -41,9 +41,9 @@ def _freshness_enabled() -> bool:
 
 def derive_agency(payload: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     """
-    Extract agency name and link from payload.
+    Extract agency display inputs from payload.
 
-    Returns (agency_name, agency_link) tuple.
+    Returns (agency_telegram_channel_name, agency_link) tuple.
     """
     link = safe_str(payload.get("channel_link")) or safe_str(payload.get("channel_username"))
     title = safe_str(payload.get("channel_title"))
@@ -229,7 +229,7 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
         Dict suitable for database insertion/update
     """
     parsed = payload.get("parsed") or {}
-    agency_name, agency_link = derive_agency(payload)
+    agency_telegram_channel_name, agency_link = derive_agency(payload)
 
     meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
     signals_meta = meta.get("signals") if isinstance(meta.get("signals"), dict) else None
@@ -427,11 +427,13 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
     row: Dict[str, Any] = {
         "external_id": derive_external_id(payload),
         "agency_id": None,
-        "agency_name": agency_name,
+        "agency_telegram_channel_name": agency_telegram_channel_name,
         "agency_link": agency_link,
         # Human-friendly display name for the agency/channel. Prefer registry value when available,
-        # otherwise fall back to the channel title (`agency_name`).
-        "agency_display_name": (get_agency_display_name(agency_link) or agency_name) if (agency_link or agency_name) else None,
+        # otherwise fall back to the channel title (`agency_telegram_channel_name`).
+        "agency_display_name": (get_agency_display_name(agency_link) or agency_telegram_channel_name)
+        if (agency_link or agency_telegram_channel_name)
+        else None,
         # Source publish time (Telegram message date, or first-seen for API sources).
         "published_at": coerce_iso_ts(payload.get("date")),
         # Last upstream bump/edit/repost time (Telegram edit_date or similar).

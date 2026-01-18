@@ -26,8 +26,10 @@ alter table public.assignments
 alter table public.assignments
   add column if not exists nearest_mrt_computed_distance_m int;
 
-create index if not exists assignments_status_agency_name_idx
-  on public.assignments (status, agency_name);
+drop index if exists assignments_status_agency_name_idx;
+
+create index if not exists assignments_status_agency_display_name_idx
+  on public.assignments (status, agency_display_name);
 
 create index if not exists assignments_status_learning_mode_idx
   on public.assignments (status, learning_mode);
@@ -48,7 +50,7 @@ create or replace function public.list_open_assignments(
   p_level text default null,
   p_specific_student_level text default null,
   p_subject text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_min_rate integer default null
@@ -57,7 +59,8 @@ returns table(
   id bigint,
   external_id text,
   message_link text,
-  agency_name text,
+  agency_display_name text,
+  agency_telegram_channel_name text,
   learning_mode text,
   assignment_code text,
   academic_display_text text,
@@ -109,7 +112,7 @@ filtered as (
   where (p_level is null or p_level = any(signals_levels))
     and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
     and (p_subject is null or p_subject = any(signals_subjects))
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -143,7 +146,8 @@ select
   id,
   external_id,
   message_link,
-  agency_name,
+  agency_display_name,
+  agency_telegram_channel_name,
   learning_mode,
   assignment_code,
   academic_display_text,
@@ -178,7 +182,7 @@ create or replace function public.open_assignment_facets(
   p_level text default null,
   p_specific_student_level text default null,
   p_subject text default null,
-  p_agency_name text default null,
+  p_agency_display_name text default null,
   p_learning_mode text default null,
   p_location_query text default null,
   p_min_rate integer default null
@@ -209,7 +213,7 @@ filtered as (
   where (p_level is null or p_level = any(signals_levels))
     and (p_specific_student_level is null or p_specific_student_level = any(signals_specific_student_levels))
     and (p_subject is null or p_subject = any(signals_subjects))
-    and (p_agency_name is null or agency_name = p_agency_name)
+    and (p_agency_display_name is null or coalesce(agency_display_name, agency_telegram_channel_name) = p_agency_display_name)
     and (p_learning_mode is null or learning_mode = p_learning_mode)
     and (
       p_location_query is null
@@ -284,14 +288,15 @@ select jsonb_build_object(
   ),
   'agencies', (
     select coalesce(
-      jsonb_agg(jsonb_build_object('value', agency_name, 'count', c) order by c desc, agency_name asc),
+      jsonb_agg(jsonb_build_object('value', agency_display_name, 'count', c) order by c desc, agency_display_name asc),
       '[]'::jsonb
     )
     from (
-      select agency_name, count(*) as c
+      select coalesce(agency_display_name, agency_telegram_channel_name) as agency_display_name, count(*) as c
       from filtered
-      where agency_name is not null and btrim(agency_name) <> ''
-      group by agency_name
+      where (agency_display_name is not null and btrim(agency_display_name) <> '')
+        or (agency_telegram_channel_name is not null and btrim(agency_telegram_channel_name) <> '')
+      group by coalesce(agency_display_name, agency_telegram_channel_name)
     ) s
   ),
   'learning_modes', (

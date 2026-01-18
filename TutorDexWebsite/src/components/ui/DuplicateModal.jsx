@@ -86,7 +86,9 @@ export function DuplicateModal({ assignmentId, isOpen, onClose }) {
                     </div>
                   )}
                   
-                  <h3 className="duplicate-agency">{assignment.agency_name}</h3>
+                  <h3 className="duplicate-agency">
+                    {assignment.agency_display_name || assignment.agency_telegram_channel_name || ""}
+                  </h3>
                   
                   <div className="duplicate-details">
                     <div className="duplicate-row">

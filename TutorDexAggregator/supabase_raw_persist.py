@@ -142,15 +142,28 @@ class SupabaseRawStore:
         except Exception:
             logger.debug("raw_fallback_write_failed", exc_info=True)
 
-    def upsert_channel(self, *, channel_link: str, channel_id: Optional[str], title: Optional[str]) -> bool:
+    def upsert_channel(
+        self,
+        *,
+        channel_link: str,
+        channel_id: Optional[str],
+        agency_telegram_channel_name: Optional[str],
+    ) -> bool:
         if not self.client:
-            self._best_effort_fallback(kind="channel", row={"channel_link": channel_link, "channel_id": channel_id, "title": title})
+            self._best_effort_fallback(
+                kind="channel",
+                row={
+                    "channel_link": channel_link,
+                    "channel_id": channel_id,
+                    "agency_telegram_channel_name": agency_telegram_channel_name,
+                },
+            )
             return False
         row: Dict[str, Any] = {"channel_link": channel_link}
         if channel_id:
             row["channel_id"] = channel_id
-        if title:
-            row["title"] = title
+        if agency_telegram_channel_name:
+            row["agency_telegram_channel_name"] = agency_telegram_channel_name
         try:
             resp = self.client.post(
                 f"{self.cfg.channels_table}?on_conflict=channel_link",

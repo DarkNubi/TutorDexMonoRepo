@@ -2,7 +2,8 @@ export interface AssignmentRow {
   id: number;
   external_id?: string | null;
   message_link?: string | null;
-  agency_name?: string | null;
+  agency_display_name?: string | null;
+  agency_telegram_channel_name?: string | null;
   learning_mode?: string | null;
   assignment_code?: string | null;
   academic_display_text?: string | null;
@@ -36,4 +37,3 @@ export interface AssignmentRow {
   postal_coords_estimated?: boolean | null;
   [k: string]: unknown;
 }
-

@@ -98,14 +98,14 @@ export async function fetchDuplicateGroup(groupId) {
   return backendFetch(`/duplicate-groups/${groupId}`);
 }
 
-export async function trackEvent({ eventType, assignmentExternalId, agencyName, meta } = {}) {
+export async function trackEvent({ eventType, assignmentExternalId, agencyTelegramChannelName, meta } = {}) {
   if (!isBackendEnabled()) return { ok: false, skipped: true, reason: "backend_disabled" };
   return backendFetch("/analytics/event", {
     method: "POST",
     body: {
       event_type: eventType,
       assignment_external_id: assignmentExternalId || null,
-      agency_name: agencyName || null,
+      agency_telegram_channel_name: agencyTelegramChannelName || null,
       meta: meta || null,
     },
   });
@@ -166,7 +166,7 @@ export async function listOpenAssignmentsPaged({
   subject = null,
   subjectGeneral = null,
   subjectCanonical = null,
-  agencyName = null,
+  agencyDisplayName = null,
   learningMode = null,
   location = null,
   minRate = null,
@@ -186,7 +186,7 @@ export async function listOpenAssignmentsPaged({
   if (subject) params.set("subject", String(subject));
   if (subjectGeneral) params.set("subject_general", String(subjectGeneral));
   if (subjectCanonical) params.set("subject_canonical", String(subjectCanonical));
-  if (agencyName) params.set("agency_name", String(agencyName));
+  if (agencyDisplayName) params.set("agency_display_name", String(agencyDisplayName));
   if (learningMode) params.set("learning_mode", String(learningMode));
   if (location) params.set("location", String(location));
   if (minRate !== null && minRate !== undefined && String(minRate).trim() !== "") params.set("min_rate", String(minRate));
@@ -202,7 +202,7 @@ export async function getOpenAssignmentFacets({
   subject = null,
   subjectGeneral = null,
   subjectCanonical = null,
-  agencyName = null,
+  agencyDisplayName = null,
   learningMode = null,
   location = null,
   minRate = null,
@@ -216,7 +216,7 @@ export async function getOpenAssignmentFacets({
   if (subject) params.set("subject", String(subject));
   if (subjectGeneral) params.set("subject_general", String(subjectGeneral));
   if (subjectCanonical) params.set("subject_canonical", String(subjectCanonical));
-  if (agencyName) params.set("agency_name", String(agencyName));
+  if (agencyDisplayName) params.set("agency_display_name", String(agencyDisplayName));
   if (learningMode) params.set("learning_mode", String(learningMode));
   if (location) params.set("location", String(location));
   if (minRate !== null && minRate !== undefined && String(minRate).trim() !== "") params.set("min_rate", String(minRate));
