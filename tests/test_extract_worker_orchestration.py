@@ -176,3 +176,35 @@ def test_worker_stops_after_max_jobs(monkeypatch, worker_main_module):
     monkeypatch.setattr(worker_main_module, "work_one", lambda **kwargs: "ok")
 
     worker_main_module.main()
+
+
+def test_resolve_side_effect_toggles_respects_explicit_flags(worker_main_module):
+    cfg = SimpleNamespace(
+        enable_broadcast=False,
+        enable_dms=False,
+        dm_enabled=True,
+        group_bot_token="token",
+        aggregator_channel_id="-100123",
+        model_fields_set={"enable_broadcast", "enable_dms"},
+    )
+
+    enable_broadcast, enable_dms = worker_main_module._resolve_side_effect_toggles(cfg)
+
+    assert enable_broadcast is False
+    assert enable_dms is False
+
+
+def test_resolve_side_effect_toggles_fallbacks_to_configured_channels(worker_main_module):
+    cfg = SimpleNamespace(
+        dm_enabled=True,
+        group_bot_token="token",
+        bot_api_url=None,
+        aggregator_channel_id="-100123",
+        aggregator_channel_ids=None,
+        model_fields_set=set(),
+    )
+
+    enable_broadcast, enable_dms = worker_main_module._resolve_side_effect_toggles(cfg)
+
+    assert enable_broadcast is True
+    assert enable_dms is True

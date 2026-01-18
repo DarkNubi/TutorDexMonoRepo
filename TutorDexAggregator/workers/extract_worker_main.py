@@ -43,6 +43,21 @@ DEFAULT_ENABLE_BROADCAST = True
 DEFAULT_ENABLE_DMS = True
 
 
+def _resolve_side_effect_toggles(cfg: Any) -> tuple[bool, bool]:
+    fields_set = set(getattr(cfg, "model_fields_set", set()) or [])
+    enable_broadcast = bool(getattr(cfg, "enable_broadcast", DEFAULT_ENABLE_BROADCAST))
+    if "enable_broadcast" not in fields_set:
+        has_bot_config = bool(getattr(cfg, "group_bot_token", None) or getattr(cfg, "bot_api_url", None))
+        has_target_chat = bool(getattr(cfg, "aggregator_channel_id", None) or getattr(cfg, "aggregator_channel_ids", None))
+        enable_broadcast = bool(has_bot_config and has_target_chat)
+
+    enable_dms = bool(getattr(cfg, "enable_dms", DEFAULT_ENABLE_DMS))
+    if "enable_dms" not in fields_set:
+        enable_dms = bool(getattr(cfg, "dm_enabled", False))
+
+    return enable_broadcast, enable_dms
+
+
 def _import_side_effects() -> tuple[Any, Any]:
     try:
         import broadcast_assignments
@@ -104,9 +119,10 @@ def main() -> None:
     claim_batch_size = int(getattr(cfg, "extraction_worker_batch_size", None) or DEFAULT_CLAIM_BATCH_SIZE)
     idle_sleep_s = float(getattr(cfg, "extraction_worker_idle_s", None) or DEFAULT_IDLE_SLEEP_SECONDS)
 
+    enable_broadcast, enable_dms = _resolve_side_effect_toggles(cfg)
     toggles = WorkerToggles(
-        enable_broadcast=bool(getattr(cfg, "enable_broadcast", DEFAULT_ENABLE_BROADCAST)),
-        enable_dms=bool(getattr(cfg, "enable_dms", DEFAULT_ENABLE_DMS)),
+        enable_broadcast=enable_broadcast,
+        enable_dms=enable_dms,
         max_attempts=int(getattr(cfg, "extraction_max_attempts", None) or DEFAULT_MAX_ATTEMPTS),
         backoff_base_s=float(getattr(cfg, "extraction_backoff_base_s", None) or DEFAULT_BACKOFF_BASE_S),
         backoff_max_s=float(getattr(cfg, "extraction_backoff_max_s", None) or DEFAULT_BACKOFF_MAX_S),
@@ -260,4 +276,3 @@ def main() -> None:
     except Exception as e:
         log_event(logger, logging.WARNING, "worker_loop_error", error=str(e))
         time.sleep(2.0)
-

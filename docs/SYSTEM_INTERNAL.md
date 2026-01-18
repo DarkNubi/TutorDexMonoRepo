@@ -975,6 +975,7 @@ Backend:
 
 Aggregator:
 - Controlled by `.env` toggles (queue on/off, broadcast on/off, deterministic time on/off, etc.).
+- Side-effect defaults: if `ENABLE_BROADCAST` is not set, the worker auto-enables broadcasts when a bot token/API URL and `AGGREGATOR_CHANNEL_ID(S)` are configured; if `ENABLE_DMS` is not set, `DM_ENABLED=true` will enable DMs.
 
 ### Secrets management
 Current reality:
