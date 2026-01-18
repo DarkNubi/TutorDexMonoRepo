@@ -456,7 +456,7 @@ function renderCards(data) {
         .trim()
         .toLowerCase();
       const tierPill = document.createElement("span");
-      tierPill.className = "inline-flex items-center rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-black";
+      tierPill.className = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold";
       tierPill.textContent =
         tier === "green" ? "Likely open" : tier === "yellow" ? "Probably open" : tier === "orange" ? "Uncertain" : "Likely closed";
       tierPill.title = "Open-likelihood inferred from recent agency reposts/updates.";
@@ -469,7 +469,7 @@ function renderCards(data) {
       if (hasMatchForMe(job)) {
         const matchPill = document.createElement("span");
         matchPill.className =
-          "inline-flex items-center rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-black bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300";
+          "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300";
         matchPill.textContent = "Matches you";
         const details = matchDetails(job);
         matchPill.title =
