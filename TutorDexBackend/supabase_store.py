@@ -6,6 +6,7 @@ import requests
 
 from shared.config import load_backend_config
 from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
+from TutorDexAggregator.agency_registry import get_agency_display_name
 
 logger = logging.getLogger("supabase_store")
 
@@ -256,6 +257,13 @@ class SupabaseStore:
                 total = 0
         for r in rows:
             r.pop("total_count", None)
+            # Normalize agency/chat reference to a human-friendly display name when possible.
+            try:
+                raw = r.get("agency_name") if isinstance(r, dict) else None
+                if raw:
+                    r["agency_name"] = get_agency_display_name(str(raw))
+            except Exception:
+                pass
 
         return {"items": rows, "total": total}
 
@@ -284,7 +292,7 @@ class SupabaseStore:
         """
         RPC wrapper for `public.list_open_assignments_v2` (must be installed in DB).
         Returns: { "items": [...], "total": int }
-        
+
         New Parameter:
             show_duplicates: If False, filters to only primary assignments from duplicate groups.
         """
@@ -331,6 +339,13 @@ class SupabaseStore:
                 total = 0
         for r in rows:
             r.pop("total_count", None)
+            # Normalize agency/chat reference to a human-friendly display name when possible.
+            try:
+                raw = r.get("agency_name") if isinstance(r, dict) else None
+                if raw:
+                    r["agency_name"] = get_agency_display_name(str(raw))
+            except Exception:
+                pass
 
         return {"items": rows, "total": total}
 
@@ -385,8 +400,34 @@ class SupabaseStore:
 
         # PostgREST may return a JSON object or a list containing it.
         if isinstance(data, dict):
+            # Normalize agency facet values to display names when present
+            try:
+                agencies = data.get("agencies") if isinstance(data, dict) else None
+                if isinstance(agencies, list):
+                    new_ag = []
+                    for a in agencies:
+                        if isinstance(a, dict) and "value" in a:
+                            val = a.get("value")
+                            a["value"] = get_agency_display_name(str(val)) if val else val
+                        new_ag.append(a)
+                    data["agencies"] = new_ag
+            except Exception:
+                pass
             return data
         if isinstance(data, list) and data and isinstance(data[0], dict):
+            try:
+                first = data[0]
+                agencies = first.get("agencies") if isinstance(first, dict) else None
+                if isinstance(agencies, list):
+                    new_ag = []
+                    for a in agencies:
+                        if isinstance(a, dict) and "value" in a:
+                            val = a.get("value")
+                            a["value"] = get_agency_display_name(str(val)) if val else val
+                        new_ag.append(a)
+                    first["agencies"] = new_ag
+            except Exception:
+                pass
             return data[0]
         return None
 
@@ -467,6 +508,7 @@ class SupabaseStore:
             logger.warning("Supabase broadcast_messages patch failed external_id=%s error=%s", ext, e)
             return False
         return resp.status_code < 400
+
     def record_assignment_rating(
         self,
         *,
@@ -484,7 +526,7 @@ class SupabaseStore:
         """
         if not self.client:
             return False
-        
+
         row = {
             "user_id": int(user_id),
             "assignment_id": int(assignment_id),
@@ -498,7 +540,7 @@ class SupabaseStore:
             row["rate_min"] = int(rate_min)
         if rate_max is not None:
             row["rate_max"] = int(rate_max)
-        
+
         try:
             resp = self.client.post(
                 "tutor_assignment_ratings",
@@ -509,11 +551,11 @@ class SupabaseStore:
         except Exception as e:
             logger.warning("Supabase record_assignment_rating failed user_id=%s assignment_id=%s error=%s", user_id, assignment_id, e)
             return False
-        
+
         if resp.status_code >= 400:
             logger.warning("Supabase record_assignment_rating status=%s body=%s", resp.status_code, resp.text[:500])
             return False
-        
+
         return True
 
     def get_tutor_rating_threshold(
@@ -525,23 +567,23 @@ class SupabaseStore:
         """
         if not self.client:
             return None
-        
+
         body = {
             "p_user_id": int(user_id),
             "p_desired_per_day": int(desired_per_day),
             "p_lookback_days": int(lookback_days),
         }
-        
+
         try:
             resp = self.client.post("rpc/calculate_tutor_rating_threshold", body, timeout=15)
         except Exception as e:
             logger.debug("Supabase get_tutor_rating_threshold rpc failed user_id=%s error=%s", user_id, e)
             return None
-        
+
         if resp.status_code >= 400:
             logger.debug("Supabase get_tutor_rating_threshold rpc status=%s body=%s", resp.status_code, resp.text[:300])
             return None
-        
+
         try:
             data = resp.json()
             if isinstance(data, (int, float)):
@@ -550,7 +592,7 @@ class SupabaseStore:
                 return float(data[0])
         except Exception:
             pass
-        
+
         return None
 
     def get_tutor_avg_rate(self, *, user_id: int, lookback_days: int = 30) -> Optional[float]:
@@ -560,22 +602,22 @@ class SupabaseStore:
         """
         if not self.client:
             return None
-        
+
         body = {
             "p_user_id": int(user_id),
             "p_lookback_days": int(lookback_days),
         }
-        
+
         try:
             resp = self.client.post("rpc/get_tutor_avg_rate", body, timeout=15)
         except Exception as e:
             logger.debug("Supabase get_tutor_avg_rate rpc failed user_id=%s error=%s", user_id, e)
             return None
-        
+
         if resp.status_code >= 400:
             logger.debug("Supabase get_tutor_avg_rate rpc status=%s body=%s", resp.status_code, resp.text[:300])
             return None
-        
+
         try:
             data = resp.json()
             if isinstance(data, (int, float)):
@@ -584,5 +626,5 @@ class SupabaseStore:
                 return float(data[0])
         except Exception:
             pass
-        
+
         return None

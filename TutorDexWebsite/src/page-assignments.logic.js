@@ -25,7 +25,7 @@ import {
 } from "./lib/assignmentStorage.js";
 import { $id } from "./lib/domUtils.js";
 
-import { BUILD_TIME, E, MAX_SUBJECT_CHIPS, S } from "./page-assignments.state.js";
+import { BUILD_TIME, E, MAX_SUBJECT_CHIPS, S, specificLevelsData } from "./page-assignments.state.js";
 import {
   renderCards,
   renderSkeleton,
