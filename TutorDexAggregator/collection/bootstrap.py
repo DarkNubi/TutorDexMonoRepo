@@ -7,7 +7,7 @@ from logging_setup import bind_log_context, setup_logging
 from observability_metrics import set_version_metrics
 from otel import setup_otel
 from sentry_init import setup_sentry
-from shared.config import load_aggregator_config
+from shared.config import load_aggregator_config, validate_environment_integrity
 from workers.extract_worker_types import VersionInfo
 
 from collection.types import CollectorContext
@@ -18,6 +18,7 @@ def bootstrap_collector() -> CollectorContext:
     logger = logging.getLogger("collector")
     v = set_version_metrics(component="collector")
     cfg = load_aggregator_config()
+    validate_environment_integrity(cfg)
     setup_sentry(service_name=cfg.sentry_service_name or "tutordex-collector")
     setup_otel(service_name=cfg.otel_service_name or "tutordex-collector")
     default_ctx = bind_log_context(component="collector", pipeline_version=v.pipeline_version, schema_version=v.schema_version)

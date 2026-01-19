@@ -46,6 +46,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def _startup_log() -> None:
+    from shared.config import validate_environment_integrity
+    validate_environment_integrity(cfg)
     auth_service.validate_production_config()
     logger.info(
         "startup",

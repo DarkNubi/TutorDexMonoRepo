@@ -13,6 +13,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -38,6 +39,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -61,11 +63,12 @@ services:
       - redis
       - otel-collector
     ports:
-      - "0.0.0.0:8000:8000"
+      - "0.0.0.0:${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -83,6 +86,7 @@ services:
     env_file:
       - ./TutorDexBackend/.env
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       BACKEND_URL: http://backend:8000
       LINK_BOT_OFFSET_FILE: /state/telegram_link_bot_offset.json
       LOG_JSON: "true"
@@ -132,6 +136,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -160,6 +165,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -297,9 +303,9 @@ services:
       - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
       - tempo_data:/tmp/tempo
     ports:
-      - "3200:3200"   # Tempo HTTP
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "${TEMPO_HTTP_PORT:-3200}:3200"   # Tempo HTTP
+      - "${TEMPO_OTLP_GRPC_PORT:-4317}:4317"   # OTLP gRPC
+      - "${TEMPO_OTLP_HTTP_PORT:-4318}:4318"   # OTLP HTTP
     networks:
       - tutordex
 
@@ -311,7 +317,7 @@ services:
     volumes:
       - ./observability/tempo/otel-collector.yaml:/etc/otel-collector.yaml:ro
     environment:
-      ENVIRONMENT: ${APP_ENV:-production}
+      ENVIRONMENT: ${APP_ENV:-dev}
     depends_on:
       - tempo
     networks:
@@ -319,11 +325,12 @@ services:
 
 networks:
   tutordex:
-    name: tutordex
+    # Auto-generated: ${COMPOSE_PROJECT_NAME}_tutordex
+    # e.g., tutordex-staging_tutordex or tutordex-prod_tutordex
 
   supabase_net:
     external: true
-    name: supabase_default
+    name: ${SUPABASE_NETWORK:-supabase_default}
 
 volumes:
   telegram_link_bot_state:
