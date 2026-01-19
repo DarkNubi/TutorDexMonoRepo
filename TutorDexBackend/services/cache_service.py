@@ -12,6 +12,7 @@ from fastapi import HTTPException, Request
 from TutorDexBackend.redis_store import TutorStore
 from TutorDexBackend.utils.request_utils import get_client_ip, hash_ip, canonical_query_string, build_cache_key
 from TutorDexBackend.utils.config_utils import (
+from shared.observability.exception_handler import swallow_exception
     get_redis_prefix,
     get_public_rpm_assignments,
     get_public_rpm_facets,
@@ -73,8 +74,8 @@ class CacheService:
             return
         except HTTPException:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="cache_rate_limit_redis", extra={"module": __name__})
         
         # Fallback if Redis isn't available (best-effort)
         now = time.time()
@@ -101,8 +102,8 @@ class CacheService:
             raw = self.store.r.get(key)
             if raw:
                 return json.loads(raw)
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="cache_redis_get", extra={"module": __name__})
         
         now = time.time()
         async with _PUBLIC_CACHE_LOCK:
@@ -110,7 +111,8 @@ class CacheService:
             if raw and float(exp) > now:
                 try:
                     return json.loads(raw)
-                except Exception:
+                except Exception as e:
+                    swallow_exception(e, context="cache_local_json_parse", extra={"module": __name__})
                     return None
             if float(exp) <= now:
                 _PUBLIC_CACHE_LOCAL.pop(key, None)

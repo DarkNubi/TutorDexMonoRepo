@@ -75,13 +75,14 @@ class SupabaseClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         
-        # Disable trust_env for local/Docker URLs
+        # Disable trust_env for local/Docker URLs (best-effort)
         try:
             host = (urlparse(config.url).hostname or "").lower()
             if host in {"127.0.0.1", "localhost", "::1"}:
                 self.session.trust_env = False
-        except Exception:
-            pass
+        except Exception as e:
+            from shared.observability import swallow_exception
+            swallow_exception(e, context="supabase_trust_env_config", extra={"module": __name__})
     
     def _headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """

@@ -27,6 +27,7 @@ if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
 from supabase_env import resolve_supabase_url  # noqa: E402
+from shared.observability.exception_handler import swallow_exception
 
 
 def _supabase_cfg() -> Optional[Tuple[str, str]]:

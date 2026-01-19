@@ -239,6 +239,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 try:
                     worker_supabase_fail_total.labels(operation="get", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
             return {"ok": False, "error": str(e)}
 
@@ -311,8 +312,9 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 if worker_supabase_fail_total:
                     try:
                         worker_supabase_fail_total.labels(operation="patch", pipeline_version=pv, schema_version=sv).inc()
-                    except Exception:
-                        pass
+                except Exception:
+                    # Metrics must never break runtime
+                    pass
                 return {"ok": False, "error": str(e)}
 
             ok = patch_resp.status_code < 400
@@ -340,8 +342,9 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                     if worker_supabase_fail_total:
                         try:
                             worker_supabase_fail_total.labels(operation="patch", pipeline_version=pv, schema_version=sv).inc()
-                        except Exception:
-                            pass
+                except Exception:
+                    # Metrics must never break runtime
+                    pass
                     return {"ok": False, "error": str(e)}
             if not ok:
                 log_event(logger, logging.WARNING, "supabase_patch_status", status_code=patch_resp.status_code, body=patch_resp.text[:500])
@@ -384,6 +387,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 try:
                     worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
             return {"ok": False, "error": str(e)}
 
@@ -419,8 +423,9 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 if worker_supabase_fail_total:
                     try:
                         worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
-                    except Exception:
-                        pass
+                except Exception:
+                    # Metrics must never break runtime
+                    pass
                 return {"ok": False, "error": str(e)}
         if not ok:
             log_event(logger, logging.WARNING, "supabase_insert_status", status_code=insert_resp.status_code, body=insert_resp.text[:500])

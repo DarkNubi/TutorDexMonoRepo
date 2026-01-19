@@ -12,6 +12,7 @@ from TutorDexBackend.supabase_store import SupabaseStore
 from TutorDexBackend.utils.request_utils import get_client_ip, hash_ip
 from TutorDexBackend.utils.config_utils import get_env_int, get_redis_prefix
 from fastapi import Request
+from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("tutordex_backend")
 
@@ -52,8 +53,8 @@ class AnalyticsService:
         try:
             ok = self.store.r.set(key, "1", nx=True, ex=int(cooldown_s))
             return bool(ok)
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="analytics_click_cooldown_redis", extra={"module": __name__})
         
         now = time.time()
         async with _CLICK_COOLDOWN_LOCK:
@@ -95,7 +96,8 @@ class AnalyticsService:
         
         try:
             bm = self.sb.get_broadcast_message(external_id=ext)
-        except Exception:
+        except Exception as e:
+            swallow_exception(e, context="analytics_broadcast_message_get", extra={"module": __name__})
             bm = None
         
         if bm:

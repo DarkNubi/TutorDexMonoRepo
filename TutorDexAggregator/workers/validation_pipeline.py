@@ -6,6 +6,7 @@ Handles schema validation and quality checks.
 
 import logging
 from typing import Any, Dict, Optional, Tuple
+from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("validation_pipeline")
 

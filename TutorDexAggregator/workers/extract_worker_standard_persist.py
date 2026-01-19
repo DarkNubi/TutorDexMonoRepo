@@ -51,6 +51,7 @@ def persist_and_finalize(
         try:
             worker_supabase_requests_total.labels(operation="persist", pipeline_version=version.pipeline_version, schema_version=version.schema_version).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         from supabase_persist import persist_assignment_to_supabase
 
@@ -63,12 +64,14 @@ def persist_and_finalize(
         worker_supabase_latency_seconds.labels(operation="persist", pipeline_version=version.pipeline_version, schema_version=version.schema_version).observe(dt)
         worker_job_stage_latency_seconds.labels(stage="persist", pipeline_version=version.pipeline_version, schema_version=version.schema_version).observe(dt)
     except Exception:
+        # Metrics must never break runtime
         pass
 
     if (not bool(persist_res.get("ok"))) and (attempt + 1 < int(toggles.max_attempts or 0)):
         try:
             worker_supabase_fail_total.labels(operation="persist", pipeline_version=version.pipeline_version, schema_version=version.schema_version).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         try:
             worker_parse_failure_total.labels(
@@ -78,6 +81,7 @@ def persist_and_finalize(
                 schema_version=version.schema_version,
             ).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         meta_patch = {"attempt": attempt + 1, "persist_error": persist_res}
         mark_extraction(
@@ -148,6 +152,7 @@ def persist_and_finalize(
         try:
             worker_supabase_fail_total.labels(operation="persist", pipeline_version=version.pipeline_version, schema_version=version.schema_version).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         try:
             worker_parse_failure_total.labels(
@@ -157,6 +162,7 @@ def persist_and_finalize(
                 schema_version=version.schema_version,
             ).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         try_report_triage_message(
             cfg=cfg,
@@ -171,6 +177,7 @@ def persist_and_finalize(
         try:
             worker_parse_success_total.labels(channel=channel_link, pipeline_version=version.pipeline_version, schema_version=version.schema_version).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
 
     return "ok" if ok else "failed"

@@ -65,6 +65,7 @@ def call_rpc(
             schema_version=schema_version
         ).inc()
     except Exception:
+        # Metrics must never break runtime
         pass
     
     try:
@@ -91,6 +92,7 @@ def call_rpc(
                 schema_version=schema_version
             ).observe(max(0.0, time.perf_counter() - t0))
         except Exception:
+            # Metrics must never break runtime
             pass
 
 
@@ -129,6 +131,7 @@ def get_one(
             schema_version=schema_version
         ).inc()
     except Exception:
+        # Metrics must never break runtime
         pass
     
     try:
@@ -159,6 +162,7 @@ def get_one(
                 schema_version=schema_version
             ).observe(max(0.0, time.perf_counter() - t0))
         except Exception:
+            # Metrics must never break runtime
             pass
 
 
@@ -199,6 +203,7 @@ def patch_table(
             schema_version=schema_version
         ).inc()
     except Exception:
+        # Metrics must never break runtime
         pass
     
     h = dict(build_headers(key))
@@ -218,6 +223,7 @@ def patch_table(
             schema_version=schema_version
         ).observe(max(0.0, time.perf_counter() - t0))
     except Exception:
+        # Metrics must never break runtime
         pass
     
     return resp.status_code < 400

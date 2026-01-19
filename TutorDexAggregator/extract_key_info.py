@@ -9,6 +9,7 @@ import logging
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from agency_registry import get_agency_examples_key
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 setup_logging()
 logger = logging.getLogger("extract_key_info")
@@ -87,8 +88,8 @@ def get_system_prompt_meta() -> dict:
                 p = (Path(__file__).resolve().parent / p).resolve()
             meta["resolved_file"] = str(p)
             meta["missing"] = not p.exists()
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="metadata_file_resolution", extra={"module": __name__})
     else:
         meta["source"] = "file:prompts/system_prompt_live.txt"
         meta["resolved_file"] = str(DEFAULT_SYSTEM_PROMPT_FILE)
@@ -275,8 +276,8 @@ def safe_parse_json(json_string):
     # Fast path: valid JSON should not require `json-repair` to be installed.
     try:
         return json.loads(raw)
-    except Exception:
-        pass
+    except Exception as e:
+        swallow_exception(e, context="json_parse_initial", extra={"raw_preview": str(raw)[:100], "module": __name__})
 
     try:
         from json_repair import repair_json  # type: ignore
@@ -291,8 +292,8 @@ def safe_parse_json(json_string):
 
         if "return_objects" in inspect.signature(repair_json).parameters:
             return repair_json(raw, return_objects=True)
-    except Exception:
-        pass
+    except Exception as e:
+        swallow_exception(e, context="json_repair_advanced_sig", extra={"raw_preview": str(raw)[:100], "module": __name__})
 
     repaired = repair_json(raw)
     if isinstance(repaired, (dict, list)):

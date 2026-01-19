@@ -25,6 +25,7 @@ from observability_metrics import (
     collector_messages_upserted_total,
 )
 from supabase_raw_persist import SupabaseRawStore, build_raw_row
+from shared.observability.exception_handler import swallow_exception
 
 
 async def backfill_channel(
@@ -66,7 +67,8 @@ async def backfill_channel(
         try:
             dt_utc = dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
             dt_utc = dt_utc.astimezone(timezone.utc)
-        except Exception:
+        except Exception as e:
+            swallow_exception(e, context="backfill_timezone_conversion", extra={"module": __name__})
             dt_utc = None
 
         if until is not None and dt_utc is not None and dt_utc > until:
@@ -82,6 +84,7 @@ async def backfill_channel(
                     channel=channel_link, pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                 ).set(dt_utc.timestamp())
         except Exception:
+            # Metrics must never break runtime
             pass
 
         counters.scanned += 1
@@ -101,6 +104,7 @@ async def backfill_channel(
                         channel=channel_link, pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                     ).inc(ok_rows)
             except Exception:
+                # Metrics must never break runtime
                 pass
             if ok_rows:
                 msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]
@@ -134,6 +138,7 @@ async def backfill_channel(
                     ok_rows
                 )
         except Exception:
+            # Metrics must never break runtime
             pass
         if ok_rows:
             msg_ids = [str(r.get("message_id") or "").strip() for r in rows if str(r.get("message_id") or "").strip()]

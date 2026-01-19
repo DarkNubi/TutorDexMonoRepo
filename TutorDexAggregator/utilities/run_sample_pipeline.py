@@ -35,6 +35,7 @@ from hard_validator import hard_validate  # noqa: E402
 from normalize import normalize_text  # noqa: E402
 from signals_builder import build_signals  # noqa: E402
 from extractors.time_availability import extract_time_availability  # noqa: E402
+from shared.observability.exception_handler import swallow_exception
 
 
 def _truthy(value: Optional[str]) -> bool:

@@ -81,7 +81,7 @@ def extract_with_llm(
                 schema_version=metrics.get("schema_version", "")
             ).inc()
         except Exception:
-            pass
+            pass  # Metrics must never break runtime
     
     try:
         if circuit_breaker:
@@ -102,7 +102,7 @@ def extract_with_llm(
                     schema_version=metrics.get("schema_version", "")
                 ).observe(latency)
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
         
         return parsed, None, latency
         
@@ -118,7 +118,7 @@ def extract_with_llm(
                     schema_version=metrics.get("schema_version", "")
                 ).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
         
         return None, "llm_circuit_open", latency
         
@@ -135,7 +135,7 @@ def extract_with_llm(
                     schema_version=metrics.get("schema_version", "")
                 ).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
         
         return None, error_type, latency
 

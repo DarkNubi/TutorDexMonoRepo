@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.

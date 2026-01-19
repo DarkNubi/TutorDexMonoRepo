@@ -14,6 +14,7 @@ import requests
 from logging_setup import bind_log_context, log_event, setup_logging, timed
 from observability_metrics import broadcast_fail_reason_total, broadcast_fail_total, broadcast_sent_total, versions as _obs_versions
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 # NOTE: This file lives under `delivery/`, but we want paths relative to `TutorDexAggregator/`.
 HERE = Path(__file__).resolve().parents[1]

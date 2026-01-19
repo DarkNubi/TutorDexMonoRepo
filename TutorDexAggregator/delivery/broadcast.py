@@ -79,7 +79,7 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
                 from observability_metrics import broadcast_skipped_duplicate_total
                 broadcast_skipped_duplicate_total.inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {"ok": True, "skipped": True, "reason": "non_primary_duplicate", "mode": duplicate_mode}
 
     with bind_log_context(
@@ -153,22 +153,22 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
             try:
                 broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             try:
                 broadcast_fail_reason_total.labels(reason="fallback_written", pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {'ok': True, 'saved_to_file': FALLBACK_FILE}
         except Exception as e:
             logger.exception('Failed to write fallback broadcast error=%s', e)
             try:
                 broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             try:
                 broadcast_fail_reason_total.labels(reason="fallback_write_failed", pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {'ok': False, 'error': str(e)}
 
 

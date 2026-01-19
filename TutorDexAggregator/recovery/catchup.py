@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import requests
 
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 try:
     from logging_setup import bind_log_context, log_event  # type: ignore

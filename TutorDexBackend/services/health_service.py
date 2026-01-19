@@ -8,6 +8,7 @@ from typing import Any, Dict
 import requests
 from TutorDexBackend.redis_store import TutorStore
 from TutorDexBackend.supabase_store import SupabaseStore
+from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("tutordex_backend")
 
@@ -156,8 +157,8 @@ class HealthService:
             body = None
             try:
                 body = resp.json()
-            except Exception:
-                pass
+            except Exception as e:
+                swallow_exception(e, context="health_check_json_parse", extra={"module": __name__})
             return {"ok": ok, "status_code": resp.status_code, "body": body}
         except Exception as e:
             return {"ok": False, "error": str(e)}

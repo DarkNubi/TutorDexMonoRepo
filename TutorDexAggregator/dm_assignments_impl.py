@@ -11,6 +11,7 @@ from observability_metrics import dm_fail_reason_total, dm_fail_total, dm_rate_l
 from shared.assignment_rating import calculate_assignment_rating, parse_rate_min_max
 from shared.config import load_aggregator_config
 from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
+from shared.observability.exception_handler import swallow_exception
 
 HERE = Path(__file__).resolve().parent
 _CFG = load_aggregator_config()
@@ -270,18 +271,18 @@ def _record_assignment_rating_best_effort(
     if match.get("distance_km") is not None:
         try:
             row["distance_km"] = float(match.get("distance_km"))
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="dm_distance_parsing", extra={"module": __name__})
     if match.get("rate_min") is not None:
         try:
             row["rate_min"] = int(match.get("rate_min"))
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="dm_rate_min_parsing", extra={"module": __name__})
     if match.get("rate_max") is not None:
         try:
             row["rate_max"] = int(match.get("rate_max"))
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="dm_rate_max_parsing", extra={"module": __name__})
 
     client.post("tutor_assignment_ratings", [row], timeout=20, prefer="return=minimal")
 
@@ -469,6 +470,7 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
             from observability_metrics import dm_skipped_duplicate_total
             dm_skipped_duplicate_total.inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         return False
     
@@ -527,6 +529,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 dm_fail_reason_total.labels(reason=_classify_dm_error(status_code=None, error=str(e)), pipeline_version=pv, schema_version=sv).inc()
             except Exception:
+                # Metrics must never break runtime
                 pass
             return {"ok": False, "error": str(e)}
         
@@ -581,6 +584,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     dm_rate_limited_total.labels(pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 retry_after = None
                 try:
@@ -599,6 +603,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     dm_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 try:
                     err_text = None
@@ -610,6 +615,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                         schema_version=sv,
                     ).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 continue
 
@@ -617,6 +623,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 dm_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
+                # Metrics must never break runtime
                 pass
             
             # Record assignment rating for this tutor (best-effort; used for adaptive thresholds)
@@ -654,12 +661,14 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     dm_fail_reason_total.labels(reason="fallback_written", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
             except Exception:
                 logger.exception("Failed to write DM fallback file path=%s", DM_FALLBACK_FILE)
                 try:
                     dm_fail_reason_total.labels(reason="fallback_write_failed", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
 
         log_event(

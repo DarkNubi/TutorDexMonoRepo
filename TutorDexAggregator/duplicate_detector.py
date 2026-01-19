@@ -36,6 +36,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Tuple, Set
 import requests
 from functools import lru_cache
+from shared.observability.exception_handler import swallow_exception
 
 try:
     from logging_setup import setup_logging  # type: ignore

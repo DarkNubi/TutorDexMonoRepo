@@ -118,7 +118,7 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
             try:
                 broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             try:
                 broadcast_fail_reason_total.labels(
                     reason=_classify_broadcast_error(status_code=int(resp.status_code), error=(
@@ -127,14 +127,14 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
                     schema_version=sv,
                 ).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {'ok': False, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id}
         else:
             log_event(logger, logging.INFO, "broadcast_sent", chat_id=chat_id, status_code=resp.status_code, send_ms=send_ms)
             try:
                 broadcast_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             # Store broadcast message mapping for tracking/reconciliation
             if ENABLE_BROADCAST_TRACKING:
                 try:
@@ -154,7 +154,7 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
         try:
             broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
         except Exception:
-            pass
+            pass  # Metrics must never break runtime
         try:
             broadcast_fail_reason_total.labels(
                 reason=_classify_broadcast_error(status_code=None, error=str(e)),
@@ -162,6 +162,6 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
                 schema_version=sv,
             ).inc()
         except Exception:
-            pass
+            pass  # Metrics must never break runtime
         return {'ok': False, 'error': str(e), 'chat_id': chat_id}
 

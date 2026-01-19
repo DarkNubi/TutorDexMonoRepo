@@ -9,6 +9,7 @@ from fastapi import HTTPException, Request
 from TutorDexBackend.firebase_auth import firebase_admin_status, verify_bearer_token
 from TutorDexBackend.utils.config_utils import is_production
 from shared.config import load_backend_config
+from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("tutordex_backend")
 _CFG = load_backend_config()
@@ -122,8 +123,8 @@ class AuthService:
         if uid:
             try:
                 request.state.uid = uid
-            except Exception:
-                pass
+            except Exception as e:
+                swallow_exception(e, context="auth_request_state_setting", extra={"module": __name__})
             return uid
         
         if self.is_auth_required():

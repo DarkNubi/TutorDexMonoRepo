@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 HERE = Path(__file__).resolve().parent
 PARENT = HERE.parent

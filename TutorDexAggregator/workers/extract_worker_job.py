@@ -72,6 +72,7 @@ def work_one(
                 schema_version=version.schema_version,
             ).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         mark_extraction(
             url,
@@ -108,6 +109,7 @@ def work_one(
                 max(0.0, time.perf_counter() - t_load0)
             )
         except Exception:
+            # Metrics must never break runtime
             pass
 
         if not raw:

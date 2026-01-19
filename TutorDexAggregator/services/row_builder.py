@@ -9,6 +9,7 @@ import hashlib
 from typing import Any, Dict, Optional, List, Tuple
 from datetime import datetime, timezone
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 try:
     from utils.field_coercion import (
@@ -306,8 +307,8 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
                 tutor_types = sig_tt
             if sig_rb and not rate_breakdown:
                 rate_breakdown = sig_rb
-    except Exception:
-        pass
+    except Exception as e:
+        swallow_exception(e, context="signal_tutor_types_extraction", extra={"module": __name__})
 
     tutor_types = sanitize_tutor_types(tutor_types)
     rate_breakdown = sanitize_rate_breakdown(rate_breakdown)
@@ -348,8 +349,8 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
                 subjects_general = coerce_text_list(res.get("subjects_general"))
                 canonicalization_version = res.get("canonicalization_version")
                 canonicalization_debug = res.get("debug")
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="canonicalization_metadata_enrichment", extra={"module": __name__})
 
     postal_lat = None
     postal_lon = None
@@ -398,8 +399,8 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
                 s = json.dumps(src, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
                 meta = dict(meta)
                 meta["tutorcity_fingerprint"] = hashlib.sha256(s.encode("utf-8")).hexdigest()
-    except Exception:
-        pass
+    except Exception as e:
+        swallow_exception(e, context="tutorcity_fingerprint_computation", extra={"module": __name__})
 
     # Telegram status detection (opt-in allowlist).
     try:
@@ -487,8 +488,8 @@ def build_assignment_row(payload: Dict[str, Any], geocode_func=None) -> Dict[str
         try:
             row["meta"] = dict(row["meta"])
             row["meta"]["geo_enrichment"] = geo_meta
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="geo_enrichment_metadata", extra={"module": __name__})
 
     row["parse_quality_score"] = compute_parse_quality(row)
     if _freshness_enabled():
