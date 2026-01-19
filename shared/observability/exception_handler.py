@@ -45,6 +45,9 @@ def swallow_exception(
                 extra={"postal_code": postal_code, "module": __name__},
             )
     """
+    # Extract exception type name once - needed for both logging and metrics
+    # This is intentional: we always log/count exceptions here, so the computation
+    # is not wasted
     exc_type_name = type(exc).__name__
     logger.exception(
         "Swallowed exception",
