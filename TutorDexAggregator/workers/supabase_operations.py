@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from observability_metrics import (
-    worker_supabase_fail_total,
     worker_supabase_latency_seconds,
     worker_supabase_requests_total,
 )
@@ -57,7 +56,7 @@ def call_rpc(
     """
     t0 = time.perf_counter()
     op = f"rpc:{function_name}"
-    
+
     try:
         worker_supabase_requests_total.labels(
             operation=op,
@@ -67,7 +66,7 @@ def call_rpc(
     except Exception:
         # Metrics must never break runtime
         pass
-    
+
     try:
         resp = requests.post(
             f"{url}/rest/v1/rpc/{function_name}",
@@ -75,11 +74,11 @@ def call_rpc(
             json=body,
             timeout=timeout
         )
-        
+
         # Check for ambiguous overloads (HTTP 300) and other errors
         from supabase_env import check_rpc_response  # noqa: E402
         check_rpc_response(resp, function_name)
-        
+
         try:
             return resp.json()
         except Exception:
@@ -123,7 +122,7 @@ def get_one(
     """
     t0 = time.perf_counter()
     op = f"get:{table}"
-    
+
     try:
         worker_supabase_requests_total.labels(
             operation=op,
@@ -133,26 +132,26 @@ def get_one(
     except Exception:
         # Metrics must never break runtime
         pass
-    
+
     try:
         resp = requests.get(
             f"{url}/rest/v1/{table}?{query}",
             headers=build_headers(key),
             timeout=timeout
         )
-        
+
         if resp.status_code >= 400:
             return None
-        
+
         try:
             data = resp.json()
         except Exception:
             return None
-        
+
         if isinstance(data, list) and data:
             row = data[0]
             return row if isinstance(row, dict) else None
-        
+
         return None
     finally:
         try:
@@ -195,7 +194,7 @@ def patch_table(
     """
     t0 = time.perf_counter()
     op = f"patch:{table}"
-    
+
     try:
         worker_supabase_requests_total.labels(
             operation=op,
@@ -205,17 +204,17 @@ def patch_table(
     except Exception:
         # Metrics must never break runtime
         pass
-    
+
     h = dict(build_headers(key))
     h["prefer"] = "return=minimal"
-    
+
     resp = requests.patch(
         f"{url}/rest/v1/{table}?{where}",
         headers=h,
         json=body,
         timeout=timeout
     )
-    
+
     try:
         worker_supabase_latency_seconds.labels(
             operation=op,
@@ -225,7 +224,7 @@ def patch_table(
     except Exception:
         # Metrics must never break runtime
         pass
-    
+
     return resp.status_code < 400
 
 
@@ -266,7 +265,7 @@ def get_queue_counts(
     counts: Dict[str, Optional[int]] = {}
     h = dict(build_headers(key))
     h["prefer"] = "count=exact"
-    
+
     for status in statuses:
         try:
             resp = requests.get(
@@ -279,7 +278,7 @@ def get_queue_counts(
             counts[status] = count_from_range(resp.headers.get("content-range"))
         except Exception:
             counts[status] = None
-    
+
     return counts
 
 
@@ -308,10 +307,10 @@ def get_oldest_created_age_seconds(
         f"&order=created_at.asc&limit=1",
         timeout=15
     )
-    
+
     if not row or "created_at" not in row:
         return None
-    
+
     try:
         created = row["created_at"]
         if isinstance(created, str):
@@ -381,7 +380,7 @@ def fetch_channel(
     """
     if channel_link in _CHANNEL_CACHE:
         return _CHANNEL_CACHE[channel_link]
-    
+
     cl = requests.utils.quote(str(channel_link), safe="")
     row = get_one(
         url,
@@ -391,10 +390,10 @@ def fetch_channel(
         pipeline_version=pipeline_version,
         schema_version=schema_version
     )
-    
+
     if isinstance(row, dict):
         _CHANNEL_CACHE[channel_link] = row
         return row
-    
+
     _CHANNEL_CACHE[channel_link] = {}
     return None

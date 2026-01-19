@@ -15,7 +15,7 @@ logger = logging.getLogger("message_processor")
 
 class MessageFilterResult:
     """Result of message filtering."""
-    
+
     def __init__(
         self,
         should_skip: bool,
@@ -113,20 +113,20 @@ def filter_message(
             reason="deleted",
             close_payload=close_payload
         )
-    
+
     # Check if forwarded
     if bool(raw.get("is_forward")):
         return MessageFilterResult(should_skip=True, reason="forward")
-    
+
     # Check if reply - bump parent assignment instead of processing
     if bool(raw.get("is_reply")):
         return MessageFilterResult(should_skip=True, reason="reply")
-    
+
     # Check if empty text
     raw_text = str(raw.get("raw_text") or "").strip()
     if not raw_text:
         return MessageFilterResult(should_skip=True, reason="empty_text")
-    
+
     # Message passed all filters
     return MessageFilterResult(should_skip=False)
 
@@ -151,9 +151,9 @@ def build_extraction_context(
     raw_id = job.get("raw_id")
     channel_link = str(job.get("channel_link") or "").strip() or "t.me/unknown"
     message_id = str(job.get("message_id") or "").strip()
-    
+
     cid = f"worker:{channel_link}:{message_id}:{extraction_id}"
-    
+
     return {
         "extraction_id": extraction_id,
         "raw_id": raw_id,

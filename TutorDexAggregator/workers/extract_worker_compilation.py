@@ -10,7 +10,6 @@ from compilation_message_handler import (
     split_compilation_message,
 )
 from extract_key_info import extract_assignment_with_model
-from logging_setup import log_event
 from normalize import normalize_text
 from observability_metrics import (
     worker_job_stage_latency_seconds,

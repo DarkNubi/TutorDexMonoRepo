@@ -17,7 +17,7 @@ def test_swallow_exception_logs_error(caplog):
     with caplog.at_level(logging.ERROR):
         exc = ValueError("test error")
         swallow_exception(exc, context="test_context")
-        
+
     # Check that exception was logged
     assert len(caplog.records) == 1
     record = caplog.records[0]
@@ -36,7 +36,7 @@ def test_swallow_exception_with_extra_context(caplog):
             context="test_context",
             extra={"module": "test_module", "operation": "test_op"}
         )
-        
+
     record = caplog.records[0]
     assert record.module == "test_module"
     assert record.operation == "test_op"
@@ -48,11 +48,11 @@ def test_swallow_exception_increments_metric():
     mock_counter = MagicMock()
     mock_labels = MagicMock()
     mock_counter.labels.return_value = mock_labels
-    
+
     with patch("TutorDexAggregator.observability_metrics.swallowed_exceptions_total", mock_counter):
         exc = ValueError("test error")
         swallow_exception(exc, context="test_metric_context")
-        
+
     # Verify metric was incremented
     mock_counter.labels.assert_called_once_with(
         context="test_metric_context",
@@ -65,7 +65,7 @@ def test_swallow_exception_handles_missing_metrics():
     """Test that swallow_exception works even if metrics are not available."""
     # This should not raise an exception even if metrics module is not available
     exc = ValueError("test error")
-    
+
     # Should complete without error
     swallow_exception(exc, context="test_no_metrics")
 
@@ -79,7 +79,7 @@ def test_swallow_exception_with_different_exception_types():
         TypeError("type error"),
         Exception("generic exception"),
     ]
-    
+
     for exc in exception_types:
         # Should not raise
         swallow_exception(exc, context="test_exception_types")

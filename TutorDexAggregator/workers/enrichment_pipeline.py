@@ -29,10 +29,10 @@ def _build_signals_summary(signals: Optional[Dict[str, Any]]) -> Dict[str, Any]:
             "academic_requests": 0,
             "ambiguous": False,
         }
-    
+
     academic_requests = signals.get("academic_requests")
     confidence_flags = signals.get("confidence_flags") or {}
-    
+
     return {
         "subjects": len(signals.get("subjects") or []),
         "levels": len(signals.get("levels") or []),
@@ -57,18 +57,18 @@ def fill_postal_code_from_text(parsed: Dict[str, Any], raw_text: str) -> Dict[st
     """
     if not isinstance(parsed, dict):
         return {}
-    
+
     existing = coerce_list_of_str(parsed.get("postal_code"))
     if existing:
         parsed["postal_code"] = existing
         return parsed
-    
+
     codes = extract_sg_postal_codes(raw_text)
     if codes:
         parsed["postal_code"] = codes
     else:
         parsed["postal_code"] = None
-    
+
     return parsed
 
 
@@ -92,9 +92,9 @@ def apply_postal_code_estimated(
     """
     if not enabled:
         return parsed, None
-    
+
     postal_estimated_meta: Optional[Dict[str, Any]] = None
-    
+
     try:
         res = estimate_func(parsed, raw_text)
         if res and hasattr(res, "estimated") and hasattr(res, "meta"):
@@ -104,7 +104,7 @@ def apply_postal_code_estimated(
             postal_estimated_meta["estimated"] = res.estimated
     except Exception as e:
         postal_estimated_meta = {"ok": False, "error": str(e)}
-    
+
     return parsed, postal_estimated_meta
 
 
@@ -132,9 +132,9 @@ def apply_deterministic_time(
     """
     if not enabled:
         return parsed, None
-    
+
     time_meta: Optional[Dict[str, Any]] = None
-    
+
     try:
         det_ta, det_meta = extract_func(raw_text=raw_text, normalized_text=normalized_text)
         if isinstance(parsed, dict):
@@ -144,7 +144,7 @@ def apply_deterministic_time(
             time_meta.update(det_meta)
     except Exception as e:
         time_meta = {"ok": False, "error": str(e)}
-    
+
     return parsed, time_meta
 
 
@@ -175,9 +175,9 @@ def apply_hard_validation(
     """
     if mode == "off":
         return parsed, None
-    
+
     hard_meta: Optional[Dict[str, Any]] = None
-    
+
     try:
         cleaned, violations = validate_func(parsed or {}, raw_text=raw_text, normalized_text=normalized_text)
         hard_meta = {
@@ -189,7 +189,7 @@ def apply_hard_validation(
             parsed = cleaned
     except Exception as e:
         hard_meta = {"mode": mode, "error": str(e)}
-    
+
     return parsed, hard_meta
 
 
@@ -218,13 +218,13 @@ def build_signals(
     """
     if not enabled:
         return None, None
-    
+
     signals_meta: Optional[Dict[str, Any]] = None
     signals: Optional[Dict[str, Any]] = None
-    
+
     try:
         signals, err = signals_func(parsed=parsed or {}, raw_text=raw_text, normalized_text=normalized_text)
-        
+
         if err:
             signals_meta = {"ok": False, "error": err}
         else:
@@ -235,7 +235,7 @@ def build_signals(
             }
     except Exception as e:
         signals_meta = {"ok": False, "error": str(e)}
-    
+
     return signals, signals_meta
 
 
@@ -268,7 +268,7 @@ def run_enrichment_pipeline(
     """
     # Step 1: Fill postal code from text (always)
     parsed = fill_postal_code_from_text(parsed, raw_text)
-    
+
     # Step 2: Postal code estimation
     parsed, postal_estimated_meta = apply_postal_code_estimated(
         parsed,
@@ -276,7 +276,7 @@ def run_enrichment_pipeline(
         functions.get("estimate_postal_codes"),
         config.get("enable_postal_code_estimated", False)
     )
-    
+
     # Step 3: Deterministic time availability
     parsed, time_meta = apply_deterministic_time(
         parsed,
@@ -285,7 +285,7 @@ def run_enrichment_pipeline(
         functions.get("extract_time_availability"),
         config.get("use_deterministic_time", False)
     )
-    
+
     # Step 4: Hard validation
     parsed, hard_meta = apply_hard_validation(
         parsed,
@@ -294,7 +294,7 @@ def run_enrichment_pipeline(
         functions.get("hard_validate"),
         config.get("hard_validate_mode", "off")
     )
-    
+
     # Step 5: Build signals
     signals, signals_meta = build_signals(
         parsed,
@@ -303,7 +303,7 @@ def run_enrichment_pipeline(
         functions.get("build_signals"),
         config.get("enable_deterministic_signals", False)
     )
-    
+
     # Combine metadata
     metadata = {
         "postal_code_estimated": postal_estimated_meta,
@@ -311,5 +311,5 @@ def run_enrichment_pipeline(
         "hard_validation": hard_meta,
         "signals": signals_meta,
     }
-    
+
     return parsed, metadata

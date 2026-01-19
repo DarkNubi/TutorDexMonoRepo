@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
 from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path

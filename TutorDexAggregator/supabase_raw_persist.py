@@ -9,9 +9,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import requests
 
 try:
-    from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+    from logging_setup import log_event, setup_logging, timed  # type: ignore
 except Exception:
-    from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
+    from TutorDexAggregator.logging_setup import log_event, setup_logging, timed  # type: ignore
 
 from shared.config import load_aggregator_config
 from shared.supabase_client import SupabaseClient, SupabaseConfig as ClientConfig, coerce_rows

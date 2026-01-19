@@ -7,12 +7,11 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import requests
 
 from shared.config import load_aggregator_config
-from shared.observability.exception_handler import swallow_exception
 
 try:
     from logging_setup import bind_log_context, log_event  # type: ignore

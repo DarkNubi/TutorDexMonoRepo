@@ -7,7 +7,6 @@ import requests
 
 from logging_setup import log_event
 from workers.utils import build_message_link
-from shared.observability.exception_handler import swallow_exception
 
 
 def _chunk_text(text: str, *, max_len: int) -> List[str]:

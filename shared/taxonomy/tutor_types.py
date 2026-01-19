@@ -5,7 +5,6 @@ canonical tutor-type with a simple confidence score.
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 from difflib import get_close_matches

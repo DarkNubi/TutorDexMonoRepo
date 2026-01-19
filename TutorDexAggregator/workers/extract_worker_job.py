@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from compilation_detection import is_compilation
 from compilation_message_handler import confirm_compilation_identifiers
@@ -149,10 +149,10 @@ def work_one(
                 # Bump the parent assignment instead of processing the reply
                 try:
                     from reply_bump import bump_assignment_from_reply
-                    
+
                     message_json = raw.get("message_json") or {}
                     reply_to_msg_id = message_json.get("reply_to_msg_id")
-                    
+
                     if reply_to_msg_id:
                         bump_res = bump_assignment_from_reply(
                             channel_link=channel_link,

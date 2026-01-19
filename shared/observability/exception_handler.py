@@ -57,7 +57,7 @@ def swallow_exception(
             **(extra or {}),
         },
     )
-    
+
     # Increment metrics counter (best-effort - must never break runtime)
     try:
         # Import here to avoid circular dependencies.

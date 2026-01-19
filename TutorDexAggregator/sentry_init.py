@@ -18,7 +18,7 @@ def setup_sentry(*, service_name: str = "tutordex-aggregator") -> None:
     """
     cfg = load_aggregator_config()
     dsn = str(cfg.sentry_dsn or "").strip()
-    
+
     if not dsn:
         logger.info("sentry_disabled_no_dsn")
         return
@@ -84,5 +84,5 @@ def _before_send(event, hint):
     #     exc_type, exc_value, tb = hint['exc_info']
     #     if isinstance(exc_value, SomeKnownError):
     #         return None
-    
+
     return event

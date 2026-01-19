@@ -26,11 +26,11 @@ _CLICK_COOLDOWN_LOCK = asyncio.Lock()
 
 class AnalyticsService:
     """Analytics events and click tracking."""
-    
+
     def __init__(self, sb: SupabaseStore, store: TutorStore):
         self.sb = sb
         self.store = store
-    
+
     async def check_click_cooldown(self, request: Request, external_id: str) -> bool:
         """
         Check if click should be tracked (respects cooldown).
@@ -45,17 +45,17 @@ class AnalyticsService:
         cooldown_s = max(0, get_env_int("CLICK_TRACKING_IP_COOLDOWN_SECONDS", 10))
         if cooldown_s <= 0:
             return True
-        
+
         ip_hash_str = hash_ip(get_client_ip(request))
         prefix = get_redis_prefix()
         key = f"{prefix}:click_cd:{external_id}:{ip_hash_str}"
-        
+
         try:
             ok = self.store.r.set(key, "1", nx=True, ex=int(cooldown_s))
             return bool(ok)
         except Exception as e:
             swallow_exception(e, context="analytics_click_cooldown_redis", extra={"module": __name__})
-        
+
         now = time.time()
         async with _CLICK_COOLDOWN_LOCK:
             expires_at = float(_CLICK_COOLDOWN_LOCAL.get(key) or 0.0)
@@ -68,7 +68,7 @@ class AnalyticsService:
                     if float(exp) <= now:
                         _CLICK_COOLDOWN_LOCAL.pop(k, None)
         return True
-    
+
     async def resolve_broadcast_url(
         self,
         *,
@@ -89,23 +89,23 @@ class AnalyticsService:
             url = destination_url.strip()
             if url:
                 return url
-        
+
         ext = (external_id or "").strip()
         if not ext or not self.sb.enabled():
             return None
-        
+
         try:
             bm = self.sb.get_broadcast_message(external_id=ext)
         except Exception as e:
             swallow_exception(e, context="analytics_broadcast_message_get", extra={"module": __name__})
             bm = None
-        
+
         if bm:
             url = str(bm.get("original_url") or "").strip()
             if url:
                 return url
         return None
-    
+
     def insert_analytics_event(
         self,
         user_id: int,
@@ -124,7 +124,7 @@ class AnalyticsService:
         """
         if not self.sb.enabled():
             return
-        
+
         self.sb.insert_event(
             user_id=user_id,
             assignment_id=assignment_id,

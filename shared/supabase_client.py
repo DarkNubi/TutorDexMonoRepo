@@ -50,7 +50,7 @@ class SupabaseClient:
     - Connection pooling
     - Timeout configuration
     """
-    
+
     def __init__(self, config: SupabaseConfig):
         """
         Initialize Supabase client.
@@ -60,10 +60,10 @@ class SupabaseClient:
         """
         self.config = config
         self.base_url = f"{config.url}/rest/v1"
-        
+
         # Create session with retry logic
         self.session = requests.Session()
-        
+
         # Configure retries for transient errors
         retry_strategy = Retry(
             total=config.max_retries,
@@ -74,7 +74,7 @@ class SupabaseClient:
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
-        
+
         # Disable trust_env for local/Docker URLs (best-effort)
         try:
             host = (urlparse(config.url).hostname or "").lower()
@@ -83,7 +83,7 @@ class SupabaseClient:
         except Exception as e:
             from shared.observability import swallow_exception
             swallow_exception(e, context="supabase_trust_env_config", extra={"module": __name__})
-    
+
     def _headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """
         Generate request headers with authentication.
@@ -212,7 +212,7 @@ class SupabaseClient:
             params=params,
             timeout=self.config.timeout if timeout is None else timeout,
         )
-    
+
     def select(
         self,
         table: str,
@@ -241,22 +241,22 @@ class SupabaseClient:
         """
         url = f"{self.base_url}/{table}"
         params: Dict[str, Any] = {"select": columns}
-        
+
         # Add filters
         if filters:
             for key, value in filters.items():
                 params[key] = f"eq.{value}"
-        
+
         # Add pagination
         if limit:
             params["limit"] = limit
         if offset:
             params["offset"] = offset
-        
+
         # Add ordering
         if order_by:
             params["order"] = order_by
-        
+
         try:
             response = self.session.get(
                 url,
@@ -269,7 +269,7 @@ class SupabaseClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Supabase SELECT failed: {e}")
             raise SupabaseError(f"SELECT failed: {e}") from e
-    
+
     def insert(self, table: str, data: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
         """
         INSERT single row or multiple rows.
@@ -286,7 +286,7 @@ class SupabaseClient:
         """
         url = f"{self.base_url}/{table}"
         is_single = isinstance(data, dict)
-        
+
         try:
             response = self.session.post(
                 url,
@@ -300,7 +300,7 @@ class SupabaseClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Supabase INSERT failed: {e}")
             raise SupabaseError(f"INSERT failed: {e}") from e
-    
+
     def upsert(
         self,
         table: str,
@@ -324,7 +324,7 @@ class SupabaseClient:
         url = f"{self.base_url}/{table}?on_conflict={on_conflict}"
         headers = self._headers({"Prefer": "resolution=merge-duplicates,return=representation"})
         is_single = isinstance(data, dict)
-        
+
         try:
             response = self.session.post(
                 url,
@@ -338,7 +338,7 @@ class SupabaseClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Supabase UPSERT failed: {e}")
             raise SupabaseError(f"UPSERT failed: {e}") from e
-    
+
     def update(
         self,
         table: str,
@@ -363,7 +363,7 @@ class SupabaseClient:
         params = {}
         for key, value in filters.items():
             params[key] = f"eq.{value}"
-        
+
         try:
             response = self.session.patch(
                 url,
@@ -377,7 +377,7 @@ class SupabaseClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Supabase UPDATE failed: {e}")
             raise SupabaseError(f"UPDATE failed: {e}") from e
-    
+
     def delete(self, table: str, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         DELETE rows matching filters.
@@ -396,7 +396,7 @@ class SupabaseClient:
         params = {}
         for key, value in filters.items():
             params[key] = f"eq.{value}"
-        
+
         try:
             response = self.session.delete(
                 url,
@@ -409,7 +409,7 @@ class SupabaseClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Supabase DELETE failed: {e}")
             raise SupabaseError(f"DELETE failed: {e}") from e
-    
+
     def rpc(self, function: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
         Call RPC function.
@@ -428,7 +428,7 @@ class SupabaseClient:
             SupabaseError: On other API errors
         """
         url = f"{self.base_url}/rpc/{function}"
-        
+
         try:
             response = self.session.post(
                 url,
@@ -436,13 +436,13 @@ class SupabaseClient:
                 json=params or {},
                 timeout=self.config.timeout
             )
-            
+
             # Check for HTTP 300 (silent failure - audit Priority 2)
             if response.status_code == 300:
                 error_msg = f"RPC returned HTTP 300 for function '{function}' - indicates silent failure"
                 logger.error(error_msg)
                 raise SupabaseRPC300Error(error_msg)
-            
+
             response.raise_for_status()
             return response.json()
         except SupabaseRPC300Error:
@@ -450,7 +450,7 @@ class SupabaseClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Supabase RPC failed: {e}")
             raise SupabaseError(f"RPC '{function}' failed: {e}") from e
-    
+
     def count(self, table: str, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Count rows matching filters.
@@ -464,13 +464,13 @@ class SupabaseClient:
         """
         url = f"{self.base_url}/{table}"
         params = {"select": "*"}
-        
+
         if filters:
             for key, value in filters.items():
                 params[key] = f"eq.{value}"
-        
+
         headers = self._headers({"Prefer": "count=exact"})
-        
+
         try:
             response = self.session.head(
                 url,
@@ -479,7 +479,7 @@ class SupabaseClient:
                 timeout=self.config.timeout
             )
             response.raise_for_status()
-            
+
             # Extract count from Content-Range header
             content_range = response.headers.get("Content-Range", "")
             if content_range:
@@ -490,7 +490,7 @@ class SupabaseClient:
         except Exception as e:
             logger.warning(f"Count failed, returning 0: {e}")
             return 0
-    
+
     def enabled(self) -> bool:
         """Check if client is enabled."""
         return self.config.enabled
@@ -525,7 +525,7 @@ def create_client_from_env() -> SupabaseClient:
     url = str(s.supabase_url or "").strip()
     key = str(s.supabase_service_role_key or s.supabase_key or "").strip()
     enabled = bool(s.supabase_enabled) and bool(url and key)
-    
+
     config = SupabaseConfig(
         url=url,
         key=key,
@@ -533,7 +533,7 @@ def create_client_from_env() -> SupabaseClient:
         max_retries=int(s.supabase_max_retries),
         enabled=enabled
     )
-    
+
     return SupabaseClient(config)
 
 

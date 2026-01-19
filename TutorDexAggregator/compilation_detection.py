@@ -1,5 +1,5 @@
 import re
-from typing import Any, Optional, Tuple, List
+from typing import Tuple, List
 
 from shared.config import load_aggregator_config
 

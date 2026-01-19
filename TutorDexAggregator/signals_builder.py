@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
-from shared.observability.exception_handler import swallow_exception
 
 try:
     from extractors.academic_requests import parse_academic_requests  # type: ignore

@@ -10,7 +10,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 def make_rows(obj: Dict[str, Any], thresh: float) -> List[Dict[str, Any]]:

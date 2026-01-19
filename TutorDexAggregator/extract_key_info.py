@@ -371,7 +371,6 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
         max_tokens: Maximum tokens for response
         temp: Temperature for generation
     """
-    import os
 
     llm_api = str(_CFG.llm_api_url or "http://localhost:1234")
     model_name_env = str(_CFG.llm_model_name or model_name)

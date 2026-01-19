@@ -4,7 +4,7 @@ Merge Policy Service
 Conservative merge logic for assignment updates.
 Handles quality-based overwrites, timestamp comparisons, and signal unions.
 """
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from shared.config import load_aggregator_config
 

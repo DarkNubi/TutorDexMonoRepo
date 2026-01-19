@@ -42,11 +42,11 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     cid = payload.get('cid') or '<no-cid>'
     msg_id = payload.get('message_id')
     channel_link = payload.get('channel_link') or payload.get('channel_username') or ''
-    
+
     # Determine target chat IDs with clear precedence order:
     # 1. Explicit parameter override (target_chats)
     # 2. Configured multiple channels (TARGET_CHATS)
-    # 3. Configured single channel (TARGET_CHAT) 
+    # 3. Configured single channel (TARGET_CHAT)
     # 4. Payload-specific override (payload['target_chat'])
     chats = target_chats if target_chats is not None else TARGET_CHATS
     if not chats and TARGET_CHAT:
@@ -58,13 +58,13 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     pv = str(payload.get("pipeline_version") or "").strip() or v.pipeline_version
     sv = str(payload.get("schema_version") or "").strip() or v.schema_version
     assignment_id = _derive_external_id_for_tracking(payload)
-    
+
     # Check duplicate filtering mode
     duplicate_mode = str(_CFG.broadcast_duplicate_mode or "all").strip().lower()
     if duplicate_mode in ("primary_only", "primary_with_note"):
         parsed = payload.get("parsed") or {}
         is_primary = parsed.get("is_primary_in_group", True)
-        
+
         if not is_primary:
             # Skip broadcasting non-primary duplicates
             logger.info(
@@ -134,7 +134,7 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
                 except Exception as e:
                     logger.exception('Failed to send to chat_id=%s error=%s', chat_id, e)
                     results.append({'ok': False, 'error': str(e), 'chat_id': chat_id})
-            
+
             # Return aggregated results
             all_ok = all(r.get('ok') for r in results)
             return {

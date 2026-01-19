@@ -6,7 +6,6 @@ Handles schema validation and quality checks.
 
 import logging
 from typing import Any, Dict, Optional, Tuple
-from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("validation_pipeline")
 
@@ -55,7 +54,7 @@ def increment_quality_missing(
     """
     if not metrics or "assignment_quality_missing_field_total" not in metrics:
         return
-    
+
     try:
         metrics["assignment_quality_missing_field_total"].labels(
             field=field,
@@ -82,7 +81,7 @@ def increment_quality_inconsistency(
     """
     if not metrics or "assignment_quality_inconsistency_total" not in metrics:
         return
-    
+
     try:
         metrics["assignment_quality_inconsistency_total"].labels(
             kind=kind,
@@ -118,31 +117,31 @@ def run_quality_checks(
     """
     p = parsed if isinstance(parsed, dict) else {}
     s = signals if isinstance(signals, dict) else {}
-    
+
     # Check signals
     subjects = s.get("subjects") or []
     levels = s.get("levels") or []
-    
+
     if not isinstance(subjects, list) or len(subjects) == 0:
         increment_quality_missing("signals_subjects", channel, metrics)
-    
+
     if not isinstance(levels, list) or len(levels) == 0:
         increment_quality_missing("signals_levels", channel, metrics)
-    
+
     # Check postal code
     postal = p.get("postal_code")
     if not (isinstance(postal, list) and any(str(x).strip() for x in postal)):
         increment_quality_missing("postal_code", channel, metrics)
-    
+
     # Check academic display text
     academic = str(p.get("academic_display_text") or "")
     if not academic.strip():
         increment_quality_missing("academic_display_text", channel, metrics)
-    
+
     # Check consistency between headline and signals
     headline = academic.lower()
     sig_levels = {str(x).strip() for x in levels} if isinstance(levels, list) else set()
-    
+
     for headline_term, signal_level in ACADEMIC_LEVELS_CHECK.items():
         if headline_term in headline and signal_level not in sig_levels:
             increment_quality_inconsistency(f"headline_{headline_term}_no_signal", channel, metrics)

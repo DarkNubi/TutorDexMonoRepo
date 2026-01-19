@@ -107,7 +107,7 @@ def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     #     return {"inline_keyboard": [[button]]}
     #
     # # Fallback to direct URL button when callback_data would be too long or ext missing.
-    
+
     # Always use direct URL button (no click tracking)
     button: Dict[str, Any] = {"text": "Open original post", "url": message_link}
     return {"inline_keyboard": [[button]]}

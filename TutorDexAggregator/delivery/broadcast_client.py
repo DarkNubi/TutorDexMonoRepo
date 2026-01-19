@@ -41,7 +41,7 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
             body['reply_markup'] = reply_markup
     except Exception:
         logger.exception('callback_reply_markup_error')
-    
+
     try:
         max_attempts = max(1, int(_CFG.broadcast_max_attempts))
         base_sleep_s = float(_CFG.broadcast_retry_base_seconds)
@@ -147,7 +147,7 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
                                                      sent_message_id=int(sent_message_id), message_html=text)
                 except Exception:
                     logger.debug("broadcast_tracking_upsert_failed", exc_info=True, chat_id=chat_id)
-            return {'ok': True, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id, 
+            return {'ok': True, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id,
                     'sent_message_id': j.get("result", {}).get("message_id") if isinstance(j, dict) else None}
     except Exception as e:
         logger.exception('Broadcast send error chat_id=%s error=%s', chat_id, e)

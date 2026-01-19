@@ -71,7 +71,7 @@ def bump_assignment_from_reply(
             "bumped": False,
             "reason": "No reply_to_msg_id provided",
         }
-    
+
     # Resolve Supabase config
     if not supabase_url:
         supabase_url = resolve_supabase_url()
@@ -79,14 +79,14 @@ def bump_assignment_from_reply(
         from shared.config import load_aggregator_config
 
         supabase_key = load_aggregator_config().supabase_auth_key or ""
-    
+
     if not supabase_url or not supabase_key:
         return {
             "ok": False,
             "bumped": False,
             "reason": "Missing Supabase configuration",
         }
-    
+
     try:
         # Step 1: Find the parent message in telegram_messages_raw
         parent_resp = requests.get(
@@ -100,7 +100,7 @@ def bump_assignment_from_reply(
             },
             timeout=10,
         )
-        
+
         if parent_resp.status_code >= 400:
             log_event(
                 logger,
@@ -115,7 +115,7 @@ def bump_assignment_from_reply(
                 "bumped": False,
                 "reason": f"Failed to fetch parent message: HTTP {parent_resp.status_code}",
             }
-        
+
         parent_rows = parent_resp.json()
         if not parent_rows:
             log_event(
@@ -130,9 +130,9 @@ def bump_assignment_from_reply(
                 "bumped": False,
                 "reason": "Parent message not found in telegram_messages_raw",
             }
-        
+
         parent_message_id = parent_rows[0].get("message_id")
-        
+
         # Step 2: Find the assignment corresponding to this parent message
         assignment_resp = requests.get(
             f"{supabase_url}/rest/v1/assignments",
@@ -145,7 +145,7 @@ def bump_assignment_from_reply(
             },
             timeout=10,
         )
-        
+
         if assignment_resp.status_code >= 400:
             log_event(
                 logger,
@@ -160,7 +160,7 @@ def bump_assignment_from_reply(
                 "bumped": False,
                 "reason": f"Failed to fetch assignment: HTTP {assignment_resp.status_code}",
             }
-        
+
         assignment_rows = assignment_resp.json()
         if not assignment_rows:
             log_event(
@@ -175,13 +175,13 @@ def bump_assignment_from_reply(
                 "bumped": False,
                 "reason": "Parent message is not an assignment (no matching assignment found)",
             }
-        
+
         assignment = assignment_rows[0]
         assignment_id = assignment.get("id")
         external_id = assignment.get("external_id")
         last_seen = assignment.get("last_seen") or assignment.get("source_last_seen")
         current_bump_count = int(assignment.get("bump_count") or 0)
-        
+
         # Step 3: Check if we should bump (time-based throttling)
         should_bump = True
         if last_seen:
@@ -189,7 +189,7 @@ def bump_assignment_from_reply(
                 last_seen_dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
                 elapsed = (datetime.now(timezone.utc) - last_seen_dt.astimezone(timezone.utc)).total_seconds()
                 should_bump = elapsed >= bump_min_seconds
-                
+
                 if not should_bump:
                     log_event(
                         logger,
@@ -217,7 +217,7 @@ def bump_assignment_from_reply(
                     assignment_id=assignment_id,
                     error=str(e),
                 )
-        
+
         # Step 4: Bump the assignment
         now_iso = _utc_now_iso()
         patch_resp = requests.patch(
@@ -231,7 +231,7 @@ def bump_assignment_from_reply(
             },
             timeout=10,
         )
-        
+
         if patch_resp.status_code >= 400:
             log_event(
                 logger,
@@ -247,7 +247,7 @@ def bump_assignment_from_reply(
                 "bumped": False,
                 "reason": f"Failed to bump assignment: HTTP {patch_resp.status_code}",
             }
-        
+
         log_event(
             logger,
             logging.INFO,
@@ -258,13 +258,13 @@ def bump_assignment_from_reply(
             external_id=external_id,
             bump_count=current_bump_count + 1,
         )
-        
+
         return {
             "ok": True,
             "bumped": True,
             "reason": f"Assignment {external_id} bumped successfully (bump #{current_bump_count + 1})",
         }
-        
+
     except Exception as e:
         log_event(
             logger,

@@ -279,7 +279,7 @@ class TutorStore:
             raw = dict(self._mem_tutors.get(tutor_id) or {})
         if not raw:
             return None
-        
+
         # Parse desired_assignments_per_day with default of 10
         desired_per_day = 10
         if raw.get("desired_assignments_per_day"):
@@ -287,7 +287,7 @@ class TutorStore:
                 desired_per_day = int(raw.get("desired_assignments_per_day"))
             except Exception:
                 desired_per_day = 10
-        
+
         return {
             "tutor_id": raw.get("tutor_id") or tutor_id,
             "chat_id": raw.get("chat_id"),

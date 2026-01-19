@@ -6,7 +6,6 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote
 
 from telethon import TelegramClient
 

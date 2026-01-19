@@ -9,7 +9,6 @@ import requests
 from shared.config import load_aggregator_config
 
 from logging_setup import log_event, setup_logging, timed
-from shared.observability.exception_handler import swallow_exception
 
 
 setup_logging()

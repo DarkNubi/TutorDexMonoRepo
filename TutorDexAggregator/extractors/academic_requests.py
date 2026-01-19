@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 try:
     from ..canonicalization.academic import canonicalize_level_token, canonicalize_specific_level, canonicalize_stream_token  # type: ignore
-    from .subjects_matcher import SubjectMatch, extract_subjects  # type: ignore
+    from .subjects_matcher import extract_subjects  # type: ignore
     from ..taxonomy.canonicalize_subjects import canonicalize_subjects as canonicalize_subjects_v2  # type: ignore
 except Exception:
     from canonicalization.academic import canonicalize_level_token, canonicalize_specific_level, canonicalize_stream_token  # type: ignore
-    from extractors.subjects_matcher import SubjectMatch, extract_subjects  # type: ignore
+    from extractors.subjects_matcher import extract_subjects  # type: ignore
     from taxonomy.canonicalize_subjects import canonicalize_subjects as canonicalize_subjects_v2  # type: ignore
 
 

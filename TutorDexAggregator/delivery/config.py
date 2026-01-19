@@ -4,17 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
-import html
-import requests
 
-from logging_setup import bind_log_context, log_event, setup_logging, timed
-from observability_metrics import broadcast_fail_reason_total, broadcast_fail_total, broadcast_sent_total, versions as _obs_versions
+from logging_setup import setup_logging
 from shared.config import load_aggregator_config
-from shared.observability.exception_handler import swallow_exception
 
 # NOTE: This file lives under `delivery/`, but we want paths relative to `TutorDexAggregator/`.
 HERE = Path(__file__).resolve().parents[1]

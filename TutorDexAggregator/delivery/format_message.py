@@ -7,9 +7,7 @@ from agency_registry import get_agency_display_name
 from delivery.config import _CFG
 from delivery.format_utils import (
     _escape,
-    _flatten_text_list,
     _freshness_tier,
-    _format_time_slots_value,
     _join_text,
     _truncate_middle,
 )
@@ -86,7 +84,7 @@ def build_message_text(
         remarks = _escape(_truncate_middle(html.unescape(remarks), max_remarks))
 
     lines = []
-    
+
     # Determine if this is a DM (has distance) or broadcast
     is_dm = distance_km is not None
 
@@ -95,7 +93,7 @@ def build_message_text(
     agency = get_agency_display_name(chat_ref, default="")
     if not agency:
         agency = str(payload.get("channel_title") or "").strip() or "Agency"
-    
+
     # 1. Academic display text (MOST IMPORTANT - shows in notification)
     if academic_raw:
         lines.append(f"<b>{academic_raw}</b>")

@@ -60,7 +60,7 @@ def _calculate_match_ratings(
     parsed = payload.get("parsed") or {}
     assignment_rate_min, assignment_rate_max = parse_rate_min_max(parsed)
     sb = _supabase_client()
-    
+
     enriched_matches = []
     for match in matches:
         # Get tutor's average rate from history if available
@@ -77,7 +77,7 @@ def _calculate_match_ratings(
                     )
             except Exception as e:
                 logger.debug(f"Could not get tutor avg rate for {tutor_id}: {e}")
-        
+
         # Calculate rating
         rating = calculate_assignment_rating(
             base_score=match.get("score", 0),
@@ -86,13 +86,13 @@ def _calculate_match_ratings(
             assignment_rate_max=assignment_rate_max,
             tutor_avg_rate=tutor_avg_rate,
         )
-        
+
         # Add rating to match
         match_with_rating = dict(match)
         match_with_rating["rating"] = rating
         match_with_rating["tutor_avg_rate"] = tutor_avg_rate
         enriched_matches.append(match_with_rating)
-    
+
     return enriched_matches
 
 
@@ -120,28 +120,28 @@ def _filter_by_adaptive_threshold(
     if not DM_USE_ADAPTIVE_THRESHOLD:
         # Disabled - return all matches
         return matches
-    
+
     sb = _supabase_client()
     if not sb:
         logger.debug("Adaptive threshold enabled but Supabase is not configured; using all matches")
         return matches
-    
+
     filtered = []
     for match in matches:
         tutor_id = match.get("tutor_id")
         rating = match.get("rating")
-        
+
         if not tutor_id or rating is None:
             # No tutor ID or rating - include match (backward compat)
             filtered.append(match)
             continue
-        
+
         desired_per_day = 10
         try:
             desired_per_day = int(match.get("desired_assignments_per_day") or 10)
         except Exception:
             desired_per_day = 10
-        
+
         threshold = None
         try:
             user_id = _upsert_user_id(sb, firebase_uid=str(tutor_id))
@@ -157,20 +157,20 @@ def _filter_by_adaptive_threshold(
                 )
         except Exception as e:
             logger.debug(f"Could not get threshold for {tutor_id}: {e}")
-        
+
         # If no threshold available (new tutor or no history), include the match
         if threshold is None:
             filtered.append(match)
             logger.debug(f"Including {tutor_id} - no threshold available (new tutor)")
             continue
-        
+
         # Filter by threshold
         if rating >= threshold:
             filtered.append(match)
             logger.debug(f"Including {tutor_id} - rating {rating:.2f} >= threshold {threshold:.2f}")
         else:
             logger.debug(f"Filtering out {tutor_id} - rating {rating:.2f} < threshold {threshold:.2f}")
-    
+
     return filtered
 
 
@@ -328,7 +328,7 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
     postal_code = parsed.get("postal_code")
     if isinstance(postal_code, list) and postal_code:
         postal_code = postal_code[0]
-    
+
     if postal_code:
         coords = _geocode_sg_postal(str(postal_code))
         if coords:
@@ -338,12 +338,12 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
             parsed["postal_coords_estimated"] = False
             payload["parsed"] = parsed
             return float(lat), float(lon), False
-    
+
     # If explicit failed, try estimated postal code
     postal_code_estimated = parsed.get("postal_code_estimated")
     if isinstance(postal_code_estimated, list) and postal_code_estimated:
         postal_code_estimated = postal_code_estimated[0]
-    
+
     if postal_code_estimated:
         coords = _geocode_sg_postal(str(postal_code_estimated))
         if coords:
@@ -450,16 +450,16 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
     filter_enabled = bool(_CFG.dm_filter_duplicates)
     if not filter_enabled:
         return True
-    
+
     # Get duplicate metadata from parsed data
     parsed = payload.get("parsed") or {}
     is_primary = parsed.get("is_primary_in_group", True)
-    
+
     # If assignment is non-primary, skip DM
     if not is_primary:
         duplicate_group_id = parsed.get("duplicate_group_id")
         logger.info(
-            f"Skipping DM for non-primary duplicate assignment",
+            "Skipping DM for non-primary duplicate assignment",
             extra={
                 "assignment_id": parsed.get("id"),
                 "duplicate_group_id": duplicate_group_id,
@@ -473,7 +473,7 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
             # Metrics must never break runtime
             pass
         return False
-    
+
     return True
 
 
@@ -481,7 +481,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not DM_ENABLED:
         log_event(logger, logging.DEBUG, "dm_skipped", reason="dm_disabled")
         return {"ok": False, "skipped": True, "reason": "dm_disabled"}
-    
+
     # Check if we should skip this assignment due to duplicate filtering
     if not _should_send_dm_for_assignment(payload):
         log_event(logger, logging.INFO, "dm_skipped", reason="non_primary_duplicate")
@@ -532,21 +532,21 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 # Metrics must never break runtime
                 pass
             return {"ok": False, "error": str(e)}
-        
+
         initial_match_count = len(matches)
 
         # Apply hard cap on recipients
         matches = matches[:DM_MAX_RECIPIENTS]
-        
+
         filtered_count = initial_match_count - len(matches)
         if filtered_count > 0:
-            log_event(logger, logging.INFO, "dm_adaptive_filter", 
-                     initial_matches=initial_match_count, 
-                     filtered_out=filtered_count, 
+            log_event(logger, logging.INFO, "dm_adaptive_filter",
+                     initial_matches=initial_match_count,
+                     filtered_out=filtered_count,
                      remaining=len(matches))
-        
+
         if not matches:
-            log_event(logger, logging.INFO, "dm_no_matches", 
+            log_event(logger, logging.INFO, "dm_no_matches",
                      initial_matches=initial_match_count,
                      after_filtering=len(matches))
             return {"ok": True, "sent": 0, "matched": 0, "initial_matched": initial_match_count}
@@ -562,7 +562,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
         # Get the postal_coords_estimated flag from payload
         parsed = payload.get("parsed") or {}
         postal_coords_estimated = parsed.get("postal_coords_estimated", False)
-        
+
         for match in matches:
             chat_id = str(match.get("chat_id") or "").strip()
             if not chat_id:
@@ -570,9 +570,9 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
 
             distance_km = match.get("distance_km")
             text = build_message_text(
-                payload, 
-                include_clicks=False, 
-                clicks=0, 
+                payload,
+                include_clicks=False,
+                clicks=0,
                 distance_km=_safe_float(distance_km),
                 postal_coords_estimated=bool(postal_coords_estimated)
             )
@@ -625,7 +625,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 # Metrics must never break runtime
                 pass
-            
+
             # Record assignment rating for this tutor (best-effort; used for adaptive thresholds)
             try:
                 sb_record = _supabase_client()
@@ -642,7 +642,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                     )
             except Exception as e:
                 logger.debug(f"Could not record assignment rating: {e}")
-            
+
             time.sleep(0.05)
 
         fallback_written = False
@@ -682,9 +682,9 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             fallback_written=fallback_written,
         )
         return {
-            "ok": failures == 0, 
+            "ok": failures == 0,
             "initial_matched": initial_match_count,
-            "matched": len(matches), 
-            "sent": sent, 
+            "matched": len(matches),
+            "sent": sent,
             "failures": failures,
         }

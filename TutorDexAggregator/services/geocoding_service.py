@@ -46,13 +46,13 @@ def geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[
     """
     if nominatim_disabled():
         return None
-    
+
     pc = normalize_sg_postal_code(postal_code)
     if not pc:
         return None
 
     import requests
-    
+
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
     headers = {"User-Agent": (str(_cfg().nominatim_user_agent or "").strip() or "TutorDexAggregator/1.0")}

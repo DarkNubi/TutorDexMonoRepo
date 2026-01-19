@@ -13,15 +13,15 @@ from shared.observability.exception_handler import swallow_exception
 
 try:
     from utils.field_coercion import (
-        safe_str, normalize_sg_postal_code, coerce_int_like,
-        first_text, coerce_text_list, truthy_text, truthy
+        safe_str, coerce_int_like,
+        coerce_text_list, truthy_text
     )
     from utils.timestamp_utils import coerce_iso_ts
     from geo_enrichment import enrich_from_coords
 except Exception:
     from TutorDexAggregator.utils.field_coercion import (
-        safe_str, normalize_sg_postal_code, coerce_int_like,
-        first_text, coerce_text_list, truthy_text, truthy
+        safe_str, coerce_int_like,
+        coerce_text_list, truthy_text
     )
     from TutorDexAggregator.utils.timestamp_utils import coerce_iso_ts
     from TutorDexAggregator.geo_enrichment import enrich_from_coords
@@ -205,10 +205,8 @@ def build_signals(parsed: Dict[str, Any], raw_text: str, normalized_text: str) -
     try:
         try:
             from signals_builder import build_signals as build_signals_impl
-            from normalize import normalize_text
         except Exception:
             from TutorDexAggregator.signals_builder import build_signals as build_signals_impl
-            from TutorDexAggregator.normalize import normalize_text
 
         sig, err = build_signals_impl(parsed=parsed, raw_text=raw_text, normalized_text=normalized_text)
         if not err and isinstance(sig, dict):
