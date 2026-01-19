@@ -17,7 +17,7 @@ logger = logging.getLogger("triage_reporter")
 def get_triage_config() -> Dict[str, Optional[str]]:
     """
     Get triage reporting configuration from environment.
-    
+
     Returns:
         Dict with chat_id, bot_token, and api_base
     """
@@ -47,10 +47,10 @@ def _parse_int_env(name: str) -> Optional[int]:
 def get_thread_id_for_category(category: str) -> Optional[int]:
     """
     Get Telegram thread ID for a triage category.
-    
+
     Args:
         category: Category like "extraction_error", "non_assignment", "compilation"
-        
+
     Returns:
         Thread ID or None
     """
@@ -80,14 +80,14 @@ def send_telegram_message(
 ) -> Dict[str, Any]:
     """
     Send a message to Telegram.
-    
+
     Args:
         to_chat_id: Target chat ID
         text: Message text
         thread_id: Optional thread/topic ID
         bot_token: Bot token (if None, fetched from config)
         api_base: API base URL (if None, uses default or fetched from config)
-        
+
     Returns:
         Response dict with "ok" status
     """
@@ -126,11 +126,11 @@ def send_telegram_message(
 def chunk_text(text: str, *, max_length: int = 4000) -> List[str]:
     """
     Split text into chunks that fit Telegram's message length limit.
-    
+
     Args:
         text: Text to chunk
         max_length: Maximum chunk length
-        
+
     Returns:
         List of text chunks
     """
@@ -160,7 +160,7 @@ def try_report_triage_message(
 ) -> bool:
     """
     Report a filtered/failed message to the triage Telegram channel.
-    
+
     Args:
         category: Triage category (e.g., "extraction_error", "non_assignment")
         message_link: Link to original message
@@ -169,7 +169,7 @@ def try_report_triage_message(
         raw_text: Raw message text
         reason: Short reason for triage
         details: Additional details dict
-        
+
     Returns:
         True if reported successfully, False otherwise
     """

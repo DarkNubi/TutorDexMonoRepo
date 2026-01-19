@@ -1,4 +1,3 @@
-import os
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -12,7 +11,7 @@ try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
-    from utils.field_coercion import truthy, safe_str  # type: ignore
+    from utils.field_coercion import safe_str  # type: ignore
     from services.row_builder import build_assignment_row  # type: ignore
     from services.merge_policy import merge_patch_body  # type: ignore
     from services.persistence_operations import upsert_agency  # type: ignore
@@ -23,7 +22,7 @@ except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from TutorDexAggregator.utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
-    from TutorDexAggregator.utils.field_coercion import truthy, safe_str  # type: ignore
+    from TutorDexAggregator.utils.field_coercion import safe_str  # type: ignore
     from TutorDexAggregator.services.row_builder import build_assignment_row  # type: ignore
     from TutorDexAggregator.services.merge_policy import merge_patch_body  # type: ignore
     from TutorDexAggregator.services.persistence_operations import upsert_agency  # type: ignore

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from delivery.format_utils import _join_text
+
 
 def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     parsed = payload.get("parsed") or {}

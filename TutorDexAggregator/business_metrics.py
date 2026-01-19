@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 def update_assignments_per_hour(supabase_client, metric_gauge) -> int:
     """
     Update the assignments_per_hour metric.
-    
+
     Counts assignments created in the last hour.
-    
+
     Args:
         supabase_client: Supabase client for querying
         metric_gauge: Prometheus Gauge to update
-        
+
     Returns:
         Number of assignments in last hour
     """
@@ -50,13 +50,13 @@ def update_assignments_per_hour(supabase_client, metric_gauge) -> int:
 def update_tutors_with_active_dms(redis_client, metric_gauge) -> int:
     """
     Update the tutors_with_active_dms metric.
-    
+
     Counts tutor profiles stored in Redis (active DM subscriptions).
-    
+
     Args:
         redis_client: Redis client
         metric_gauge: Prometheus Gauge to update
-        
+
     Returns:
         Number of tutors with profiles
     """
@@ -84,7 +84,7 @@ def update_tutors_with_active_dms(redis_client, metric_gauge) -> int:
 def record_time_to_first_match(created_at: datetime, matched_at: datetime, metric_histogram):
     """
     Record time from assignment creation to first match.
-    
+
     Args:
         created_at: When assignment was created
         matched_at: When first match occurred (DM sent)
@@ -109,7 +109,7 @@ def record_time_to_first_match(created_at: datetime, matched_at: datetime, metri
 def update_assignments_by_status(supabase_client, metric_gauge):
     """
     Update the assignments_by_status metric for all statuses.
-    
+
     Args:
         supabase_client: Supabase client for querying
         metric_gauge: Prometheus Gauge with 'status' label
@@ -139,7 +139,7 @@ def update_assignments_by_status(supabase_client, metric_gauge):
 def update_tutor_engagement_metrics(supabase_client, redis_client, metrics):
     """
     Update tutor engagement metrics.
-    
+
     Args:
         supabase_client: Supabase client
         redis_client: Redis client
@@ -171,7 +171,7 @@ def update_tutor_engagement_metrics(supabase_client, redis_client, metrics):
 def update_assignment_quality_metrics(supabase_client, metrics):
     """
     Update assignment quality metrics.
-    
+
     Args:
         supabase_client: Supabase client
         metrics: Dict with gauge metrics (assignments_with_parsed_rate, assignments_with_location)
@@ -201,9 +201,9 @@ def update_assignment_quality_metrics(supabase_client, metrics):
 def update_all_business_metrics(supabase_client, redis_client, metrics_dict):
     """
     Update all business metrics in one call.
-    
+
     Call this periodically (e.g., every 60 seconds) from a background thread.
-    
+
     Args:
         supabase_client: Supabase client
         redis_client: Redis client

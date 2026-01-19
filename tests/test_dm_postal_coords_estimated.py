@@ -14,8 +14,8 @@ os.environ["DM_ENABLED"] = "0"  # Disable DM sending for unit tests
 sys.modules['logging_setup'] = MagicMock()
 sys.modules['observability_metrics'] = MagicMock()
 
-from dm_assignments import _get_or_geocode_assignment_coords
-from broadcast_assignments import build_message_text
+from dm_assignments import _get_or_geocode_assignment_coords  # noqa: E402
+from broadcast_assignments import build_message_text  # noqa: E402
 
 
 class TestDMPostalCoordsEstimated(unittest.TestCase):

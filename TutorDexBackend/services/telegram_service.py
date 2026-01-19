@@ -25,13 +25,13 @@ class TelegramService:
     def verify_webhook(self, request: Request) -> bool:
         """
         Verify Telegram webhook request using secret token.
-        
+
         When a webhook is set with a secret_token, Telegram includes it in the
         X-Telegram-Bot-Api-Secret-Token header. We verify it matches our configured secret.
-        
+
         Args:
             request: FastAPI request object
-            
+
         Returns:
             True if verification passes or no secret is configured (permissive mode)
         """
@@ -50,7 +50,7 @@ class TelegramService:
     async def answer_callback_query(self, callback_query_id: str, url: Optional[str]) -> None:
         """
         Answer Telegram callback query.
-        
+
         Args:
             callback_query_id: Telegram callback query ID
             url: Optional URL to open

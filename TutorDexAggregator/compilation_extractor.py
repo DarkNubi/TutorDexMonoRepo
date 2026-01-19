@@ -34,15 +34,15 @@ _CODE_PATTERNS = [
 def extract_assignment_codes(text: str) -> Tuple[List[str], dict]:
     """
     Extract assignment codes from a compilation message.
-    
+
     Args:
         text: The raw message text (compilation post)
-        
+
     Returns:
         Tuple of (codes_list, metadata_dict)
         - codes_list: List of unique assignment codes found (de-duplicated, preserving order)
         - metadata_dict: Diagnostic info about extraction (pattern matches, etc.)
-        
+
     Examples:
         >>> text = "Job ID: ABC123\\nJob ID: XYZ789\\nJob ID: ABC123"
         >>> codes, meta = extract_assignment_codes(text)
@@ -97,11 +97,11 @@ def extract_assignment_codes(text: str) -> Tuple[List[str], dict]:
 def should_process_compilation(codes: List[str], min_codes: int = 1) -> bool:
     """
     Determine if a compilation has enough valid codes to be worth processing.
-    
+
     Args:
         codes: List of extracted codes
         min_codes: Minimum number of codes required (default: 1)
-        
+
     Returns:
         True if compilation should be processed, False otherwise
     """

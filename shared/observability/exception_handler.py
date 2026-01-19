@@ -21,20 +21,20 @@ def swallow_exception(
 ) -> None:
     """
     Log and count a swallowed exception with context.
-    
+
     Use this function when an exception needs to be suppressed but should still
     be observable through logs and metrics. This is appropriate for:
     - Best-effort operations (parsing, enrichment, optional metadata)
     - Cleanup/teardown operations
     - Metrics collection that must not break the runtime
-    
+
     DO NOT use this for core logic paths - those should fail fast.
-    
+
     Args:
         exc: The exception that was caught
         context: Short, stable, meaningful context string (used in metrics labels)
         extra: Additional context to include in logs
-        
+
     Example:
         try:
             optional_enrichment()

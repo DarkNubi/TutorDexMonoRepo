@@ -73,8 +73,7 @@ class TestCacheServiceRateLimiting:
 
         # Simulate many requests
         store._data = {}  # Reset
-        bucket = int(time.time() // 60)
-        key_prefix = ":rl:assignments:"
+        int(time.time() // 60)
 
         # Set a key that's over limit (assuming default 60 rpm)
         for i in range(65):

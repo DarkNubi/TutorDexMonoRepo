@@ -17,7 +17,7 @@ def utc_now_iso() -> str:
 def parse_iso_dt(value: Optional[str]) -> Optional[datetime]:
     """
     Parse ISO 8601 timestamp string into datetime object.
-    
+
     Handles both 'Z' suffix and '+00:00' timezone format.
     Returns None if parsing fails.
     """
@@ -35,7 +35,7 @@ def parse_iso_dt(value: Optional[str]) -> Optional[datetime]:
 def coerce_iso_ts(value) -> Optional[str]:
     """
     Coerce value to ISO 8601 timestamp string.
-    
+
     If value is datetime, converts to UTC ISO format with 'Z' suffix.
     Otherwise converts to string and strips whitespace.
     """
@@ -50,7 +50,7 @@ def coerce_iso_ts(value) -> Optional[str]:
 def max_iso_ts(a: Optional[str], b: Optional[str]) -> Optional[str]:
     """
     Return the later of two ISO-ish timestamps.
-    
+
     If parsing fails, prefer a non-empty value deterministically.
     Falls back to 'b' if both are unparseable.
     """

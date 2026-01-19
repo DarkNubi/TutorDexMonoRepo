@@ -61,7 +61,6 @@ _LEVEL_CANON: dict[str, str] = {
     "pre uni": "Junior College",
     "pre university": "Junior College",
     "preuniversity": "Junior College",
-    "pre university": "Junior College",
     # International
     "ib": "IB",
     "i b": "IB",

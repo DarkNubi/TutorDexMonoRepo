@@ -218,7 +218,7 @@ def update_tiers(
 
                 # Update stored message_html in broadcast_messages for record-keeping
                 try:
-                    presp = client.patch(f"broadcast_messages?external_id=eq.{requests.utils.quote(ext, safe='')}", {
+                    client.patch(f"broadcast_messages?external_id=eq.{requests.utils.quote(ext, safe='')}", {
                                          "message_html": new_text}, timeout=20, prefer="return=minimal")
                 except Exception as e:
                     swallow_exception(e, context="broadcast_message_update", extra={"module": __name__})

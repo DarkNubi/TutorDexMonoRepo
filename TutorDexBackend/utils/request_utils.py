@@ -12,12 +12,12 @@ from fastapi import Request
 def get_client_ip(request: Request) -> str:
     """
     Extract client IP from request headers or client object.
-    
+
     Checks X-Forwarded-For header first, falls back to client.host.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         Client IP address or "unknown"
     """
@@ -31,10 +31,10 @@ def get_client_ip(request: Request) -> str:
 def hash_ip(ip: str) -> str:
     """
     Hash IP address for privacy (SHA256, first 16 chars).
-    
+
     Args:
         ip: IP address string
-        
+
     Returns:
         Hashed IP (16 character hex string)
     """
@@ -47,13 +47,13 @@ def hash_ip(ip: str) -> str:
 def parse_traceparent(value: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
     """
     Parse W3C traceparent header.
-    
+
     Format: version-traceid-spanid-flags
     Example: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-    
+
     Args:
         value: traceparent header value
-        
+
     Returns:
         Tuple of (trace_id, span_id) or (None, None) if invalid
     """
@@ -73,10 +73,10 @@ def parse_traceparent(value: Optional[str]) -> Tuple[Optional[str], Optional[str
 def clean_optional_string(value: Optional[str]) -> Optional[str]:
     """
     Clean optional string value (strip whitespace, return None if empty).
-    
+
     Args:
         value: Optional string to clean
-        
+
     Returns:
         Cleaned string or None
     """
@@ -89,12 +89,12 @@ def clean_optional_string(value: Optional[str]) -> Optional[str]:
 def canonical_query_string(items: List[Tuple[str, str]]) -> str:
     """
     Generate stable canonical query string for caching.
-    
+
     Sorts query parameters for consistent cache keys.
-    
+
     Args:
         items: List of (key, value) tuples
-        
+
     Returns:
         Canonical query string (sorted, URL-encoded)
     """
@@ -106,13 +106,13 @@ def canonical_query_string(items: List[Tuple[str, str]]) -> str:
 def build_cache_key(path: str, items: List[Tuple[str, str]], *, namespace: str, redis_prefix: str) -> str:
     """
     Build cache key from path and query parameters.
-    
+
     Args:
         path: Request path
         items: Query parameter (key, value) tuples
         namespace: Cache namespace
         redis_prefix: Redis key prefix
-        
+
     Returns:
         Cache key string
     """

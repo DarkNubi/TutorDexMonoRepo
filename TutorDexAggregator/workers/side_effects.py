@@ -16,11 +16,11 @@ def should_broadcast(
 ) -> bool:
     """
     Check if broadcasting is enabled and available.
-    
+
     Args:
         enable_broadcast: Whether broadcasting is enabled in config
         broadcast_module: Broadcast assignments module (or None if not available)
-        
+
     Returns:
         True if broadcasting should be attempted
     """
@@ -33,11 +33,11 @@ def should_send_dms(
 ) -> bool:
     """
     Check if DM sending is enabled and available.
-    
+
     Args:
         enable_dms: Whether DM sending is enabled in config
         send_dms_func: Send DMs function (or None if not available)
-        
+
     Returns:
         True if DM sending should be attempted
     """
@@ -51,14 +51,14 @@ def broadcast_assignment(
 ) -> Optional[Dict[str, Any]]:
     """
     Broadcast assignment to aggregator channel.
-    
+
     Best-effort: failures are logged but don't fail the extraction.
-    
+
     Args:
         payload: Assignment payload to broadcast
         broadcast_module: Broadcast assignments module
         cid: Correlation ID for logging
-        
+
     Returns:
         Broadcast result dict or None if failed
     """
@@ -81,14 +81,14 @@ def send_assignment_dms(
 ) -> Optional[Dict[str, Any]]:
     """
     Send DMs to matched tutors.
-    
+
     Best-effort: failures are logged but don't fail the extraction.
-    
+
     Args:
         payload: Assignment payload for matching
         send_dms_func: Function to send DMs
         cid: Correlation ID for logging
-        
+
     Returns:
         DM sending result dict or None if failed
     """
@@ -112,15 +112,15 @@ def execute_side_effects(
 ) -> Dict[str, Optional[Dict[str, Any]]]:
     """
     Execute all side effects (broadcast, DMs) for an assignment.
-    
+
     Side effects are best-effort - failures are logged but don't fail extraction.
-    
+
     Args:
         payload: Assignment payload
         config: Configuration dict with enable flags
         modules: Dict with broadcast_module and send_dms_func
         cid: Correlation ID for logging
-        
+
     Returns:
         Dict with results: {"broadcast": result, "dms": result}
     """

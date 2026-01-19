@@ -34,11 +34,11 @@ class AnalyticsService:
     async def check_click_cooldown(self, request: Request, external_id: str) -> bool:
         """
         Check if click should be tracked (respects cooldown).
-        
+
         Args:
             request: FastAPI request object
             external_id: Assignment external ID
-            
+
         Returns:
             True if click should be incremented, False if within cooldown
         """
@@ -77,11 +77,11 @@ class AnalyticsService:
     ) -> Optional[str]:
         """
         Resolve original URL from external_id or use provided destination_url.
-        
+
         Args:
             external_id: Assignment external ID
             destination_url: Direct destination URL
-            
+
         Returns:
             Resolved URL or None
         """
@@ -115,7 +115,7 @@ class AnalyticsService:
     ) -> None:
         """
         Insert analytics event into Supabase.
-        
+
         Args:
             user_id: User ID
             assignment_id: Optional assignment ID

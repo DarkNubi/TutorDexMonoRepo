@@ -23,7 +23,7 @@ Key Insights from Validation:
 
 Usage:
     from TutorDexAggregator.duplicate_detector import DuplicateDetector
-    
+
     detector = DuplicateDetector(supabase_url, supabase_key)
     detector.detect_and_update_duplicates(assignment_id)
 """
@@ -83,7 +83,7 @@ class DuplicateDetector:
     def __init__(self, supabase_url: str, supabase_key: str, config: Optional[DetectionConfig] = None):
         """
         Initialize duplicate detector
-        
+
         Args:
             supabase_url: Supabase project URL
             supabase_key: Supabase service role key
@@ -191,10 +191,10 @@ class DuplicateDetector:
     def detect_and_update_duplicates(self, assignment_id: int) -> Optional[int]:
         """
         Detect duplicates for a newly persisted assignment and update database
-        
+
         Args:
             assignment_id: ID of the assignment to check for duplicates
-            
+
         Returns:
             Duplicate group ID if duplicates found, None otherwise
         """
@@ -264,10 +264,10 @@ class DuplicateDetector:
     def _find_duplicates(self, assignment: Dict[str, Any]) -> List[DuplicateMatch]:
         """
         Find potential duplicates for an assignment
-        
+
         Args:
             assignment: Assignment dict from database
-            
+
         Returns:
             List of DuplicateMatch objects, sorted by similarity score (descending)
         """
@@ -333,7 +333,7 @@ class DuplicateDetector:
     def _calculate_similarity(self, a: Dict[str, Any], b: Dict[str, Any]) -> Tuple[float, List[str]]:
         """
         Calculate similarity score between two assignments
-        
+
         Returns:
             Tuple of (score, list_of_matching_signals)
         """
@@ -486,11 +486,11 @@ class DuplicateDetector:
     def _update_duplicate_group(self, assignment: Dict[str, Any], match: DuplicateMatch) -> int:
         """
         Update or create duplicate group
-        
+
         Args:
             assignment: New assignment data
             match: Best matching assignment
-            
+
         Returns:
             Duplicate group ID
         """
@@ -638,7 +638,7 @@ class DuplicateDetector:
     def _select_primary(self, assignments: List[Dict[str, Any]]) -> int:
         """
         Select primary assignment from a list
-        
+
         Priority:
         1. Highest parse quality score
         2. Earliest published timestamp
@@ -713,12 +713,12 @@ def detect_duplicates_for_assignment(assignment_id: int, supabase_url: str = Non
                                      supabase_key: str = None) -> Optional[int]:
     """
     Convenience function to detect duplicates for a single assignment
-    
+
     Args:
         assignment_id: Assignment ID to check
         supabase_url: Supabase URL (defaults to env var)
         supabase_key: Supabase key (defaults to env var)
-        
+
     Returns:
         Duplicate group ID if found, None otherwise
     """

@@ -16,20 +16,20 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
-from shared.config import load_backend_config
+from shared.config import load_backend_config  # noqa: E402
 
 _CFG = load_backend_config()
 
 def _get_rate_limit_key(request: Request) -> str:
     """
     Get the key for rate limiting.
-    
+
     Uses X-Forwarded-For if available (for proxied requests),
     otherwise falls back to direct client IP.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         IP address to use for rate limiting
     """
@@ -45,7 +45,7 @@ def _get_rate_limit_key(request: Request) -> str:
 def _is_rate_limit_enabled() -> bool:
     """
     Check if rate limiting is enabled via environment variable.
-    
+
     Returns:
         True if rate limiting should be active
     """
@@ -55,10 +55,10 @@ def _is_rate_limit_enabled() -> bool:
 def _get_redis_url() -> Optional[str]:
     """
     Get Redis URL for rate limit storage.
-    
+
     If Redis is not available, slowapi will fall back to in-memory storage
     (which won't work well in multi-process deployments).
-    
+
     Returns:
         Redis URL or None
     """
@@ -98,13 +98,13 @@ limiter = Limiter(
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
     """
     Custom handler for rate limit exceeded errors.
-    
+
     Returns a JSON response with clear error message and retry information.
-    
+
     Args:
         request: The request that exceeded the limit
         exc: The rate limit exception
-        
+
     Returns:
         JSON response with 429 status code
     """
@@ -134,7 +134,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
 def get_limiter() -> Limiter:
     """
     Get the configured limiter instance.
-    
+
     Returns:
         Slowapi Limiter instance
     """
@@ -144,7 +144,7 @@ def get_limiter() -> Limiter:
 def get_rate_limit_middleware():
     """
     Get the rate limiting middleware.
-    
+
     Returns:
         SlowAPIMiddleware instance
     """

@@ -15,10 +15,10 @@ logger = logging.getLogger("enrichment_pipeline")
 def _build_signals_summary(signals: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Build summary of signals for metadata.
-    
+
     Args:
         signals: Signals dict
-        
+
     Returns:
         Summary dict with counts and flags
     """
@@ -44,14 +44,14 @@ def _build_signals_summary(signals: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 def fill_postal_code_from_text(parsed: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
     """
     Best-effort, deterministic enrichment for postal codes.
-    
+
     - Ensures `parsed["postal_code"]` is a list[str] when explicit 6-digit SG codes exist.
     - Never guesses a postal code from an address (no external geocoding).
-    
+
     Args:
         parsed: Parsed assignment dict
         raw_text: Raw message text
-        
+
     Returns:
         Updated parsed dict with postal codes
     """
@@ -80,13 +80,13 @@ def apply_postal_code_estimated(
 ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
     """
     Apply postal code estimation if enabled.
-    
+
     Args:
         parsed: Parsed assignment dict
         raw_text: Raw message text
         estimate_func: Function to call for estimation
         enabled: Whether estimation is enabled
-        
+
     Returns:
         Tuple of (updated_parsed, estimation_metadata)
     """
@@ -117,16 +117,16 @@ def apply_deterministic_time(
 ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
     """
     Apply deterministic time availability extraction if enabled.
-    
+
     Overwrites LLM output when enabled.
-    
+
     Args:
         parsed: Parsed assignment dict
         raw_text: Raw message text
         normalized_text: Normalized message text
         extract_func: Function to call for extraction
         enabled: Whether extraction is enabled
-        
+
     Returns:
         Tuple of (updated_parsed, extraction_metadata)
     """
@@ -157,19 +157,19 @@ def apply_hard_validation(
 ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
     """
     Apply hard validation if enabled.
-    
+
     Modes:
     - "off": Skip validation
     - "report": Report violations but don't modify
     - "enforce": Apply fixes from validator
-    
+
     Args:
         parsed: Parsed assignment dict
         raw_text: Raw message text
         normalized_text: Normalized message text
         validate_func: Function to call for validation
         mode: Validation mode
-        
+
     Returns:
         Tuple of (updated_parsed, validation_metadata)
     """
@@ -202,17 +202,17 @@ def build_signals(
 ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """
     Build deterministic signals if enabled.
-    
+
     Signals include: subjects, levels, academic requests, tutor types, rates.
     Stored in metadata only, never breaks the job.
-    
+
     Args:
         parsed: Parsed assignment dict
         raw_text: Raw message text
         normalized_text: Normalized message text
         signals_func: Function to call for signal building
         enabled: Whether signal building is enabled
-        
+
     Returns:
         Tuple of (signals_dict, signals_metadata)
     """
@@ -248,21 +248,21 @@ def run_enrichment_pipeline(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Run the complete enrichment pipeline.
-    
+
     Steps:
     1. Fill postal code from text (always)
     2. Estimate postal codes (if enabled)
     3. Extract deterministic time availability (if enabled)
     4. Apply hard validation (if mode != "off")
     5. Build deterministic signals (if enabled)
-    
+
     Args:
         parsed: Parsed assignment dict
         raw_text: Raw message text
         normalized_text: Normalized message text
         config: Configuration dict with enable flags
         functions: Dict of functions to call for each step
-        
+
     Returns:
         Tuple of (enriched_parsed, metadata_dict)
     """

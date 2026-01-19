@@ -41,7 +41,7 @@ class SupabaseRPC300Error(SupabaseError):
 class SupabaseClient:
     """
     Unified Supabase PostgREST client.
-    
+
     Provides a consistent interface for all Supabase operations across services.
     Handles:
     - Authentication headers
@@ -54,7 +54,7 @@ class SupabaseClient:
     def __init__(self, config: SupabaseConfig):
         """
         Initialize Supabase client.
-        
+
         Args:
             config: SupabaseConfig with URL, key, and options
         """
@@ -87,10 +87,10 @@ class SupabaseClient:
     def _headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """
         Generate request headers with authentication.
-        
+
         Args:
             extra: Additional headers to include
-            
+
         Returns:
             Dict of headers
         """
@@ -224,7 +224,7 @@ class SupabaseClient:
     ) -> List[Dict[str, Any]]:
         """
         SELECT query with filters.
-        
+
         Args:
             table: Table name
             filters: Dict of column=value filters (uses eq operator)
@@ -232,10 +232,10 @@ class SupabaseClient:
             limit: Max rows to return
             offset: Rows to skip (for pagination)
             order_by: Order by clause (e.g., "created_at.desc")
-            
+
         Returns:
             List of rows
-            
+
         Raises:
             SupabaseError: On API error
         """
@@ -273,14 +273,14 @@ class SupabaseClient:
     def insert(self, table: str, data: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
         """
         INSERT single row or multiple rows.
-        
+
         Args:
             table: Table name
             data: Single row dict or list of row dicts
-            
+
         Returns:
             Inserted row(s)
-            
+
         Raises:
             SupabaseError: On API error
         """
@@ -309,15 +309,15 @@ class SupabaseClient:
     ) -> Union[Dict, List[Dict]]:
         """
         UPSERT single row or multiple rows.
-        
+
         Args:
             table: Table name
             data: Single row dict or list of row dicts
             on_conflict: Column(s) for conflict resolution
-            
+
         Returns:
             Upserted row(s)
-            
+
         Raises:
             SupabaseError: On API error
         """
@@ -347,15 +347,15 @@ class SupabaseClient:
     ) -> List[Dict[str, Any]]:
         """
         UPDATE rows matching filters.
-        
+
         Args:
             table: Table name
             data: Columns to update
             filters: WHERE conditions
-            
+
         Returns:
             Updated rows
-            
+
         Raises:
             SupabaseError: On API error
         """
@@ -381,14 +381,14 @@ class SupabaseClient:
     def delete(self, table: str, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         DELETE rows matching filters.
-        
+
         Args:
             table: Table name
             filters: WHERE conditions
-            
+
         Returns:
             Deleted rows
-            
+
         Raises:
             SupabaseError: On API error
         """
@@ -413,16 +413,16 @@ class SupabaseClient:
     def rpc(self, function: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
         Call RPC function.
-        
+
         Includes detection for HTTP 300 (audit Priority 2).
-        
+
         Args:
             function: Function name
             params: Function parameters
-            
+
         Returns:
             Function result
-            
+
         Raises:
             SupabaseRPC300Error: If RPC returns HTTP 300
             SupabaseError: On other API errors
@@ -454,11 +454,11 @@ class SupabaseClient:
     def count(self, table: str, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Count rows matching filters.
-        
+
         Args:
             table: Table name
             filters: WHERE conditions
-            
+
         Returns:
             Row count
         """
@@ -499,14 +499,14 @@ class SupabaseClient:
 def create_client_from_env() -> SupabaseClient:
     """
     Create Supabase client from environment variables.
-    
+
     Environment variables:
     - SUPABASE_URL: Supabase project URL
     - SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY: API key
     - SUPABASE_TIMEOUT: Request timeout in seconds (default: 30)
     - SUPABASE_MAX_RETRIES: Max retry attempts (default: 3)
     - SUPABASE_ENABLED: Enable/disable client (default: 1)
-    
+
     Returns:
         Configured SupabaseClient
     """

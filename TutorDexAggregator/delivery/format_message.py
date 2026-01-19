@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+import html
+from typing import Any, Dict, Optional
 
 from agency_registry import get_agency_display_name
 
@@ -21,10 +22,10 @@ def build_message_text(
     postal_coords_estimated: bool = False,
 ) -> str:
     """Build formatted message text for Telegram.
-    
+
     When distance_km is provided, this is treated as a DM (no freshness, distance shown).
     When distance_km is None, this is treated as a broadcast (freshness shown, no distance).
-    
+
     Args:
         payload: Assignment payload
         include_clicks: Whether to include click count (deprecated, unused)

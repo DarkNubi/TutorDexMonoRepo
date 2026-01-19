@@ -10,10 +10,10 @@ This script helps when changing from one broadcast channel to another by:
 Usage:
     # Dry run to preview
     python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222 --dry-run
-    
+
     # Execute migration (copy to new, keep old)
     python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222
-    
+
     # Execute migration and clean up old channel
     python migrate_broadcast_channel.py --old-chat -1001111111111 --new-chat -1002222222222 --delete-old
 """
@@ -34,8 +34,8 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from logging_setup import log_event, setup_logging
-from supabase_env import resolve_supabase_url
+from logging_setup import log_event, setup_logging  # noqa: E402
+from supabase_env import resolve_supabase_url  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger('migrate_broadcast_channel')
@@ -101,7 +101,7 @@ def migrate_channel(
 ) -> Dict[str, Any]:
     """
     Migrate all open assignments from old channel to new channel.
-    
+
     Returns statistics about the migration.
     """
     logger.info('Starting migration: old=%s new=%s delete_old=%s dry_run=%s',

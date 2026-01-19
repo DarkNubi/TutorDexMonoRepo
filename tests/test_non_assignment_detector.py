@@ -25,9 +25,9 @@ class TestStatusOnlyMessages:
 
     def test_closed_with_whitespace(self):
         text = """
-        
+
         ASSIGNMENT CLOSED
-        
+
         """
         is_non, msg_type, details = is_non_assignment(text)
         assert is_non is True
@@ -120,7 +120,7 @@ There are many Tuition job opportunities. Apply now!
     def test_announcement(self):
         text = """📣 Important Announcement
 
-Our agency will be closed during CNY. 
+Our agency will be closed during CNY.
 We will resume operations on 5th Feb.
         """
         is_non, msg_type, details = is_non_assignment(text)
@@ -135,12 +135,12 @@ class TestValidAssignments:
         text = """Looking for Online Tutor to teach Economics (EC1002)- Online Tuition
 
 🔻 Level and Subject(s):   Economics (EC1002)
-🔻 Location/Area: Online Tuition 
+🔻 Location/Area: Online Tuition
 
 🔻 Hourly Rate: Kindly quote best rate
-🔻 Lesson Per Week: Once a week, 1.5 hours per session 
+🔻 Lesson Per Week: Once a week, 1.5 hours per session
 🔻 Student's Gender: Female (M)
-🔻 Time: Kindly state your "Detailed" Available time slots from Monday to Sunday. 
+🔻 Time: Kindly state your "Detailed" Available time slots from Monday to Sunday.
 
 Job ID: NT29838
         """

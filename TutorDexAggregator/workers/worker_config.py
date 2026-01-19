@@ -53,7 +53,7 @@ class WorkerConfig:
 def load_env_file(env_path: Optional[Path] = None) -> None:
     """
     Load environment variables from .env file.
-    
+
     Args:
         env_path: Path to .env file (if None, uses AGG_DIR/.env)
     """
@@ -89,10 +89,10 @@ def load_env_file(env_path: Optional[Path] = None) -> None:
 def get_supabase_config() -> Tuple[str, str]:
     """
     Get Supabase URL and key from environment.
-    
+
     Returns:
         Tuple of (url, key)
-        
+
     Raises:
         SystemExit: If Supabase is not properly configured
     """
@@ -121,7 +121,7 @@ def truthy(value: Optional[str]) -> bool:
 def load_worker_config() -> WorkerConfig:
     """
     Load worker configuration from environment variables.
-    
+
     Returns:
         WorkerConfig instance with all settings
     """

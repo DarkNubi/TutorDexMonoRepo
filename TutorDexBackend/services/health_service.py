@@ -83,10 +83,10 @@ class HealthService:
     def webhook_health(self, bot_token: str) -> Dict[str, Any]:
         """
         Check Telegram webhook status for the broadcast bot.
-        
+
         Args:
             bot_token: Telegram bot token
-            
+
         Returns:
             Dict with webhook information including URL, pending updates, and errors
         """
@@ -143,11 +143,11 @@ class HealthService:
     def check_service_health(url: str, timeout_s: float = 2.0) -> Dict[str, Any]:
         """
         Check health of a service via HTTP GET.
-        
+
         Args:
             url: Service health endpoint URL
             timeout_s: Request timeout in seconds
-            
+
         Returns:
             Dict with ok, status_code, and optional body/error
         """

@@ -33,9 +33,9 @@ PARENT = HERE.parent
 if str(PARENT) not in sys.path:
     sys.path.insert(0, str(PARENT))
 
-from logging_setup import log_event, setup_logging
-from supabase_persist import SupabaseRestClient, SupabaseConfig, load_config_from_env
-from taxonomy.canonicalize_subjects import canonicalize_subjects
+from logging_setup import log_event, setup_logging  # noqa: E402
+from supabase_persist import SupabaseRestClient, SupabaseConfig, load_config_from_env  # noqa: E402
+from taxonomy.canonicalize_subjects import canonicalize_subjects  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger("backfill_subjects_taxonomy_v2")

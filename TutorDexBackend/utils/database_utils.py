@@ -17,15 +17,15 @@ logger = logging.getLogger("tutordex_backend")
 def pg_array_literal(items: List[str]) -> str:
     """
     Format Python list as PostgreSQL array literal.
-    
+
     PostgREST array operators expect format: {"value1","value2"}
-    
+
     Args:
         items: List of string values
-        
+
     Returns:
         PostgreSQL array literal string
-        
+
     Example:
         ["Junior College", "IB"] -> '{"Junior College","IB"}'
     """
@@ -43,13 +43,13 @@ def pg_array_literal(items: List[str]) -> str:
 def extract_count_from_header(value: Optional[str]) -> Optional[int]:
     """
     Extract total count from PostgREST Content-Range header.
-    
+
     Args:
         value: Content-Range header value
-        
+
     Returns:
         Total count or None if not parseable
-        
+
     Example:
         "0-9/100" -> 100
         "*/1234" -> 1234
@@ -75,10 +75,10 @@ def count_matching_assignments(
 ) -> Optional[int]:
     """
     Count assignments matching given criteria in time window.
-    
+
     Uses published_at (source publish time) not last_seen (processing time)
     to avoid backfill inflation.
-    
+
     Args:
         supabase_store: SupabaseStore instance with enabled() and client attribute
         days: Days of history to include
@@ -86,7 +86,7 @@ def count_matching_assignments(
         specific_student_levels: Specific level filters
         subjects_canonical: Canonical subject filters
         subjects_general: General subject filters
-        
+
     Returns:
         Count of matching assignments or None on error
     """

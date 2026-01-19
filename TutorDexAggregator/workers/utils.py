@@ -17,7 +17,7 @@ def sha256_hash(text: str) -> str:
 def extract_sg_postal_codes(text: str) -> List[str]:
     """
     Extract Singapore postal codes (6-digit numbers) from text.
-    
+
     Returns deduplicated list preserving order.
     """
     try:
@@ -39,13 +39,13 @@ def extract_sg_postal_codes(text: str) -> List[str]:
 def coerce_list_of_str(value: Any) -> Optional[List[str]]:
     """
     Coerce value to list of strings.
-    
+
     Handles:
     - None -> None
     - str -> [str] (if non-empty)
     - list/tuple -> flattened list of strings
     - other -> [str(value)] (if non-empty)
-    
+
     Returns deduplicated list preserving order, or None if empty.
     """
     if value is None:
@@ -78,11 +78,11 @@ def coerce_list_of_str(value: Any) -> Optional[List[str]]:
 def build_message_link(channel_link: str, message_id: str) -> Optional[str]:
     """
     Build Telegram message link from channel and message ID.
-    
+
     Args:
         channel_link: Channel link (e.g., "t.me/channel" or "https://t.me/channel")
         message_id: Message ID
-        
+
     Returns:
         Full message link or None if invalid
     """
