@@ -31,5 +31,6 @@ jobs:
               "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" << 'EOF'
    
             cd /d D:/TutorDex
+            git pull
             docker compose up -d --build --pull=never
           EOF
