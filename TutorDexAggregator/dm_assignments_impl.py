@@ -1,6 +1,7 @@
 import json
 import time
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -17,6 +18,17 @@ _CFG = load_aggregator_config()
 
 setup_logging()
 logger = logging.getLogger("dm_assignments")
+
+
+def _validate_dm_safety() -> None:
+    """Validate DM configuration is appropriate for environment."""
+    app_env = str(getattr(_CFG, "app_env", "dev")).strip().lower()
+    
+    if app_env == "staging":
+        logger.warning(
+            "STAGING DMs ENABLED: "
+            "Staging environment sending DMs. Ensure recipients are test accounts only."
+        )
 
 
 DM_BOT_TOKEN = str(_CFG.dm_bot_token or "").strip()
@@ -476,6 +488,7 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
 
 
 def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
+    _validate_dm_safety()
     if not DM_ENABLED:
         log_event(logger, logging.DEBUG, "dm_skipped", reason="dm_disabled")
         return {"ok": False, "skipped": True, "reason": "dm_disabled"}

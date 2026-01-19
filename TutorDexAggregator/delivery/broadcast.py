@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from typing import Any, Dict, Optional
 
 from delivery.broadcast_client import _send_to_single_chat
@@ -9,6 +10,36 @@ from delivery.config import BOT_API_URL, FALLBACK_FILE, TARGET_CHAT, TARGET_CHAT
 from delivery.formatting import _flatten_text_list, _join_text, _derive_external_id_for_tracking, build_message_text
 from logging_setup import bind_log_context, log_event, timed
 from observability_metrics import broadcast_fail_reason_total, broadcast_fail_total, versions as _obs_versions
+
+def _validate_broadcast_safety() -> None:
+    """Validate broadcast configuration before sending messages."""
+    app_env = str(getattr(_CFG, "app_env", "dev")).strip().lower()
+    channel_id = str(getattr(_CFG, "aggregator_channel_id", "") or "").strip()
+    enable_broadcast = getattr(_CFG, "enable_broadcast", False)
+    
+    if not enable_broadcast:
+        return  # Broadcast disabled, no check needed
+    
+    if not channel_id:
+        raise RuntimeError(
+            "BROADCAST ERROR: ENABLE_BROADCAST=true but AGGREGATOR_CHANNEL_ID is empty"
+        )
+    
+    # Convention: staging channels should have "_test" or "_staging" in ID
+    if app_env == "staging":
+        if not any(marker in channel_id.lower() for marker in ["test", "staging", "dev"]):
+            raise RuntimeError(
+                f"BROADCAST SAFETY ERROR:\n"
+                f"APP_ENV=staging but AGGREGATOR_CHANNEL_ID does not contain 'test', 'staging', or 'dev'\n"
+                f"Channel ID: {channel_id}\n"
+                f"This may be a production channel.\n"
+                f"Fix: Use a test channel ID or add '_test' suffix to confirm it's a test channel"
+            )
+        
+        logger.warning(
+            "Staging environment broadcasting to Telegram. Ensure this is intentional.",
+            extra={"channel_id": channel_id}
+        )
 
 def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = None) -> Dict[str, Any]:
     """Send a broadcast to the configured Telegram channel(s) via Bot API.
@@ -39,6 +70,7 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
             {'ok': bool, 'saved_to_file': str} on success
             {'ok': False, 'error': str} on failure
     """
+    _validate_broadcast_safety()
     cid = payload.get('cid') or '<no-cid>'
     msg_id = payload.get('message_id')
     channel_link = payload.get('channel_link') or payload.get('channel_username') or ''

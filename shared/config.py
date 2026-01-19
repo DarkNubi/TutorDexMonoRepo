@@ -447,3 +447,85 @@ def load_website_config(*, env_file: Optional[Path] = None) -> WebsiteConfig:
     candidates = [env_file] if env_file else _env_file_candidates("TutorDexWebsite")
     existing = [p for p in candidates if p and p.exists()]
     return WebsiteConfig(_env_file=existing or None, _env_file_encoding="utf-8")  # type: ignore[arg-type]
+
+
+def validate_environment_integrity(cfg: BaseSettings) -> None:
+    """
+    Validate that environment configuration is internally consistent.
+    
+    Raises RuntimeError if dangerous misconfigurations detected.
+    """
+    app_env = str(getattr(cfg, "app_env", "dev")).strip().lower()
+    
+    if app_env in {"prod", "production"}:
+        # Production environment checks
+        supabase_url = str(getattr(cfg, "supabase_url", "") or "").strip().lower()
+        
+        # Example validation: prod should not use :54322 (staging supabase port)
+        if ":54322" in supabase_url:
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=prod but SUPABASE_URL contains staging port :54322\n"
+                "This configuration would write production data to staging database.\n"
+                "Fix: Update .env.prod to use production Supabase URL (port :54321)"
+            )
+        
+        # Check 2: Prod requires authentication
+        if hasattr(cfg, "auth_required") and not getattr(cfg, "auth_required", True):
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=prod but AUTH_REQUIRED=false\n"
+                "Production must have authentication enabled.\n"
+                "Fix: Set AUTH_REQUIRED=true in .env.prod"
+            )
+        
+        # Check 3: Prod requires Firebase admin
+        if hasattr(cfg, "firebase_admin_enabled") and not getattr(cfg, "firebase_admin_enabled", False):
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=prod but FIREBASE_ADMIN_ENABLED=false\n"
+                "Production must have Firebase authentication enabled.\n"
+                "Fix: Set FIREBASE_ADMIN_ENABLED=true in .env.prod"
+            )
+        
+        # Check 4: Prod requires admin API key
+        if hasattr(cfg, "admin_api_key"):
+            admin_key = str(getattr(cfg, "admin_api_key", "") or "").strip()
+            if not admin_key or admin_key == "changeme" or len(admin_key) < 32:
+                raise RuntimeError(
+                    "FATAL CONFIGURATION ERROR:\n"
+                    "APP_ENV=prod but ADMIN_API_KEY is missing or weak\n"
+                    "Production must have a strong admin API key.\n"
+                    "Fix: Set ADMIN_API_KEY to a secure random string in .env.prod"
+                )
+    
+    elif app_env == "staging":
+        # Staging environment checks
+        supabase_url = str(getattr(cfg, "supabase_url", "") or "").strip().lower()
+        
+        # Check 1: Staging should not use production Supabase port
+        if ":54321" in supabase_url and ":54322" not in supabase_url:
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=staging but SUPABASE_URL contains production port :54321\n"
+                "This configuration would write staging test data to production database.\n"
+                "Fix: Update .env.staging to use staging Supabase URL (port :54322)"
+            )
+        
+        # Check 2: Warn if broadcast enabled in staging (allow but warn)
+        if hasattr(cfg, "enable_broadcast") and getattr(cfg, "enable_broadcast", False):
+            import logging
+            logging.warning(
+                "STAGING BROADCAST ENABLED: "
+                "ENABLE_BROADCAST=true in staging environment. "
+                "Ensure AGGREGATOR_CHANNEL_ID points to a test channel, not production channel."
+            )
+        
+        # Check 3: Warn if DMs enabled in staging
+        if hasattr(cfg, "enable_dms") and getattr(cfg, "enable_dms", False):
+            import logging
+            logging.warning(
+                "STAGING DMs ENABLED: "
+                "ENABLE_DMS=true in staging environment. "
+                "Ensure only test tutor accounts will receive DMs."
+            )

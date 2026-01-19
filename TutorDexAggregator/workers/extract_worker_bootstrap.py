@@ -8,13 +8,14 @@ from logging_setup import bind_log_context, setup_logging
 from observability_metrics import set_version_metrics
 from otel import setup_otel
 from sentry_init import setup_sentry
-from shared.config import load_aggregator_config
+from shared.config import load_aggregator_config, validate_environment_integrity
 
 from workers.extract_worker_types import VersionInfo
 
 
 def bootstrap_worker() -> Tuple[Any, logging.Logger, VersionInfo, CircuitBreaker]:
     cfg = load_aggregator_config()
+    validate_environment_integrity(cfg)
 
     setup_logging()
     logger = logging.getLogger("extract_worker")
