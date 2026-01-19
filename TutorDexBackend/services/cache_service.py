@@ -43,11 +43,11 @@ class CacheService:
     async def enforce_rate_limit(self, request: Request, endpoint: str) -> None:
         """
         Enforce rate limit for endpoint.
-        
+
         Args:
             request: FastAPI request object
             endpoint: Endpoint name for rate limiting ("assignments" or "facets")
-            
+
         Raises:
             HTTPException: 429 if rate limited
         """
@@ -91,10 +91,10 @@ class CacheService:
     async def get_cached(self, key: str) -> Optional[Dict[str, Any]]:
         """
         Get cached response if available.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             Cached response dict or None if not found/expired
         """
@@ -121,7 +121,7 @@ class CacheService:
     async def set_cached(self, key: str, payload: Dict[str, Any], ttl_s: int) -> None:
         """
         Set cached response.
-        
+
         Args:
             key: Cache key
             payload: Response payload to cache
@@ -148,10 +148,10 @@ class CacheService:
     def is_anonymous(self, request: Request) -> bool:
         """
         Check if request is anonymous (no bearer token).
-        
+
         Args:
             request: FastAPI request object
-            
+
         Returns:
             True if anonymous, False if bearer token present
         """
@@ -167,12 +167,12 @@ class CacheService:
     ) -> str:
         """
         Build cache key for request.
-        
+
         Args:
             request: FastAPI request object
             namespace: Cache namespace
             extra_items: Extra (key, value) tuples to include in cache key
-            
+
         Returns:
             Cache key string
         """
@@ -195,10 +195,10 @@ class CacheService:
     def get_cache_ttl(endpoint: str) -> int:
         """
         Get cache TTL for endpoint.
-        
+
         Args:
             endpoint: "assignments" or "facets"
-            
+
         Returns:
             TTL in seconds
         """

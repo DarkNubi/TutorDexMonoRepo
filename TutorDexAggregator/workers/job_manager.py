@@ -25,14 +25,14 @@ def claim_jobs(
 ) -> List[Dict[str, Any]]:
     """
     Claim pending extraction jobs from the queue.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
         pipeline_version: Pipeline version to claim jobs for
         limit: Maximum number of jobs to claim
         schema_version: For metrics labeling
-        
+
     Returns:
         List of claimed job records
     """
@@ -66,7 +66,7 @@ def mark_job_status(
 ) -> bool:
     """
     Update extraction job status.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
@@ -78,7 +78,7 @@ def mark_job_status(
         llm_model: LLM model name for metadata
         pipeline_version: For metrics labeling
         schema_version: For metrics labeling
-        
+
     Returns:
         True if successful, False otherwise
     """
@@ -110,11 +110,11 @@ def mark_job_status(
 def merge_meta(existing: Any, patch: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """
     Merge metadata patch with existing metadata.
-    
+
     Args:
         existing: Existing metadata (can be dict or None)
         patch: Metadata patch to apply
-        
+
     Returns:
         Merged metadata dict or None
     """
@@ -132,10 +132,10 @@ def merge_meta(existing: Any, patch: Optional[Dict[str, Any]]) -> Optional[Dict[
 def get_job_attempt(job: Dict[str, Any]) -> int:
     """
     Extract attempt count from job metadata.
-    
+
     Args:
         job: Job record
-        
+
     Returns:
         Attempt count (0 if not found or invalid)
     """
@@ -157,16 +157,16 @@ def requeue_stale_jobs(
 ) -> Optional[int]:
     """
     Requeue jobs that have been stuck in 'processing' status.
-    
+
     This prevents jobs from being lost if a worker crashes while processing.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
         older_than_seconds: Requeue jobs processing for longer than this
         pipeline_version: For metrics labeling
         schema_version: For metrics labeling
-        
+
     Returns:
         Number of jobs requeued, or None if RPC failed
     """

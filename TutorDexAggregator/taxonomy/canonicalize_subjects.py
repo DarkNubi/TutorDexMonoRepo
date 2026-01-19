@@ -20,8 +20,8 @@ try:
     ROOT = HERE.parents[1]
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
-    except Exception as e:
-        swallow_exception(e, context="taxonomy_loading", extra={"module": __name__})
+except Exception as e:
+    swallow_exception(e, context="taxonomy_loading", extra={"module": __name__})
 
 try:
     from shared.taxonomy.subjects.canonicalizer import canonicalize_subjects as _canonicalize_subjects_v2  # type: ignore

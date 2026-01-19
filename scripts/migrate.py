@@ -142,7 +142,7 @@ def apply_migrations(
 ) -> int:
     """
     Apply all pending migrations.
-    
+
     Returns:
         Number of migrations applied (or would be applied in dry-run mode)
     """
@@ -200,13 +200,13 @@ def main():
 Examples:
   # Apply all pending migrations
   python scripts/migrate.py
-  
+
   # Dry run to see what would be applied
   python scripts/migrate.py --dry-run
-  
+
   # Force re-apply a specific migration
   python scripts/migrate.py --force-reapply 2025-12-22_add_postal_latlon
-  
+
 Environment Variables:
   SUPABASE_URL                Supabase project URL (required)
   SUPABASE_SERVICE_ROLE_KEY   Service role key (required)

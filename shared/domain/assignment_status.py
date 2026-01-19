@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class AssignmentStatus(str, Enum):
     """
     Valid assignment statuses.
-    
+
     Lifecycle:
     PENDING → OPEN → (CLOSED | EXPIRED | HIDDEN) → DELETED
     """
@@ -39,7 +39,7 @@ class StatusTransitionError(Exception):
 class AssignmentStateMachine:
     """
     Enforces valid status transitions for assignments.
-    
+
     Valid transitions:
     - PENDING → OPEN, DELETED
     - OPEN → CLOSED, HIDDEN, EXPIRED, DELETED
@@ -80,11 +80,11 @@ class AssignmentStateMachine:
     def can_transition(cls, from_status: AssignmentStatus, to_status: AssignmentStatus) -> bool:
         """
         Check if a status transition is valid.
-        
+
         Args:
             from_status: Current status
             to_status: Desired status
-            
+
         Returns:
             True if transition is allowed, False otherwise
         """
@@ -105,16 +105,16 @@ class AssignmentStateMachine:
     ) -> AssignmentStatus:
         """
         Execute a status transition with validation.
-        
+
         Args:
             from_status: Current status
             to_status: Desired status
             assignment_id: Assignment ID for logging
             enforce: If True, raises exception on invalid transition. If False, logs warning and allows.
-            
+
         Returns:
             The new status
-            
+
         Raises:
             StatusTransitionError: If transition is invalid and enforce=True
         """
@@ -149,10 +149,10 @@ class AssignmentStateMachine:
     def get_valid_transitions(cls, from_status: AssignmentStatus) -> Set[AssignmentStatus]:
         """
         Get all valid transition targets from a given status.
-        
+
         Args:
             from_status: Current status
-            
+
         Returns:
             Set of valid target statuses
         """
@@ -162,10 +162,10 @@ class AssignmentStateMachine:
     def is_terminal(cls, status: AssignmentStatus) -> bool:
         """
         Check if a status is terminal (no further transitions allowed).
-        
+
         Args:
             status: Status to check
-            
+
         Returns:
             True if status is terminal
         """
@@ -181,16 +181,16 @@ def validate_status_transition(
 ) -> str:
     """
     Validate and execute a status transition from string values.
-    
+
     Args:
         current: Current status (string)
         new: New status (string)
         assignment_id: Assignment ID for logging
         enforce: If True, raises on invalid transition
-        
+
     Returns:
         New status as string
-        
+
     Raises:
         StatusTransitionError: If transition is invalid and enforce=True
         ValueError: If status strings are not valid enum values

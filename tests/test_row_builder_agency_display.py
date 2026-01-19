@@ -19,7 +19,7 @@ def test_agency_display_name_from_registry():
         "message_id": 9751,
     }
     row = _build_assignment_row(payload)
-    
+
     # The agency_display_name should be resolved from the registry
     assert "agency_display_name" in row
     assert row["agency_display_name"] == "TutorAnywhr"
@@ -38,7 +38,7 @@ def test_agency_display_name_fallback():
         "message_id": 1234,
     }
     row = _build_assignment_row(payload)
-    
+
     # For unknown agencies, should fall back to channel_title
     assert "agency_display_name" in row
     # The registry lookup should return the default (which is the channel_title in this case)
@@ -55,7 +55,7 @@ def test_agency_display_name_known_agencies():
         ("t.me/tutoranywhr", "TutorAnywhr"),
         ("t.me/elitetutorsg", "EliteTutor"),
     ]
-    
+
     for channel_link, expected_display_name in test_cases:
         payload = {
             "channel_link": channel_link,

@@ -231,7 +231,7 @@ Timing: THURSDAY AT 6PM / SUNDAY AT 9AM
 
 Budget Per Hour: S$70
 
-Tutor Gender:  Female Tutor OR Male Tutor 
+Tutor Gender:  Female Tutor OR Male Tutor
 
 Additional Requirement:EX OR CURRENT MOE TEACHER - Need to provide Teaching Materials instead of using assessment books. Female student from CHU. SS + Lit (Lord of the flies by William Golding)
 If you’re interested, you can apply Here:  https://www.tutornow.sg/tuition-assignments

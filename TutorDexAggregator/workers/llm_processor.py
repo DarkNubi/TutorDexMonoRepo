@@ -22,7 +22,7 @@ def get_llm_model_name() -> str:
 def classify_llm_error(err: Exception) -> str:
     """
     Classify LLM error for metrics and debugging.
-    
+
     Categories:
     - llm_timeout: Timeout errors
     - llm_connection: Connection errors
@@ -57,7 +57,7 @@ def extract_with_llm(
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
     """
     Extract assignment data using LLM with circuit breaker protection.
-    
+
     Args:
         text: Text to extract from
         channel: Channel name for context
@@ -65,7 +65,7 @@ def extract_with_llm(
         circuit_breaker: Circuit breaker instance
         extract_func: Function to call for extraction (e.g., extract_assignment_with_model)
         metrics: Optional dict to track metrics
-        
+
     Returns:
         Tuple of (parsed_data, error_type, latency_seconds)
     """
@@ -143,10 +143,10 @@ def extract_with_llm(
 def get_prompt_metadata(get_system_prompt_meta_func: Any) -> Optional[Dict[str, Any]]:
     """
     Get system prompt metadata.
-    
+
     Args:
         get_system_prompt_meta_func: Function to get prompt metadata
-        
+
     Returns:
         Prompt metadata dict or None
     """
@@ -162,11 +162,11 @@ def get_prompt_metadata(get_system_prompt_meta_func: Any) -> Optional[Dict[str, 
 def get_examples_metadata(get_examples_meta_func: Any, channel: str) -> Optional[Dict[str, Any]]:
     """
     Get examples metadata for channel.
-    
+
     Args:
         get_examples_meta_func: Function to get examples metadata
         channel: Channel name
-        
+
     Returns:
         Examples metadata dict or None
     """

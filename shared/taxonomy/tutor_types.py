@@ -22,7 +22,7 @@ def _load_yaml(path: str) -> Dict:
         # the file is small and fairly stable; attempt a minimal parser by
         # converting YAML to JSON via a naive approach only for simple maps.
         with open(path, "r", encoding="utf-8") as f:
-            text = f.read()
+            f.read()
         # This fallback is intentionally conservative.
         raise RuntimeError("PyYAML is required to load taxonomy YAML files: install pyyaml")
 

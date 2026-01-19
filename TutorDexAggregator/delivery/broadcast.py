@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from typing import Any, Dict, Optional
 
 from delivery.broadcast_client import _send_to_single_chat
@@ -14,27 +15,27 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     """Send a broadcast to the configured Telegram channel(s) via Bot API.
 
     If no bot configuration is present, write the payload to a local file for manual handling.
-    
+
     Duplicate Filtering:
     - Controlled by BROADCAST_DUPLICATE_MODE environment variable
     - Modes: 'all' (default), 'primary_only', 'primary_with_note'
     - 'primary_only': Only broadcast primary assignment from duplicate groups
     - 'primary_with_note': Broadcast primary with note about other agencies
-    
+
     Args:
         payload: Assignment payload to broadcast
         target_chats: Optional list of chat IDs to override TARGET_CHATS.
                      Precedence: target_chats > TARGET_CHATS > TARGET_CHAT > payload['target_chat']
-    
+
     Returns:
         Dict with result info. Structure varies by scenario:
-        
+
         Multi-channel success:
             {'ok': bool, 'results': List[Dict], 'chats': List, 'sent_count': int, 'failed_count': int}
-        
+
         Single-channel success (legacy):
             {'ok': bool, 'response': Dict, 'status_code': int, 'chat_id': Any}
-        
+
         Fallback (no bot config):
             {'ok': bool, 'saved_to_file': str} on success
             {'ok': False, 'error': str} on failure

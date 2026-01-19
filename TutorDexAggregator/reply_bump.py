@@ -47,18 +47,18 @@ def bump_assignment_from_reply(
 ) -> Dict[str, Any]:
     """
     Bump an assignment when a reply is posted to it.
-    
+
     This is used when a message is detected as a reply. We fetch the parent
     message from telegram_messages_raw, find the corresponding assignment,
     and bump it to keep it fresh.
-    
+
     Args:
         channel_link: Channel link where the reply was posted
         reply_to_msg_id: Message ID that is being replied to
         supabase_url: Supabase URL (defaults to env)
         supabase_key: Supabase service role key (defaults to env)
         bump_min_seconds: Minimum seconds between bumps (default: 6 hours)
-        
+
     Returns:
         Dict with keys:
             - ok: bool

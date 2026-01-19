@@ -299,7 +299,6 @@ async def run_catchup_until_target(
                     # Retry/backoff wrapper for backfill to tolerate transient Telethon/network errors.
                     max_attempts = max(1, int(cfg.recovery_backfill_max_attempts))
                     base_backoff = float(cfg.recovery_backfill_base_backoff_seconds)
-                    last_exc = None
                     res = None
                     for attempt in range(1, max_attempts + 1):
                         try:
@@ -315,10 +314,8 @@ async def run_catchup_until_target(
                                 max_messages=None,
                                 force_enqueue=False,
                             )
-                            last_exc = None
                             break
                         except Exception as e:
-                            last_exc = e
                             log_event(
                                 logger,
                                 logging.WARNING,

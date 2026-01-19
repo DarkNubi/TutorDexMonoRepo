@@ -32,10 +32,10 @@ class AuthService:
     def require_admin(self, request: Request) -> None:
         """
         Verify admin API key from request headers.
-        
+
         Args:
             request: FastAPI request object
-            
+
         Raises:
             HTTPException: 401 if unauthorized, 500 if key missing in prod
         """
@@ -60,13 +60,13 @@ class AuthService:
     def get_uid_from_request(self, request: Request) -> Optional[str]:
         """
         Extract Firebase UID from request if present.
-        
+
         Returns None if no bearer token or invalid token.
         Does not raise exceptions.
-        
+
         Args:
             request: FastAPI request object
-            
+
         Returns:
             Firebase UID or None
         """
@@ -91,13 +91,13 @@ class AuthService:
     def require_uid(self, request: Request) -> str:
         """
         Require authenticated Firebase user.
-        
+
         Args:
             request: FastAPI request object
-            
+
         Returns:
             Firebase UID string
-            
+
         Raises:
             HTTPException: 401 if not authenticated, 500/503 if Firebase misconfigured
         """
@@ -146,7 +146,7 @@ class AuthService:
     def validate_production_config(self) -> None:
         """
         Validate production configuration at startup.
-        
+
         Raises:
             RuntimeError: If critical configuration is missing/invalid
         """

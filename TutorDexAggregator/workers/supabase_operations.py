@@ -41,7 +41,7 @@ def call_rpc(
 ) -> Any:
     """
     Call a Supabase RPC function.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
@@ -50,7 +50,7 @@ def call_rpc(
         timeout: Request timeout in seconds
         pipeline_version: For metrics labeling
         schema_version: For metrics labeling
-        
+
     Returns:
         JSON response or None on error
     """
@@ -107,7 +107,7 @@ def get_one(
 ) -> Optional[Dict[str, Any]]:
     """
     Fetch a single row from a Supabase table.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
@@ -116,7 +116,7 @@ def get_one(
         timeout: Request timeout in seconds
         pipeline_version: For metrics labeling
         schema_version: For metrics labeling
-        
+
     Returns:
         First row as dict, or None if not found or error
     """
@@ -178,7 +178,7 @@ def patch_table(
 ) -> bool:
     """
     Update rows in a Supabase table.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
@@ -188,7 +188,7 @@ def patch_table(
         timeout: Request timeout in seconds
         pipeline_version: For metrics labeling
         schema_version: For metrics labeling
-        
+
     Returns:
         True if successful (status < 400), False otherwise
     """
@@ -231,10 +231,10 @@ def patch_table(
 def count_from_range(content_range: Optional[str]) -> Optional[int]:
     """
     Extract total count from a Supabase content-range header.
-    
+
     Args:
         content_range: Header value like "0-9/42"
-        
+
     Returns:
         Total count or None if parsing fails
     """
@@ -253,12 +253,12 @@ def get_queue_counts(
 ) -> Dict[str, Optional[int]]:
     """
     Get counts of extraction jobs by status.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
         statuses: List of statuses to count (e.g., ["pending", "ok", "failed"])
-        
+
     Returns:
         Dict mapping status to count
     """
@@ -289,12 +289,12 @@ def get_oldest_created_age_seconds(
 ) -> Optional[float]:
     """
     Get age in seconds of the oldest extraction job with given status.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
         status: Job status to query
-        
+
     Returns:
         Age in seconds, or None if no jobs found
     """
@@ -331,14 +331,14 @@ def fetch_raw_message(
 ) -> Optional[Dict[str, Any]]:
     """
     Fetch a raw telegram message by ID.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
         raw_id: Raw message ID
         pipeline_version: For metrics labeling
         schema_version: For metrics labeling
-        
+
     Returns:
         Raw message row or None if not found
     """
@@ -367,14 +367,14 @@ def fetch_channel(
 ) -> Optional[Dict[str, Any]]:
     """
     Fetch channel metadata by channel_link.
-    
+
     Args:
         url: Supabase base URL
         key: Supabase API key
         channel_link: Channel link string
         pipeline_version: For metrics labeling
         schema_version: For metrics labeling
-        
+
     Returns:
         Channel row or None if not found
     """

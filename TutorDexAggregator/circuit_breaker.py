@@ -22,10 +22,10 @@ class CircuitBreakerOpenError(Exception):
 class CircuitBreaker:
     """
     Circuit breaker for LLM API calls.
-    
+
     Tracks consecutive failures and opens the circuit when threshold is exceeded.
     Circuit remains open for timeout_seconds, then automatically resets.
-    
+
     Args:
         failure_threshold: Number of consecutive failures before opening circuit (default: 5)
         timeout_seconds: How long circuit stays open before attempting reset (default: 60)
@@ -43,7 +43,7 @@ class CircuitBreaker:
     def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
         """
         Execute function through circuit breaker.
-        
+
         Raises:
             CircuitBreakerOpenError: If circuit is open (too many recent failures)
         """

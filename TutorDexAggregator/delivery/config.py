@@ -50,13 +50,13 @@ def _normalize_target_chat(chat: Optional[Any]) -> Optional[Any]:
         except ValueError:
             return t
 
-    l = t.lower()
-    if l.startswith("https://") or l.startswith("http://"):
+    lower_t = t.lower()
+    if lower_t.startswith("https://") or lower_t.startswith("http://"):
         try:
             t = t.rstrip("/").split("/")[-1]
         except Exception:
             pass
-    elif l.startswith("t.me/"):
+    elif lower_t.startswith("t.me/"):
         t = t.split("/")[-1]
 
     if not t.startswith("@"):

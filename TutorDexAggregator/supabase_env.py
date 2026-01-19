@@ -25,18 +25,18 @@ def resolve_supabase_url() -> str:
 def check_rpc_response(response, rpc_name: str):
     """
     Check Supabase RPC response for errors.
-    
+
     PostgREST returns HTTP 300 when multiple functions match the signature (ambiguous overload).
     This is a silent failure mode that can cause data loss if not detected.
-    
+
     Args:
         response: requests.Response object from Supabase RPC call
         rpc_name: Name of the RPC function being called
-        
+
     Raises:
         ValueError: If RPC returned 300 (ambiguous function overload)
         RuntimeError: If RPC returned 4xx/5xx error
-        
+
     Returns:
         response: The original response object if successful
     """

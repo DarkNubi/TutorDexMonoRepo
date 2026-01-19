@@ -49,12 +49,12 @@ def _calculate_match_ratings(
 ) -> List[Dict[str, Any]]:
     """
     Calculate assignment rating for each match.
-    
+
     Returns matches enriched with 'rating' field based on:
     - Base matching score
-    - Distance to assignment  
+    - Distance to assignment
     - Assignment rate vs tutor's historical average
-    
+
     Requires backend with rating calculation support.
     """
     parsed = payload.get("parsed") or {}
@@ -110,11 +110,11 @@ def _filter_by_adaptive_threshold(
 ) -> List[Dict[str, Any]]:
     """
     Filter matches by adaptive threshold per tutor.
-    
+
     For each tutor, looks up their:
     - desired_assignments_per_day preference
     - historical assignment rating threshold
-    
+
     Only sends assignments above the tutor's personal threshold.
     """
     if not DM_USE_ADAPTIVE_THRESHOLD:
@@ -360,7 +360,7 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
 def fetch_matching_results(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Fetch matching tutors from the backend.
-    
+
     Returns list of matches with:
     - chat_id: Telegram chat ID
     - tutor_id: User ID for database operations
@@ -443,7 +443,7 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
     """
     Check if DM should be sent for this assignment.
     Returns False if assignment is non-primary duplicate.
-    
+
     Environment variable DM_FILTER_DUPLICATES (default: true) controls this behavior.
     """
     # Check if DM duplicate filtering is enabled

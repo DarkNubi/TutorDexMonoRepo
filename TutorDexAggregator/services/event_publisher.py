@@ -29,10 +29,10 @@ def should_run_duplicate_detection() -> bool:
 def run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
     """
     Run duplicate detection asynchronously (non-blocking).
-    
+
     This runs in a separate thread to avoid blocking the main persist operation.
     Failures in duplicate detection do not affect assignment persistence.
-    
+
     Args:
         assignment_id: Database assignment ID
         cfg: Supabase configuration

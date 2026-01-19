@@ -4,7 +4,7 @@ Synchronize broadcast channel(s) with open assignments in Supabase.
 
 This script:
 1. Fetches all messages from target Telegram channel(s)
-2. Compares with open assignments in Supabase  
+2. Compares with open assignments in Supabase
 3. Identifies and deletes messages for expired/closed assignments
 4. Identifies and posts missing messages for open assignments
 
@@ -33,8 +33,8 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from logging_setup import log_event, setup_logging
-from supabase_env import resolve_supabase_url
+from logging_setup import log_event, setup_logging  # noqa: E402
+from supabase_env import resolve_supabase_url  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger('sync_broadcast_channel')
@@ -207,7 +207,7 @@ def sync_channel(
 ) -> Dict[str, Any]:
     """
     Synchronize a single broadcast channel with open assignments.
-    
+
     Returns summary dict with statistics.
     """
     logger.info('Syncing channel: chat_id=%s dry_run=%s', chat_id, dry_run)

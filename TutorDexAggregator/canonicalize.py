@@ -132,7 +132,7 @@ def canonicalize(parsed: Dict[str, Any]) -> Dict[str, Any]:
                 continue
             try:
                 min_v = v.get("min")
-                max_v = v.get("max")
+                v.get("max")
                 min_n = int(min_v) if min_v is not None else None
             except Exception:
                 try:

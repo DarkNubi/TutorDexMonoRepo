@@ -51,7 +51,7 @@ def build_signals(
                 # Metrics (best-effort): count extracted types and low-confidence/unmapped
                 try:
                     types = tt.get("tutor_types") if isinstance(tt.get("tutor_types"), list) else []
-                    lb = tt.get("rate_breakdown") if isinstance(tt.get("rate_breakdown"), dict) else {}
+                    tt.get("rate_breakdown") if isinstance(tt.get("rate_breakdown"), dict) else {}
                     if worker_tutor_types_extracted_total is not None:
                         worker_tutor_types_extracted_total.labels(channel="unknown", pipeline_version="-", schema_version="-").inc(len(types))
                     # low-confidence/unmapped heuristics

@@ -33,14 +33,14 @@ def nominatim_disabled() -> bool:
 def geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[float, float]]:
     """
     Geocode Singapore postal code using Nominatim API.
-    
+
     Returns (lat, lon) tuple or None if geocoding fails.
     Caches results to avoid repeated API calls.
-    
+
     Args:
         postal_code: Singapore postal code (6 digits)
         timeout: Request timeout in seconds
-    
+
     Returns:
         Tuple of (latitude, longitude) or None if geocoding fails
     """

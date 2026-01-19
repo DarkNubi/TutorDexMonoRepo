@@ -36,14 +36,14 @@ def load_raw_message(
 ) -> Optional[Dict[str, Any]]:
     """
     Load raw message from database.
-    
+
     Args:
         url: Supabase URL
         key: Supabase API key
         raw_id: Raw message ID
         pipeline_version: For metrics
         schema_version: For metrics
-        
+
     Returns:
         Raw message dict or None if not found
     """
@@ -59,14 +59,14 @@ def load_channel_info(
 ) -> Dict[str, Any]:
     """
     Load channel information from database.
-    
+
     Args:
         url: Supabase URL
         key: Supabase API key
         channel_link: Channel link
         pipeline_version: For metrics
         schema_version: For metrics
-        
+
     Returns:
         Channel info dict (empty dict if not found)
     """
@@ -80,18 +80,18 @@ def filter_message(
 ) -> MessageFilterResult:
     """
     Apply filters to determine if message should be skipped.
-    
+
     Filters:
     - Deleted messages -> skip (with close payload)
     - Forwarded messages -> skip
     - Reply messages -> skip (bump parent instead)
     - Empty text -> skip
-    
+
     Args:
         raw: Raw message dict
         channel_link: Channel link
         ch_info: Channel info dict
-        
+
     Returns:
         MessageFilterResult indicating if message should be skipped
     """
@@ -138,12 +138,12 @@ def build_extraction_context(
 ) -> Dict[str, Any]:
     """
     Build context object for extraction processing.
-    
+
     Args:
         job: Job dict from queue
         raw: Raw message dict
         ch_info: Channel info dict
-        
+
     Returns:
         Context dict with all necessary information
     """

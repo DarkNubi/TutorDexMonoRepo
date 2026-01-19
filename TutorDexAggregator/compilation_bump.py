@@ -46,16 +46,16 @@ def bump_assignments_by_codes(
 ) -> Dict[str, Any]:
     """
     Bump assignments by their assignment codes (external_id).
-    
+
     This is used when a compilation message references multiple assignments
     by their codes. We bump each one to keep it fresh in the system.
-    
+
     Args:
         assignment_codes: List of assignment codes to bump
         supabase_url: Supabase URL (defaults to env)
         supabase_key: Supabase service role key (defaults to env)
         bump_min_seconds: Minimum seconds between bumps (default: 6 hours)
-        
+
     Returns:
         Dict with keys:
             - ok: bool

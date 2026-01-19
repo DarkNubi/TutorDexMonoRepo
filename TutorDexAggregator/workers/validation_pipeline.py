@@ -23,11 +23,11 @@ def validate_schema(
 ) -> Tuple[bool, Optional[Any]]:
     """
     Validate parsed assignment against schema.
-    
+
     Args:
         parsed: Parsed assignment dict
         validate_func: Function to call for validation (e.g., validate_parsed_assignment)
-        
+
     Returns:
         Tuple of (is_valid, errors)
     """
@@ -46,7 +46,7 @@ def increment_quality_missing(
 ) -> None:
     """
     Increment quality metric for missing field.
-    
+
     Args:
         field: Field name
         channel: Channel name
@@ -73,7 +73,7 @@ def increment_quality_inconsistency(
 ) -> None:
     """
     Increment quality metric for inconsistency.
-    
+
     Args:
         kind: Inconsistency kind
         channel: Channel name
@@ -101,14 +101,14 @@ def run_quality_checks(
 ) -> None:
     """
     Run quality checks on parsed data and signals.
-    
+
     Checks:
     - Missing subjects in signals
     - Missing levels in signals
     - Missing postal code
     - Missing academic display text
     - Inconsistency between headline and signals (IB, IGCSE)
-    
+
     Args:
         parsed: Parsed assignment dict
         signals: Signals dict

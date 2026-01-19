@@ -109,7 +109,7 @@ def _is_very_short(text: str) -> bool:
 def _detect_status_only(text: str) -> Tuple[bool, str]:
     """
     Detect status-only messages like "ASSIGNMENT CLOSED".
-    
+
     Returns (is_status_only, reason).
     """
     text_stripped = text.strip()
@@ -134,7 +134,7 @@ def _detect_status_only(text: str) -> Tuple[bool, str]:
 def _detect_redirect(text: str) -> Tuple[bool, str]:
     """
     Detect redirect messages like "Assignment X has been reposted below".
-    
+
     Returns (is_redirect, reason).
     """
     text_stripped = text.strip()
@@ -159,7 +159,7 @@ def _detect_redirect(text: str) -> Tuple[bool, str]:
 def _detect_administrative(text: str) -> Tuple[bool, str]:
     """
     Detect administrative/promotional messages.
-    
+
     Returns (is_administrative, reason).
     """
     text_lower = text.lower()
@@ -188,23 +188,23 @@ def _detect_administrative(text: str) -> Tuple[bool, str]:
 def is_non_assignment(text: Any) -> Tuple[bool, MessageType | None, str]:
     """
     Detect if a message is not an assignment and should be filtered early.
-    
+
     Args:
         text: Raw message text
-        
+
     Returns:
         Tuple of (is_non_assignment, message_type, details)
         - is_non_assignment: True if this should be filtered out
         - message_type: Type of non-assignment message (or None)
         - details: Human-readable explanation
-        
+
     Examples:
         >>> is_non_assignment("ASSIGNMENT CLOSED")
         (True, MessageType.STATUS_ONLY, "Status-only message detected: ...")
-        
+
         >>> is_non_assignment("Assignment 123 has been reposted below.")
         (True, MessageType.REDIRECT, "Redirect message detected: ...")
-        
+
         >>> is_non_assignment("Valid assignment with Job ID: ABC123...")
         (False, None, "")
     """
@@ -236,12 +236,12 @@ def is_non_assignment(text: Any) -> Tuple[bool, MessageType | None, str]:
 def detection_meta(is_non: bool, msg_type: MessageType | None, details: str) -> dict[str, Any]:
     """
     Format detection result as metadata dict for logging/storage.
-    
+
     Args:
         is_non: Result from is_non_assignment
         msg_type: Message type from is_non_assignment
         details: Details from is_non_assignment
-        
+
     Returns:
         Dict with keys: ok, is_non_assignment, message_type, details
     """

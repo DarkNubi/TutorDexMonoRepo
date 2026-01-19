@@ -73,7 +73,7 @@ def setup_sentry(*, service_name: str = "tutordex-aggregator") -> None:
 def _before_send(event, hint):
     """
     Filter or modify events before sending to Sentry.
-    
+
     Use this to:
     - Remove sensitive data
     - Filter out known errors
