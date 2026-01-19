@@ -2,7 +2,6 @@
 Tests for compilation code extraction.
 """
 
-import pytest
 from TutorDexAggregator.compilation_extractor import (
     extract_assignment_codes,
     should_process_compilation,

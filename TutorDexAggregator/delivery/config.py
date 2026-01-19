@@ -4,15 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
-import html
-import requests
 
-from logging_setup import bind_log_context, log_event, setup_logging, timed
-from observability_metrics import broadcast_fail_reason_total, broadcast_fail_total, broadcast_sent_total, versions as _obs_versions
+from logging_setup import setup_logging
 from shared.config import load_aggregator_config
 
 # NOTE: This file lives under `delivery/`, but we want paths relative to `TutorDexAggregator/`.
@@ -54,13 +50,13 @@ def _normalize_target_chat(chat: Optional[Any]) -> Optional[Any]:
         except ValueError:
             return t
 
-    l = t.lower()
-    if l.startswith("https://") or l.startswith("http://"):
+    lower_t = t.lower()
+    if lower_t.startswith("https://") or lower_t.startswith("http://"):
         try:
             t = t.rstrip("/").split("/")[-1]
         except Exception:
             pass
-    elif l.startswith("t.me/"):
+    elif lower_t.startswith("t.me/"):
         t = t.split("/")[-1]
 
     if not t.startswith("@"):

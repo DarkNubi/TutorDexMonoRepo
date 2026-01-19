@@ -9,8 +9,8 @@ PARENT = HERE.parent
 if str(PARENT) not in sys.path:
     sys.path.insert(0, str(PARENT))
 
-from logging_setup import log_event, setup_logging
-from supabase_persist import SupabaseRestClient, load_config_from_env
+from logging_setup import log_event, setup_logging  # noqa: E402
+from supabase_persist import SupabaseRestClient, load_config_from_env  # noqa: E402
 
 
 setup_logging()

@@ -229,7 +229,7 @@ def score_tutor(tutor: Dict[str, Any], query: Dict[str, Any]) -> Tuple[int, List
 def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[MatchResult]:
     """
     Match tutors to an assignment payload.
-    
+
     Returns matches with rating information for adaptive threshold filtering.
     The caller can filter by rating threshold rather than using min_score.
     """
@@ -237,7 +237,7 @@ def match_from_payload(store: TutorStore, payload: Dict[str, Any]) -> List[Match
 
     assignment_lat, assignment_lon = _extract_assignment_coords(payload)
     include_distance = assignment_lat is not None and assignment_lon is not None
-    
+
     # Extract rate information from payload
     parsed = payload.get("parsed") or {}
     rate_min = _safe_int(parsed.get("rate_min"))

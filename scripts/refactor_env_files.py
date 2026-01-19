@@ -19,7 +19,8 @@ import ast
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
+from shared.observability.exception_handler import swallow_exception
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -408,8 +409,8 @@ def main() -> int:
     for legacy in SERVICE_DIRS["website"].glob(".env.legacy_*"):
         try:
             legacy.unlink()
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="legacy_env_cleanup", extra={"module": __name__})
 
     # Report only key names and counts.
     for r in (res_agg, res_be, res_web):

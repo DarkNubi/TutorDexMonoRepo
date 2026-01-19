@@ -19,7 +19,7 @@ class TestPostalCoordsEstimated(unittest.TestCase):
     def test_explicit_postal_code_takes_precedence(self, mock_geocode):
         """Test that explicit postal code is used before estimated postal code."""
         mock_geocode.return_value = (1.3521, 103.8198)  # Mock coordinates
-        
+
         payload = {
             "channel_link": "t.me/sample",
             "channel_title": "Sample",
@@ -35,9 +35,9 @@ class TestPostalCoordsEstimated(unittest.TestCase):
                 "learning_mode": {"mode": "Online", "raw_text": "online"},
             },
         }
-        
+
         row = _build_assignment_row(payload)
-        
+
         # Should call geocode with explicit postal code first
         mock_geocode.assert_called_with("123456")
         self.assertEqual(row.get("postal_lat"), 1.3521)
@@ -48,7 +48,7 @@ class TestPostalCoordsEstimated(unittest.TestCase):
     def test_estimated_postal_code_used_when_no_explicit(self, mock_geocode):
         """Test that estimated postal code is used when explicit is not available."""
         mock_geocode.return_value = (1.3521, 103.8198)  # Mock coordinates
-        
+
         payload = {
             "channel_link": "t.me/sample",
             "channel_title": "Sample",
@@ -63,9 +63,9 @@ class TestPostalCoordsEstimated(unittest.TestCase):
                 "learning_mode": {"mode": "Online", "raw_text": "online"},
             },
         }
-        
+
         row = _build_assignment_row(payload)
-        
+
         # Should call geocode with estimated postal code
         mock_geocode.assert_called_with("654321")
         self.assertEqual(row.get("postal_lat"), 1.3521)
@@ -77,7 +77,7 @@ class TestPostalCoordsEstimated(unittest.TestCase):
         """Test that estimated postal code is used when explicit geocoding fails."""
         # First call (explicit) returns None, second call (estimated) returns coordinates
         mock_geocode.side_effect = [None, (1.3521, 103.8198)]
-        
+
         payload = {
             "channel_link": "t.me/sample",
             "channel_title": "Sample",
@@ -93,9 +93,9 @@ class TestPostalCoordsEstimated(unittest.TestCase):
                 "learning_mode": {"mode": "Online", "raw_text": "online"},
             },
         }
-        
+
         row = _build_assignment_row(payload)
-        
+
         # Should call geocode twice: first with explicit, then with estimated
         self.assertEqual(mock_geocode.call_count, 2)
         self.assertEqual(row.get("postal_lat"), 1.3521)
@@ -117,9 +117,9 @@ class TestPostalCoordsEstimated(unittest.TestCase):
                 "learning_mode": {"mode": "Online", "raw_text": "online"},
             },
         }
-        
+
         row = _build_assignment_row(payload)
-        
+
         self.assertIsNone(row.get("postal_lat"))
         self.assertIsNone(row.get("postal_lon"))
         self.assertFalse(row.get("postal_coords_estimated"))

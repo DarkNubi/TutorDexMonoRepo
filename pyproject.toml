@@ -1,0 +1,53 @@
+[tool.ruff]
+# Target Python 3.9+
+target-version = "py39"
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".github",
+    ".vscode",
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    "venv",
+    "env",
+    "node_modules",
+    "dist",
+    "build",
+]
+
+# Set line length
+line-length = 120
+
+[tool.ruff.lint]
+# Enable specific rule sets
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+]
+
+# Ignore specific rules if needed
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
+
+# Note: BLE001 (blind except) is intentionally NOT enabled here because:
+# - We use `except Exception as e:` with proper logging/metrics (not blind)
+# - Custom check in CI verifies no bare `except:` patterns remain
+# - See .github/workflows/python-lint.yml for enforcement
+
+[tool.ruff.lint.per-file-ignores]
+# Allow certain patterns in test files
+"tests/**/*.py" = [
+    "E501",  # Line length in tests
+]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "TutorDexBackend", "TutorDexAggregator"]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"

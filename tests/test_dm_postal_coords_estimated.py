@@ -14,26 +14,26 @@ os.environ["DM_ENABLED"] = "0"  # Disable DM sending for unit tests
 sys.modules['logging_setup'] = MagicMock()
 sys.modules['observability_metrics'] = MagicMock()
 
-from dm_assignments import _get_or_geocode_assignment_coords
-from broadcast_assignments import build_message_text
+from dm_assignments import _get_or_geocode_assignment_coords  # noqa: E402
+from broadcast_assignments import build_message_text  # noqa: E402
 
 
 class TestDMPostalCoordsEstimated(unittest.TestCase):
-    
+
     @patch('supabase_persist._geocode_sg_postal')
     def test_dm_uses_explicit_postal_code_first(self, mock_geocode):
         """Test that DM geocoding tries explicit postal code first."""
         mock_geocode.return_value = (1.3521, 103.8198)
-        
+
         payload = {
             "parsed": {
                 "postal_code": ["123456"],
                 "postal_code_estimated": ["654321"],
             }
         }
-        
+
         lat, lon, is_estimated = _get_or_geocode_assignment_coords(payload)
-        
+
         # Should call with explicit postal code
         mock_geocode.assert_called_with("123456")
         self.assertEqual(lat, 1.3521)
@@ -46,15 +46,15 @@ class TestDMPostalCoordsEstimated(unittest.TestCase):
     def test_dm_falls_back_to_estimated_postal_code(self, mock_geocode):
         """Test that DM geocoding falls back to estimated when explicit is missing."""
         mock_geocode.return_value = (1.3521, 103.8198)
-        
+
         payload = {
             "parsed": {
                 "postal_code_estimated": ["654321"],
             }
         }
-        
+
         lat, lon, is_estimated = _get_or_geocode_assignment_coords(payload)
-        
+
         # Should call with estimated postal code
         mock_geocode.assert_called_with("654321")
         self.assertEqual(lat, 1.3521)
@@ -68,16 +68,16 @@ class TestDMPostalCoordsEstimated(unittest.TestCase):
         """Test that DM geocoding tries estimated when explicit geocoding fails."""
         # First call (explicit) returns None, second call (estimated) returns coordinates
         mock_geocode.side_effect = [None, (1.3521, 103.8198)]
-        
+
         payload = {
             "parsed": {
                 "postal_code": ["999999"],  # Invalid
                 "postal_code_estimated": ["654321"],
             }
         }
-        
+
         lat, lon, is_estimated = _get_or_geocode_assignment_coords(payload)
-        
+
         # Should call twice
         self.assertEqual(mock_geocode.call_count, 2)
         self.assertEqual(lat, 1.3521)
@@ -96,14 +96,14 @@ class TestDMPostalCoordsEstimated(unittest.TestCase):
                 "rate": {"raw_text": "$40/hr"},
             }
         }
-        
+
         # Build message with estimated distance
         text = build_message_text(
             payload,
             distance_km=5.2,
             postal_coords_estimated=True
         )
-        
+
         # Should contain distance with estimated label
         self.assertIn("📏 Distance: ~5.2 km (estimated)", text)
 
@@ -118,14 +118,14 @@ class TestDMPostalCoordsEstimated(unittest.TestCase):
                 "rate": {"raw_text": "$40/hr"},
             }
         }
-        
+
         # Build message with explicit distance
         text = build_message_text(
             payload,
             distance_km=5.2,
             postal_coords_estimated=False
         )
-        
+
         # Should contain distance without estimated label
         self.assertIn("📏 Distance: ~5.2 km", text)
         self.assertNotIn("(estimated)", text)
@@ -139,9 +139,9 @@ class TestDMPostalCoordsEstimated(unittest.TestCase):
                 "postal_coords_estimated": True,
             }
         }
-        
+
         lat, lon, is_estimated = _get_or_geocode_assignment_coords(payload)
-        
+
         self.assertEqual(lat, 1.3521)
         self.assertEqual(lon, 103.8198)
         self.assertTrue(is_estimated)

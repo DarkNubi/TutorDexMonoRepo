@@ -12,6 +12,7 @@ from observability_metrics import dm_fail_reason_total, dm_fail_total, dm_rate_l
 from shared.assignment_rating import calculate_assignment_rating, parse_rate_min_max
 from shared.config import load_aggregator_config
 from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
+from shared.observability.exception_handler import swallow_exception
 
 HERE = Path(__file__).resolve().parent
 _CFG = load_aggregator_config()
@@ -60,18 +61,18 @@ def _calculate_match_ratings(
 ) -> List[Dict[str, Any]]:
     """
     Calculate assignment rating for each match.
-    
+
     Returns matches enriched with 'rating' field based on:
     - Base matching score
-    - Distance to assignment  
+    - Distance to assignment
     - Assignment rate vs tutor's historical average
-    
+
     Requires backend with rating calculation support.
     """
     parsed = payload.get("parsed") or {}
     assignment_rate_min, assignment_rate_max = parse_rate_min_max(parsed)
     sb = _supabase_client()
-    
+
     enriched_matches = []
     for match in matches:
         # Get tutor's average rate from history if available
@@ -88,7 +89,7 @@ def _calculate_match_ratings(
                     )
             except Exception as e:
                 logger.debug(f"Could not get tutor avg rate for {tutor_id}: {e}")
-        
+
         # Calculate rating
         rating = calculate_assignment_rating(
             base_score=match.get("score", 0),
@@ -97,13 +98,13 @@ def _calculate_match_ratings(
             assignment_rate_max=assignment_rate_max,
             tutor_avg_rate=tutor_avg_rate,
         )
-        
+
         # Add rating to match
         match_with_rating = dict(match)
         match_with_rating["rating"] = rating
         match_with_rating["tutor_avg_rate"] = tutor_avg_rate
         enriched_matches.append(match_with_rating)
-    
+
     return enriched_matches
 
 
@@ -121,38 +122,38 @@ def _filter_by_adaptive_threshold(
 ) -> List[Dict[str, Any]]:
     """
     Filter matches by adaptive threshold per tutor.
-    
+
     For each tutor, looks up their:
     - desired_assignments_per_day preference
     - historical assignment rating threshold
-    
+
     Only sends assignments above the tutor's personal threshold.
     """
     if not DM_USE_ADAPTIVE_THRESHOLD:
         # Disabled - return all matches
         return matches
-    
+
     sb = _supabase_client()
     if not sb:
         logger.debug("Adaptive threshold enabled but Supabase is not configured; using all matches")
         return matches
-    
+
     filtered = []
     for match in matches:
         tutor_id = match.get("tutor_id")
         rating = match.get("rating")
-        
+
         if not tutor_id or rating is None:
             # No tutor ID or rating - include match (backward compat)
             filtered.append(match)
             continue
-        
+
         desired_per_day = 10
         try:
             desired_per_day = int(match.get("desired_assignments_per_day") or 10)
         except Exception:
             desired_per_day = 10
-        
+
         threshold = None
         try:
             user_id = _upsert_user_id(sb, firebase_uid=str(tutor_id))
@@ -168,20 +169,20 @@ def _filter_by_adaptive_threshold(
                 )
         except Exception as e:
             logger.debug(f"Could not get threshold for {tutor_id}: {e}")
-        
+
         # If no threshold available (new tutor or no history), include the match
         if threshold is None:
             filtered.append(match)
             logger.debug(f"Including {tutor_id} - no threshold available (new tutor)")
             continue
-        
+
         # Filter by threshold
         if rating >= threshold:
             filtered.append(match)
             logger.debug(f"Including {tutor_id} - rating {rating:.2f} >= threshold {threshold:.2f}")
         else:
             logger.debug(f"Filtering out {tutor_id} - rating {rating:.2f} < threshold {threshold:.2f}")
-    
+
     return filtered
 
 
@@ -282,18 +283,18 @@ def _record_assignment_rating_best_effort(
     if match.get("distance_km") is not None:
         try:
             row["distance_km"] = float(match.get("distance_km"))
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="dm_distance_parsing", extra={"module": __name__})
     if match.get("rate_min") is not None:
         try:
             row["rate_min"] = int(match.get("rate_min"))
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="dm_rate_min_parsing", extra={"module": __name__})
     if match.get("rate_max") is not None:
         try:
             row["rate_max"] = int(match.get("rate_max"))
-        except Exception:
-            pass
+        except Exception as e:
+            swallow_exception(e, context="dm_rate_max_parsing", extra={"module": __name__})
 
     client.post("tutor_assignment_ratings", [row], timeout=20, prefer="return=minimal")
 
@@ -339,7 +340,7 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
     postal_code = parsed.get("postal_code")
     if isinstance(postal_code, list) and postal_code:
         postal_code = postal_code[0]
-    
+
     if postal_code:
         coords = _geocode_sg_postal(str(postal_code))
         if coords:
@@ -349,12 +350,12 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
             parsed["postal_coords_estimated"] = False
             payload["parsed"] = parsed
             return float(lat), float(lon), False
-    
+
     # If explicit failed, try estimated postal code
     postal_code_estimated = parsed.get("postal_code_estimated")
     if isinstance(postal_code_estimated, list) and postal_code_estimated:
         postal_code_estimated = postal_code_estimated[0]
-    
+
     if postal_code_estimated:
         coords = _geocode_sg_postal(str(postal_code_estimated))
         if coords:
@@ -371,7 +372,7 @@ def _get_or_geocode_assignment_coords(payload: Dict[str, Any]) -> Tuple[Optional
 def fetch_matching_results(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Fetch matching tutors from the backend.
-    
+
     Returns list of matches with:
     - chat_id: Telegram chat ID
     - tutor_id: User ID for database operations
@@ -454,23 +455,23 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
     """
     Check if DM should be sent for this assignment.
     Returns False if assignment is non-primary duplicate.
-    
+
     Environment variable DM_FILTER_DUPLICATES (default: true) controls this behavior.
     """
     # Check if DM duplicate filtering is enabled
     filter_enabled = bool(_CFG.dm_filter_duplicates)
     if not filter_enabled:
         return True
-    
+
     # Get duplicate metadata from parsed data
     parsed = payload.get("parsed") or {}
     is_primary = parsed.get("is_primary_in_group", True)
-    
+
     # If assignment is non-primary, skip DM
     if not is_primary:
         duplicate_group_id = parsed.get("duplicate_group_id")
         logger.info(
-            f"Skipping DM for non-primary duplicate assignment",
+            "Skipping DM for non-primary duplicate assignment",
             extra={
                 "assignment_id": parsed.get("id"),
                 "duplicate_group_id": duplicate_group_id,
@@ -481,9 +482,10 @@ def _should_send_dm_for_assignment(payload: Dict[str, Any]) -> bool:
             from observability_metrics import dm_skipped_duplicate_total
             dm_skipped_duplicate_total.inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         return False
-    
+
     return True
 
 
@@ -492,7 +494,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not DM_ENABLED:
         log_event(logger, logging.DEBUG, "dm_skipped", reason="dm_disabled")
         return {"ok": False, "skipped": True, "reason": "dm_disabled"}
-    
+
     # Check if we should skip this assignment due to duplicate filtering
     if not _should_send_dm_for_assignment(payload):
         log_event(logger, logging.INFO, "dm_skipped", reason="non_primary_duplicate")
@@ -540,23 +542,24 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 dm_fail_reason_total.labels(reason=_classify_dm_error(status_code=None, error=str(e)), pipeline_version=pv, schema_version=sv).inc()
             except Exception:
+                # Metrics must never break runtime
                 pass
             return {"ok": False, "error": str(e)}
-        
+
         initial_match_count = len(matches)
 
         # Apply hard cap on recipients
         matches = matches[:DM_MAX_RECIPIENTS]
-        
+
         filtered_count = initial_match_count - len(matches)
         if filtered_count > 0:
-            log_event(logger, logging.INFO, "dm_adaptive_filter", 
-                     initial_matches=initial_match_count, 
-                     filtered_out=filtered_count, 
+            log_event(logger, logging.INFO, "dm_adaptive_filter",
+                     initial_matches=initial_match_count,
+                     filtered_out=filtered_count,
                      remaining=len(matches))
-        
+
         if not matches:
-            log_event(logger, logging.INFO, "dm_no_matches", 
+            log_event(logger, logging.INFO, "dm_no_matches",
                      initial_matches=initial_match_count,
                      after_filtering=len(matches))
             return {"ok": True, "sent": 0, "matched": 0, "initial_matched": initial_match_count}
@@ -572,7 +575,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
         # Get the postal_coords_estimated flag from payload
         parsed = payload.get("parsed") or {}
         postal_coords_estimated = parsed.get("postal_coords_estimated", False)
-        
+
         for match in matches:
             chat_id = str(match.get("chat_id") or "").strip()
             if not chat_id:
@@ -580,9 +583,9 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
 
             distance_km = match.get("distance_km")
             text = build_message_text(
-                payload, 
-                include_clicks=False, 
-                clicks=0, 
+                payload,
+                include_clicks=False,
+                clicks=0,
                 distance_km=_safe_float(distance_km),
                 postal_coords_estimated=bool(postal_coords_estimated)
             )
@@ -594,6 +597,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     dm_rate_limited_total.labels(pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 retry_after = None
                 try:
@@ -612,6 +616,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     dm_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 try:
                     err_text = None
@@ -623,6 +628,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                         schema_version=sv,
                     ).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 continue
 
@@ -630,8 +636,9 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 dm_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
+                # Metrics must never break runtime
                 pass
-            
+
             # Record assignment rating for this tutor (best-effort; used for adaptive thresholds)
             try:
                 sb_record = _supabase_client()
@@ -648,7 +655,7 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                     )
             except Exception as e:
                 logger.debug(f"Could not record assignment rating: {e}")
-            
+
             time.sleep(0.05)
 
         fallback_written = False
@@ -667,12 +674,14 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     dm_fail_reason_total.labels(reason="fallback_written", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
             except Exception:
                 logger.exception("Failed to write DM fallback file path=%s", DM_FALLBACK_FILE)
                 try:
                     dm_fail_reason_total.labels(reason="fallback_write_failed", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
 
         log_event(
@@ -686,9 +695,9 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
             fallback_written=fallback_written,
         )
         return {
-            "ok": failures == 0, 
+            "ok": failures == 0,
             "initial_matched": initial_match_count,
-            "matched": len(matches), 
-            "sent": sent, 
+            "matched": len(matches),
+            "sent": sent,
             "failures": failures,
         }

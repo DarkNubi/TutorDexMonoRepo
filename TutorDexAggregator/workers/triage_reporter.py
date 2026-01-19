@@ -17,7 +17,7 @@ logger = logging.getLogger("triage_reporter")
 def get_triage_config() -> Dict[str, Optional[str]]:
     """
     Get triage reporting configuration from environment.
-    
+
     Returns:
         Dict with chat_id, bot_token, and api_base
     """
@@ -47,26 +47,26 @@ def _parse_int_env(name: str) -> Optional[int]:
 def get_thread_id_for_category(category: str) -> Optional[int]:
     """
     Get Telegram thread ID for a triage category.
-    
+
     Args:
         category: Category like "extraction_error", "non_assignment", "compilation"
-        
+
     Returns:
         Thread ID or None
     """
     default_thread = _parse_int_env("SKIPPED_MESSAGES_THREAD_ID")
-    
+
     k = str(category or "").strip().lower()
-    
+
     if k in {"extraction_error", "extraction_errors", "extraction"}:
         return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_EXTRACTION_ERRORS") or default_thread
-    
+
     if k in {"non_assignment", "non-assignments", "nonassignment"}:
         return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_NON_ASSIGNMENT") or default_thread
-    
+
     if k in {"compilation", "compilations"}:
         return _parse_int_env("SKIPPED_MESSAGES_THREAD_ID_COMPILATIONS") or default_thread
-    
+
     return default_thread
 
 
@@ -80,41 +80,41 @@ def send_telegram_message(
 ) -> Dict[str, Any]:
     """
     Send a message to Telegram.
-    
+
     Args:
         to_chat_id: Target chat ID
         text: Message text
         thread_id: Optional thread/topic ID
         bot_token: Bot token (if None, fetched from config)
         api_base: API base URL (if None, uses default or fetched from config)
-        
+
     Returns:
         Response dict with "ok" status
     """
     if bot_token is None:
         bot_token = _get_bot_token()
-    
+
     if not bot_token and not api_base:
         return {"ok": False, "error": "no_bot_token_or_api_url"}
-    
+
     url = api_base
     if not url and bot_token:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     elif url and not url.endswith("/sendMessage"):
         url = url.rstrip("/") + "/sendMessage"
-    
+
     if not url:
         return {"ok": False, "error": "no_api_url"}
-    
+
     payload: Dict[str, Any] = {"chat_id": to_chat_id, "text": text}
     if thread_id is not None:
         payload["message_thread_id"] = int(thread_id)
-    
+
     try:
         resp = requests.post(url, json=payload, timeout=15)
         if resp.status_code >= 400:
             return {"ok": False, "status_code": resp.status_code, "error": resp.text[:200]}
-        
+
         try:
             return resp.json()
         except Exception:
@@ -126,17 +126,17 @@ def send_telegram_message(
 def chunk_text(text: str, *, max_length: int = 4000) -> List[str]:
     """
     Split text into chunks that fit Telegram's message length limit.
-    
+
     Args:
         text: Text to chunk
         max_length: Maximum chunk length
-        
+
     Returns:
         List of text chunks
     """
     if len(text) <= max_length:
         return [text]
-    
+
     chunks: List[str] = []
     current = text
     while len(current) > max_length:
@@ -144,7 +144,7 @@ def chunk_text(text: str, *, max_length: int = 4000) -> List[str]:
         current = current[max_length:]
     if current:
         chunks.append(current)
-    
+
     return chunks
 
 
@@ -160,7 +160,7 @@ def try_report_triage_message(
 ) -> bool:
     """
     Report a filtered/failed message to the triage Telegram channel.
-    
+
     Args:
         category: Triage category (e.g., "extraction_error", "non_assignment")
         message_link: Link to original message
@@ -169,55 +169,55 @@ def try_report_triage_message(
         raw_text: Raw message text
         reason: Short reason for triage
         details: Additional details dict
-        
+
     Returns:
         True if reported successfully, False otherwise
     """
     config = get_triage_config()
     chat_id = config.get("chat_id")
-    
+
     if not chat_id:
         return False
-    
+
     thread_id = get_thread_id_for_category(category)
-    
+
     # Build triage message
     lines = [
         f"🚨 **{category.upper()}**",
-        f"",
+        "",
         f"**Reason:** {reason}",
         f"**Channel:** {channel}",
         f"**Message ID:** {message_id}",
     ]
-    
+
     if message_link:
         lines.append(f"**Link:** {message_link}")
-    
+
     if details:
-        lines.append(f"")
-        lines.append(f"**Details:**")
+        lines.append("")
+        lines.append("**Details:**")
         for key, value in details.items():
             lines.append(f"  • {key}: {value}")
-    
-    lines.append(f"")
-    lines.append(f"**Raw Text:**")
-    lines.append(f"```")
+
+    lines.append("")
+    lines.append("**Raw Text:**")
+    lines.append("```")
     lines.append(raw_text[:1000] if len(raw_text) > 1000 else raw_text)
     if len(raw_text) > 1000:
         lines.append(f"... (truncated, {len(raw_text)} total chars)")
-    lines.append(f"```")
-    
+    lines.append("```")
+
     full_text = "\n".join(lines)
-    
+
     # Split into chunks if needed
     chunks = chunk_text(full_text, max_length=4000)
-    
+
     success = True
     for i, chunk in enumerate(chunks):
         if i > 0:
             # Add continuation marker
             chunk = f"(continued {i+1}/{len(chunks)})\n\n" + chunk
-        
+
         result = send_telegram_message(
             to_chat_id=chat_id,
             text=chunk,
@@ -225,11 +225,11 @@ def try_report_triage_message(
             bot_token=config.get("bot_token"),
             api_base=config.get("api_base")
         )
-        
+
         if not result.get("ok"):
             logger.warning(
                 f"Failed to send triage message (chunk {i+1}/{len(chunks)}): {result.get('error')}"
             )
             success = False
-    
+
     return success

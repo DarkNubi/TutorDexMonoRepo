@@ -1,4 +1,3 @@
-import json
 
 
 def test_sanitize_example():

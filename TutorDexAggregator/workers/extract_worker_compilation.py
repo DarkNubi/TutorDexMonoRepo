@@ -10,7 +10,6 @@ from compilation_message_handler import (
     split_compilation_message,
 )
 from extract_key_info import extract_assignment_with_model
-from logging_setup import log_event
 from normalize import normalize_text
 from observability_metrics import (
     worker_job_stage_latency_seconds,
@@ -80,6 +79,7 @@ def process_compilation_confirmed(
                 float(lat)
             )
         except Exception:
+            # Metrics must never break runtime
             pass
 
         if llm_err or not isinstance(parsed, dict):
@@ -154,6 +154,7 @@ def process_compilation_confirmed(
                     schema_version=version.schema_version,
                 ).inc()
             except Exception:
+                # Metrics must never break runtime
                 pass
             try_report_triage_message(
                 cfg=cfg,
@@ -184,6 +185,7 @@ def process_compilation_confirmed(
         try:
             worker_supabase_requests_total.labels(operation="persist", pipeline_version=version.pipeline_version, schema_version=version.schema_version).inc()
         except Exception:
+            # Metrics must never break runtime
             pass
         t_persist0 = time.perf_counter()
         try:

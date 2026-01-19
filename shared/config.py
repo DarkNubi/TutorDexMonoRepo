@@ -20,6 +20,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _running_in_docker() -> bool:
+    """Detect if running inside a Docker container (best-effort)."""
     if Path("/.dockerenv").exists():
         return True
     try:
@@ -28,8 +29,9 @@ def _running_in_docker() -> bool:
             s = p.read_text(encoding="utf-8", errors="ignore")
             if "docker" in s or "containerd" in s or "kubepods" in s:
                 return True
-    except Exception:
-        pass
+    except Exception as e:
+        from shared.observability import swallow_exception
+        swallow_exception(e, context="docker_detection", extra={"module": __name__})
     return False
 
 

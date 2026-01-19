@@ -8,6 +8,7 @@ from functools import lru_cache
 from typing import Optional, Tuple
 
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 try:
     from utils.field_coercion import normalize_sg_postal_code
@@ -32,26 +33,26 @@ def nominatim_disabled() -> bool:
 def geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[float, float]]:
     """
     Geocode Singapore postal code using Nominatim API.
-    
+
     Returns (lat, lon) tuple or None if geocoding fails.
     Caches results to avoid repeated API calls.
-    
+
     Args:
         postal_code: Singapore postal code (6 digits)
         timeout: Request timeout in seconds
-    
+
     Returns:
         Tuple of (latitude, longitude) or None if geocoding fails
     """
     if nominatim_disabled():
         return None
-    
+
     pc = normalize_sg_postal_code(postal_code)
     if not pc:
         return None
 
     import requests
-    
+
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": f"Singapore {pc}", "format": "jsonv2", "limit": 1, "countrycodes": "sg"}
     headers = {"User-Agent": (str(_cfg().nominatim_user_agent or "").strip() or "TutorDexAggregator/1.0")}
@@ -73,16 +74,16 @@ def geocode_sg_postal(postal_code: str, *, timeout: int = 10) -> Optional[Tuple[
                 try:
                     import time
                     time.sleep(min(10.0, backoff_s * (2**attempt)))
-                except Exception:
-                    pass
+                except Exception as e:
+                    swallow_exception(e, context="geocoding_backoff_sleep", extra={"attempt": attempt, "module": __name__})
             continue
 
         if resp.status_code in {429, 503} and attempt < max_attempts - 1:
             try:
                 import time
                 time.sleep(min(10.0, backoff_s * (2**attempt)))
-            except Exception:
-                pass
+            except Exception as e:
+                swallow_exception(e, context="geocoding_rate_limit_backoff", extra={"attempt": attempt, "module": __name__})
             continue
 
         if resp.status_code >= 400:

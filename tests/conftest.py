@@ -4,10 +4,9 @@ Pytest configuration and fixtures for backend API tests.
 Provides shared fixtures for testing FastAPI endpoints with mocked dependencies.
 """
 import os
-import sys
 import pytest
 from typing import Generator, Dict, Any
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 

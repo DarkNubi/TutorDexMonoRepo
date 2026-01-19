@@ -29,10 +29,10 @@ def should_run_duplicate_detection() -> bool:
 def run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
     """
     Run duplicate detection asynchronously (non-blocking).
-    
+
     This runs in a separate thread to avoid blocking the main persist operation.
     Failures in duplicate detection do not affect assignment persistence.
-    
+
     Args:
         assignment_id: Database assignment ID
         cfg: Supabase configuration
@@ -43,13 +43,13 @@ def run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
                 from duplicate_detector import detect_duplicates_for_assignment
             except Exception:
                 from TutorDexAggregator.duplicate_detector import detect_duplicates_for_assignment
-            
+
             group_id = detect_duplicates_for_assignment(
                 assignment_id,
                 supabase_url=cfg.url,
                 supabase_key=cfg.key
             )
-            
+
             if group_id:
                 logger.info(
                     f"Duplicate detection completed for assignment {assignment_id}",
@@ -65,7 +65,7 @@ def run_duplicate_detection_async(assignment_id: int, cfg: "SupabaseConfig"):
                 f"Duplicate detection failed for assignment {assignment_id}: {e}",
                 extra={"assignment_id": assignment_id, "error": str(e)}
             )
-    
+
     # Run in background thread (non-blocking)
     thread = threading.Thread(target=_detect, daemon=True)
     thread.start()

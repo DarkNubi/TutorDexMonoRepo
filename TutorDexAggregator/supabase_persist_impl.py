@@ -1,4 +1,3 @@
-import os
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -12,7 +11,7 @@ try:
     # Running from `TutorDexAggregator/` with that folder on sys.path.
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
-    from utils.field_coercion import truthy, safe_str  # type: ignore
+    from utils.field_coercion import safe_str  # type: ignore
     from services.row_builder import build_assignment_row  # type: ignore
     from services.merge_policy import merge_patch_body  # type: ignore
     from services.persistence_operations import upsert_agency  # type: ignore
@@ -23,7 +22,7 @@ except Exception:
     # Imported as `TutorDexAggregator.*` from repo root (e.g., unit tests).
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
     from TutorDexAggregator.utils.timestamp_utils import utc_now_iso, parse_iso_dt, max_iso_ts  # type: ignore
-    from TutorDexAggregator.utils.field_coercion import truthy, safe_str  # type: ignore
+    from TutorDexAggregator.utils.field_coercion import safe_str  # type: ignore
     from TutorDexAggregator.services.row_builder import build_assignment_row  # type: ignore
     from TutorDexAggregator.services.merge_policy import merge_patch_body  # type: ignore
     from TutorDexAggregator.services.persistence_operations import upsert_agency  # type: ignore
@@ -239,6 +238,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 try:
                     worker_supabase_fail_total.labels(operation="get", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
             return {"ok": False, "error": str(e)}
 
@@ -312,7 +312,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                     try:
                         worker_supabase_fail_total.labels(operation="patch", pipeline_version=pv, schema_version=sv).inc()
                     except Exception:
-                        pass
+                        pass  # Metrics must never break runtime
                 return {"ok": False, "error": str(e)}
 
             ok = patch_resp.status_code < 400
@@ -341,7 +341,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                         try:
                             worker_supabase_fail_total.labels(operation="patch", pipeline_version=pv, schema_version=sv).inc()
                         except Exception:
-                            pass
+                            pass  # Metrics must never break runtime
                     return {"ok": False, "error": str(e)}
             if not ok:
                 log_event(logger, logging.WARNING, "supabase_patch_status", status_code=patch_resp.status_code, body=patch_resp.text[:500])
@@ -384,7 +384,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                 try:
                     worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
                 except Exception:
-                    pass
+                    pass  # Metrics must never break runtime
             return {"ok": False, "error": str(e)}
 
         ok = insert_resp.status_code < 400
@@ -420,7 +420,7 @@ def persist_assignment_to_supabase(payload: Dict[str, Any], *, cfg: Optional[Sup
                     try:
                         worker_supabase_fail_total.labels(operation="insert", pipeline_version=pv, schema_version=sv).inc()
                     except Exception:
-                        pass
+                        pass  # Metrics must never break runtime
                 return {"ok": False, "error": str(e)}
         if not ok:
             log_event(logger, logging.WARNING, "supabase_insert_status", status_code=insert_resp.status_code, body=insert_resp.text[:500])

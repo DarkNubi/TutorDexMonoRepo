@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from delivery.format_utils import _join_text
+
 
 def _derive_external_id_for_tracking(payload: Dict[str, Any]) -> str:
     parsed = payload.get("parsed") or {}
@@ -107,7 +109,7 @@ def build_inline_keyboard(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     #     return {"inline_keyboard": [[button]]}
     #
     # # Fallback to direct URL button when callback_data would be too long or ext missing.
-    
+
     # Always use direct URL button (no click tracking)
     button: Dict[str, Any] = {"text": "Open original post", "url": message_link}
     return {"inline_keyboard": [[button]]}

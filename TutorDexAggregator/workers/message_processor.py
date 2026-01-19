@@ -15,7 +15,7 @@ logger = logging.getLogger("message_processor")
 
 class MessageFilterResult:
     """Result of message filtering."""
-    
+
     def __init__(
         self,
         should_skip: bool,
@@ -36,14 +36,14 @@ def load_raw_message(
 ) -> Optional[Dict[str, Any]]:
     """
     Load raw message from database.
-    
+
     Args:
         url: Supabase URL
         key: Supabase API key
         raw_id: Raw message ID
         pipeline_version: For metrics
         schema_version: For metrics
-        
+
     Returns:
         Raw message dict or None if not found
     """
@@ -59,14 +59,14 @@ def load_channel_info(
 ) -> Dict[str, Any]:
     """
     Load channel information from database.
-    
+
     Args:
         url: Supabase URL
         key: Supabase API key
         channel_link: Channel link
         pipeline_version: For metrics
         schema_version: For metrics
-        
+
     Returns:
         Channel info dict (empty dict if not found)
     """
@@ -80,18 +80,18 @@ def filter_message(
 ) -> MessageFilterResult:
     """
     Apply filters to determine if message should be skipped.
-    
+
     Filters:
     - Deleted messages -> skip (with close payload)
     - Forwarded messages -> skip
     - Reply messages -> skip (bump parent instead)
     - Empty text -> skip
-    
+
     Args:
         raw: Raw message dict
         channel_link: Channel link
         ch_info: Channel info dict
-        
+
     Returns:
         MessageFilterResult indicating if message should be skipped
     """
@@ -113,20 +113,20 @@ def filter_message(
             reason="deleted",
             close_payload=close_payload
         )
-    
+
     # Check if forwarded
     if bool(raw.get("is_forward")):
         return MessageFilterResult(should_skip=True, reason="forward")
-    
+
     # Check if reply - bump parent assignment instead of processing
     if bool(raw.get("is_reply")):
         return MessageFilterResult(should_skip=True, reason="reply")
-    
+
     # Check if empty text
     raw_text = str(raw.get("raw_text") or "").strip()
     if not raw_text:
         return MessageFilterResult(should_skip=True, reason="empty_text")
-    
+
     # Message passed all filters
     return MessageFilterResult(should_skip=False)
 
@@ -138,12 +138,12 @@ def build_extraction_context(
 ) -> Dict[str, Any]:
     """
     Build context object for extraction processing.
-    
+
     Args:
         job: Job dict from queue
         raw: Raw message dict
         ch_info: Channel info dict
-        
+
     Returns:
         Context dict with all necessary information
     """
@@ -151,9 +151,9 @@ def build_extraction_context(
     raw_id = job.get("raw_id")
     channel_link = str(job.get("channel_link") or "").strip() or "t.me/unknown"
     message_id = str(job.get("message_id") or "").strip()
-    
+
     cid = f"worker:{channel_link}:{message_id}:{extraction_id}"
-    
+
     return {
         "extraction_id": extraction_id,
         "raw_id": raw_id,

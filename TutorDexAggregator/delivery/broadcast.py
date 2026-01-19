@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+import logging
 from typing import Any, Dict, Optional
 
 from delivery.broadcast_client import _send_to_single_chat
@@ -45,27 +45,27 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     """Send a broadcast to the configured Telegram channel(s) via Bot API.
 
     If no bot configuration is present, write the payload to a local file for manual handling.
-    
+
     Duplicate Filtering:
     - Controlled by BROADCAST_DUPLICATE_MODE environment variable
     - Modes: 'all' (default), 'primary_only', 'primary_with_note'
     - 'primary_only': Only broadcast primary assignment from duplicate groups
     - 'primary_with_note': Broadcast primary with note about other agencies
-    
+
     Args:
         payload: Assignment payload to broadcast
         target_chats: Optional list of chat IDs to override TARGET_CHATS.
                      Precedence: target_chats > TARGET_CHATS > TARGET_CHAT > payload['target_chat']
-    
+
     Returns:
         Dict with result info. Structure varies by scenario:
-        
+
         Multi-channel success:
             {'ok': bool, 'results': List[Dict], 'chats': List, 'sent_count': int, 'failed_count': int}
-        
+
         Single-channel success (legacy):
             {'ok': bool, 'response': Dict, 'status_code': int, 'chat_id': Any}
-        
+
         Fallback (no bot config):
             {'ok': bool, 'saved_to_file': str} on success
             {'ok': False, 'error': str} on failure
@@ -74,11 +74,11 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     cid = payload.get('cid') or '<no-cid>'
     msg_id = payload.get('message_id')
     channel_link = payload.get('channel_link') or payload.get('channel_username') or ''
-    
+
     # Determine target chat IDs with clear precedence order:
     # 1. Explicit parameter override (target_chats)
     # 2. Configured multiple channels (TARGET_CHATS)
-    # 3. Configured single channel (TARGET_CHAT) 
+    # 3. Configured single channel (TARGET_CHAT)
     # 4. Payload-specific override (payload['target_chat'])
     chats = target_chats if target_chats is not None else TARGET_CHATS
     if not chats and TARGET_CHAT:
@@ -90,13 +90,13 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
     pv = str(payload.get("pipeline_version") or "").strip() or v.pipeline_version
     sv = str(payload.get("schema_version") or "").strip() or v.schema_version
     assignment_id = _derive_external_id_for_tracking(payload)
-    
+
     # Check duplicate filtering mode
     duplicate_mode = str(_CFG.broadcast_duplicate_mode or "all").strip().lower()
     if duplicate_mode in ("primary_only", "primary_with_note"):
         parsed = payload.get("parsed") or {}
         is_primary = parsed.get("is_primary_in_group", True)
-        
+
         if not is_primary:
             # Skip broadcasting non-primary duplicates
             logger.info(
@@ -111,7 +111,7 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
                 from observability_metrics import broadcast_skipped_duplicate_total
                 broadcast_skipped_duplicate_total.inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {"ok": True, "skipped": True, "reason": "non_primary_duplicate", "mode": duplicate_mode}
 
     with bind_log_context(
@@ -166,7 +166,7 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
                 except Exception as e:
                     logger.exception('Failed to send to chat_id=%s error=%s', chat_id, e)
                     results.append({'ok': False, 'error': str(e), 'chat_id': chat_id})
-            
+
             # Return aggregated results
             all_ok = all(r.get('ok') for r in results)
             return {
@@ -185,22 +185,22 @@ def send_broadcast(payload: Dict[str, Any], *, target_chats: Optional[list] = No
             try:
                 broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             try:
                 broadcast_fail_reason_total.labels(reason="fallback_written", pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {'ok': True, 'saved_to_file': FALLBACK_FILE}
         except Exception as e:
             logger.exception('Failed to write fallback broadcast error=%s', e)
             try:
                 broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             try:
                 broadcast_fail_reason_total.labels(reason="fallback_write_failed", pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {'ok': False, 'error': str(e)}
 
 

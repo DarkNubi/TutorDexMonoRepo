@@ -41,7 +41,7 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
             body['reply_markup'] = reply_markup
     except Exception:
         logger.exception('callback_reply_markup_error')
-    
+
     try:
         max_attempts = max(1, int(_CFG.broadcast_max_attempts))
         base_sleep_s = float(_CFG.broadcast_retry_base_seconds)
@@ -118,7 +118,7 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
             try:
                 broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             try:
                 broadcast_fail_reason_total.labels(
                     reason=_classify_broadcast_error(status_code=int(resp.status_code), error=(
@@ -127,14 +127,14 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
                     schema_version=sv,
                 ).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             return {'ok': False, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id}
         else:
             log_event(logger, logging.INFO, "broadcast_sent", chat_id=chat_id, status_code=resp.status_code, send_ms=send_ms)
             try:
                 broadcast_sent_total.labels(pipeline_version=pv, schema_version=sv).inc()
             except Exception:
-                pass
+                pass  # Metrics must never break runtime
             # Store broadcast message mapping for tracking/reconciliation
             if ENABLE_BROADCAST_TRACKING:
                 try:
@@ -147,14 +147,14 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
                                                      sent_message_id=int(sent_message_id), message_html=text)
                 except Exception:
                     logger.debug("broadcast_tracking_upsert_failed", exc_info=True, chat_id=chat_id)
-            return {'ok': True, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id, 
+            return {'ok': True, 'status_code': resp.status_code, 'response': j, 'chat_id': chat_id,
                     'sent_message_id': j.get("result", {}).get("message_id") if isinstance(j, dict) else None}
     except Exception as e:
         logger.exception('Broadcast send error chat_id=%s error=%s', chat_id, e)
         try:
             broadcast_fail_total.labels(pipeline_version=pv, schema_version=sv).inc()
         except Exception:
-            pass
+            pass  # Metrics must never break runtime
         try:
             broadcast_fail_reason_total.labels(
                 reason=_classify_broadcast_error(status_code=None, error=str(e)),
@@ -162,6 +162,6 @@ def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv
                 schema_version=sv,
             ).inc()
         except Exception:
-            pass
+            pass  # Metrics must never break runtime
         return {'ok': False, 'error': str(e), 'chat_id': chat_id}
 

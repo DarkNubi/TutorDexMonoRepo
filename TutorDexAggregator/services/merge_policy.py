@@ -4,7 +4,7 @@ Merge Policy Service
 Conservative merge logic for assignment updates.
 Handles quality-based overwrites, timestamp comparisons, and signal unions.
 """
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from shared.config import load_aggregator_config
 
@@ -32,12 +32,12 @@ def merge_patch_body(*, existing: Dict[str, Any], incoming_row: Dict[str, Any], 
     - Always update latest message pointers (message_id/message_link).
     - Allow filling missing fields.
     - Overwrite more broadly only when parse_quality_score improves.
-    
+
     Args:
         existing: Current database row
         incoming_row: New row to merge
         force_upgrade: Force full upgrade even if quality score didn't improve
-    
+
     Returns:
         Dict of fields to update (patch body)
     """

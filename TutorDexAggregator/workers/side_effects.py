@@ -16,11 +16,11 @@ def should_broadcast(
 ) -> bool:
     """
     Check if broadcasting is enabled and available.
-    
+
     Args:
         enable_broadcast: Whether broadcasting is enabled in config
         broadcast_module: Broadcast assignments module (or None if not available)
-        
+
     Returns:
         True if broadcasting should be attempted
     """
@@ -33,11 +33,11 @@ def should_send_dms(
 ) -> bool:
     """
     Check if DM sending is enabled and available.
-    
+
     Args:
         enable_dms: Whether DM sending is enabled in config
         send_dms_func: Send DMs function (or None if not available)
-        
+
     Returns:
         True if DM sending should be attempted
     """
@@ -51,20 +51,20 @@ def broadcast_assignment(
 ) -> Optional[Dict[str, Any]]:
     """
     Broadcast assignment to aggregator channel.
-    
+
     Best-effort: failures are logged but don't fail the extraction.
-    
+
     Args:
         payload: Assignment payload to broadcast
         broadcast_module: Broadcast assignments module
         cid: Correlation ID for logging
-        
+
     Returns:
         Broadcast result dict or None if failed
     """
     if not broadcast_module:
         return None
-    
+
     try:
         result = broadcast_module.broadcast_single_assignment(payload)
         logger.info(f"Broadcast successful for {cid}")
@@ -81,20 +81,20 @@ def send_assignment_dms(
 ) -> Optional[Dict[str, Any]]:
     """
     Send DMs to matched tutors.
-    
+
     Best-effort: failures are logged but don't fail the extraction.
-    
+
     Args:
         payload: Assignment payload for matching
         send_dms_func: Function to send DMs
         cid: Correlation ID for logging
-        
+
     Returns:
         DM sending result dict or None if failed
     """
     if not send_dms_func:
         return None
-    
+
     try:
         result = send_dms_func(payload)
         logger.info(f"DMs sent for {cid}")
@@ -112,15 +112,15 @@ def execute_side_effects(
 ) -> Dict[str, Optional[Dict[str, Any]]]:
     """
     Execute all side effects (broadcast, DMs) for an assignment.
-    
+
     Side effects are best-effort - failures are logged but don't fail extraction.
-    
+
     Args:
         payload: Assignment payload
         config: Configuration dict with enable flags
         modules: Dict with broadcast_module and send_dms_func
         cid: Correlation ID for logging
-        
+
     Returns:
         Dict with results: {"broadcast": result, "dms": result}
     """
@@ -128,7 +128,7 @@ def execute_side_effects(
         "broadcast": None,
         "dms": None
     }
-    
+
     # Broadcast
     if should_broadcast(config.get("enable_broadcast", False), modules.get("broadcast_module")):
         results["broadcast"] = broadcast_assignment(
@@ -136,7 +136,7 @@ def execute_side_effects(
             modules.get("broadcast_module"),
             cid
         )
-    
+
     # DMs
     if should_send_dms(config.get("enable_dms", False), modules.get("send_dms_func")):
         results["dms"] = send_assignment_dms(
@@ -144,5 +144,5 @@ def execute_side_effects(
             modules.get("send_dms_func"),
             cid
         )
-    
+
     return results

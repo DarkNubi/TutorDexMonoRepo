@@ -26,7 +26,6 @@ import json
 import argparse
 import logging
 from typing import Any, Dict, Optional
-from pathlib import Path
 
 import requests
 
@@ -91,29 +90,29 @@ def set_webhook(
         )
 
     url = f"{telegram_api_url(token)}/setWebhook"
-    
+
     payload: Dict[str, Any] = {
         "url": webhook_url,
         "max_connections": max_connections,
     }
-    
+
     if secret_token:
         payload["secret_token"] = secret_token
         logger.info("Setting webhook with secret token for verification")
-    
+
     if allowed_updates:
         payload["allowed_updates"] = allowed_updates
     else:
         # Only receive callback queries for inline buttons
         payload["allowed_updates"] = ["callback_query"]
-    
+
     logger.info(f"Setting webhook URL: {webhook_url}")
-    
+
     try:
         resp = requests.post(url, json=payload, timeout=30)
         resp.raise_for_status()
         result = resp.json()
-        
+
         if result.get("ok"):
             logger.info("✓ Webhook set successfully")
             return {
@@ -147,16 +146,16 @@ def get_webhook_info(token: str) -> Dict[str, Any]:
         Dict with webhook info
     """
     url = f"{telegram_api_url(token)}/getWebhookInfo"
-    
+
     try:
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         result = resp.json()
-        
+
         if result.get("ok"):
             info = result.get("result", {})
             webhook_url = info.get("url", "")
-            
+
             if webhook_url:
                 logger.info(f"✓ Webhook is set: {webhook_url}")
                 logger.info(f"  Pending updates: {info.get('pending_update_count', 0)}")
@@ -175,7 +174,7 @@ def get_webhook_info(token: str) -> Dict[str, Any]:
                     logger.info(f"  Allowed updates: {', '.join(allowed)}")
             else:
                 logger.info("No webhook is currently set (using long polling)")
-            
+
             return {
                 "ok": True,
                 "info": info,
@@ -203,14 +202,14 @@ def delete_webhook(token: str) -> Dict[str, Any]:
         Dict with result information
     """
     url = f"{telegram_api_url(token)}/deleteWebhook"
-    
+
     logger.info("Deleting webhook (switching to long polling)...")
-    
+
     try:
         resp = requests.post(url, timeout=10)
         resp.raise_for_status()
         result = resp.json()
-        
+
         if result.get("ok"):
             logger.info("✓ Webhook deleted successfully")
             return {"ok": True}
@@ -249,9 +248,9 @@ Environment Variables:
   WEBHOOK_SECRET_TOKEN    Secret token for webhook verification (recommended)
         """
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
-    
+
     # Set webhook
     set_parser = subparsers.add_parser("set", help="Set webhook URL")
     set_parser.add_argument(
@@ -269,25 +268,25 @@ Environment Variables:
         default=40,
         help="Maximum simultaneous connections (1-100, default: 40)"
     )
-    
+
     # Get info
     subparsers.add_parser("info", help="Get webhook info")
-    
+
     # Delete webhook
     subparsers.add_parser("delete", help="Delete webhook")
-    
+
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         return 1
-    
+
     try:
         token = get_bot_token()
     except ValueError as e:
         logger.error(str(e))
         return 1
-    
+
     if args.command == "set":
         secret = args.secret or get_webhook_secret()
         if not secret:
@@ -295,14 +294,14 @@ Environment Variables:
                 "No WEBHOOK_SECRET_TOKEN set. It's recommended to use a secret token "
                 "to verify webhook requests. Set WEBHOOK_SECRET_TOKEN in your .env file."
             )
-        
+
         result = set_webhook(
             token=token,
             webhook_url=args.url,
             secret_token=secret,
             max_connections=args.max_connections,
         )
-        
+
         if result["ok"]:
             logger.info("")
             logger.info("Next steps:")
@@ -314,7 +313,7 @@ Environment Variables:
             return 0
         else:
             return 1
-    
+
     elif args.command == "info":
         result = get_webhook_info(token)
         if result["ok"]:
@@ -323,11 +322,11 @@ Environment Variables:
             return 0
         else:
             return 1
-    
+
     elif args.command == "delete":
         result = delete_webhook(token)
         return 0 if result["ok"] else 1
-    
+
     return 0
 
 

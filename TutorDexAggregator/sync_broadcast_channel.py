@@ -4,7 +4,7 @@ Synchronize broadcast channel(s) with open assignments in Supabase.
 
 This script:
 1. Fetches all messages from target Telegram channel(s)
-2. Compares with open assignments in Supabase  
+2. Compares with open assignments in Supabase
 3. Identifies and deletes messages for expired/closed assignments
 4. Identifies and posts missing messages for open assignments
 
@@ -22,7 +22,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -33,8 +33,8 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from logging_setup import log_event, setup_logging
-from supabase_env import resolve_supabase_url
+from logging_setup import log_event, setup_logging  # noqa: E402
+from supabase_env import resolve_supabase_url  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger('sync_broadcast_channel')
@@ -57,7 +57,7 @@ def _parse_chat_ids() -> List[Any]:
         except Exception:
             logger.warning('Failed to parse AGGREGATOR_CHANNEL_IDS as JSON')
             return [multi] if multi else []
-    
+
     # Fallback to singular (AGGREGATOR_CHANNEL_ID)
     single = _cfg().aggregator_channel_id
     return [single] if single else []
@@ -90,13 +90,13 @@ def fetch_broadcast_messages_from_db(chat_id: Any) -> List[Dict[str, Any]]:
     if not url or not key:
         logger.warning('Supabase not configured, skipping DB fetch')
         return []
-    
+
     headers = {
         'apikey': key,
         'authorization': f'Bearer {key}',
         'content-type': 'application/json',
     }
-    
+
     try:
         # Query broadcast_messages table
         query_url = f'{url}/rest/v1/broadcast_messages?sent_chat_id=eq.{chat_id}&deleted_at=is.null&select=*'
@@ -117,13 +117,13 @@ def fetch_open_assignments() -> List[Dict[str, Any]]:
     if not url or not key:
         logger.error('Supabase not configured')
         return []
-    
+
     headers = {
         'apikey': key,
         'authorization': f'Bearer {key}',
         'content-type': 'application/json',
     }
-    
+
     try:
         # Fetch open assignments with necessary fields
         table = str(_cfg().supabase_assignments_table or 'assignments').strip() or 'assignments'
@@ -154,14 +154,14 @@ def mark_broadcast_message_deleted(chat_id: Any, message_id: int) -> bool:
     key = _cfg().supabase_auth_key
     if not url or not key:
         return False
-    
+
     headers = {
         'apikey': key,
         'authorization': f'Bearer {key}',
         'content-type': 'application/json',
         'prefer': 'return=minimal',
     }
-    
+
     try:
         patch_url = f'{url}/rest/v1/broadcast_messages?sent_chat_id=eq.{chat_id}&sent_message_id=eq.{message_id}'
         body = {'deleted_at': datetime.now(timezone.utc).isoformat()}
@@ -177,7 +177,7 @@ def post_assignment_to_channel(assignment: Dict[str, Any], chat_id: Any) -> Opti
     try:
         # Import broadcast function
         from broadcast_assignments import send_broadcast
-        
+
         # Build payload from assignment
         payload = {
             'cid': f"sync:{assignment.get('external_id')}",
@@ -189,7 +189,7 @@ def post_assignment_to_channel(assignment: Dict[str, Any], chat_id: Any) -> Opti
             'date': assignment.get('published_at') or assignment.get('created_at'),
             'target_chat': chat_id,  # Override target
         }
-        
+
         result = send_broadcast(payload, target_chats=[chat_id])
         return result
     except Exception as e:
@@ -207,25 +207,25 @@ def sync_channel(
 ) -> Dict[str, Any]:
     """
     Synchronize a single broadcast channel with open assignments.
-    
+
     Returns summary dict with statistics.
     """
     logger.info('Syncing channel: chat_id=%s dry_run=%s', chat_id, dry_run)
-    
+
     # Fetch data
     broadcast_msgs = fetch_broadcast_messages_from_db(chat_id)
     open_assignments = fetch_open_assignments()
-    
+
     # Build lookup sets
     broadcast_external_ids = {msg.get('external_id') for msg in broadcast_msgs if msg.get('external_id')}
     open_external_ids = {a.get('external_id') for a in open_assignments if a.get('external_id')}
-    
+
     # Identify orphaned messages (in channel but assignment closed/missing)
     orphaned = [msg for msg in broadcast_msgs if msg.get('external_id') not in open_external_ids]
-    
+
     # Identify missing assignments (open but not in channel)
     missing = [a for a in open_assignments if a.get('external_id') not in broadcast_external_ids]
-    
+
     stats = {
         'chat_id': chat_id,
         'broadcast_messages_count': len(broadcast_msgs),
@@ -237,14 +237,14 @@ def sync_channel(
         'delete_errors': 0,
         'post_errors': 0,
     }
-    
+
     # Delete orphaned messages
     if not post_only and orphaned:
         logger.info('Found %d orphaned messages to delete', len(orphaned))
         for msg in orphaned:
             sent_message_id = msg.get('sent_message_id')
             external_id = msg.get('external_id')
-            
+
             if dry_run:
                 logger.info('[DRY RUN] Would delete message: external_id=%s message_id=%d', external_id, sent_message_id)
                 stats['deleted_count'] += 1
@@ -258,13 +258,13 @@ def sync_channel(
                     stats['delete_errors'] += 1
                 # Rate limit: small delay between deletions
                 time.sleep(0.5)
-    
+
     # Post missing assignments
     if not delete_only and missing:
         logger.info('Found %d missing assignments to post', len(missing))
         for assignment in missing:
             external_id = assignment.get('external_id')
-            
+
             if dry_run:
                 logger.info('[DRY RUN] Would post assignment: external_id=%s', external_id)
                 stats['posted_count'] += 1
@@ -277,7 +277,7 @@ def sync_channel(
                     stats['post_errors'] += 1
                 # Rate limit: delay between posts
                 time.sleep(1.0)
-    
+
     log_event(logger, logging.INFO, 'sync_channel_complete', **stats)
     return stats
 
@@ -291,23 +291,23 @@ def main() -> None:
     parser.add_argument('--post-only', action='store_true', help='Only post missing assignments')
     parser.add_argument('--chat-id', type=str, help='Sync only this specific chat ID')
     args = parser.parse_args()
-    
+
     # Get configuration
     chat_ids = [args.chat_id] if args.chat_id else _parse_chat_ids()
     token = _get_bot_token()
-    
+
     if not chat_ids:
         logger.error('No broadcast channels configured. Set AGGREGATOR_CHANNEL_ID or AGGREGATOR_CHANNEL_IDS')
         sys.exit(1)
-    
+
     if not token:
         logger.error('No bot token configured. Set GROUP_BOT_TOKEN')
         sys.exit(1)
-    
+
     logger.info('Starting sync for %d channel(s): %s', len(chat_ids), chat_ids)
     if args.dry_run:
         logger.info('DRY RUN MODE - no changes will be made')
-    
+
     # Sync each channel
     all_stats = []
     for chat_id in chat_ids:
@@ -326,7 +326,7 @@ def main() -> None:
                 'chat_id': chat_id,
                 'error': str(e),
             })
-    
+
     # Print summary
     print('\n' + '='*70)
     print('SYNC SUMMARY')

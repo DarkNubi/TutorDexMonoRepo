@@ -255,6 +255,7 @@ def main() -> None:
                         worker_job_latency_seconds.labels(pipeline_version=pv, schema_version=sv).observe(dt_s)
                         worker_jobs_processed_total.labels(status=str(status), pipeline_version=pv, schema_version=sv).inc()
                     except Exception:
+                        # Metrics must never break runtime
                         pass
                     logger.info("job_end extraction_id=%s dt_ms=%s", extraction_id, dt_ms)
                 except Exception as e:
@@ -264,6 +265,7 @@ def main() -> None:
                         worker_job_latency_seconds.labels(pipeline_version=pv, schema_version=sv).observe(dt_s)
                         worker_jobs_processed_total.labels(status="error", pipeline_version=pv, schema_version=sv).inc()
                     except Exception:
+                        # Metrics must never break runtime
                         pass
                     logger.warning("job_error extraction_id=%s dt_ms=%s error=%s", extraction_id, dt_ms, str(e))
                 if max_jobs and processed >= max_jobs:

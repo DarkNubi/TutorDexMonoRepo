@@ -15,31 +15,31 @@ Safety:
 from pathlib import Path
 import sys
 
-AGG_DIR = Path(__file__).resolve().parents[1]  # noqa: E402
+AGG_DIR = Path(__file__).resolve().parents[1]
 if str(AGG_DIR) not in sys.path:
     sys.path.insert(0, str(AGG_DIR))
 
-from compilation_detection import is_compilation
-from extract_key_info import extract_assignment_with_model
-from extractors.time_availability import extract_time_availability
-from hard_validator import hard_validate
-from normalize import normalize_text
-from signals_builder import build_signals
-from schema_validation import validate_parsed_assignment
-from supabase_persist import persist_assignment_to_supabase
-from supabase_raw_persist import SupabaseRawStore
-from logging_setup import bind_log_context, log_event, setup_logging
-import json
-import logging
-import re
-import time
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from compilation_detection import is_compilation  # noqa: E402
+from extract_key_info import extract_assignment_with_model  # noqa: E402
+from extractors.time_availability import extract_time_availability  # noqa: E402
+from hard_validator import hard_validate  # noqa: E402
+from normalize import normalize_text  # noqa: E402
+from signals_builder import build_signals  # noqa: E402
+from schema_validation import validate_parsed_assignment  # noqa: E402
+from supabase_persist import persist_assignment_to_supabase  # noqa: E402
+from supabase_raw_persist import SupabaseRawStore  # noqa: E402
+from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
+import json  # noqa: E402
+import logging  # noqa: E402
+import re  # noqa: E402
+import time  # noqa: E402
+from dataclasses import dataclass  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
+from typing import Any, Dict, List, Optional  # noqa: E402
 
-import requests
+import requests  # noqa: E402
 
-from shared.config import load_aggregator_config
+from shared.config import load_aggregator_config  # noqa: E402
 
 # --------------------------------------------------------------------------------------
 # Edit these two values when you need to reprocess a window (no CLI args on purpose).

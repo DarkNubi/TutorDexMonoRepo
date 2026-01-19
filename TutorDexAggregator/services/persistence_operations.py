@@ -23,13 +23,13 @@ def upsert_agency(
 ) -> Optional[int]:
     """
     Find or create agency by name/channel_link.
-    
+
     Args:
         client: Supabase REST client
         agency_display_name: Agency display name (user-facing)
         agency_telegram_channel_name: Telegram channel name (internal)
         channel_link: Optional channel link (e.g., t.me/channel_name)
-    
+
     Returns:
         agency_id or None if operation fails
     """

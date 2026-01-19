@@ -22,11 +22,11 @@ def is_production() -> bool:
 def get_env_int(name: str, default: int) -> int:
     """
     Parse integer from environment variable with fallback.
-    
+
     Args:
         name: Environment variable name
         default: Default value if not set or invalid
-        
+
     Returns:
         Integer value from env or default
     """
@@ -51,10 +51,10 @@ def get_env_int(name: str, default: int) -> int:
 def parse_truthy(value: Optional[str]) -> bool:
     """
     Parse truthy string value.
-    
+
     Args:
         value: String value to parse ("1", "true", "yes", etc.)
-        
+
     Returns:
         True if value is truthy, False otherwise
     """

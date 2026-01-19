@@ -27,6 +27,7 @@ except Exception:  # pragma: no cover
     from TutorDexAggregator.logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
 
 from shared.config import load_aggregator_config
+from shared.observability.exception_handler import swallow_exception
 
 setup_logging()
 logger = logging.getLogger("compilation_message_handler")
@@ -75,8 +76,12 @@ def _safe_parse_json(json_string: str) -> Any:
 
         if "return_objects" in inspect.signature(repair_json).parameters:
             return repair_json(raw, return_objects=True)
-    except Exception:
-        pass
+    except Exception as e:
+        swallow_exception(
+            e,
+            context="json_repair_advanced_signature",
+            extra={"raw_preview": str(raw)[:100], "module": __name__},
+        )
 
     repaired = repair_json(raw)
     if isinstance(repaired, (dict, list)):

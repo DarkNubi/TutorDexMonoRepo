@@ -16,20 +16,20 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
-from shared.config import load_backend_config
+from shared.config import load_backend_config  # noqa: E402
 
 _CFG = load_backend_config()
 
 def _get_rate_limit_key(request: Request) -> str:
     """
     Get the key for rate limiting.
-    
+
     Uses X-Forwarded-For if available (for proxied requests),
     otherwise falls back to direct client IP.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         IP address to use for rate limiting
     """
@@ -37,7 +37,7 @@ def _get_rate_limit_key(request: Request) -> str:
     if forwarded:
         # X-Forwarded-For can have multiple IPs, use the first (client)
         return forwarded.split(",")[0].strip()
-    
+
     # Fall back to direct address
     return get_remote_address(request)
 
@@ -45,7 +45,7 @@ def _get_rate_limit_key(request: Request) -> str:
 def _is_rate_limit_enabled() -> bool:
     """
     Check if rate limiting is enabled via environment variable.
-    
+
     Returns:
         True if rate limiting should be active
     """
@@ -55,10 +55,10 @@ def _is_rate_limit_enabled() -> bool:
 def _get_redis_url() -> Optional[str]:
     """
     Get Redis URL for rate limit storage.
-    
+
     If Redis is not available, slowapi will fall back to in-memory storage
     (which won't work well in multi-process deployments).
-    
+
     Returns:
         Redis URL or None
     """
@@ -68,19 +68,19 @@ def _get_redis_url() -> Optional[str]:
 # Rate limit configurations for different endpoint types
 class RateLimits:
     """Rate limit presets for different endpoint categories."""
-    
+
     # Public endpoints (no auth)
     PUBLIC_STRICT = "30/minute"      # For expensive queries
     PUBLIC_MODERATE = "100/minute"   # For typical public endpoints
     PUBLIC_GENEROUS = "300/minute"   # For lightweight endpoints
-    
+
     # Authenticated endpoints
     AUTH_DEFAULT = "300/minute"      # For authenticated users
     AUTH_GENEROUS = "1000/minute"    # For high-volume operations
-    
+
     # Admin endpoints
     ADMIN_DEFAULT = "1000/minute"    # For admin operations
-    
+
     # Health/monitoring endpoints
     HEALTH_CHECK = "1000/minute"     # For health checks (very permissive)
 
@@ -98,13 +98,13 @@ limiter = Limiter(
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
     """
     Custom handler for rate limit exceeded errors.
-    
+
     Returns a JSON response with clear error message and retry information.
-    
+
     Args:
         request: The request that exceeded the limit
         exc: The rate limit exception
-        
+
     Returns:
         JSON response with 429 status code
     """
@@ -116,7 +116,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
             "limit": str(exc),
         }
     )
-    
+
     return JSONResponse(
         status_code=429,
         content={
@@ -134,7 +134,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
 def get_limiter() -> Limiter:
     """
     Get the configured limiter instance.
-    
+
     Returns:
         Slowapi Limiter instance
     """
@@ -144,7 +144,7 @@ def get_limiter() -> Limiter:
 def get_rate_limit_middleware():
     """
     Get the rate limiting middleware.
-    
+
     Returns:
         SlowAPIMiddleware instance
     """

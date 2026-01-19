@@ -1,0 +1,63 @@
+name: Python Lint
+
+on:
+  push:
+    branches: [ main, copilot/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Ruff Linting (Ban bare except)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff linter
+        run: |
+          echo "::group::Ruff Linting"
+          ruff check . --output-format=github
+          echo "::endgroup::"
+
+      - name: Check for bare except violations
+        run: |
+          echo "::group::Checking for bare except: patterns"
+          # Search for bare except: patterns (not followed by a type)
+          if grep -rn "except\s*:" --include="*.py" . | grep -v "except Exception" | grep -v "except.*Error" | grep -v "except.*as" | grep -v ".git" | grep -v "except: pass" | head -1; then
+            echo "::error::Found bare except: patterns. Use swallow_exception() or specific exception types instead."
+            echo "Showing all violations:"
+            grep -rn "except\s*:" --include="*.py" . | grep -v "except Exception" | grep -v "except.*Error" | grep -v "except.*as" | grep -v ".git"
+            exit 1
+          else
+            echo "✓ No bare except: patterns found"
+          fi
+          echo "::endgroup::"
+
+  syntax-check:
+    name: Python Syntax Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Run syntax check
+        run: |
+          echo "::group::Python Syntax Check"
+          ./check_python.sh
+          echo "::endgroup::"

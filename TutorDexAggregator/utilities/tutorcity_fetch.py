@@ -33,11 +33,11 @@ PARENT = HERE.parent
 if str(PARENT) not in sys.path:
     sys.path.insert(0, str(PARENT))
 
-from logging_setup import bind_log_context, log_event, setup_logging
-from supabase_persist import SupabaseConfig, load_config_from_env, persist_assignment_to_supabase
-from normalize import normalize_text
-from extractors.time_availability import extract_time_availability
-from signals_builder import build_signals
+from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
+from supabase_persist import SupabaseConfig, load_config_from_env, persist_assignment_to_supabase  # noqa: E402
+from normalize import normalize_text  # noqa: E402
+from extractors.time_availability import extract_time_availability  # noqa: E402
+from signals_builder import build_signals  # noqa: E402
 
 try:
     from dm_assignments import send_dms

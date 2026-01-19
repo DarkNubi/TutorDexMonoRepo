@@ -9,7 +9,6 @@ Outputs JSONL lines with `external_id` (if present), `tutor_types`, and `rate_br
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict
 
 
 def load_extractor():

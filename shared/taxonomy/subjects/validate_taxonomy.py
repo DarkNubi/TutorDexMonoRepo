@@ -5,7 +5,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 if __package__ in {None, ""}:
     # Allow running as a script: `python3 shared/taxonomy/subjects/validate_taxonomy.py`
