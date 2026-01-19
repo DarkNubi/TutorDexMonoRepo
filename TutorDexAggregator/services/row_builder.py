@@ -25,14 +25,16 @@ except Exception:
     )
     from TutorDexAggregator.utils.timestamp_utils import coerce_iso_ts
     from TutorDexAggregator.geo_enrichment import enrich_from_coords
+
+# Import get_agency_display_name (separate from the above try-except to ensure it always executes)
+try:
+    from agency_registry import get_agency_display_name
+except Exception:
     try:
-        from agency_registry import get_agency_display_name
+        from TutorDexAggregator.agency_registry import get_agency_display_name
     except Exception:
-        try:
-            from TutorDexAggregator.agency_registry import get_agency_display_name
-        except Exception:
-            def get_agency_display_name(v, d="Agency"):
-                return d
+        def get_agency_display_name(v, d="Agency"):
+            return d
 
 
 def _freshness_enabled() -> bool:
