@@ -4,7 +4,6 @@ Tests for online learning mode validation.
 Ensures that assignments marked as online don't fail validation for missing address.
 """
 
-import pytest
 from TutorDexAggregator.schema_validation import validate_parsed_assignment, _is_online_only
 
 
@@ -47,7 +46,7 @@ class TestOnlineAssignmentValidation:
             "lesson_schedule": ["Monday 3pm-5pm"],
             # No address, postal_code, or nearest_mrt
         }
-        
+
         ok, errors = validate_parsed_assignment(parsed)
         assert ok is True
         assert "missing_address_or_postal" not in errors
@@ -58,7 +57,7 @@ class TestOnlineAssignmentValidation:
             "learning_mode": {"mode": "Online Tuition", "raw_text": "Online Tuition"},
             "lesson_schedule": ["Once a week, 1.5 hours per session"],
         }
-        
+
         ok, errors = validate_parsed_assignment(parsed)
         assert ok is True
         assert "missing_address_or_postal" not in errors
@@ -70,7 +69,7 @@ class TestOnlineAssignmentValidation:
             "lesson_schedule": ["Monday 3pm-5pm"],
             # No address
         }
-        
+
         ok, errors = validate_parsed_assignment(parsed)
         assert ok is False
         assert "missing_address_or_postal" in errors
@@ -81,7 +80,7 @@ class TestOnlineAssignmentValidation:
             "lesson_schedule": ["Monday 3pm-5pm"],
             # No learning_mode, no address
         }
-        
+
         ok, errors = validate_parsed_assignment(parsed)
         assert ok is False
         assert "missing_address_or_postal" in errors
@@ -93,6 +92,6 @@ class TestOnlineAssignmentValidation:
             "lesson_schedule": ["Weekdays after 6pm"],
             "postal_code_estimated": ["123456"],  # This is OK but not required
         }
-        
+
         ok, errors = validate_parsed_assignment(parsed)
         assert ok is True

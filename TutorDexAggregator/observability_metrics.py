@@ -371,6 +371,13 @@ average_matches_per_assignment = Gauge(
     "Average number of tutors matched per assignment.",
 )
 
+# Exception handling metrics
+swallowed_exceptions_total = Counter(
+    "tutordex_swallowed_exceptions_total",
+    "Exceptions that were swallowed (logged but not re-raised) for observability.",
+    ["context", "exception_type"],
+)
+
 
 def set_version_metrics(*, component: str, v: Optional[Versions] = None) -> Versions:
     v = v or versions()

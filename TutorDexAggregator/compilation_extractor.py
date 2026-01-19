@@ -53,12 +53,12 @@ def extract_assignment_codes(text: str) -> Tuple[List[str], dict]:
     """
     if not text:
         return [], {"ok": False, "reason": "empty_text"}
-    
+
     codes_found: List[str] = []
     seen: Set[str] = set()
     match_count = 0
     pattern_hits = {}
-    
+
     # Try each pattern
     for pattern in _CODE_PATTERNS:
         matches = pattern.findall(text)
@@ -66,31 +66,31 @@ def extract_assignment_codes(text: str) -> Tuple[List[str], dict]:
             pattern_name = pattern.pattern[:50]  # Truncate for metadata
             pattern_hits[pattern_name] = len(matches)
             match_count += len(matches)
-            
+
             for match in matches:
                 # Normalize: uppercase, strip whitespace
                 code = str(match).strip().upper()
-                
+
                 # Filter out very short codes (likely false positives)
                 if len(code) < 3:
                     continue
-                
+
                 # Filter out pure numeric codes (likely not assignment codes)
                 if code.isdigit():
                     continue
-                
+
                 # Add to list if not seen before
                 if code not in seen:
                     seen.add(code)
                     codes_found.append(code)
-    
+
     metadata = {
         "ok": True,
         "codes_count": len(codes_found),
         "total_matches": match_count,
         "patterns_hit": pattern_hits,
     }
-    
+
     return codes_found, metadata
 
 

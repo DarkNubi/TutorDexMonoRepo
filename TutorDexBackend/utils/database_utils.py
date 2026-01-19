@@ -5,7 +5,7 @@ PostgreSQL and Supabase query helper functions extracted from app.py.
 """
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 from urllib.parse import quote as _url_quote
 
 if TYPE_CHECKING:
@@ -92,16 +92,16 @@ def count_matching_assignments(
     """
     if not supabase_store or not supabase_store.enabled() or not supabase_store.client:
         return None
-    
+
     supabase_client = supabase_store.client
-    
+
     since = datetime.now(timezone.utc) - timedelta(days=int(days))
     since_iso = since.isoformat()
-    
+
     # Count all assignments (open + closed) for historical volume
     # Use published_at (source time), not last_seen (our processing time)
     q = f"assignments?select=id&published_at=gte.{_url_quote(since_iso, safe='')}&limit=0"
-    
+
     if levels:
         arr = pg_array_literal(levels)
         q += f"&signals_levels=ov.{_url_quote(arr, safe='')}"
@@ -114,12 +114,12 @@ def count_matching_assignments(
     if subjects_general:
         arr = pg_array_literal(subjects_general)
         q += f"&subjects_general=ov.{_url_quote(arr, safe='')}"
-    
+
     try:
         resp = supabase_client.get(q, timeout=20, prefer="count=exact")
     except Exception:
         return None
-    
+
     if resp.status_code >= 300:
         logger.warning(
             "match_counts_query_failed status=%s body=%s",
@@ -127,5 +127,5 @@ def count_matching_assignments(
             resp.text[:300]
         )
         return None
-    
+
     return extract_count_from_header(resp.headers.get("content-range"))

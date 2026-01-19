@@ -17,11 +17,11 @@ logger = logging.getLogger("worker_config")
 @dataclass
 class WorkerConfig:
     """Configuration for the extraction worker."""
-    
+
     # Pipeline configuration
     pipeline_version: str
     schema_version: str
-    
+
     # Job claiming and processing
     claim_batch_size: int
     idle_sleep_seconds: float
@@ -29,22 +29,22 @@ class WorkerConfig:
     backoff_base_seconds: float
     backoff_max_seconds: float
     stale_processing_seconds: int
-    
+
     # Processing options
     use_normalized_text_for_llm: bool
     hard_validate_mode: str  # "off", "report", or "enforce"
     enable_deterministic_signals: bool
     use_deterministic_time: bool
     enable_postal_code_estimated: bool
-    
+
     # Side-effects
     enable_broadcast: bool
     enable_dms: bool
-    
+
     # Oneshot mode
     oneshot: bool
     max_jobs: int
-    
+
     # Supabase
     supabase_url: str
     supabase_key: str
@@ -67,10 +67,10 @@ def load_env_file(env_path: Optional[Path] = None) -> None:
         # dotenv not installed, try manual parse
         if env_path is None:
             env_path = Path(__file__).resolve().parents[1] / ".env"
-        
+
         if not env_path.exists():
             return
-        
+
         try:
             with open(env_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -97,17 +97,17 @@ def get_supabase_config() -> Tuple[str, str]:
         SystemExit: If Supabase is not properly configured
     """
     from supabase_env import resolve_supabase_url
-    
+
     url = resolve_supabase_url()
     key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "").strip()
-    
+
     enabled = truthy(os.environ.get("SUPABASE_ENABLED")) and bool(url and key)
     if not enabled:
         raise SystemExit(
             "Supabase not enabled. Set SUPABASE_ENABLED=1, SUPABASE_SERVICE_ROLE_KEY, "
             "and one of SUPABASE_URL_HOST / SUPABASE_URL_DOCKER / SUPABASE_URL."
         )
-    
+
     return url, key
 
 
@@ -127,14 +127,14 @@ def load_worker_config() -> WorkerConfig:
     """
     # Load .env file first
     load_env_file()
-    
+
     # Get Supabase config
     supabase_url, supabase_key = get_supabase_config()
-    
+
     # Get versions
     pipeline_version = (os.environ.get("EXTRACTION_PIPELINE_VERSION") or "2026-01-02_det_time_v1").strip()
     schema_version = (os.environ.get("SCHEMA_VERSION") or "v1").strip()
-    
+
     # Job processing settings
     claim_batch_size = int(os.environ.get("EXTRACTION_CLAIM_BATCH_SIZE") or "10")
     idle_sleep_seconds = float(os.environ.get("EXTRACTION_IDLE_SLEEP_SECONDS") or "2.0")
@@ -142,24 +142,24 @@ def load_worker_config() -> WorkerConfig:
     backoff_base_seconds = float(os.environ.get("EXTRACTION_BACKOFF_BASE_SECONDS") or "1.5")
     backoff_max_seconds = float(os.environ.get("EXTRACTION_BACKOFF_MAX_SECONDS") or "60.0")
     stale_processing_seconds = int(os.environ.get("EXTRACTION_STALE_PROCESSING_SECONDS") or "900")
-    
+
     # Processing options
     use_normalized_text = truthy(os.environ.get("USE_NORMALIZED_TEXT_FOR_LLM"))
     hard_validate_mode = (os.environ.get("HARD_VALIDATE_MODE") or "report").strip()
     enable_signals = truthy(os.environ.get("ENABLE_DETERMINISTIC_SIGNALS", "1"))
     use_det_time = truthy(os.environ.get("USE_DETERMINISTIC_TIME", "1"))
     enable_postal = truthy(os.environ.get("ENABLE_POSTAL_CODE_ESTIMATED", "1"))
-    
+
     # Side-effects
     enable_broadcast = truthy(os.environ.get("ENABLE_BROADCAST", "1"))
     enable_dms = truthy(os.environ.get("ENABLE_DMS", "1"))
-    
+
     # Oneshot mode
     oneshot = truthy(os.environ.get("EXTRACTION_WORKER_ONESHOT"))
     max_jobs = int(os.environ.get("EXTRACTION_WORKER_MAX_JOBS") or "0")
     if max_jobs < 0:
         max_jobs = 0
-    
+
     return WorkerConfig(
         pipeline_version=pipeline_version,
         schema_version=schema_version,

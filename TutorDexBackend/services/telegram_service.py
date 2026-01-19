@@ -18,10 +18,10 @@ _CFG = load_backend_config()
 
 class TelegramService:
     """Telegram bot integration logic."""
-    
+
     def __init__(self, store: TutorStore):
         self.store = store
-    
+
     def verify_webhook(self, request: Request) -> bool:
         """
         Verify Telegram webhook request using secret token.
@@ -39,14 +39,14 @@ class TelegramService:
         if not configured_secret:
             # No secret configured - allow requests (backward compatible)
             return True
-        
+
         # FastAPI converts headers to lowercase. Telegram sends this as
         # "X-Telegram-Bot-Api-Secret-Token" per their webhook documentation,
         # but we access it as lowercase per FastAPI's normalization.
         header_secret = (request.headers.get("x-telegram-bot-api-secret-token") or "").strip()
-        
+
         return header_secret == configured_secret
-    
+
     async def answer_callback_query(self, callback_query_id: str, url: Optional[str]) -> None:
         """
         Answer Telegram callback query.
@@ -58,11 +58,11 @@ class TelegramService:
         token = get_bot_token_for_edits()
         if not token or not callback_query_id:
             return
-        
+
         body = {"callback_query_id": callback_query_id}
         if url:
             body["url"] = url
-        
+
         try:
             await asyncio.to_thread(
                 lambda: requests.post(

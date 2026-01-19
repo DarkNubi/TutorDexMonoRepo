@@ -8,7 +8,6 @@ bump the corresponding assignments in the database to keep them fresh.
 from __future__ import annotations
 
 import logging
-import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -67,7 +66,7 @@ def bump_assignments_by_codes(
     """
     if not assignment_codes:
         return {"ok": True, "bumped": 0, "skipped": 0, "not_found": 0, "errors": []}
-    
+
     # Resolve Supabase config
     if not supabase_url:
         supabase_url = resolve_supabase_url()
@@ -75,7 +74,7 @@ def bump_assignments_by_codes(
         from shared.config import load_aggregator_config
 
         supabase_key = load_aggregator_config().supabase_auth_key or ""
-    
+
     if not supabase_url or not supabase_key:
         return {
             "ok": False,
@@ -84,13 +83,13 @@ def bump_assignments_by_codes(
             "not_found": 0,
             "errors": ["Missing Supabase configuration"],
         }
-    
+
     now_iso = _utc_now_iso()
     bumped = 0
     skipped = 0
     not_found = 0
     errors = []
-    
+
     for code in assignment_codes:
         try:
             # Find assignment by external_id (assignment code)
@@ -104,11 +103,11 @@ def bump_assignments_by_codes(
                 },
                 timeout=10,
             )
-            
+
             if resp.status_code >= 400:
                 errors.append(f"Failed to fetch {code}: HTTP {resp.status_code}")
                 continue
-            
+
             rows = resp.json()
             if not rows:
                 not_found += 1
@@ -119,12 +118,12 @@ def bump_assignments_by_codes(
                     code=code,
                 )
                 continue
-            
+
             assignment = rows[0]
             assignment_id = assignment.get("id")
             last_seen = assignment.get("last_seen")
             current_bump_count = int(assignment.get("bump_count") or 0)
-            
+
             # Check if we should bump (time-based throttling)
             should_bump = True
             if last_seen:
@@ -132,7 +131,7 @@ def bump_assignments_by_codes(
                     last_seen_dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
                     elapsed = (datetime.now(timezone.utc) - last_seen_dt.astimezone(timezone.utc)).total_seconds()
                     should_bump = elapsed >= bump_min_seconds
-                    
+
                     if not should_bump:
                         skipped += 1
                         log_event(
@@ -154,7 +153,7 @@ def bump_assignments_by_codes(
                         code=code,
                         error=str(e),
                     )
-            
+
             # Bump the assignment
             patch_resp = requests.patch(
                 f"{supabase_url}/rest/v1/assignments",
@@ -166,11 +165,11 @@ def bump_assignments_by_codes(
                 },
                 timeout=10,
             )
-            
+
             if patch_resp.status_code >= 400:
                 errors.append(f"Failed to bump {code}: HTTP {patch_resp.status_code}")
                 continue
-            
+
             bumped += 1
             log_event(
                 logger,
@@ -180,7 +179,7 @@ def bump_assignments_by_codes(
                 assignment_id=assignment_id,
                 bump_count=current_bump_count + 1,
             )
-            
+
         except Exception as e:
             errors.append(f"Error bumping {code}: {str(e)}")
             log_event(
@@ -190,7 +189,7 @@ def bump_assignments_by_codes(
                 code=code,
                 error=str(e),
             )
-    
+
     result = {
         "ok": len(errors) == 0,
         "bumped": bumped,
@@ -198,7 +197,7 @@ def bump_assignments_by_codes(
         "not_found": not_found,
         "errors": errors,
     }
-    
+
     log_event(
         logger,
         logging.INFO,
@@ -206,5 +205,5 @@ def bump_assignments_by_codes(
         total_codes=len(assignment_codes),
         **result,
     )
-    
+
     return result

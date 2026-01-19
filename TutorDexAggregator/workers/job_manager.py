@@ -45,10 +45,10 @@ def claim_jobs(
         pipeline_version=pipeline_version,
         schema_version=schema_version
     )
-    
+
     if not isinstance(jobs, list):
         return []
-    
+
     return jobs
 
 
@@ -84,17 +84,17 @@ def mark_job_status(
     """
     if extraction_id is None:
         return False
-    
+
     merged_meta = merge_meta(existing_meta, meta_patch)
     if llm_model and isinstance(merged_meta, dict):
         merged_meta["llm_model"] = llm_model
-    
+
     body: Dict[str, Any] = {"status": status}
     if merged_meta is not None:
         body["meta"] = merged_meta
     if error is not None:
         body["error_json"] = error
-    
+
     return patch_table(
         url,
         key,
@@ -122,7 +122,7 @@ def merge_meta(existing: Any, patch: Optional[Dict[str, Any]]) -> Optional[Dict[
         if isinstance(existing, dict):
             return existing
         return None
-    
+
     base: Dict[str, Any] = existing if isinstance(existing, dict) else {}
     merged = dict(base)
     merged.update(patch)
@@ -180,13 +180,13 @@ def requeue_stale_jobs(
             pipeline_version=pipeline_version,
             schema_version=schema_version
         )
-        
+
         if isinstance(result, dict) and "count" in result:
             count = int(result["count"])
             if count > 0:
                 logger.info(f"Requeued {count} stale jobs (older than {older_than_seconds}s)")
             return count
-        
+
         return 0
     except Exception as e:
         logger.warning(f"Failed to requeue stale jobs: {e}")

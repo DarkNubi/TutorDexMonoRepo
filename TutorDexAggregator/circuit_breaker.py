@@ -30,7 +30,7 @@ class CircuitBreaker:
         failure_threshold: Number of consecutive failures before opening circuit (default: 5)
         timeout_seconds: How long circuit stays open before attempting reset (default: 60)
     """
-    
+
     def __init__(self, failure_threshold: int = 5, timeout_seconds: int = 60):
         self.failure_count = 0
         self.failure_threshold = max(1, failure_threshold)
@@ -39,7 +39,7 @@ class CircuitBreaker:
         self.total_calls = 0
         self.total_failures = 0
         self.total_successes = 0
-    
+
     def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
         """
         Execute function through circuit breaker.
@@ -62,21 +62,21 @@ class CircuitBreaker:
                 f"Circuit breaker open after {self.failure_count} consecutive failures. "
                 f"Retry in {self._time_remaining():.0f}s"
             )
-        
+
         self.total_calls += 1
         try:
             result = func(*args, **kwargs)
             self.on_success()
             return result
-        except Exception as e:
+        except Exception:
             self.on_failure()
             raise
-    
+
     def is_open(self) -> bool:
         """Check if circuit is currently open."""
         if self.opened_at is None:
             return False
-        
+
         # Check if timeout has elapsed
         if time.time() - self.opened_at > self.timeout_seconds:
             logger.info(
@@ -90,9 +90,9 @@ class CircuitBreaker:
             self.opened_at = None
             self.failure_count = 0
             return False
-        
+
         return True
-    
+
     def on_success(self) -> None:
         """Record successful call."""
         self.total_successes += 1
@@ -106,12 +106,12 @@ class CircuitBreaker:
             )
         self.failure_count = 0
         self.opened_at = None
-    
+
     def on_failure(self) -> None:
         """Record failed call and open circuit if threshold exceeded."""
         self.failure_count += 1
         self.total_failures += 1
-        
+
         if self.failure_count >= self.failure_threshold:
             self.opened_at = time.time()
             logger.error(
@@ -124,14 +124,14 @@ class CircuitBreaker:
                     "total_failures": self.total_failures,
                 }
             )
-    
+
     def _time_remaining(self) -> float:
         """Calculate time remaining until circuit closes."""
         if self.opened_at is None:
             return 0.0
         elapsed = time.time() - self.opened_at
         return max(0.0, self.timeout_seconds - elapsed)
-    
+
     def get_stats(self) -> dict:
         """Get circuit breaker statistics."""
         return {

@@ -11,6 +11,7 @@ from shared.config import load_aggregator_config
 
 from logging_setup import log_event, setup_logging, timed
 from supabase_persist import SupabaseRestClient, load_config_from_env
+from shared.observability.exception_handler import swallow_exception
 
 
 setup_logging()
@@ -219,9 +220,8 @@ def update_tiers(
                 try:
                     presp = client.patch(f"broadcast_messages?external_id=eq.{requests.utils.quote(ext, safe='')}", {
                                          "message_html": new_text}, timeout=20, prefer="return=minimal")
-                    # ignore failures here; it's best-effort
-                except Exception:
-                    pass
+                except Exception as e:
+                    swallow_exception(e, context="broadcast_message_update", extra={"module": __name__})
 
                 results["updated"] += 1
 

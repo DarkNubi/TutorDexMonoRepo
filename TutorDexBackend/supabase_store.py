@@ -1,12 +1,13 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
 import requests
 
 from shared.agency_registry import get_agency_display_name
 from shared.config import load_backend_config
 from shared.supabase_client import SupabaseClient, SupabaseConfig, coerce_rows
+from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("supabase_store")
 
@@ -193,7 +194,8 @@ class SupabaseStore:
 
         try:
             data = resp.json()
-        except Exception:
+        except Exception as e:
+            swallow_exception(e, context="supabase_clicks_json_parse", extra={"module": __name__})
             return None
 
         # PostgREST may return a scalar or a list depending on config.
@@ -204,7 +206,8 @@ class SupabaseStore:
         if isinstance(data, dict) and "clicks" in data:
             try:
                 return int(data["clicks"])
-            except Exception:
+            except Exception as e:
+                swallow_exception(e, context="supabase_clicks_int_parse", extra={"module": __name__})
                 return None
         return None
 
@@ -260,7 +263,8 @@ class SupabaseStore:
         if rows:
             try:
                 total = int(rows[0].get("total_count") or 0)
-            except Exception:
+            except Exception as e:
+                swallow_exception(e, context="supabase_total_count_parse", extra={"module": __name__})
                 total = 0
         for r in rows:
             r.pop("total_count", None)
@@ -270,8 +274,8 @@ class SupabaseStore:
                     raw = r.get("agency_telegram_channel_name") if isinstance(r, dict) else None
                     if raw:
                         r["agency_display_name"] = str(raw)
-            except Exception:
-                pass
+            except Exception as e:
+                swallow_exception(e, context="supabase_agency_display_extraction", extra={"module": __name__})
 
         return {"items": rows, "total": total}
 
@@ -343,7 +347,8 @@ class SupabaseStore:
         if rows:
             try:
                 total = int(rows[0].get("total_count") or 0)
-            except Exception:
+            except Exception as e:
+                swallow_exception(e, context="supabase_total_count_parse_v2", extra={"module": __name__})
                 total = 0
         for r in rows:
             r.pop("total_count", None)
@@ -353,8 +358,8 @@ class SupabaseStore:
                     raw = r.get("agency_telegram_channel_name") if isinstance(r, dict) else None
                     if raw:
                         r["agency_display_name"] = str(raw)
-            except Exception:
-                pass
+            except Exception as e:
+                swallow_exception(e, context="supabase_agency_display_extraction_v2", extra={"module": __name__})
 
         return {"items": rows, "total": total}
 
@@ -404,7 +409,8 @@ class SupabaseStore:
 
         try:
             data = resp.json()
-        except Exception:
+        except Exception as e:
+            swallow_exception(e, context="supabase_clicks_json_parse", extra={"module": __name__})
             return None
 
         # PostgREST may return a JSON object or a list containing it.

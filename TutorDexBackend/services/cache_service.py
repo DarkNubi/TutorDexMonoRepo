@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict, List, Tuple, Optional
 from fastapi import HTTPException, Request
 from TutorDexBackend.redis_store import TutorStore
-from TutorDexBackend.utils.request_utils import get_client_ip, hash_ip, canonical_query_string, build_cache_key
+from TutorDexBackend.utils.request_utils import get_client_ip, hash_ip, build_cache_key
 from TutorDexBackend.utils.config_utils import (
     get_redis_prefix,
     get_public_rpm_assignments,
@@ -19,6 +19,7 @@ from TutorDexBackend.utils.config_utils import (
     get_public_cache_ttl_facets_s,
     get_public_assignments_limit_cap,
 )
+from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("tutordex_backend")
 
@@ -35,10 +36,10 @@ _PUBLIC_CACHE_LOCK = asyncio.Lock()
 
 class CacheService:
     """Rate limiting and caching for public endpoints."""
-    
+
     def __init__(self, store: TutorStore):
         self.store = store
-    
+
     async def enforce_rate_limit(self, request: Request, endpoint: str) -> None:
         """
         Enforce rate limit for endpoint.
@@ -56,14 +57,14 @@ class CacheService:
             rpm = get_public_rpm_facets()
         else:
             rpm = 60  # Default fallback
-        
+
         if rpm <= 0:
             return
-        
+
         ip_hash_str = hash_ip(get_client_ip(request))
         bucket = int(time.time() // 60)
         key = f"{get_redis_prefix()}:rl:{endpoint}:{ip_hash_str}:{bucket}"
-        
+
         try:
             n = self.store.r.incr(key)
             if int(n) == 1:
@@ -73,9 +74,9 @@ class CacheService:
             return
         except HTTPException:
             raise
-        except Exception:
-            pass
-        
+        except Exception as e:
+            swallow_exception(e, context="cache_rate_limit_redis", extra={"module": __name__})
+
         # Fallback if Redis isn't available (best-effort)
         now = time.time()
         async with _RATE_LIMIT_LOCK:
@@ -86,7 +87,7 @@ class CacheService:
             _RATE_LIMIT_LOCAL[key] = (int(n), float(expires_at))
             if int(n) > int(rpm):
                 raise HTTPException(status_code=429, detail="rate_limited")
-    
+
     async def get_cached(self, key: str) -> Optional[Dict[str, Any]]:
         """
         Get cached response if available.
@@ -101,21 +102,22 @@ class CacheService:
             raw = self.store.r.get(key)
             if raw:
                 return json.loads(raw)
-        except Exception:
-            pass
-        
+        except Exception as e:
+            swallow_exception(e, context="cache_redis_get", extra={"module": __name__})
+
         now = time.time()
         async with _PUBLIC_CACHE_LOCK:
             raw, exp = _PUBLIC_CACHE_LOCAL.get(key, ("", 0.0))
             if raw and float(exp) > now:
                 try:
                     return json.loads(raw)
-                except Exception:
+                except Exception as e:
+                    swallow_exception(e, context="cache_local_json_parse", extra={"module": __name__})
                     return None
             if float(exp) <= now:
                 _PUBLIC_CACHE_LOCAL.pop(key, None)
         return None
-    
+
     async def set_cached(self, key: str, payload: Dict[str, Any], ttl_s: int) -> None:
         """
         Set cached response.
@@ -133,7 +135,7 @@ class CacheService:
             return
         except Exception:
             pass
-        
+
         now = time.time()
         async with _PUBLIC_CACHE_LOCK:
             _PUBLIC_CACHE_LOCAL[key] = (raw, now + float(ttl_s))
@@ -142,7 +144,7 @@ class CacheService:
                 for k, (_, exp) in list(_PUBLIC_CACHE_LOCAL.items())[:500]:
                     if float(exp) <= now:
                         _PUBLIC_CACHE_LOCAL.pop(k, None)
-    
+
     def is_anonymous(self, request: Request) -> bool:
         """
         Check if request is anonymous (no bearer token).
@@ -155,7 +157,7 @@ class CacheService:
         """
         header = request.headers.get("authorization") or request.headers.get("Authorization") or ""
         return not header
-    
+
     def build_cache_key_for_request(
         self,
         request: Request,
@@ -178,17 +180,17 @@ class CacheService:
             q_items = list(request.query_params.multi_items())
         except Exception:
             q_items = []
-        
+
         if extra_items:
             q_items.extend(extra_items)
-        
+
         return build_cache_key(
             str(request.url.path),
             q_items,
             namespace=namespace,
             redis_prefix=get_redis_prefix()
         )
-    
+
     @staticmethod
     def get_cache_ttl(endpoint: str) -> int:
         """
@@ -205,7 +207,7 @@ class CacheService:
         elif endpoint == "facets":
             return get_public_cache_ttl_facets_s()
         return 0
-    
+
     @staticmethod
     def get_public_limit_cap() -> int:
         """Get maximum limit for public assignment listings."""

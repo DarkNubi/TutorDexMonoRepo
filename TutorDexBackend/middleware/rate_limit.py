@@ -37,7 +37,7 @@ def _get_rate_limit_key(request: Request) -> str:
     if forwarded:
         # X-Forwarded-For can have multiple IPs, use the first (client)
         return forwarded.split(",")[0].strip()
-    
+
     # Fall back to direct address
     return get_remote_address(request)
 
@@ -68,19 +68,19 @@ def _get_redis_url() -> Optional[str]:
 # Rate limit configurations for different endpoint types
 class RateLimits:
     """Rate limit presets for different endpoint categories."""
-    
+
     # Public endpoints (no auth)
     PUBLIC_STRICT = "30/minute"      # For expensive queries
     PUBLIC_MODERATE = "100/minute"   # For typical public endpoints
     PUBLIC_GENEROUS = "300/minute"   # For lightweight endpoints
-    
+
     # Authenticated endpoints
     AUTH_DEFAULT = "300/minute"      # For authenticated users
     AUTH_GENEROUS = "1000/minute"    # For high-volume operations
-    
+
     # Admin endpoints
     ADMIN_DEFAULT = "1000/minute"    # For admin operations
-    
+
     # Health/monitoring endpoints
     HEALTH_CHECK = "1000/minute"     # For health checks (very permissive)
 
@@ -116,7 +116,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
             "limit": str(exc),
         }
     )
-    
+
     return JSONResponse(
         status_code=429,
         content={

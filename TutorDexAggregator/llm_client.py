@@ -22,14 +22,15 @@ def _safe_parse_json(json_string: str) -> Any:
     except Exception as e:
         raise RuntimeError("json-repair is required but not installed; run `pip install -r TutorDexAggregator/requirements.txt`") from e
 
-    # Some versions support `return_objects=True`; use it if available.
+    # Some versions support `return_objects=True`; use it if available (best-effort).
     try:
         import inspect
 
         if "return_objects" in inspect.signature(repair_json).parameters:
             return repair_json(raw, return_objects=True)
-    except Exception:
-        pass
+    except Exception as e:
+        from shared.observability import swallow_exception
+        swallow_exception(e, context="json_repair_return_objects", extra={"module": __name__})
 
     repaired = repair_json(raw)
     if isinstance(repaired, (dict, list)):

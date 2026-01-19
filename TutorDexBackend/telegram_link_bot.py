@@ -181,7 +181,7 @@ def main() -> None:
                         claim_resp.status_code,
                         (claim_resp.text or "")[:200].replace("\n", " "),
                     )
-                except Exception as e:
+                except Exception:
                     _send_message(token, str(chat_id), "Link failed due to a server error. Please try again later.")
                     logger.exception("claim_error", extra={"chat_id": chat_id, "username": username})
 

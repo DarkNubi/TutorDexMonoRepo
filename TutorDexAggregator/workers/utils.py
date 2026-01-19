@@ -24,7 +24,7 @@ def extract_sg_postal_codes(text: str) -> List[str]:
         codes = re.findall(r"\b(\d{6})\b", str(text or ""))
     except Exception:
         codes = []
-    
+
     # Deduplicate while preserving order
     seen = set()
     out: List[str] = []
@@ -50,16 +50,16 @@ def coerce_list_of_str(value: Any) -> Optional[List[str]]:
     """
     if value is None:
         return None
-    
+
     if isinstance(value, str):
         s = value.strip()
         return [s] if s else None
-    
+
     if isinstance(value, (list, tuple)):
         out: List[str] = []
         for x in value:
             out.extend(coerce_list_of_str(x) or [])
-        
+
         # Deduplicate while preserving order
         seen = set()
         uniq: List[str] = []
@@ -70,7 +70,7 @@ def coerce_list_of_str(value: Any) -> Optional[List[str]]:
             seen.add(ss)
             uniq.append(ss)
         return uniq or None
-    
+
     s2 = str(value).strip()
     return [s2] if s2 else None
 
@@ -88,17 +88,17 @@ def build_message_link(channel_link: str, message_id: str) -> Optional[str]:
     """
     cl = str(channel_link or "").strip()
     mid = str(message_id or "").strip()
-    
+
     if not cl or not mid:
         return None
-    
+
     if cl.startswith("t.me/"):
         return f"https://{cl}/{mid}"
-    
+
     if cl.startswith("https://t.me/") or cl.startswith("http://t.me/"):
         cl2 = cl.replace("https://", "").replace("http://", "")
         return f"https://{cl2}/{mid}"
-    
+
     return None
 
 

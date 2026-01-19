@@ -102,6 +102,7 @@ async def access_log_middleware(request: Request, call_next):
                 span_id=span_id,
             )
         except Exception:
+            # Metrics must never break runtime
             pass
 
         logger.info(

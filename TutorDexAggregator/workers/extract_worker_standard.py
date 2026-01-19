@@ -91,6 +91,7 @@ def process_standard_message(
             float(llm_latency)
         )
     except Exception:
+        # Metrics must never break runtime
         pass
 
     if llm_err or not isinstance(parsed, dict):
@@ -163,6 +164,7 @@ def process_standard_message(
             max(0.0, time.perf_counter() - t_val0)
         )
     except Exception:
+        # Metrics must never break runtime
         pass
     if not ok_schema:
         try:

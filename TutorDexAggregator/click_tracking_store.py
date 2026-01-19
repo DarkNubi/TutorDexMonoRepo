@@ -1,8 +1,6 @@
 import logging
-import os
 from typing import Any, Dict, Optional
 
-import requests
 
 from supabase_persist import SupabaseConfig, SupabaseRestClient, _derive_external_id, load_config_from_env  # type: ignore
 

@@ -46,11 +46,11 @@ def get_supabase_client() -> Client:
     cfg = load_aggregator_config()
     url = str(cfg.supabase_rest_url or "").strip()
     key = str(cfg.supabase_service_role_key or "").strip()
-    
+
     if not url or not key:
         logger.error("SUPABASE_URL_* and SUPABASE_SERVICE_ROLE_KEY must be set")
         sys.exit(1)
-    
+
     return create_client(url, key)
 
 
@@ -88,48 +88,48 @@ def execute_migration(
     """Execute a single migration file."""
     migration_name = migration_file.stem
     logger.info(f"Processing migration: {migration_name}")
-    
+
     try:
         content = migration_file.read_text(encoding="utf-8")
         checksum = calculate_checksum(content)
-        
+
         if dry_run:
             logger.info(f"  [DRY RUN] Would apply migration: {migration_name}")
             logger.info(f"  [DRY RUN] Checksum: {checksum[:16]}...")
             logger.info(f"  [DRY RUN] Size: {len(content)} bytes")
             return True
-        
+
         # Execute SQL via Supabase REST API
         start_time = time.time()
-        
+
         # Use rpc to execute raw SQL (requires a custom function in Supabase)
         # Alternative: Use psycopg2 or similar for direct SQL execution
         # For now, we'll use the PostgREST query endpoint
-        
+
         # Split on semicolons for multiple statements
         statements = [s.strip() for s in content.split(";") if s.strip()]
-        
+
         for statement in statements:
             if not statement:
                 continue
-            
+
             # Execute via direct SQL (this requires service role key)
             # Note: Supabase REST API doesn't support raw SQL directly
             # You would need to use psycopg2 or similar
             logger.debug(f"  Executing statement: {statement[:100]}...")
-        
+
         execution_time_ms = int((time.time() - start_time) * 1000)
-        
+
         # Record migration as applied
         client.table("schema_migrations").insert({
             "migration_name": migration_name,
             "checksum": checksum,
             "execution_time_ms": execution_time_ms
         }).execute()
-        
+
         logger.info(f"  ✓ Applied migration: {migration_name} ({execution_time_ms}ms)")
         return True
-        
+
     except Exception as e:
         logger.error(f"  ✗ Failed to apply migration {migration_name}: {e}")
         return False
@@ -147,15 +147,15 @@ def apply_migrations(
         Number of migrations applied (or would be applied in dry-run mode)
     """
     client = get_supabase_client()
-    
+
     # Get applied migrations
     applied = get_applied_migrations(client)
     logger.info(f"Found {len(applied)} already-applied migrations")
-    
+
     # Get migration files
     migration_files = get_migration_files(migrations_dir)
     logger.info(f"Found {len(migration_files)} migration files")
-    
+
     # Filter pending migrations
     pending = []
     for f in migration_files:
@@ -164,18 +164,18 @@ def apply_migrations(
             pending.append(f)
         elif f.stem not in applied:
             pending.append(f)
-    
+
     if not pending:
         logger.info("✓ All migrations already applied. Nothing to do.")
         return 0
-    
+
     logger.info(f"Found {len(pending)} pending migrations:")
     for f in pending:
         logger.info(f"  - {f.stem}")
-    
+
     if dry_run:
         logger.info("\n[DRY RUN MODE] No changes will be made.\n")
-    
+
     # Apply pending migrations
     applied_count = 0
     for migration_file in pending:
@@ -186,7 +186,7 @@ def apply_migrations(
             logger.error(f"Migration failed: {migration_file.stem}")
             logger.error("Stopping migration process. Fix the error and re-run.")
             return applied_count
-    
+
     logger.info(f"\n✓ Successfully applied {applied_count} migration(s)")
     return applied_count
 
@@ -212,33 +212,33 @@ Environment Variables:
   SUPABASE_SERVICE_ROLE_KEY   Service role key (required)
         """
     )
-    
+
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what would be applied without making changes"
     )
-    
+
     parser.add_argument(
         "--force-reapply",
         metavar="MIGRATION_NAME",
         help="Force re-apply a specific migration (use with caution)"
     )
-    
+
     parser.add_argument(
         "--migrations-dir",
         type=Path,
         default=Path(__file__).parent.parent / "TutorDexAggregator" / "supabase sqls",
         help="Path to migrations directory"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Validate migrations directory
     if not args.migrations_dir.exists():
         logger.error(f"Migrations directory not found: {args.migrations_dir}")
         sys.exit(1)
-    
+
     # Apply migrations
     try:
         applied_count = apply_migrations(

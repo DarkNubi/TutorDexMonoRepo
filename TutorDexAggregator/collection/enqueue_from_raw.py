@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-from typing import Any
 from urllib.parse import quote
 
 from collection.channels import normalize_channel_ref, parse_channels_arg, parse_channels_from_env

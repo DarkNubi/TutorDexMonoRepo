@@ -7,7 +7,6 @@ Tests detection of messages that should be filtered early in the pipeline:
 - Administrative/promotional messages (Calling All Tutors, job lists, etc.)
 """
 
-import pytest
 from TutorDexAggregator.extractors.non_assignment_detector import (
     is_non_assignment,
     MessageType,

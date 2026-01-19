@@ -118,6 +118,7 @@ async def run_tail(ctx: CollectorContext, args: argparse.Namespace) -> int:
                             channel=channel_link, pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                         ).set(dt_utc.timestamp())
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 row = build_raw_row(channel_link=channel_link, channel_id=channel_id, msg=msg)
                 if row:
@@ -129,6 +130,7 @@ async def run_tail(ctx: CollectorContext, args: argparse.Namespace) -> int:
                                 channel=channel_link, pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                             ).inc(ok_rows)
                         except Exception:
+                            # Metrics must never break runtime
                             pass
                         enqueue_extraction_jobs(store, cfg=ctx.cfg, channel_link=channel_link, message_ids=[str(getattr(msg, "id", ""))], force=False)
                     dt = getattr(msg, "date", None)
@@ -153,6 +155,7 @@ async def run_tail(ctx: CollectorContext, args: argparse.Namespace) -> int:
                         channel=channel_link, reason="raw_tail_new_failed", pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                     ).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 log_event(ctx.logger, logging.WARNING, "raw_tail_new_failed", run_id=run_id, error=str(e))
 
@@ -183,6 +186,7 @@ async def run_tail(ctx: CollectorContext, args: argparse.Namespace) -> int:
                                 channel=channel_link, pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                             ).inc(ok_rows)
                         except Exception:
+                            # Metrics must never break runtime
                             pass
                         enqueue_extraction_jobs(store, cfg=ctx.cfg, channel_link=channel_link, message_ids=[str(getattr(msg, "id", ""))], force=True)
                 log_event(ctx.logger, logging.DEBUG, "raw_tail_edit_ok")
@@ -193,6 +197,7 @@ async def run_tail(ctx: CollectorContext, args: argparse.Namespace) -> int:
                         channel=channel_link, reason="raw_tail_edit_failed", pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                     ).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 log_event(ctx.logger, logging.WARNING, "raw_tail_edit_failed", run_id=run_id, error=str(e))
 
@@ -217,6 +222,7 @@ async def run_tail(ctx: CollectorContext, args: argparse.Namespace) -> int:
                         channel=channel_link, reason="raw_tail_delete_failed", pipeline_version=ctx.version.pipeline_version, schema_version=ctx.version.schema_version
                     ).inc()
                 except Exception:
+                    # Metrics must never break runtime
                     pass
                 log_event(ctx.logger, logging.WARNING, "raw_tail_delete_failed", run_id=run_id, error=str(e))
 

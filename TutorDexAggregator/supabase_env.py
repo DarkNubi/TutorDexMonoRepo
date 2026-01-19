@@ -46,12 +46,12 @@ def check_rpc_response(response, rpc_name: str):
             "Check for duplicate function definitions in schema. "
             "This usually means multiple functions exist with the same name but different signatures."
         )
-    
+
     if response.status_code >= 400:
         error_body = (response.text or "")[:500]
         raise RuntimeError(
             f"Supabase RPC '{rpc_name}' failed: status={response.status_code} body={error_body}"
         )
-    
+
     return response
 

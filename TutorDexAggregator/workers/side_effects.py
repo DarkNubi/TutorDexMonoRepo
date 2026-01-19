@@ -64,7 +64,7 @@ def broadcast_assignment(
     """
     if not broadcast_module:
         return None
-    
+
     try:
         result = broadcast_module.broadcast_single_assignment(payload)
         logger.info(f"Broadcast successful for {cid}")
@@ -94,7 +94,7 @@ def send_assignment_dms(
     """
     if not send_dms_func:
         return None
-    
+
     try:
         result = send_dms_func(payload)
         logger.info(f"DMs sent for {cid}")
@@ -128,7 +128,7 @@ def execute_side_effects(
         "broadcast": None,
         "dms": None
     }
-    
+
     # Broadcast
     if should_broadcast(config.get("enable_broadcast", False), modules.get("broadcast_module")):
         results["broadcast"] = broadcast_assignment(
@@ -136,7 +136,7 @@ def execute_side_effects(
             modules.get("broadcast_module"),
             cid
         )
-    
+
     # DMs
     if should_send_dms(config.get("enable_dms", False), modules.get("send_dms_func")):
         results["dms"] = send_assignment_dms(
@@ -144,5 +144,5 @@ def execute_side_effects(
             modules.get("send_dms_func"),
             cid
         )
-    
+
     return results
