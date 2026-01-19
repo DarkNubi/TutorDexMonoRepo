@@ -19,6 +19,13 @@ http_request_latency_seconds = Histogram(
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
 )
 
+# Exception handling metrics
+swallowed_exceptions_total = Counter(
+    "backend_swallowed_exceptions_total",
+    "Exceptions that were swallowed (logged but not re-raised) for observability.",
+    ["context", "exception_type"],
+)
+
 
 def observe_request(
     *,
