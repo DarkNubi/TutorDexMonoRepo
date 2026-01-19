@@ -45,27 +45,33 @@ def swallow_exception(
                 extra={"postal_code": postal_code, "module": __name__},
             )
     """
+    exc_type_name = type(exc).__name__
     logger.exception(
         "Swallowed exception",
         extra={
             "context": context,
-            "exception_type": type(exc).__name__,
+            "exception_type": exc_type_name,
             **(extra or {}),
         },
     )
     
     # Increment metrics counter (best-effort - must never break runtime)
     try:
-        # Import here to avoid circular dependencies
+        # Import here to avoid circular dependencies.
+        # We try Aggregator first, then Backend, since most usage is in Aggregator.
+        # This pattern is intentionally hardcoded (not registry-based) to:
+        # 1. Minimize dependencies - shared/ module has minimal imports
+        # 2. Work across module boundaries without additional configuration
+        # 3. Gracefully degrade when metrics aren't available (scripts, tests)
         try:
             # Try Aggregator metrics first
             from TutorDexAggregator.observability_metrics import swallowed_exceptions_total
-            swallowed_exceptions_total.labels(context=context, exception_type=type(exc).__name__).inc()
+            swallowed_exceptions_total.labels(context=context, exception_type=exc_type_name).inc()
         except ImportError:
             # Fall back to Backend metrics if available
             try:
                 from TutorDexBackend.metrics import swallowed_exceptions_total
-                swallowed_exceptions_total.labels(context=context, exception_type=type(exc).__name__).inc()
+                swallowed_exceptions_total.labels(context=context, exception_type=exc_type_name).inc()
             except (ImportError, AttributeError):
                 # No metrics available - continue without metrics
                 pass

@@ -12,7 +12,6 @@ from fastapi import HTTPException, Request
 from TutorDexBackend.redis_store import TutorStore
 from TutorDexBackend.utils.request_utils import get_client_ip, hash_ip, canonical_query_string, build_cache_key
 from TutorDexBackend.utils.config_utils import (
-from shared.observability.exception_handler import swallow_exception
     get_redis_prefix,
     get_public_rpm_assignments,
     get_public_rpm_facets,
@@ -20,6 +19,7 @@ from shared.observability.exception_handler import swallow_exception
     get_public_cache_ttl_facets_s,
     get_public_assignments_limit_cap,
 )
+from shared.observability.exception_handler import swallow_exception
 
 logger = logging.getLogger("tutordex_backend")
 
