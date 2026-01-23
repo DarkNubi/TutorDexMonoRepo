@@ -25,6 +25,7 @@ from workers.extract_worker_store import supabase_cfg
 from workers.extract_worker_types import WorkerToggles
 from workers.job_manager import claim_jobs, requeue_stale_jobs
 from workers.supabase_operations import build_headers, get_oldest_created_age_seconds, get_queue_counts
+from shared.config import validate_environment_integrity
 
 
 DEFAULT_PIPELINE_VERSION = "2026-01-02_det_time_v1"
@@ -80,6 +81,7 @@ def _import_side_effects() -> tuple[Any, Any]:
 
 def main() -> None:
     cfg, logger, version, circuit_breaker = bootstrap_worker()
+    validate_environment_integrity(cfg)
     url, key = supabase_cfg(cfg)
     broadcast_assignments, send_dms = _import_side_effects()
 

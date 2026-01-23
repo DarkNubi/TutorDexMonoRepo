@@ -45,14 +45,14 @@ These `.env.example.pydantic` files:
 - Show only validated fields (not legacy fields)
 - Include detailed comments explaining each field
 - Mark required vs. optional clearly
-- Are NOT yet in use (future state)
+- Are recommended as the canonical templates going forward
 
 ### Legacy .env.example Files (Current Format)
 - **`TutorDexAggregator/.env.example`** - Currently in use
 - **`TutorDexBackend/.env.example`** - Currently in use
 - **`TutorDexWebsite/.env.example`** - Currently in use
 
-These are still the active templates. Do not delete them until migration is complete.
+These are still kept for compatibility. Prefer the `.env.example.pydantic` templates when creating new env files.
 
 ---
 
@@ -82,7 +82,13 @@ These are still the active templates. Do not delete them until migration is comp
    - Aggregator/Backend code paths load settings via `shared.config.load_aggregator_config()` / `shared.config.load_backend_config()`
    - Direct `os.getenv()` parsing is removed from runtime code paths (tests/docs may still reference it as examples)
 
-2. **Migration**
+2. **Env File Selection (TutorDex)**
+   - `APP_ENV=staging` → loads `.env.staging` (service-local first, then repo-root)
+   - `APP_ENV=prod` / `APP_ENV=production` → loads `.env.prod` (service-local first, then repo-root)
+   - Otherwise (dev/default) → loads `.env`
+   - `.env` is intentionally **not** used as a fallback in staging/prod to avoid accidentally inheriting developer-machine values when a key is missing.
+
+3. **Migration**
    - `.env` files can be migrated to the Pydantic schema using the repo scripts/templates
    - Configuration validation happens at settings load time (Pydantic-Settings)
 
@@ -440,13 +446,12 @@ See `docs/PYDANTIC_CONFIG.md` FAQ for detailed comparison.
 
 **Current status:**
 - Infrastructure ready (schema exists, dependencies installed)
-- Not yet in use (awaiting migration)
-- Audit recommends migration after Priority 10 (HTTP tests)
+- In active use (Aggregator + Backend load config from `shared/config.py`)
+- `.env.example.pydantic` is the recommended template format going forward
 
 **Next steps:**
-- Add HTTP integration tests (Priority 10)
-- Migrate extraction worker (Priority 9, Phase 1)
-- Migrate other services incrementally
+- Keep prod/staging envs aligned to the schema (and keep secrets out of Git).
+- Add CI checks as desired (optional).
 
 ---
 

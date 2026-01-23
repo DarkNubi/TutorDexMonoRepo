@@ -386,7 +386,7 @@ export function TutorDexLanding() {
                 {
                   icon: <Zap className="h-8 w-8 text-indigo-600" />,
                   title: "Faster Discovery",
-                  description: "Advanced filters by subject, level, location, and rate. Find what fits you in seconds."
+                  description: "Advanced filters by subject, level, distance, and rate. Find what fits you in seconds."
                 },
                 {
                   icon: <Filter className="h-8 w-8 text-teal-600" />,
@@ -396,7 +396,7 @@ export function TutorDexLanding() {
                 {
                   icon: <TrendingUp className="h-8 w-8 text-purple-600" />,
                   title: "Always Free",
-                  description: "Zero fees for tutors. We partner with agencies so you can focus on teaching, not paying."
+                  description: "Zero fees for tutors. Made by tutors, for tutors."
                 }
               ].map((feature, index) => (
                 <motion.div

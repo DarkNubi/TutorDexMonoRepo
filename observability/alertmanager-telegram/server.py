@@ -107,7 +107,11 @@ class Handler(BaseHTTPRequestHandler):
 
         out = {"ok": ok, "meta": meta}
         body = json.dumps(out, ensure_ascii=False).encode("utf-8")
-        self.send_response(200 if ok else 500)
+        # If Telegram isn't configured, don't cause Alertmanager to retry forever.
+        if not ok and meta.get("error") == "missing_ALERT_BOT_TOKEN_or_ALERT_CHAT_ID":
+            self.send_response(200)
+        else:
+            self.send_response(200 if ok else 500)
         self.send_header("content-type", "application/json; charset=utf-8")
         self.send_header("content-length", str(len(body)))
         self.end_headers()

@@ -64,6 +64,29 @@ create unique index if not exists agencies_agency_display_name_uq
   on public.agencies (agency_display_name);
 
 -- --------------------------------------------------------------------------------
+-- Migration tracking (optional; used only if you run migrations incrementally)
+-- --------------------------------------------------------------------------------
+
+create table if not exists public.schema_migrations (
+  id bigserial primary key,
+  migration_name text unique not null,
+  applied_at timestamptz not null default now(),
+  checksum text,
+  execution_time_ms integer
+);
+
+create index if not exists idx_schema_migrations_name
+  on public.schema_migrations (migration_name);
+
+create index if not exists idx_schema_migrations_applied_at
+  on public.schema_migrations (applied_at desc);
+
+comment on table public.schema_migrations is 'Tracks applied database migrations to ensure idempotent deployments';
+comment on column public.schema_migrations.migration_name is 'File name (stem) of the migration, e.g., 2025-12-22_add_postal_latlon';
+comment on column public.schema_migrations.checksum is 'Optional SHA256 hash of migration content for integrity verification';
+comment on column public.schema_migrations.execution_time_ms is 'Time taken to execute the migration in milliseconds';
+
+-- --------------------------------------------------------------------------------
 -- Public assignments listing table (materialized from latest extraction output)
 --
 -- Source of truth for extraction remains:
@@ -98,6 +121,8 @@ create table if not exists public.assignments (
   address text[],
   postal_code text[],
   postal_code_estimated text[],
+  -- True if lat/lon were derived from an estimated postal code (vs explicitly parsed).
+  postal_coords_estimated boolean not null default false,
   postal_lat double precision,
   postal_lon double precision,
   nearest_mrt text[],
@@ -232,6 +257,12 @@ alter table public.assignments
 
 alter table public.assignments
   add column if not exists postal_code_estimated text[];
+
+alter table public.assignments
+  add column if not exists postal_coords_estimated boolean;
+
+comment on column public.assignments.postal_coords_estimated is
+  'True when postal_lat/postal_lon were derived from postal_code_estimated rather than explicit postal_code';
 
 alter table public.assignments
   add column if not exists postal_lat double precision;
@@ -403,6 +434,12 @@ create index if not exists assignments_signals_specific_levels_gin
 create index if not exists assignments_signals_streams_gin
   on public.assignments using gin (signals_streams);
 
+create index if not exists assignments_subjects_canonical_gin
+  on public.assignments using gin (subjects_canonical);
+
+create index if not exists assignments_subjects_general_gin
+  on public.assignments using gin (subjects_general);
+
 -- duplicate detection indices (added 2026-01-09)
 create index if not exists assignments_duplicate_group_idx
   on public.assignments (duplicate_group_id)
@@ -419,6 +456,10 @@ create index if not exists assignments_duplicate_confidence_idx
 create index if not exists assignments_duplicate_lookup_idx
   on public.assignments (duplicate_group_id, is_primary_in_group, status)
   where duplicate_group_id is not null;
+
+-- Optional: faster case-insensitive agency filtering (some older queries relied on this).
+create index if not exists idx_assignments_agency_display_name
+  on public.assignments (lower(coalesce(agency_display_name, '')));
 
 -- --------------------------------------------------------------------------------
 -- Duplicate detection tables (added 2026-01-09)

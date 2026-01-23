@@ -51,6 +51,15 @@ Relevant env vars (optional; defaults are safe):
 **Use when:**
 - Server was down and you want to re-capture the missed raw messages.
 
+### Bootstrap backfill (new machine / empty DB)
+
+If the database is empty and you want the website to have meaningful history immediately (e.g. 30-day match counts),
+do a one-time backfill for the last N days and drain the extraction queue without side effects.
+
+Recommended scripts (repo root):
+- `./scripts/bootstrap_backfill_30d_staging.sh`
+- `./scripts/bootstrap_backfill_30d_prod.sh`
+
 ## Mode 3 — Re-parse / re-enqueue from raw (Manual)
 
 **Purpose:** Re-run extraction after changing prompt/schema/model *without* re-reading Telegram.
