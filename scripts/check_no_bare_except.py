@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import ast
-import sys
 import tokenize
 from pathlib import Path
 
@@ -83,4 +82,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
