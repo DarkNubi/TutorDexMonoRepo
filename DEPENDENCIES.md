@@ -26,15 +26,21 @@ These services are required for core functionality:
   cd supabase
   docker-compose up -d
   ```
-- **Access:** http://localhost:54321
+- **Access (prod):** http://localhost:54321 (Kong)
+- **Access (staging):** http://localhost:54322 (Kong)
 - **Schema:** Tracked via `schema_migrations` table
 - **Migration:** `python scripts/migrate.py`
 
 **Environment Variables:**
 ```bash
-SUPABASE_URL=http://localhost:54321
-SUPABASE_KEY=your_service_role_key
+# Prefer split routing (Docker vs host) over a single SUPABASE_URL.
+SUPABASE_URL_DOCKER=http://supabase-kong:8000
+SUPABASE_URL_HOST=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_ENABLED=true
 ```
+
+**Security recommendation:** do not expose Supabase publicly; expose only the TutorDex backend API and keep Supabase bound to localhost/Docker networks.
 
 #### 2. **Redis**
 
@@ -73,9 +79,9 @@ FIREBASE_ADMIN_CREDENTIALS_PATH=/path/to/service-account.json
 
 **Environment Variables (Website):**
 ```bash
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project
+# The current website uses Firebase Hosting auto-init (`/__/firebase/init.js`).
+# You primarily configure:
+VITE_BACKEND_URL=https://tutordex-api.duckdns.org
 ```
 
 #### 4. **LLM API (LM Studio or OpenAI-compatible)**
@@ -221,6 +227,34 @@ npm install
 ```bash
 ./scripts/bootstrap.sh
 docker-compose up
+```
+
+---
+
+## Bootstrap: Seed 30 Days of Assignments (Recommended)
+
+If you deploy on a brand-new machine with an empty database, the website will be empty until you ingest and extract data.
+The website includes match-count features for 7/14/30 days, so a one-time **30 day bootstrap backfill** is recommended.
+
+This repo includes safe bootstrap scripts that:
+- stop the long-running collector/worker (avoids Telethon session conflicts),
+- backfill raw Telegram messages for the last N days,
+- drain the extraction queue **without** broadcast/DM side-effects,
+- then restart normal live services.
+
+**Staging (default 30 days):**
+```bash
+./scripts/bootstrap_backfill_30d_staging.sh
+```
+
+**Production (default 30 days):**
+```bash
+./scripts/bootstrap_backfill_30d_prod.sh
+```
+
+You can pass a different number of days:
+```bash
+./scripts/bootstrap_backfill_30d_prod.sh 60
 ```
 
 ### Production (Deployed)

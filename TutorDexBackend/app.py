@@ -22,6 +22,7 @@ from TutorDexBackend.routes.telegram_routes import router as telegram_router
 from TutorDexBackend.routes.user_routes import router as user_router
 from TutorDexBackend.app_context import get_app_context
 from TutorDexBackend.utils.request_utils import get_client_ip, parse_traceparent
+from shared.config import validate_environment_integrity
 
 _ctx = get_app_context()
 auth_service = _ctx.auth_service
@@ -46,6 +47,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def _startup_log() -> None:
+    validate_environment_integrity(cfg)
     auth_service.validate_production_config()
     logger.info(
         "startup",

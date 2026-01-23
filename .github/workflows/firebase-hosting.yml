@@ -3,6 +3,7 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   checks: write
@@ -10,8 +11,10 @@ permissions:
   pull-requests: write
 
 jobs:
-  deploy:
+  deploy_staging:
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    environment: staging
     env:
       # Vite only injects `VITE_*` variables at build time, so they must exist in CI env.
       VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
@@ -53,8 +56,7 @@ jobs:
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
           projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
           entryPoint: TutorDexWebsite
-          channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'live' }}
-          expires: ${{ github.event_name == 'pull_request' && '7d' || '' }}
+          channelId: live
 
       - name: Deploy (root)
         if: ${{ hashFiles('TutorDexWebsite/firebase.json') == '' }}
@@ -64,5 +66,57 @@ jobs:
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
           projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
           entryPoint: .
-          channelId: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'live' }}
-          expires: ${{ github.event_name == 'pull_request' && '7d' || '' }}
+          channelId: live
+
+  deploy_prod:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      # Vite only injects `VITE_*` variables at build time, so they must exist in CI env.
+      VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+      VITE_DM_BOT_HANDLE: ${{ vars.VITE_DM_BOT_HANDLE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install (monorepo)
+        if: ${{ hashFiles('TutorDexWebsite/package-lock.json') != '' }}
+        working-directory: TutorDexWebsite
+        run: npm ci
+
+      - name: Build (monorepo)
+        if: ${{ hashFiles('TutorDexWebsite/package.json') != '' }}
+        working-directory: TutorDexWebsite
+        run: npm run build
+
+      - name: Install (root)
+        if: ${{ hashFiles('TutorDexWebsite/package-lock.json') == '' }}
+        run: npm ci
+
+      - name: Build (root)
+        if: ${{ hashFiles('TutorDexWebsite/package.json') == '' }}
+        run: npm run build
+
+      - name: Deploy (monorepo)
+        if: ${{ hashFiles('TutorDexWebsite/firebase.json') != '' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
+          entryPoint: TutorDexWebsite
+          channelId: live
+
+      - name: Deploy (root)
+        if: ${{ hashFiles('TutorDexWebsite/firebase.json') == '' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
+          entryPoint: .
+          channelId: live

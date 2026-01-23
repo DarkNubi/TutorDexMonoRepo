@@ -1,6 +1,18 @@
 {
   "projects": {
-    "default": "tutordex-f85fd"
+    "default": "tutordex-f85fd",
+    "staging": "tutordex-staging"
+  },
+  "targets": {
+    "tutordex-f85fd": {
+      "hosting": {
+        "prod": ["tutordex-f85fd"]
+      }
+    },
+    "tutordex-staging": {
+      "hosting": {
+        "staging": ["tutordex-staging"]
+      }
+    }
   }
 }
-

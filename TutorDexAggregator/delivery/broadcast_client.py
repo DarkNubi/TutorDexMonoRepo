@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
+import os
 import random
 import time
 from typing import Any, Dict, Optional
 
 import requests
 
-from delivery.config import BOT_API_URL, ENABLE_BROADCAST_TRACKING, _CFG, logger
+from delivery.config import BOT_API_URL, ENABLE_BROADCAST_TRACKING, TARGET_CHATS, _CFG, logger
 from delivery.format_tracking import build_inline_keyboard
 from logging_setup import log_event, timed
 from observability_metrics import broadcast_fail_reason_total, broadcast_fail_total, broadcast_sent_total
@@ -26,8 +27,41 @@ def _classify_broadcast_error(*, status_code: Optional[int], error: Optional[str
         return "connection"
     return "error"
 
+def _validate_broadcast_safety() -> None:
+    app_env = str(os.getenv("APP_ENV", "dev") or "dev").strip().lower()
+    enable_broadcast = bool(getattr(_CFG, "enable_broadcast", False))
+    if not enable_broadcast:
+        return
+
+    if app_env != "staging":
+        return
+
+    if not TARGET_CHATS:
+        raise RuntimeError("BROADCAST SAFETY ERROR: ENABLE_BROADCAST=true but no broadcast targets are configured")
+
+    for chat in TARGET_CHATS:
+        t = str(chat).strip().lower()
+        if not t:
+            raise RuntimeError("BROADCAST SAFETY ERROR: empty broadcast target in TARGET_CHATS")
+        if isinstance(chat, int) or t.lstrip("-").isdigit():
+            raise RuntimeError(
+                "BROADCAST SAFETY ERROR:\n"
+                "APP_ENV=staging but broadcast target is a numeric chat id.\n"
+                "Fix: Use a staging/test channel username (e.g., @tutordex_staging_test) to make intent explicit."
+            )
+        if not any(marker in t for marker in ["test", "staging", "dev"]):
+            raise RuntimeError(
+                "BROADCAST SAFETY ERROR:\n"
+                "APP_ENV=staging but broadcast target does not contain 'test', 'staging', or 'dev'.\n"
+                f"Target: {t}\n"
+                "Fix: Use a test/staging channel username (e.g., @tutordex_staging_test)."
+            )
+
+    logger.warning("staging_broadcast_active", extra={"targets": [str(c) for c in TARGET_CHATS]})
+
 def _send_to_single_chat(chat_id: Any, text: str, payload: Dict[str, Any], *, pv: str, sv: str) -> Dict[str, Any]:
     """Send broadcast to a single chat. Returns result dict."""
+    _validate_broadcast_safety()
     body = {
         'chat_id': chat_id,
         'text': text,
