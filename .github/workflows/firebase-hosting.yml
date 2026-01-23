@@ -57,6 +57,7 @@ jobs:
           projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
           entryPoint: TutorDexWebsite
           channelId: live
+          target: staging
 
       - name: Deploy (root)
         if: ${{ hashFiles('TutorDexWebsite/firebase.json') == '' }}
@@ -67,6 +68,7 @@ jobs:
           projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
           entryPoint: .
           channelId: live
+          target: staging
 
   deploy_prod:
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -110,6 +112,7 @@ jobs:
           projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
           entryPoint: TutorDexWebsite
           channelId: live
+          target: prod
 
       - name: Deploy (root)
         if: ${{ hashFiles('TutorDexWebsite/firebase.json') == '' }}
@@ -120,3 +123,4 @@ jobs:
           projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
           entryPoint: .
           channelId: live
+          target: prod
