@@ -32,15 +32,7 @@ jobs:
       - name: Check for bare except violations
         run: |
           echo "::group::Checking for bare except: patterns"
-          # Search for bare except: patterns (not followed by a type)
-          if grep -rn "except\s*:" --include="*.py" . | grep -v "except Exception" | grep -v "except.*Error" | grep -v "except.*as" | grep -v ".git" | grep -v "except: pass" | head -1; then
-            echo "::error::Found bare except: patterns. Use swallow_exception() or specific exception types instead."
-            echo "Showing all violations:"
-            grep -rn "except\s*:" --include="*.py" . | grep -v "except Exception" | grep -v "except.*Error" | grep -v "except.*as" | grep -v ".git"
-            exit 1
-          else
-            echo "✓ No bare except: patterns found"
-          fi
+          python scripts/check_no_bare_except.py
           echo "::endgroup::"
 
   syntax-check:
