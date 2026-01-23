@@ -27,6 +27,7 @@ BOT_TOKEN = _env("ALERT_BOT_TOKEN") or _env("GROUP_BOT_TOKEN")
 CHAT_ID = _env("ALERT_CHAT_ID")
 THREAD_ID = _env_int("ALERT_THREAD_ID")
 PREFIX = _env("ALERT_PREFIX", "[TutorDex]")
+ENVIRONMENT = _env("APP_ENV", "dev").upper()
 
 
 def _format_alertmanager(payload: Dict[str, Any]) -> str:
@@ -39,7 +40,7 @@ def _format_alertmanager(payload: Dict[str, Any]) -> str:
     schema_version = str(common.get("schema_version") or "")
 
     lines: List[str] = []
-    lines.append(f"<b>{PREFIX}</b> <b>{status}</b>: {alertname}")
+    lines.append(f"<b>{PREFIX} [{ENVIRONMENT}]</b> <b>{status}</b>: {alertname}")
     if status == "RESOLVED":
         lines.append("<i>Note: RESOLVED messages include the last observed value before the alert cleared.</i>")
     lines.append(f"<b>Component</b>: {component}")

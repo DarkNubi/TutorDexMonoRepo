@@ -44,6 +44,8 @@ services:
     build: ./alertmanager-telegram
     env_file:
       - ../TutorDexAggregator/.env
+    environment:
+      APP_ENV: "${APP_ENV:-dev}"
     networks:
       - tutordex
 
