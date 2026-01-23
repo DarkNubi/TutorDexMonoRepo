@@ -245,11 +245,12 @@ Before invoking the LLM, the worker filters raw content in this order:
    - These are detected using conservative heuristics (regex patterns + content markers) to avoid false positives.
    - Detection happens AFTER compilation check but BEFORE LLM call to save costs on non-assignment content.
    - Detected messages are logged with detailed metadata and optionally reported to the triage channel.
-   - Triage routing (topics):
-     - `SKIPPED_MESSAGES_THREAD_ID_EXTRACTION_ERRORS`: extraction/validation/persist failures
-     - `SKIPPED_MESSAGES_THREAD_ID_NON_ASSIGNMENT`: non-assignment skips
-     - `SKIPPED_MESSAGES_THREAD_ID_COMPILATIONS`: compilation skips (includes extracted assignment codes)
-     - `SKIPPED_MESSAGES_THREAD_ID` remains a legacy fallback if the per-kind topic ids are not set.
+	   - Triage routing (topics):
+	     - `SKIPPED_MESSAGES_THREAD_ID_EXTRACTION_ERRORS`: extraction/validation/persist failures
+	     - `SKIPPED_MESSAGES_THREAD_ID_NON_ASSIGNMENT`: non-assignment skips
+	     - `SKIPPED_MESSAGES_THREAD_ID_COMPILATIONS`: compilation skips (includes extracted assignment codes)
+	     - `SKIPPED_MESSAGES_THREAD_ID` remains a legacy fallback if the per-kind topic ids are not set.
+	   - Important: for these optional integer topic IDs, do **not** set empty strings (e.g. `SKIPPED_MESSAGES_THREAD_ID=`); omit them entirely if unknown/unneeded.
 
 This matters operationally: if an agency posts "10 assignments in one message", TutorDex can ingest all assignments safely (and will not proceed as a compilation unless 2+ identifiers are verified verbatim). Simple status updates are skipped without wasting LLM API calls.
 #### LLM extraction call

@@ -2,7 +2,7 @@ services:
   aggregator-worker:
     build: ./TutorDexAggregator
     env_file:
-      - ./TutorDexAggregator/.env
+      - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
     command: ["python", "workers/extract_worker.py"]
     restart: unless-stopped
     depends_on:
@@ -13,6 +13,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -28,7 +29,7 @@ services:
   collector-tail:
     build: ./TutorDexAggregator
     env_file:
-      - ./TutorDexAggregator/.env
+      - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
     command: ["python", "collector.py", "live"]
     restart: unless-stopped
     depends_on:
@@ -38,6 +39,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -54,18 +56,19 @@ services:
   backend:
     build: ./TutorDexBackend
     env_file:
-      - ./TutorDexBackend/.env
+      - ${BACKEND_ENV_FILE:-./TutorDexBackend/.env}
     # Use the default CMD from TutorDexBackend/Dockerfile (uvicorn app:app)
     restart: unless-stopped
     depends_on:
       - redis
       - otel-collector
     ports:
-      - "0.0.0.0:8000:8000"
+      - "0.0.0.0:${BACKEND_PORT:-8000}:8000"
     volumes:
-      - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+      - ${FIREBASE_ADMIN_JSON:-./TutorDexBackend/secrets/firebase-admin-service-account.json}:/run/secrets/firebase-admin-service-account.json:ro
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -81,8 +84,11 @@ services:
   telegram-link-bot:
     build: ./TutorDexBackend
     env_file:
-      - ./TutorDexBackend/.env
+      - ${BACKEND_ENV_FILE:-./TutorDexBackend/.env}
+      # Pull DM_BOT_TOKEN (and other Telegram bot tokens) from the aggregator env when backend env omits them.
+      - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       BACKEND_URL: http://backend:8000
       LINK_BOT_OFFSET_FILE: /state/telegram_link_bot_offset.json
       LOG_JSON: "true"
@@ -96,7 +102,7 @@ services:
     depends_on:
       - backend
     volumes:
-      - ./TutorDexBackend/secrets/firebase-admin-service-account.json:/run/secrets/firebase-admin-service-account.json:ro
+      - ${FIREBASE_ADMIN_JSON:-./TutorDexBackend/secrets/firebase-admin-service-account.json}:/run/secrets/firebase-admin-service-account.json:ro
       - ./shared:/app/shared:ro
       - telegram_link_bot_state:/state
     extra_hosts:
@@ -117,7 +123,7 @@ services:
   freshness-tiers:
     build: ./TutorDexAggregator
     env_file:
-      - ./TutorDexAggregator/.env
+      - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
     command:
       - sh
       - -c
@@ -132,6 +138,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -145,7 +152,7 @@ services:
   tutorcity-fetch:
     build: ./TutorDexAggregator
     env_file:
-      - ./TutorDexAggregator/.env
+      - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
     command:
       - sh
       - -c
@@ -160,6 +167,7 @@ services:
       - ./TutorDexAggregator/logs:/app/logs
       - ./shared:/app/shared:ro
     environment:
+      APP_ENV: "${APP_ENV:-dev}"
       LOG_JSON: "true"
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
@@ -208,7 +216,7 @@ services:
   alertmanager-telegram:
     build: ./observability/alertmanager-telegram
     env_file:
-      - ./TutorDexAggregator/.env
+      - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
     networks:
       - tutordex
 
@@ -289,17 +297,18 @@ services:
       - tutordex
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.4.1
     pull_policy: always
     restart: unless-stopped
+    user: "0"
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
       - tempo_data:/tmp/tempo
     ports:
-      - "3200:3200"   # Tempo HTTP
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "${TEMPO_HTTP_PORT:-3200}:3200"
+      - "${TEMPO_OTLP_GRPC_PORT:-4317}:4317"
+      - "${TEMPO_OTLP_HTTP_PORT:-4318}:4318"
     networks:
       - tutordex
 
@@ -311,7 +320,7 @@ services:
     volumes:
       - ./observability/tempo/otel-collector.yaml:/etc/otel-collector.yaml:ro
     environment:
-      ENVIRONMENT: ${APP_ENV:-production}
+      ENVIRONMENT: ${APP_ENV:-dev}
     depends_on:
       - tempo
     networks:
@@ -319,11 +328,11 @@ services:
 
 networks:
   tutordex:
-    name: tutordex
+    # name is auto-generated: ${COMPOSE_PROJECT_NAME}_tutordex
 
   supabase_net:
     external: true
-    name: supabase_default
+    name: ${SUPABASE_NETWORK:-supabase_default}
 
 volumes:
   telegram_link_bot_state:

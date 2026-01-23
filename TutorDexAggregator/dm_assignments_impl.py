@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import logging
 from pathlib import Path
@@ -41,6 +42,19 @@ DM_RATING_AVG_RATE_LOOKBACK_DAYS = int(_CFG.dm_rating_avg_rate_lookback_days or 
 
 if not DM_BOT_API_URL and DM_BOT_TOKEN:
     DM_BOT_API_URL = f"https://api.telegram.org/bot{DM_BOT_TOKEN}/sendMessage"
+
+
+def validate_dm_safety() -> None:
+    app_env = str(os.getenv("APP_ENV", "dev") or "dev").strip().lower()
+    if not DM_ENABLED:
+        return
+    if app_env == "staging":
+        logger.warning(
+            "staging_dms_active",
+            extra={
+                "message": "Staging environment will send DMs. Ensure recipients are test accounts only.",
+            },
+        )
 
 
 def _calculate_match_ratings(
@@ -481,6 +495,8 @@ def send_dms(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not DM_ENABLED:
         log_event(logger, logging.DEBUG, "dm_skipped", reason="dm_disabled")
         return {"ok": False, "skipped": True, "reason": "dm_disabled"}
+
+    validate_dm_safety()
 
     # Check if we should skip this assignment due to duplicate filtering
     if not _should_send_dm_for_assignment(payload):

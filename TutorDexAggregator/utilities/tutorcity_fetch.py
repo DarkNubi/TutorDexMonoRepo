@@ -26,12 +26,12 @@ import requests
 
 from pathlib import Path
 
-from shared.config import load_aggregator_config
-
 HERE = Path(__file__).resolve().parent
 PARENT = HERE.parent
 if str(PARENT) not in sys.path:
     sys.path.insert(0, str(PARENT))
+
+from shared.config import load_aggregator_config  # noqa: E402
 
 from logging_setup import bind_log_context, log_event, setup_logging  # noqa: E402
 from supabase_persist import SupabaseConfig, load_config_from_env, persist_assignment_to_supabase  # noqa: E402
