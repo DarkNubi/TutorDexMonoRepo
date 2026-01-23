@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Date:** 2026-01-19  
-**Status:** PRE-MIGRATION ANALYSIS (DO NOT EXECUTE)  
+**Status:** PRE-MIGRATION ANALYSIS 
 **Author:** Infrastructure Architect
 
 ---
@@ -28,6 +28,7 @@ This document provides an **execution-ready migration plan** for transitioning T
 - Port separation: staging on alternate ports, prod on standard ports
 - Explicit environment variable (`APP_ENV=staging|prod`) for runtime safety
 - Code-level prod protections prevent accidental cross-environment operations
+- **Do not expose Supabase publicly** (recommended): only expose the TutorDex backend API via Caddy; keep Supabase reachable only via localhost ports (`:54321` prod, `:54322` staging) and/or Docker networks.
 
 ---
 
@@ -121,7 +122,7 @@ The TutorDex system consists of the following Docker Compose services:
     - Stateful: No
 
 15. **tempo** - Grafana Tempo (distributed tracing storage)
-    - Image: `grafana/tempo:latest`
+    - Image: `grafana/tempo:2.4.1` (pinned; avoid breaking changes/noisy logs from `:latest`)
     - Ports: 3200 (HTTP), 4317 (OTLP gRPC), 4318 (OTLP HTTP)
     - Volume: `tempo_data:/tmp/tempo`
     - Stateful: Yes (trace data)
@@ -586,6 +587,9 @@ ALERT_BOT_TOKEN=<STAGING_ALERT_BOT_TOKEN>
 TRACKING_EDIT_BOT_TOKEN=<STAGING_EDIT_BOT_TOKEN>
 
 # STAGING CHANNELS (MUST BE DIFFERENT FROM PROD)
+# NOTE: `CHANNEL_LIST` must be non-empty or the collector will exit immediately.
+# NOTE: For optional integer topic IDs (e.g. `SKIPPED_MESSAGES_THREAD_ID*`), do NOT set empty strings.
+#       Omit the variable entirely if unknown/unneeded, otherwise Pydantic will fail parsing.
 AGGREGATOR_CHANNEL_ID=<STAGING_CHANNEL_ID>
 CHANNEL_LIST=<STAGING_SOURCE_CHANNELS>
 SKIPPED_MESSAGES_CHAT_ID=<STAGING_TRIAGE_CHANNEL>
@@ -691,6 +695,9 @@ ALERT_BOT_TOKEN=<PROD_ALERT_BOT_TOKEN>
 TRACKING_EDIT_BOT_TOKEN=<PROD_EDIT_BOT_TOKEN>
 
 # PRODUCTION CHANNELS
+# NOTE: `CHANNEL_LIST` must be non-empty or the collector will exit immediately.
+# NOTE: For optional integer topic IDs (e.g. `SKIPPED_MESSAGES_THREAD_ID*`), do NOT set empty strings.
+#       Omit the variable entirely if unknown/unneeded, otherwise Pydantic will fail parsing.
 AGGREGATOR_CHANNEL_ID=<PROD_CHANNEL_ID>
 CHANNEL_LIST=<PROD_SOURCE_CHANNELS>
 SKIPPED_MESSAGES_CHAT_ID=<PROD_TRIAGE_CHANNEL>

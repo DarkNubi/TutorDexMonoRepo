@@ -147,17 +147,18 @@ class AggregatorConfig(BaseSettings):
 ```python
 class BackendConfig(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
-    
-    class Config:
-        env_file = ".env"  # Load from .env file
-        env_file_encoding = "utf-8"
-        case_sensitive = False  # REDIS_URL or redis_url both work
-        extra = "ignore"  # Don't fail on unknown env vars
+
+    # TutorDex note:
+    # Runtime config loading is done via `shared.config.load_backend_config()`, which selects
+    # env files based on `APP_ENV`:
+    # - APP_ENV=staging -> `.env.staging`
+    # - APP_ENV=prod/production -> `.env.prod`
+    # - otherwise -> `.env`
 ```
 
 **Load priority** (Pydantic-Settings default behavior):
 1. Environment variables (highest priority)
-2. `.env` file values
+2. Env file values (as selected above)
 3. Default values in code (lowest priority)
 
 This allows:
@@ -170,24 +171,18 @@ This allows:
 
 ## Current State vs. Target State
 
-### Current State (As of 2026-01-14)
+### Current State (As of 2026-01-23)
 
-**Status:** ✅ `shared/config.py` created but **not yet adopted**
+**Status:** ✅ `shared/config.py` is **adopted and in active use**
 
-The Pydantic configuration classes exist in `shared/config.py`:
-- `AggregatorConfig` - 40+ configuration fields
-- `BackendConfig` - 20+ configuration fields
-- `WebsiteConfig` - 10+ configuration fields
+The Pydantic configuration classes in `shared/config.py` are used by runtime code paths:
+- Aggregator: `shared.config.load_aggregator_config()`
+- Backend: `shared.config.load_backend_config()`
+- Website: Vite envs are defined by `WebsiteConfig`, but the website runtime reads `import.meta.env` (build-time)
 
-**However:**
-- No Python files currently import or use these classes
-- Runtime services load config via `shared/config.py` (direct `os.getenv()` parsing removed from service code paths)
-- Existing `.env.example` files don't match the Pydantic schema
-
-**Why not adopted yet?**
-- Audit identified this as Priority 9 (medium priority)
-- Higher priority tasks were completed first (Priorities 1-7)
-- Migration requires touching 10+ files and testing each service
+Templates:
+- Prefer `.env.example.pydantic` as the canonical template format.
+- Keep legacy `.env.example` files for compatibility.
 
 ### Target State (After Migration)
 
@@ -244,16 +239,13 @@ class AggregatorConfig(BaseSettings):
     )
     
     # Optional with None
-    telegram_api_id: Optional[str] = Field(
-        default=None,
-        description="Telegram API ID from my.telegram.org"
-    )
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False  # Environment var names are case-insensitive
-        extra = "ignore"  # Ignore unknown environment variables
+	    telegram_api_id: Optional[str] = Field(
+	        default=None,
+	        description="Telegram API ID from my.telegram.org"
+	    )
+
+	    # TutorDex note: env files are selected by `shared.config` based on `APP_ENV`
+	    # (see `shared/config.py:_env_file_candidates`).
 ```
 
 ### 2. Environment Variable Mapping
@@ -865,17 +857,14 @@ Submit a PR with the change. Config schema is versioned with the code.
 ### Current Status
 
 - ✅ `shared/config.py` exists with complete schema
-- ❌ Not yet adopted by any service
-- ⏳ Migration planned as Priority 9 in audit
+- ✅ Adopted by Aggregator + Backend runtime code paths
+- ✅ Startup validation is active (see `validate_environment_integrity`)
 
 ### Next Steps
 
-When migrating to Pydantic-Settings:
-1. Start with one service (extraction worker recommended)
-2. Test thoroughly before moving to next service
-3. Update `.env.example` files to match schema
-4. Add config validation to CI/CD
-5. Document any service-specific config quirks
+1. Keep `.env` values consistent with the Pydantic schema (prefer `.env.example.pydantic`).
+2. Keep environment hardening in prod (CORS allowlist, strong `ADMIN_API_KEY`, no public Supabase).
+3. Add CI checks as desired (e.g., linting env templates against `shared/config.py`).
 
 ### Further Reading
 

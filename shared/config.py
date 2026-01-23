@@ -8,6 +8,7 @@ Goal:
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -40,8 +41,31 @@ def _clean_url(value: Optional[str]) -> Optional[str]:
     return s or None
 
 
+def _normalized_app_env() -> Optional[str]:
+    v = (os.getenv("APP_ENV") or "").strip().lower()
+    if v in {"prod", "production"}:
+        return "prod"
+    if v in {"staging", "stage"}:
+        return "staging"
+    return None
+
+
 def _env_file_candidates(service_dir: str) -> list[Path]:
-    # Order matters: service-local .env first, then repo-root .env (if any).
+    """
+    Determine which env file(s) to load when a caller doesn't pass an explicit `env_file`.
+
+    Important: in staging/prod we intentionally avoid falling back to `.env`, because `.env`
+    often contains developer-machine values and can silently change runtime behavior when a
+    key is missing from the environment.
+    """
+    app_env = _normalized_app_env()
+    if app_env in {"staging", "prod"}:
+        return [
+            _REPO_ROOT / service_dir / f".env.{app_env}",
+            _REPO_ROOT / f".env.{app_env}",
+        ]
+
+    # dev/default: service-local .env first, then repo-root .env (if any).
     return [
         _REPO_ROOT / service_dir / ".env",
         _REPO_ROOT / ".env",
@@ -449,3 +473,70 @@ def load_website_config(*, env_file: Optional[Path] = None) -> WebsiteConfig:
     candidates = [env_file] if env_file else _env_file_candidates("TutorDexWebsite")
     existing = [p for p in candidates if p and p.exists()]
     return WebsiteConfig(_env_file=existing or None, _env_file_encoding="utf-8")  # type: ignore[arg-type]
+
+
+def validate_environment_integrity(cfg: BaseSettings) -> None:
+    """
+    Validate that environment configuration is internally consistent.
+
+    Raises RuntimeError if dangerous misconfigurations detected.
+    """
+    app_env = str(getattr(cfg, "app_env", None) or os.getenv("APP_ENV", "dev")).strip().lower()
+
+    supabase_url = str(getattr(cfg, "supabase_url", "") or "").strip().lower()
+    supabase_url_host = str(getattr(cfg, "supabase_url_host", "") or "").strip().lower()
+    supabase_url_docker = str(getattr(cfg, "supabase_url_docker", "") or "").strip().lower()
+    supabase_urls = " ".join([supabase_url, supabase_url_host, supabase_url_docker]).strip()
+
+    if app_env in {"prod", "production"}:
+        if ":54322" in supabase_urls:
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=prod but Supabase URL contains staging port :54322.\n"
+                "Fix: Update production Supabase URL configuration."
+            )
+
+        if hasattr(cfg, "auth_required") and not bool(getattr(cfg, "auth_required", True)):
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=prod but AUTH_REQUIRED=false.\n"
+                "Fix: Set AUTH_REQUIRED=true in production."
+            )
+
+        if hasattr(cfg, "firebase_admin_enabled") and not bool(getattr(cfg, "firebase_admin_enabled", False)):
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=prod but FIREBASE_ADMIN_ENABLED=false.\n"
+                "Fix: Set FIREBASE_ADMIN_ENABLED=true in production."
+            )
+
+        if hasattr(cfg, "admin_api_key"):
+            admin_key = str(getattr(cfg, "admin_api_key", "") or "").strip()
+            if not admin_key or admin_key == "changeme" or len(admin_key) < 32:
+                raise RuntimeError(
+                    "FATAL CONFIGURATION ERROR:\n"
+                    "APP_ENV=prod but ADMIN_API_KEY is missing or weak.\n"
+                    "Fix: Set ADMIN_API_KEY to a secure random string in production."
+                )
+
+    elif app_env == "staging":
+        if ":54321" in supabase_urls and ":54322" not in supabase_urls:
+            raise RuntimeError(
+                "FATAL CONFIGURATION ERROR:\n"
+                "APP_ENV=staging but Supabase URL contains production port :54321.\n"
+                "Fix: Update staging Supabase URL configuration."
+            )
+
+        import logging
+
+        if hasattr(cfg, "enable_broadcast") and bool(getattr(cfg, "enable_broadcast", False)):
+            logging.warning(
+                "STAGING BROADCAST ENABLED: ENABLE_BROADCAST=true in staging. "
+                "Ensure AGGREGATOR_CHANNEL_ID points to a test channel."
+            )
+
+        if hasattr(cfg, "enable_dms") and bool(getattr(cfg, "enable_dms", False)):
+            logging.warning(
+                "STAGING DMs ENABLED: ENABLE_DMS=true in staging. "
+                "Ensure only test tutor accounts will receive DMs."
+            )

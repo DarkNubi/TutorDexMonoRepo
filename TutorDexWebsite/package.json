@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
+    "build:prod": "vite build --mode prod",
     "preview": "vite preview",
     "serve:firebase": "npm run build && firebase emulators:start --only hosting",
     "test": "mocha --ui bdd --recursive test --reporter spec"
