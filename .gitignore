@@ -22,6 +22,7 @@ TutorDexAggregator/monitoring/heartbeat*.json
 TutorDexAggregator/monitoring/monitor_state.json
 TutorDexAggregator/monitoring/telegram_message_edits.sqlite*
 TutorDexAggregator/outgoing_broadcasts.jsonl
+logs/
 
 # Local state
 TutorDexAggregator/processed_ids.json
