@@ -332,6 +332,22 @@ services:
     networks:
       - tutordex
 
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${HOMEPAGE_PORT:-7575}:3000"
+    volumes:
+      - ./homepage/config:/app/config:ro
+      - ./homepage/assets:/app/public/assets:ro
+    environment:
+      TZ: "${TZ:-Asia/Singapore}"
+      # Allow local access (localhost:${HOMEPAGE_PORT}) and Tailscale Serve hostname.
+      HOMEPAGE_ALLOWED_HOSTS: "${HOMEPAGE_ALLOWED_HOSTS:-localhost:${HOMEPAGE_PORT:-7575},127.0.0.1:${HOMEPAGE_PORT:-7575},[::1]:${HOMEPAGE_PORT:-7575},homepage.taildbd593.ts.net}"
+    networks:
+      - tutordex
+
 networks:
   tutordex:
     # name is auto-generated: ${COMPOSE_PROJECT_NAME}_tutordex
