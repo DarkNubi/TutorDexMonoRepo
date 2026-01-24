@@ -1,3 +1,5 @@
+# Exclude protobuf 6.33.4 which is vulnerable (CVE-2026-0994). See security audit.
+protobuf!=6.33.4
 fastapi>=0.115.0,<1.0.0
 uvicorn>=0.30.0,<1.0.0
 redis>=5.0.0,<8.0.0
