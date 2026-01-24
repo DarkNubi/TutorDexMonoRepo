@@ -1,0 +1,33 @@
+---
+title: TutorDex Dashboard
+favicon: https://tutordex.web.app/favicon.ico
+
+background:
+  image: ""
+  blur: ""
+  saturate: ""
+  brightness: ""
+  opacity: ""
+
+theme: dark
+color: slate
+
+layout:
+  Staging:
+    style: row
+    columns: 3
+  Production:
+    style: row
+    columns: 3
+  Resources:
+    style: row
+    columns: 2
+
+headerStyle: boxed
+
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: true
+  hideVisitURL: true
+
+showStats: false
