@@ -29,12 +29,14 @@ This document provides a **precise, execution-ready plan** to deploy Homepage (h
 ### 1.1 Existing Docker Stacks
 
 **Primary Stack: `docker-compose.yml` (repo root)**
-- **Project Name:** `tutordex` (auto-generated from directory name or `COMPOSE_PROJECT_NAME`)
-- **Services:** 15 containers across application, observability, and data layers
+- **Compose Projects (implemented):**
+  - **Production:** `tutordex-prod` (via `.env.prod`)
+  - **Staging:** `tutordex-staging` (via `.env.staging`)
+- **Services:** 15 containers per environment (application + observability); 30 total when staging and prod run concurrently
 - **Networks:**
-  - `tutordex` (internal bridge network, auto-generated)
-  - `supabase_net` (external, connects to self-hosted Supabase)
-- **Volumes:** 5 named volumes (redis_data, prometheus_data, alertmanager_data, grafana_data, tempo_data, telegram_link_bot_state)
+  - `${COMPOSE_PROJECT_NAME}_tutordex` (internal bridge network, auto-generated per Compose project)
+  - `supabase_net` (external, connects to the env-specific self-hosted Supabase instance)
+- **Volumes:** 6 named volumes (redis_data, prometheus_data, alertmanager_data, grafana_data, tempo_data, telegram_link_bot_state)
 
 **Secondary Stacks (Legacy/Standalone):**
 - `observability/docker-compose.observability.yml` - Standalone observability (NOT recommended, creates duplicate services)
@@ -42,22 +44,24 @@ This document provides a **precise, execution-ready plan** to deploy Homepage (h
 
 **Deployment Context:**
 - **Environment:** Windows Server with Docker Desktop (WSL2 backend)
-- **Deployment Method:** GitHub Actions → Tailscale → SSH → `git pull` → `docker compose up -d --build`
-- **Current State:** Production deployment with NO staging/prod separation yet (Milestone 2 planning in progress)
+- **Deployment Method (implemented):**
+  - Production: `scripts/deploy_prod.sh` (or `docker compose -p tutordex-prod --env-file .env.prod up -d --build`)
+  - Staging: `scripts/deploy_staging.sh` (or `docker compose -p tutordex-staging --env-file .env.staging up -d --build`)
+- **Note:** `.github/workflows/deploy.yml` currently runs a single `docker compose up -d --build` without `-p/--env-file`; treat it as a legacy/single-env deploy path unless updated.
 
 ### 1.2 Ports Currently In Use
 
 From `docker-compose.yml`:
 
-| Service | Host Port | Container Port | Bind Address | Environment Variable |
-|---------|-----------|----------------|--------------|---------------------|
-| Backend API | 8000 | 8000 | 0.0.0.0 | `BACKEND_PORT` |
-| Prometheus | 9090 | 9090 | 0.0.0.0 | `PROMETHEUS_PORT` |
-| Alertmanager | 9093 | 9093 | 0.0.0.0 | `ALERTMANAGER_PORT` |
-| Grafana | 3300 | 3000 | 0.0.0.0 | `GRAFANA_PORT` |
-| Tempo HTTP | 3200 | 3200 | Unspecified | `TEMPO_HTTP_PORT` |
-| Tempo OTLP gRPC | 4317 | 4317 | Unspecified | `TEMPO_OTLP_GRPC_PORT` |
-| Tempo OTLP HTTP | 4318 | 4318 | Unspecified | `TEMPO_OTLP_HTTP_PORT` |
+| Service | Prod Host Port | Staging Host Port | Container Port | Bind Address | Environment Variable |
+|---------|---------------|------------------|----------------|--------------|---------------------|
+| Backend API | 8000 | 8001 | 8000 | 0.0.0.0 | `BACKEND_PORT` |
+| Prometheus | 9090 | 9091 | 9090 | 0.0.0.0 | `PROMETHEUS_PORT` |
+| Alertmanager | 9093 | 9094 | 9093 | 0.0.0.0 | `ALERTMANAGER_PORT` |
+| Grafana | 3300 | 3301 | 3000 | 0.0.0.0 | `GRAFANA_PORT` |
+| Tempo HTTP | 3200 | 3201 | 3200 | Unspecified | `TEMPO_HTTP_PORT` |
+| Tempo OTLP gRPC | 4317 | 4319 | 4317 | Unspecified | `TEMPO_OTLP_GRPC_PORT` |
+| Tempo OTLP HTTP | 4318 | 4320 | 4318 | Unspecified | `TEMPO_OTLP_HTTP_PORT` |
 
 **Port Assignment Pattern:**
 - Observability: 3000-3999 range (Grafana 3300, Tempo 3200)
@@ -75,7 +79,7 @@ From `docker-compose.yml`:
 
 **Container Naming:**
 - Pattern: `${COMPOSE_PROJECT_NAME}-${service_name}-${replica_number}`
-- Examples: `tutordex-backend-1`, `tutordex-prometheus-1`
+- Examples: `tutordex-prod-backend-1`, `tutordex-staging-prometheus-1`
 
 **Volume Naming:**
 - Pattern: `${COMPOSE_PROJECT_NAME}_${volume_name}` (if using project naming)
@@ -83,8 +87,8 @@ From `docker-compose.yml`:
 - Auto-prefixed: Docker Compose adds project name automatically when volumes are created
 
 **Network Naming:**
-- Internal network: `tutordex` (defined explicitly in compose file, but would auto-generate as `tutordex_tutordex` without explicit name)
-- External network: `supabase_net` (external reference to Supabase stack)
+- Internal network: `${COMPOSE_PROJECT_NAME}_tutordex` (auto-generated; e.g. `tutordex-prod_tutordex`, `tutordex-staging_tutordex`)
+- External network: `supabase_net` (external reference to the env-specific Supabase stack; configured via `SUPABASE_NETWORK`)
 
 **Environment Variable Pattern:**
 - `APP_ENV` - Environment identifier (`dev`, `staging`, `prod`)
@@ -102,38 +106,36 @@ From `docker-compose.yml`:
 **Documented Endpoints (from problem statement):**
 
 **STAGING:**
-- `https://staging-grafana.taildbd593.ts.net` → likely `localhost:3300` (or staging alternate)
-- `https://staging-prometheus.taildbd593.ts.net` → likely `localhost:9090` (or staging alternate)
-- `https://staging-alertmanager.taildbd593.ts.net` → likely `localhost:9093` (or staging alternate)
-- `https://staging-supabase.taildbd593.ts.net` → likely `localhost:54322` (staging Supabase)
-- `https://staging-logflare.taildbd593.ts.net` → likely `localhost:4000` (staging Logflare, per `docs/TAILSCALE_GUIDE.md`)
+- `https://staging-grafana.taildbd593.ts.net` → `localhost:3301`
+- `https://staging-prometheus.taildbd593.ts.net` → `localhost:9091`
+- `https://staging-alertmanager.taildbd593.ts.net` → `localhost:9094`
+- `https://staging-supabase.taildbd593.ts.net` → `localhost:54322` (staging Supabase/Kong)
+- `https://staging-logflare.taildbd593.ts.net` → `localhost:4001` (staging Logflare)
 
 **PROD:**
-- `https://prod-grafana.taildbd593.ts.net` → likely `localhost:3300` (prod)
-- `https://prod-prometheus.taildbd593.ts.net` → likely `localhost:9090` (prod)
-- `https://prod-alertmanager.taildbd593.ts.net` → likely `localhost:9093` (prod)
-- `https://prod-supabase.taildbd593.ts.net` → likely `localhost:54321` (prod Supabase)
-- `https://prod-logflare.taildbd593.ts.net` → likely `localhost:4000` (prod Logflare)
-
-**Note:** Per `docs/DUAL_ENVIRONMENT_MIGRATION_PLAN.md`, the staging/prod separation is **planned but not yet implemented**. Current deployment likely runs as a single "prod" environment. The endpoints listed above represent the **target state** once dual environments are deployed.
+- `https://prod-grafana.taildbd593.ts.net` → `localhost:3300`
+- `https://prod-prometheus.taildbd593.ts.net` → `localhost:9090`
+- `https://prod-alertmanager.taildbd593.ts.net` → `localhost:9093`
+- `https://prod-supabase.taildbd593.ts.net` → `localhost:54321` (prod Supabase/Kong)
+- `https://prod-logflare.taildbd593.ts.net` → `localhost:4000` (prod Logflare)
 
 **Evidence:**
-- `docs/TAILSCALE_GUIDE.md` contains single line: `tailscale serve --service=svc:dev-logflare 127.0.0.1:4000`
-- No staging/prod references found in codebase search
-- `APP_ENV` defaults to `dev` in docker-compose.yml
+- Root env files exist: `.env.staging`, `.env.prod` (define `COMPOSE_PROJECT_NAME`, env-specific port mappings, and `SUPABASE_NETWORK`)
+- Environment-specific deploy/stop/log scripts exist: `scripts/deploy_staging.sh`, `scripts/deploy_prod.sh`, `scripts/stop_staging.sh`, `scripts/stop_prod.sh`
+- Service-level env separation exists: `TutorDexAggregator/.env.staging`, `TutorDexAggregator/.env.prod`, `TutorDexBackend/.env.staging`, `TutorDexBackend/.env.prod`
+- `docs/TAILSCALE_GUIDE.md` documents staging/prod `tailscale serve` mappings on the corresponding localhost ports
 
 **Implication for Homepage:** 
-- Homepage configuration must support **both current single-env state AND future dual-env state**
-- Initial deployment: link to prod endpoints only
-- Future: update services.yaml to add staging section
+- Homepage configuration should include **both staging and prod** sections from day 1.
 
 ### 1.5 Configuration and Volume Locations
 
 **Environment Files:**
-- `TutorDexAggregator/.env` (secrets, Telegram creds, Supabase URL)
-- `TutorDexBackend/.env` (secrets, Firebase, Redis URL)
+- `.env.staging`, `.env.prod` (top-level Compose project + port + Supabase-network selection)
+- `TutorDexAggregator/.env.staging`, `TutorDexAggregator/.env.prod` (secrets and runtime config)
+- `TutorDexBackend/.env.staging`, `TutorDexBackend/.env.prod` (secrets and runtime config)
 - `TutorDexWebsite/.env` (Firebase config)
-- No root-level `.env` (environment variables passed via compose or defaults)
+- No root-level `.env` (intentionally; env selection is explicit via `.env.staging` / `.env.prod`)
 
 **Config Directories:**
 - `observability/prometheus/` - Prometheus config and rules
@@ -190,7 +192,7 @@ From `docker-compose.yml`:
 
 **Rationale:**
 1. **Single Source of Truth:** All production services defined in root compose file
-2. **Consistent Deployment:** Uses same CI/CD pipeline (GitHub Actions → Tailscale → SSH)
+2. **Consistent Deployment Mechanism:** Uses the existing Tailscale + SSH deployment model (whether triggered manually or via CI)
 3. **Network Access:** Needs no special networking (external HTTPS links only)
 4. **Lifecycle Alignment:** Should start/stop with rest of stack
 5. **Simplicity:** Avoids maintaining separate compose file
@@ -202,6 +204,8 @@ From `docker-compose.yml`:
 
 **Placement in docker-compose.yml:** Add after observability services, before `networks:` section.
 
+**Design decision:** Homepage is a single, production-owned operational dashboard that surfaces links to both staging and production environments. It is intentionally not environment-scoped.
+
 ---
 
 ## 2. Homepage Role & Scope
@@ -211,7 +215,7 @@ From `docker-compose.yml`:
 Homepage will serve as a **navigation hub** providing:
 
 1. **Service Links (Grouped by Environment)**
-   - Staging environment section (when implemented)
+   - Staging environment section
    - Production environment section
    - Each service displays: Name, description, status indicator (optional), direct link
 
@@ -407,7 +411,6 @@ tailscale serve --https=443 --service=svc:homepage http://localhost:7575
 homepage:
   image: ghcr.io/gethomepage/homepage:latest
   pull_policy: always
-  container_name: tutordex-homepage  # Explicit naming for clarity
   restart: unless-stopped
   ports:
     - "0.0.0.0:${HOMEPAGE_PORT:-7575}:3000"
@@ -415,11 +418,10 @@ homepage:
     - ./homepage/config:/app/config:ro
     - ./homepage/assets:/app/public/assets:ro
   environment:
-    PUID: "1000"  # Optional: run as non-root
-    PGID: "1000"
-    TZ: "Asia/Singapore"  # Or appropriate timezone
+    TZ: "${TZ:-Asia/Singapore}"
   networks:
     - tutordex
+
 ```
 
 **Placement:** Add after `otel-collector` service, before `networks:` section in docker-compose.yml.
@@ -459,8 +461,6 @@ homepage:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `PUID` | `1000` | User ID for file permissions (Linux/WSL) |
-| `PGID` | `1000` | Group ID for file permissions |
 | `TZ` | `Asia/Singapore` | Timezone for timestamps (adjust per deployment) |
 
 **Optional Variables (Not Required):**
@@ -764,7 +764,7 @@ mkdir -p homepage/assets
 
 #### 6.1.2 Create `homepage/config/services.yaml`
 
-**File:** `/home/runner/work/TutorDexMonoRepo/TutorDexMonoRepo/homepage/config/services.yaml`
+**File:** `homepage/config/services.yaml`
 
 **Initial Content:**
 ```yaml
@@ -776,38 +776,40 @@ mkdir -p homepage/assets
 # Do NOT use internal container names or localhost URLs.
 # =============================================================================
 
-# NOTE: Staging section commented out until staging environment is deployed
-# Uncomment and update URLs when staging is live
+- Staging:
+    icon: mdi-test-tube
 
-# - Staging:
-#     icon: mdi-test-tube
-#     
-#     - Observability:
-#         - Grafana (Staging):
-#             icon: grafana
-#             href: https://staging-grafana.taildbd593.ts.net
-#             description: 🧪 Staging — Metrics visualization and dashboards
-#         
-#         - Prometheus (Staging):
-#             icon: prometheus
-#             href: https://staging-prometheus.taildbd593.ts.net
-#             description: 🧪 Staging — Metrics collection and alerting
-#         
-#         - Alertmanager (Staging):
-#             icon: mdi-bell
-#             href: https://staging-alertmanager.taildbd593.ts.net
-#             description: 🧪 Staging — Alert routing and management
-#     
-#     - Data & Storage:
-#         - Supabase (Staging):
-#             icon: mdi-database
-#             href: https://staging-supabase.taildbd593.ts.net
-#             description: 🧪 Staging — PostgreSQL database and admin
-#         
-#         - Logflare (Staging):
-#             icon: mdi-math-log
-#             href: https://staging-logflare.taildbd593.ts.net
-#             description: 🧪 Staging — Log aggregation and search
+    - Observability:
+        - Grafana (Staging):
+            icon: grafana
+            href: https://staging-grafana.taildbd593.ts.net
+            description: 🧪 Staging — Metrics visualization and dashboards
+            target: _blank
+
+        - Prometheus (Staging):
+            icon: prometheus
+            href: https://staging-prometheus.taildbd593.ts.net
+            description: 🧪 Staging — Metrics collection and alerting
+            target: _blank
+
+        - Alertmanager (Staging):
+            icon: mdi-bell
+            href: https://staging-alertmanager.taildbd593.ts.net
+            description: 🧪 Staging — Alert routing and management
+            target: _blank
+
+    - Data & Storage:
+        - Supabase (Staging):
+            icon: mdi-database
+            href: https://staging-supabase.taildbd593.ts.net
+            description: 🧪 Staging — PostgreSQL database and admin
+            target: _blank
+
+        - Logflare (Staging):
+            icon: mdi-math-log
+            href: https://staging-logflare.taildbd593.ts.net
+            description: 🧪 Staging — Log aggregation and search
+            target: _blank
 
 # =============================================================================
 
@@ -866,7 +868,7 @@ mkdir -p homepage/assets
 
 #### 6.1.3 Create `homepage/config/settings.yaml`
 
-**File:** `/home/runner/work/TutorDexMonoRepo/TutorDexMonoRepo/homepage/config/settings.yaml`
+**File:** `homepage/config/settings.yaml`
 
 **Content:**
 ```yaml
@@ -885,6 +887,9 @@ theme: dark
 color: slate
 
 layout:
+  Staging:
+    style: row
+    columns: 3
   Production:
     style: row
     columns: 3
@@ -904,7 +909,7 @@ showStats: false
 
 #### 6.1.4 Create `homepage/config/bookmarks.yaml`
 
-**File:** `/home/runner/work/TutorDexMonoRepo/TutorDexMonoRepo/homepage/config/bookmarks.yaml`
+**File:** `homepage/config/bookmarks.yaml`
 
 **Content:**
 ```yaml
@@ -914,7 +919,7 @@ showStats: false
 
 #### 6.1.5 Create `homepage/config/widgets.yaml`
 
-**File:** `/home/runner/work/TutorDexMonoRepo/TutorDexMonoRepo/homepage/config/widgets.yaml`
+**File:** `homepage/config/widgets.yaml`
 
 **Content:**
 ```yaml
@@ -925,7 +930,7 @@ showStats: false
 
 #### 6.1.6 Create `homepage/.gitignore`
 
-**File:** `/home/runner/work/TutorDexMonoRepo/TutorDexMonoRepo/homepage/.gitignore`
+**File:** `homepage/.gitignore`
 
 **Content:**
 ```
@@ -940,7 +945,7 @@ cache/
 
 #### 6.2.1 Modify `docker-compose.yml`
 
-**File:** `/home/runner/work/TutorDexMonoRepo/TutorDexMonoRepo/docker-compose.yml`
+**File:** `docker-compose.yml`
 
 **Action:** Add Homepage service definition
 
@@ -951,7 +956,6 @@ cache/
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     pull_policy: always
-    container_name: tutordex-homepage
     restart: unless-stopped
     ports:
       - "0.0.0.0:${HOMEPAGE_PORT:-7575}:3000"
@@ -959,12 +963,16 @@ cache/
       - ./homepage/config:/app/config:ro
       - ./homepage/assets:/app/public/assets:ro
     environment:
-      PUID: "1000"
-      PGID: "1000"
       TZ: "${TZ:-Asia/Singapore}"
     networks:
       - tutordex
 ```
+
+Homepage attaches to the default application network defined in docker-compose.yml, which resolves per project as ${COMPOSE_PROJECT_NAME}_tutordex.
+
+**Important (dual environment):**
+- Do **not** set `container_name` (it breaks Compose project isolation and prevents staging+prod from running side-by-side).
+- To avoid port collisions when both environments run concurrently, deploy Homepage in **one** Compose project (recommended: production), or set different `HOMEPAGE_PORT` values per environment if you intentionally run two Homepage instances.
 
 **Exact Insertion Point:**
 - After line 327 (`networks:` under `otel-collector`)
@@ -973,7 +981,7 @@ cache/
 
 #### 6.2.2 Update `.gitignore` (Optional)
 
-**File:** `/home/runner/work/TutorDexMonoRepo/TutorDexMonoRepo/.gitignore`
+**File:** `.gitignore`
 
 **Action:** Add Homepage exclusions (if needed)
 
@@ -993,6 +1001,9 @@ homepage/cache/
 #### 6.3.1 Local Development/Testing
 
 ```bash
+# Recommended: deploy Homepage in the production Compose project to avoid port conflicts.
+COMPOSE_PROD="docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod"
+
 # 1. Create directory structure
 mkdir -p homepage/config homepage/assets
 
@@ -1012,13 +1023,13 @@ touch homepage/config/widgets.yaml
 # (manual edit or use sed/awk)
 
 # 4. Validate docker-compose.yml syntax
-docker compose config
+$COMPOSE_PROD config
 
 # 5. Start Homepage service
-docker compose up -d homepage
+$COMPOSE_PROD up -d homepage
 
 # 6. Check logs
-docker compose logs -f homepage
+$COMPOSE_PROD logs -f homepage
 
 # 7. Test localhost access
 curl -I http://localhost:7575
@@ -1037,7 +1048,7 @@ tailscale serve --https=443 --service=svc:homepage http://localhost:7575
 
 #### 6.3.2 Production Deployment
 
-**Method:** CI/CD pipeline (GitHub Actions)
+**Method:** Deploy into the production Compose project (`tutordex-prod`)
 
 **Manual Steps (if needed):**
 ```bash
@@ -1047,14 +1058,14 @@ tailscale serve --https=443 --service=svc:homepage http://localhost:7575
 cd D:/TutorDex  # Or appropriate path
 git pull origin main
 
-# 2. Rebuild and restart stack
-docker compose up -d --build
+# 2. Rebuild and restart production stack
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod up -d --build
 
 # 3. Verify Homepage is running
-docker compose ps homepage
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod ps homepage
 
 # 4. Check logs
-docker compose logs homepage
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod logs homepage
 
 # 5. Configure Tailscale Serve (one-time setup)
 tailscale serve --https=443 --service=svc:homepage http://localhost:7575
@@ -1062,12 +1073,9 @@ tailscale serve --https=443 --service=svc:homepage http://localhost:7575
 # 6. Verify Tailscale access from remote device
 ```
 
-**Automated Deployment (via existing CI/CD):**
-- Push changes to `main` branch
-- GitHub Actions triggers `deploy.yml`
-- Workflow SSHs to server via Tailscale
-- Runs: `git pull && docker compose up -d --build`
-- Homepage starts automatically
+**Automated Deployment (current state):**
+- `.github/workflows/deploy.yml` currently runs a single `docker compose up -d --build` without `-p/--env-file`; that path is not environment-aware and can conflict with a dual-environment setup.
+- If you want CI to deploy production safely, update the workflow to use the production project (`-p tutordex-prod --env-file .env.prod`) or call an equivalent non-interactive deploy script.
 
 ### 6.4 "DO NOT TOUCH" List
 
@@ -1106,13 +1114,13 @@ tailscale serve --https=443 --service=svc:homepage http://localhost:7575
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|-----------|
 | **R1: Port 7575 conflict** | Low | Medium | Check `docker ps` and `netstat` before deployment; port is unused in codebase |
-| **R2: Config syntax error breaks container** | Medium | Low | Validate YAML with `docker compose config`; test locally before prod |
-| **R3: Wrong URLs in services.yaml** | Medium | Medium | Test all links manually after deployment; use staging first (when available) |
+| **R2: Config syntax error breaks container** | Medium | Low | Validate YAML with `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod config`; test locally before prod |
+| **R3: Wrong URLs in services.yaml** | Medium | Medium | Test all links manually after deployment; verify staging links first, then prod |
 | **R4: Tailscale Serve not configured** | Medium | Low | Document Tailscale command; test from remote device |
 | **R5: Homepage shows 404/blank page** | Low | Low | Check volume mounts are correct; verify config files exist |
 | **R6: High resource usage** | Low | Low | Homepage is lightweight (~100MB memory); monitor via `docker stats` |
 | **R7: Accidental exposure of internal services** | Low | **High** | Code review of services.yaml; verify NO localhost or container URLs |
-| **R8: CI/CD breaks other services** | Low | High | Test docker-compose.yml changes locally; validate with `docker compose config` |
+| **R8: CI/CD breaks other services** | Low | High | Test docker-compose.yml changes locally; validate with `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod config` |
 | **R9: Config file committed with secrets** | Low | Medium | Homepage has no secrets; verify `.gitignore` excludes runtime files only |
 | **R10: Staging/prod URLs out of sync** | Medium | Medium | Document config update process in this plan; add comments to services.yaml |
 
@@ -1126,7 +1134,7 @@ tailscale serve --https=443 --service=svc:homepage http://localhost:7575
 #### Scenario 1: Container Fails to Start
 
 **Symptoms:**
-- `docker compose up` shows Homepage in error state
+- `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod up` shows Homepage in error state
 - Logs show config file errors
 
 **Likely Causes:**
@@ -1136,19 +1144,19 @@ tailscale serve --https=443 --service=svc:homepage http://localhost:7575
 
 **Diagnosis:**
 ```bash
-docker compose logs homepage
-docker compose config  # Validates compose file
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod logs homepage
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod config  # Validates compose file
 ```
 
 **Fix:**
 1. Check YAML syntax: `yamllint homepage/config/*.yaml`
 2. Verify directory exists: `ls -la homepage/config/`
-3. Check volume mounts: `docker inspect tutordex-homepage`
+3. Check volume mounts: `docker inspect tutordex-prod-homepage-1` (or `${COMPOSE_PROJECT_NAME}-homepage-1`)
 
 #### Scenario 2: Port Already in Use
 
 **Symptoms:**
-- `docker compose up` fails with "port is already allocated"
+- `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod up` fails with "port is already allocated"
 
 **Likely Causes:**
 - Another container using port 7575
@@ -1181,8 +1189,8 @@ ss -tuln | grep 7575          # Linux
 
 **Diagnosis:**
 ```bash
-docker exec -it tutordex-homepage ls -la /app/config
-docker exec -it tutordex-homepage cat /app/config/services.yaml
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod exec homepage ls -la /app/config
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod exec homepage cat /app/config/services.yaml
 ```
 
 **Fix:**
@@ -1252,8 +1260,8 @@ curl http://100.x.x.x:7575  # Replace with actual Tailscale IP
 **Step 1: Stop and Remove Homepage Container**
 ```bash
 # Stop Homepage service only
-docker compose stop homepage
-docker compose rm -f homepage
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod stop homepage
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod rm -f homepage
 ```
 
 **Step 2: Revert docker-compose.yml Changes**
@@ -1266,9 +1274,9 @@ git revert <commit-hash>
 vim docker-compose.yml
 # Remove Homepage service definition
 
-# Validate syntax
-docker compose config
-```
+	# Validate syntax
+	docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod config
+	```
 
 **Step 3: Remove Homepage Configuration (Optional)**
 ```bash
@@ -1280,14 +1288,14 @@ rm -rf homepage/
 **Step 4: Remove Tailscale Serve Configuration**
 ```bash
 # Remove Homepage from Tailscale Serve
-tailscale serve --remove /
+tailscale serve --remove --service=svc:homepage
 # Or: tailscale serve --remove-all (removes ALL serve configs - use with caution)
 ```
 
 **Step 5: Verify Other Services Unaffected**
 ```bash
 # Check all services still running
-docker compose ps
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod ps
 
 # Verify key services accessible
 curl http://localhost:8000/health  # Backend
@@ -1335,14 +1343,14 @@ docker volume prune
 
 **Mandatory Checks After Deployment:**
 
-- [ ] **Homepage container running:** `docker compose ps homepage` shows "Up"
+- [ ] **Homepage container running:** `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod ps homepage` shows "Up"
 - [ ] **Localhost access works:** `http://localhost:7575` loads dashboard
 - [ ] **All links open:** Click each link in services.yaml, verify target loads
 - [ ] **Tailscale access works:** Access via `https://homepage.taildbd593.ts.net` from remote device
 - [ ] **Other services unaffected:** Backend, Grafana, Prometheus still accessible
-- [ ] **No port conflicts:** `docker compose ps` shows no restart loops
-- [ ] **Logs clean:** `docker compose logs homepage` shows no errors
-- [ ] **Resource usage acceptable:** `docker stats tutordex-homepage` < 200MB memory
+- [ ] **No port conflicts:** `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod ps` shows no restart loops
+- [ ] **Logs clean:** `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod logs homepage` shows no errors
+- [ ] **Resource usage acceptable:** `docker stats tutordex-prod-homepage-1` < 200MB memory
 - [ ] **Config files committed:** `homepage/config/*.yaml` tracked in git
 - [ ] **Documentation updated:** This plan file in `docs/HOMEPAGE_DEPLOYMENT_PLAN.md`
 
@@ -1359,7 +1367,7 @@ docker volume prune
 ### 8.1 Updating Service URLs
 
 **When to Update:**
-- Staging environment is deployed (uncomment staging section in services.yaml)
+- Staging/prod endpoints change (ports, hostnames, or service labels)
 - New services are added to Tailscale
 - Service URLs change
 - Service is decommissioned
@@ -1373,7 +1381,7 @@ vim homepage/config/services.yaml
 docker run --rm -v $(pwd)/homepage/config:/config mikefarah/yq:latest e . /config/services.yaml
 
 # 3. Restart Homepage (picks up config changes)
-docker compose restart homepage
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod restart homepage
 
 # 4. Verify changes in browser
 # Refresh: http://localhost:7575
@@ -1381,16 +1389,15 @@ docker compose restart homepage
 
 **No rebuild required:** Config files are bind-mounted, so edits are live after restart.
 
-### 8.2 Adding Staging Environment
+### 8.2 Maintaining Staging Links
 
-**When:** After dual-environment migration (per `docs/DUAL_ENVIRONMENT_MIGRATION_PLAN.md`)
+**When:** Any time staging endpoints change or new staging services are added.
 
 **Steps:**
-1. Uncomment staging section in `services.yaml`
-2. Update URLs to actual staging Tailscale endpoints
-3. Verify staging services are accessible
-4. Test each link
-5. Restart Homepage: `docker compose restart homepage`
+1. Update the `Staging` section in `homepage/config/services.yaml`
+2. Validate YAML (`yq` command above)
+3. Verify staging services are accessible (from a Tailscale-connected device)
+4. Restart Homepage: `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod restart homepage`
 
 ### 8.3 Monitoring and Maintenance
 
@@ -1400,12 +1407,12 @@ docker compose restart homepage
 - No alerts needed
 
 **Passive Monitoring:**
-- Check if Homepage appears in `docker compose ps` (should be "Up")
+- Check if Homepage appears in `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod ps` (should be "Up")
 - Occasionally verify localhost access works
 - Update config when infrastructure changes
 
 **Maintenance Tasks:**
-- **Never:** Homepage auto-updates images on `docker compose pull`
+- **Never:** Rely on Homepage auto-updates via `docker compose pull` (treat upgrades as intentional changes)
 - **Quarterly:** Review service links, remove decommissioned services
 - **After infra changes:** Update services.yaml URLs
 
@@ -1420,7 +1427,7 @@ docker compose restart homepage
 ```bash
 # If Homepage is completely lost:
 git pull origin main
-docker compose up -d homepage
+docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod up -d homepage
 # Done. Config is restored from git.
 ```
 
@@ -1482,14 +1489,14 @@ docker compose up -d homepage
 
 | Symptom | Diagnosis Command | Likely Fix |
 |---------|-------------------|-----------|
-| Container not starting | `docker compose logs homepage` | Check YAML syntax, verify volumes |
+| Container not starting | `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod logs homepage` | Check YAML syntax, verify volumes |
 | Port conflict | `docker ps \| grep 7575` | Change `HOMEPAGE_PORT` variable |
-| Blank page | `docker exec -it tutordex-homepage ls /app/config` | Fix volume mount path |
-| 404 errors | `docker exec -it tutordex-homepage cat /app/config/services.yaml` | Add content to services.yaml |
+| Blank page | `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod exec homepage ls /app/config` | Fix volume mount path |
+| 404 errors | `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod exec homepage cat /app/config/services.yaml` | Add content to services.yaml |
 | Can't access via Tailscale | `tailscale serve status` | Configure Tailscale Serve |
 | Links don't work | `curl -I <URL>` | Verify Tailscale URLs, check service status |
-| High CPU usage | `docker stats tutordex-homepage` | Restart container; check for config loop |
-| Config changes not applying | `docker compose restart homepage` | Restart to reload bind-mounted files |
+| High CPU usage | `docker stats tutordex-prod-homepage-1` | Restart container; check for config loop |
+| Config changes not applying | `docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod restart homepage` | Restart to reload bind-mounted files |
 
 ### 10.3 Port Reference Table
 
