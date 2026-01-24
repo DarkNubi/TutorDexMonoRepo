@@ -1,0 +1,13 @@
+---
+# System metrics via Prometheus
+- prometheus:
+    href: http://prometheus:9090
+    - CPU Usage:
+        query: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+        suffix: "%"
+    - Memory Usage:
+        query: 100 - ((node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100)
+        suffix: "%"
+    - Disk Usage:
+        query: 100 - ((node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100)
+        suffix: "%"

@@ -1,0 +1,30 @@
+title: TutorDex Infrastructure
+favicon: /assets/TutorDex-logo-1024.png
+theme: dark
+color: slate
+headerStyle: boxed
+hideVersion: true
+language: en
+locale: en-SG
+timezone: Asia/Singapore
+
+layout:
+  "System Health":
+    style: row
+    columns: 4
+  Observability:
+    style: row
+    columns: 3
+  "Core Services":
+    style: row
+    columns: 2
+
+# Density & Spacing
+cardBlur: sm
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: true
+
+# Feature Flags
+hideErrors: false
+showStats: true
