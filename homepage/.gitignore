@@ -1,0 +1,5 @@
+# Logs (if enabled)
+logs/
+
+# Runtime cache (if any)
+cache/

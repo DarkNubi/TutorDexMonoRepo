@@ -1,0 +1,92 @@
+---
+# =============================================================================
+# TutorDex Homepage — Service Links
+# =============================================================================
+# All URLs are external HTTPS Tailscale endpoints.
+# Do NOT use internal container names or localhost URLs.
+# =============================================================================
+
+- Staging:
+    - icon: mdi-test-tube
+    - Observability:
+        - Grafana (Staging):
+            icon: grafana
+            href: https://staging-grafana.taildbd593.ts.net
+            description: 🧪 Staging — Metrics visualization and dashboards
+            target: _blank
+
+        - Prometheus (Staging):
+            icon: prometheus
+            href: https://staging-prometheus.taildbd593.ts.net
+            description: 🧪 Staging — Metrics collection and alerting
+            target: _blank
+
+        - Alertmanager (Staging):
+            icon: mdi-bell
+            href: https://staging-alertmanager.taildbd593.ts.net
+            description: 🧪 Staging — Alert routing and management
+            target: _blank
+
+    - Data & Storage:
+        - Supabase (Staging):
+            icon: mdi-database
+            href: https://staging-supabase.taildbd593.ts.net
+            description: 🧪 Staging — PostgreSQL database and admin
+            target: _blank
+
+        - Logflare (Staging):
+            icon: mdi-math-log
+            href: https://staging-logflare.taildbd593.ts.net
+            description: 🧪 Staging — Log aggregation and search
+            target: _blank
+
+# =============================================================================
+
+- Production:
+    - icon: mdi-server
+    - Observability:
+        - Grafana (Production):
+            icon: grafana
+            href: https://prod-grafana.taildbd593.ts.net
+            description: ⚠️ PRODUCTION — Metrics visualization and dashboards
+            target: _blank
+        
+        - Prometheus (Production):
+            icon: prometheus
+            href: https://prod-prometheus.taildbd593.ts.net
+            description: ⚠️ PRODUCTION — Metrics collection and alerting
+            target: _blank
+        
+        - Alertmanager (Production):
+            icon: mdi-bell
+            href: https://prod-alertmanager.taildbd593.ts.net
+            description: ⚠️ PRODUCTION — Alert routing and management
+            target: _blank
+    
+    - Data & Storage:
+        - Supabase (Production):
+            icon: mdi-database
+            href: https://prod-supabase.taildbd593.ts.net
+            description: ⚠️ PRODUCTION — PostgreSQL database and admin
+            target: _blank
+        
+        - Logflare (Production):
+            icon: mdi-math-log
+            href: https://prod-logflare.taildbd593.ts.net
+            description: ⚠️ PRODUCTION — Log aggregation and search
+            target: _blank
+
+# =============================================================================
+
+- Resources:
+    - TutorDex Website:
+        icon: mdi-home
+        href: https://tutordex.web.app
+        description: Public tutor assignment portal
+        target: _blank
+    
+    - GitHub Repository:
+        icon: mdi-github
+        href: https://github.com/DarkNubi/TutorDexMonoRepo
+        description: Source code and documentation
+        target: _blank
