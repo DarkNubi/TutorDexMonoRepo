@@ -181,6 +181,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.50.1
     pull_policy: always
+    restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--web.enable-lifecycle"
@@ -200,6 +201,7 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.27.0
     pull_policy: always
+    restart: unless-stopped
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
       - "--storage.path=/alertmanager"
@@ -219,12 +221,14 @@ services:
       - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
     environment:
       APP_ENV: "${APP_ENV:-dev}"
+    restart: unless-stopped
     networks:
       - tutordex
 
   grafana:
     image: grafana/grafana:12.3.1
     pull_policy: always
+    restart: unless-stopped
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_USERS_ALLOW_SIGN_UP: "false"

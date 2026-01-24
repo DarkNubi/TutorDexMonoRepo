@@ -322,7 +322,7 @@ docker compose -f docker-compose.yml -p tutordex-prod --env-file .env.prod up -d
 **Option A: Separate Supabase Projects (Recommended for Production)**
 - Run two separate Supabase Docker Compose stacks
 - Completely isolated databases, auth, storage, APIs
-- Each gets its own external network (`supabase_staging_default`, `supabase_prod_default`)
+- Each gets its own external network (`supabase-staging_default`, `supabase-prod_default`)
 - **Pros:** Complete isolation, separate backups, no risk of cross-contamination
 - **Cons:** Higher resource usage (2x PostgreSQL instances)
 
@@ -567,7 +567,7 @@ SUPABASE_SERVICE_ROLE_KEY=<STAGING_SERVICE_ROLE_KEY>
 SUPABASE_KEY=<STAGING_ANON_KEY>
 SUPABASE_ENABLED=true
 SUPABASE_RAW_ENABLED=true
-SUPABASE_NETWORK=supabase_staging_default
+SUPABASE_NETWORK=supabase-staging_default
 
 # ----------------------------------------------------------------------------
 # REDIS (ISOLATED BY DOCKER NETWORK)
@@ -1335,8 +1335,8 @@ Services within each project reference each other by service name (`redis`, `bac
 **External Supabase Networks:**
 
 Parameterize via `SUPABASE_NETWORK` environment variable:
-- Staging: `SUPABASE_NETWORK=supabase_staging_default`
-- Production: `SUPABASE_NETWORK=supabase_default`
+- Staging: `SUPABASE_NETWORK=supabase-staging_default`
+- Production: `SUPABASE_NETWORK=supabase-prod_default`
 
 **Prerequisite:** Each Supabase instance must be running with its own network:
 ```bash
@@ -1346,7 +1346,7 @@ docker compose -p supabase-staging up -d
 
 # Production Supabase
 cd /path/to/supabase-prod
-docker compose -p supabase up -d
+docker compose -p supabase-prod up -d
 ```
 
 ### 5.4 Docker Compose Commands
@@ -2008,10 +2008,10 @@ cd /path/to/supabase-prod
 docker compose exec postgres pg_dump -U postgres tutordex > tutordex_backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Backup production Redis
-docker compose -p tutordex exec redis redis-cli BGSAVE
+docker compose -p tutordex-prod exec redis redis-cli BGSAVE
 
 # Optional: Copy redis dump.rdb from volume
-docker run --rm -v tutordex_redis_data:/data -v D:/TutorDex/backups:/backup alpine cp /data/dump.rdb /backup/redis_backup_$(date +%Y%m%d_%H%M%S).rdb
+docker run --rm -v tutordex-prod_redis_data:/data -v D:/TutorDex/backups:/backup alpine cp /data/dump.rdb /backup/redis_backup_$(date +%Y%m%d_%H%M%S).rdb
 ```
 
 **Validation:**
@@ -2046,7 +2046,7 @@ docker compose -p supabase-staging logs -f
 - [ ] Staging Supabase accessible at http://localhost:54322
 - [ ] PostgreSQL accessible at localhost:54323
 - [ ] Studio accessible at http://localhost:54324
-- [ ] Network `supabase_staging_default` exists: `docker network ls | grep staging`
+- [ ] Network `supabase-staging_default` exists: `docker network ls | grep staging`
 
 **STOP POINT:** Do not proceed until staging Supabase is fully operational.
 
@@ -2098,7 +2098,7 @@ GRAFANA_PORT=3301
 TEMPO_HTTP_PORT=3201
 TEMPO_OTLP_GRPC_PORT=4319
 TEMPO_OTLP_HTTP_PORT=4320
-SUPABASE_NETWORK=supabase_staging_default
+SUPABASE_NETWORK=supabase-staging_default
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=[generate_secure_password]
 OTEL_ENABLED=1
@@ -2185,7 +2185,7 @@ docker compose -p supabase-staging exec postgres psql -U postgres -d tutordex -c
 # Should see TEST001
 
 # Verify production database is untouched (if prod is running)
-docker compose -p supabase exec postgres psql -U postgres -d tutordex -c "SELECT COUNT(*) FROM assignments;"
+docker compose -p supabase-prod exec postgres psql -U postgres -d tutordex -c "SELECT COUNT(*) FROM assignments;"
 # Should show original count (no TEST001)
 ```
 
@@ -2270,7 +2270,7 @@ docker ps | grep tutordex
 # If your Supabase is currently named "supabase", rename project for clarity
 cd /path/to/current/supabase
 
-docker compose -p supabase down
+docker compose -p supabase-prod down
 docker compose -p supabase-prod up -d
 
 # Update network name reference
