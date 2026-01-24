@@ -51,6 +51,17 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 - **[GRAFANA_AUDIT_SUMMARY.md](GRAFANA_AUDIT_SUMMARY.md)** - Grafana observability audit
 - **[GRAFANA_DASHBOARD_REPAIR_REPORT.md](GRAFANA_DASHBOARD_REPAIR_REPORT.md)** - Dashboard repair report
 
+### Infrastructure Dashboard
+- **[HOMEPAGE_DASHBOARD_PLAN.md](HOMEPAGE_DASHBOARD_PLAN.md)** - Complete Homepage.dev transformation plan (1,041 lines)
+  - Current state analysis of 17 services
+  - Dashboard blueprint with visual hierarchy
+  - 50+ step executor checklist
+  - Aesthetic implementation guide (dark theme, glassmorphism)
+- **[HOMEPAGE_QUICK_START.md](HOMEPAGE_QUICK_START.md)** - 30-minute quick start guide
+  - Minimal viable dashboard setup
+  - Widget configuration examples
+  - Troubleshooting guide
+
 ---
 
 ## 🔍 Audit Documentation

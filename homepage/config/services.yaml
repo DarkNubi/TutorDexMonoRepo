@@ -1,9 +1,72 @@
 ---
 # =============================================================================
-# TutorDex Homepage — Service Links
+# TutorDex Homepage — Local Infrastructure Dashboard
 # =============================================================================
-# All URLs are external HTTPS Tailscale endpoints.
-# Do NOT use internal container names or localhost URLs.
+
+- System Health:
+    - icon: mdi-monitor-dashboard
+
+- Observability:
+    - icon: mdi-chart-line
+    - Grafana:
+        icon: grafana
+        href: http://localhost:3300
+        description: Metrics visualization and dashboards
+        target: _blank
+        ping: http://grafana:3000
+    
+    - Prometheus:
+        icon: prometheus
+        href: http://localhost:9090
+        description: Metrics collection and alerting
+        target: _blank
+        ping: http://prometheus:9090
+    
+    - Alertmanager:
+        icon: mdi-bell
+        href: http://localhost:9093
+        description: Alert routing and management
+        target: _blank
+        ping: http://alertmanager:9093
+
+- Core Services:
+    - icon: mdi-application
+    - Backend API:
+        icon: mdi-api
+        href: http://localhost:8000/docs
+        description: FastAPI backend (Swagger UI)
+        target: _blank
+        ping: http://backend:8000/health/live
+    
+    - Redis:
+        icon: mdi-database-outline
+        description: Cache and session store
+        # No direct UI - monitored via backend
+
+- Data & Storage:
+    - icon: mdi-database
+    - Supabase:
+        icon: mdi-database
+        href: https://prod-supabase.taildbd593.ts.net
+        description: PostgreSQL database and admin
+        target: _blank
+
+- External:
+    - icon: mdi-web
+    - TutorDex Website:
+        icon: mdi-home
+        href: https://tutordex.web.app
+        description: Public tutor assignment portal
+        target: _blank
+    
+    - GitHub Repository:
+        icon: mdi-github
+        href: https://github.com/DarkNubi/TutorDexMonoRepo
+        description: Source code and documentation
+        target: _blank
+
+# =============================================================================
+# Remote Environments (Staging & Production)
 # =============================================================================
 
 - Staging:
@@ -40,8 +103,6 @@
             description: 🧪 Staging — Log aggregation and search
             target: _blank
 
-# =============================================================================
-
 - Production:
     - icon: mdi-server
     - Observability:
@@ -75,18 +136,3 @@
             href: https://prod-logflare.taildbd593.ts.net
             description: ⚠️ PRODUCTION — Log aggregation and search
             target: _blank
-
-# =============================================================================
-
-- Resources:
-    - TutorDex Website:
-        icon: mdi-home
-        href: https://tutordex.web.app
-        description: Public tutor assignment portal
-        target: _blank
-    
-    - GitHub Repository:
-        icon: mdi-github
-        href: https://github.com/DarkNubi/TutorDexMonoRepo
-        description: Source code and documentation
-        target: _blank

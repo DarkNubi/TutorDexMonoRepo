@@ -1,33 +1,30 @@
----
-title: TutorDex Dashboard
-favicon: https://tutordex.web.app/favicon.ico
-
-background:
-  image: ""
-  blur: ""
-  saturate: ""
-  brightness: ""
-  opacity: ""
-
+title: TutorDex Infrastructure
+favicon: /assets/TutorDex-logo-1024.png
 theme: dark
 color: slate
+headerStyle: boxed
+hideVersion: true
+language: en
+locale: en-SG
+timezone: Asia/Singapore
 
 layout:
-  Staging:
+  "System Health":
+    style: row
+    columns: 4
+  Observability:
     style: row
     columns: 3
-  Production:
-    style: row
-    columns: 3
-  Resources:
+  "Core Services":
     style: row
     columns: 2
 
-headerStyle: boxed
-
+# Density & Spacing
+cardBlur: sm
 quicklaunch:
   searchDescriptions: true
   hideInternetSearch: true
-  hideVisitURL: true
 
-showStats: false
+# Feature Flags
+hideErrors: false
+showStats: true

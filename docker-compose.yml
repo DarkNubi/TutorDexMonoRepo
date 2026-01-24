@@ -341,6 +341,7 @@ services:
     volumes:
       - ./homepage/config:/app/config:ro
       - ./homepage/assets:/app/public/assets:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       TZ: "${TZ:-Asia/Singapore}"
       # Allow local access (localhost:${HOMEPAGE_PORT}) and Tailscale Serve hostname.
