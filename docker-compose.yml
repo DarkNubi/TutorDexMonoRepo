@@ -217,6 +217,8 @@ services:
     build: ./observability/alertmanager-telegram
     env_file:
       - ${AGGREGATOR_ENV_FILE:-./TutorDexAggregator/.env}
+    environment:
+      APP_ENV: "${APP_ENV:-dev}"
     networks:
       - tutordex
 
