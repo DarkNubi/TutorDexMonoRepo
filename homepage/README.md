@@ -1,18 +1,81 @@
 # Homepage.dev Configuration
 
 > **Internal infrastructure dashboard for TutorDex**  
-> Single-pane-of-glass operational control panel
+> Organized by the **TutorDex Infrastructure Operating Doctrine** (Homepage-Centric Model)
+
+---
+
+## 🎯 Doctrine Compliance
+
+This homepage follows the **TutorDex Infrastructure Operating Doctrine**, which defines:
+
+### Core Principles
+
+**Homepage Role: Observe**
+- "What exists, where is it, is it alive?"
+- Read-only navigation layer (links, health, status)
+- **NO** restart/trigger/edit/mutation capabilities
+- Safe to share with collaborators, auditors, future hires
+
+**System Boundaries:**
+- 🧭 **Homepage** → Observe (navigation)
+- 📊 **Grafana** → Understand (analysis)
+- 🚨 **Alertmanager** → Interrupt (alerts)
+- 🤖 **CI/CD** → Mutate (changes)
+- 🧠 **Humans** → Decide (judgment)
+
+### Grouping Model
+
+✅ **Correct:** Group by **mental model/intent**
+- Core Platform (API, Workers, Aggregators)
+- Data & Identity (Supabase, Redis)
+- Observability (Grafana, Prometheus, Alertmanager)
+- Bots & Automation (Telegram bots, agents)
+
+❌ **Wrong:** Group by technology, ports, or vendors
+- Don't group by "Docker containers"
+- Don't group by "Port 8000 services"
+- Don't group by "Grafana Labs tools"
+
+### Environment Separation
+
+**Top-level grouping by environment:**
+1. 🔧 **Dev** (Local development)
+2. 🧪 **Staging** (Testing)
+3. ⚠️ **PROD** (Production)
+
+Each environment has consistent sections:
+- Core Platform
+- Data & Identity
+- Observability
+- (Bots & Automation for Dev only)
+
+**Visual clarity:**
+- Dev = 🔧 (wrench emoji)
+- Staging = 🧪 (test tube emoji)
+- Prod = ⚠️ (warning emoji + "PROD" prefix)
 
 ---
 
 ## 📍 Current Status
 
-**Setup:** Basic (minimal configuration)
+**Implementation:** Doctrine-compliant (as of 2026-01-25)
+- ✅ Read-only (no mutation capabilities)
+- ✅ Environment-first grouping (Dev → Staging → Prod)
+- ✅ Intent-based sections (not tech-based)
+- ✅ Clear visual environment indicators
 - ✅ Docker service running on port 7575
-- ✅ `services.yaml` present (external Tailscale links)
-- ❌ `settings.yaml` missing (using defaults)
-- ❌ `widgets.yaml` missing (no system metrics)
-- ❌ Docker socket not mounted (no container visibility)
+- ✅ Config volumes mounted read-only (`:ro`)
+- ✅ Docker socket read-only (safe container visibility)
+
+**Implementation:** Doctrine-compliant (as of 2026-01-25)
+- ✅ Read-only (no mutation capabilities)
+- ✅ Environment-first grouping (Dev → Staging → Prod)
+- ✅ Intent-based sections (not tech-based)
+- ✅ Clear visual environment indicators
+- ✅ Docker service running on port 7575
+- ✅ Config volumes mounted read-only (`:ro`)
+- ✅ Docker socket read-only (safe container visibility)
 
 **Access:**
 - Local: `http://localhost:7575`
@@ -20,9 +83,83 @@
 
 ---
 
+## 🏗️ Structure
+
+### Current Layout (Doctrine-Compliant)
+
+```
+TutorDex Infrastructure
+├── 🔧 Dev — Core Platform
+│   ├── Backend API
+│   ├── Aggregator Worker
+│   └── Collector
+├── 🔧 Dev — Data & Identity
+│   ├── Supabase
+│   └── Redis
+├── 🔧 Dev — Observability
+│   ├── Grafana
+│   ├── Prometheus
+│   └── Alertmanager
+├── 🔧 Dev — Bots & Automation
+│   ├── Telegram Link Bot
+│   └── GitHub Repository
+│
+├── 🧪 Staging — Core Platform
+│   └── TutorDex Website
+├── 🧪 Staging — Data & Identity
+│   ├── Supabase
+│   └── Logflare
+├── 🧪 Staging — Observability
+│   ├── Grafana
+│   ├── Prometheus
+│   └── Alertmanager
+│
+└── ⚠️ PROD — Core Platform
+    └── TutorDex Website
+    ⚠️ PROD — Data & Identity
+    ├── Supabase
+    └── Logflare
+    ⚠️ PROD — Observability
+    ├── Grafana
+    ├── Prometheus
+    └── Alertmanager
+```
+
+### Design Decisions
+
+1. **Environment First**: Dev, Staging, Prod are top-level groups
+   - Prevents accidental prod actions
+   - Clear mental separation
+
+2. **Intent-Based Grouping**: Within each environment
+   - Core Platform (what delivers value)
+   - Data & Identity (where state lives)
+   - Observability (how we see what's happening)
+   - Bots & Automation (supporting automation)
+
+3. **Visual Indicators**: Emoji + text prefix
+   - 🔧 Dev (safe to experiment)
+   - 🧪 Staging (test environment)
+   - ⚠️ PROD (production warning)
+
+---
+
+## 📖 Doctrine Reference
+
+For the complete operating doctrine, see the problem statement that guided this implementation:
+- Homepage = Read-only observation layer
+- Grafana = Understanding layer
+- Alertmanager = Interruption layer
+- CI/CD = Mutation layer (only place changes happen)
+- Humans = Decision layer
+
+**Key Rule:** Homepage must remain read-only forever.
+
+---
+
 ## 🎯 Transformation Plan Available
 
-A complete plan to transform this into a professional SRE control panel is available:
+Additional enhancement plans are available in `/docs` (not required for doctrine compliance):
 
 📄 **[`docs/HOMEPAGE_DASHBOARD_PLAN.md`](../docs/HOMEPAGE_DASHBOARD_PLAN.md)**
 - Complete service inventory (17 services)
@@ -46,6 +183,8 @@ A complete plan to transform this into a professional SRE control panel is avail
 - Implementation paths
 - Success metrics
 
+**Note:** These plans are for advanced features beyond doctrine requirements (system metrics widgets, etc.)
+
 ---
 
 ## 📂 Directory Structure
@@ -56,35 +195,52 @@ homepage/
 │   ├── TutorDex-logo-1024.png  # Logo for favicon/branding
 │   └── README.txt
 ├── config/
-│   └── services.yaml           # Current: external links only
-│   # Missing: settings.yaml, widgets.yaml, bookmarks.yaml
-└── README.md                   # This file
+│   ├── services.yaml            # Service links (doctrine-compliant structure)
+│   ├── settings.yaml            # Theme, layout config
+│   ├── widgets.yaml             # System metrics (Prometheus)
+│   ├── bookmarks.yaml           # Optional bookmarks
+│   ├── docker.yaml              # Docker integration (optional)
+│   ├── kubernetes.yaml          # K8s integration (not used)
+│   └── proxmox.yaml             # Proxmox integration (not used)
+└── README.md                    # This file
 ```
 
 ---
 
 ## 🔧 Current Configuration
 
-### services.yaml
-- **Staging:** Links to staging Grafana, Prometheus, Alertmanager, Supabase
-- **Production:** Links to production Grafana, Prometheus, Alertmanager, Supabase
-- **Resources:** TutorDex website, GitHub repository
+### services.yaml (Doctrine-Compliant)
+- **Environment-first grouping**: Dev → Staging → Prod
+- **Intent-based sections**: Core Platform, Data & Identity, Observability, Bots
+- **Read-only**: All links, no actions/triggers/mutations
+- **Visual clarity**: Emoji prefixes for instant environment recognition
 
-**All links are external HTTPS (Tailscale Serve endpoints)**
+### settings.yaml
+- Dark theme (slate color scheme)
+- Layout configuration matching doctrine structure
+- Quick launch enabled for fast navigation
 
-### Docker Compose (from root docker-compose.yml)
+### widgets.yaml
+- Prometheus integration for system metrics
+- CPU, Memory, Disk usage queries
+- Read-only metrics display
+
+### Docker Compose
 ```yaml
 homepage:
   image: ghcr.io/gethomepage/homepage:latest
   ports:
     - "0.0.0.0:${HOMEPAGE_PORT:-7575}:3000"
   volumes:
-    - ./homepage/config:/app/config:ro
-    - ./homepage/assets:/app/public/assets:ro
+    - ./homepage/config:/app/config:ro         # Read-only config
+    - ./homepage/assets:/app/public/assets:ro  # Read-only assets
+    - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only Docker socket
   environment:
     TZ: Asia/Singapore
     HOMEPAGE_ALLOWED_HOSTS: "localhost:7575,127.0.0.1:7575,[::1]:7575,homepage.taildbd593.ts.net"
 ```
+
+**Security:** All volumes and Docker socket mounted read-only (`:ro`)
 
 ---
 
@@ -105,52 +261,6 @@ docker compose restart homepage
 # Check logs
 docker compose logs homepage --tail 50
 ```
-
----
-
-## 🎯 Implementing the Transformation
-
-To transform this into a professional control panel:
-
-### Option 1: Quick Start (30 minutes)
-Follow [`docs/HOMEPAGE_QUICK_START.md`](../docs/HOMEPAGE_QUICK_START.md)
-
-**Creates:**
-- `config/settings.yaml` (dark theme)
-- `config/widgets.yaml` (system metrics)
-- Enhanced `config/services.yaml` (local services)
-- Docker socket mount (container visibility)
-
-**Result:** Functional dashboard with metrics and dark theme
-
----
-
-### Option 2: Full Implementation (2-4 hours)
-Follow [`docs/HOMEPAGE_DASHBOARD_PLAN.md`](../docs/HOMEPAGE_DASHBOARD_PLAN.md)
-
-**Creates:**
-- Complete 8-section dashboard
-- All system health widgets
-- Pipeline health metrics
-- Alert integration
-- Cinema-quality aesthetic
-
-**Result:** Production-ready SRE control panel
-
----
-
-## 🎨 Target Aesthetic
-
-**Theme:** Dark, cinematic, high-density
-**Colors:** Slate palette with glassmorphism
-**Layout:** Information-rich but calm
-
-**Inspiration:**
-- Professional homelab control panels
-- SRE operational dashboards
-- Futuristic UI aesthetics
-
-See [`docs/HOMEPAGE_VISUAL_REFERENCE.md`](../docs/HOMEPAGE_VISUAL_REFERENCE.md) for visual mockup.
 
 ---
 

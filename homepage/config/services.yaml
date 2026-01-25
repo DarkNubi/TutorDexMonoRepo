@@ -1,13 +1,49 @@
 ---
 # =============================================================================
-# TutorDex Homepage — Local Infrastructure Dashboard
+# TutorDex Homepage — Infrastructure Dashboard
+# Organized by TutorDex Infrastructure Operating Doctrine (Homepage-Centric Model)
+# =============================================================================
+# 
+# Doctrine Principles:
+# - Homepage = Read-only navigation ("What exists, where is it, is it alive?")
+# - Group by mental model/intent, NOT by technology or ports
+# - Environment separation is top-level (Dev/Staging/Prod)
+# - Clear visual distinction between environments
+# - No mutations, actions, or state changes allowed
 # =============================================================================
 
-- System Health:
-    - icon: mdi-monitor-dashboard
+# =============================================================================
+# DEV ENVIRONMENT (Local Development)
+# =============================================================================
 
-- Observability:
-    - icon: mdi-chart-line
+- 🔧 Dev — Core Platform:
+    - Backend API:
+        icon: mdi-api
+        href: http://localhost:8000/docs
+        description: FastAPI backend (Swagger UI)
+        target: _blank
+        ping: http://backend:8000/health/live
+    
+    - Aggregator Worker:
+        icon: mdi-cog-transfer
+        description: Extraction worker (Docker container)
+    
+    - Collector:
+        icon: mdi-telegram
+        description: Telegram message collector
+
+- 🔧 Dev — Data & Identity:
+    - Supabase (Dev):
+        icon: mdi-database
+        href: https://prod-supabase.taildbd593.ts.net
+        description: PostgreSQL database and admin
+        target: _blank
+    
+    - Redis:
+        icon: mdi-memory
+        description: Cache and session store (localhost:6379)
+
+- 🔧 Dev — Observability:
     - Grafana:
         icon: grafana
         href: http://localhost:3300
@@ -29,110 +65,107 @@
         target: _blank
         ping: http://alertmanager:9093
 
-- Core Services:
-    - icon: mdi-application
-    - Backend API:
-        icon: mdi-api
-        href: http://localhost:8000/docs
-        description: FastAPI backend (Swagger UI)
-        target: _blank
-        ping: http://backend:8000/health/live
-    
-    - Redis:
-        icon: mdi-database-outline
-        description: Cache and session store
-        # No direct UI - monitored via backend
-
-- Data & Storage:
-    - icon: mdi-database
-    - Supabase:
-        icon: mdi-database
-        href: https://prod-supabase.taildbd593.ts.net
-        description: PostgreSQL database and admin
-        target: _blank
-
-- External:
-    - icon: mdi-web
-    - TutorDex Website:
-        icon: mdi-home
-        href: https://tutordex.web.app
-        description: Public tutor assignment portal
-        target: _blank
+- 🔧 Dev — Bots & Automation:
+    - Telegram Link Bot:
+        icon: mdi-telegram
+        description: Link bot for tutor registrations
     
     - GitHub Repository:
         icon: mdi-github
         href: https://github.com/DarkNubi/TutorDexMonoRepo
-        description: Source code and documentation
+        description: Source code and CI/CD
         target: _blank
 
 # =============================================================================
-# Remote Environments (Staging & Production)
+# STAGING ENVIRONMENT
 # =============================================================================
 
-- Staging:
-    - icon: mdi-test-tube
-    - Observability:
-        - Grafana (Staging):
-            icon: grafana
-            href: https://staging-grafana.taildbd593.ts.net
-            description: 🧪 Staging — Metrics visualization and dashboards
-            target: _blank
+- 🧪 Staging — Core Platform:
+    - TutorDex Website (Staging):
+        icon: mdi-home
+        href: https://tutordex.web.app
+        description: Public tutor assignment portal (uses prod for now)
+        target: _blank
 
-        - Prometheus (Staging):
-            icon: prometheus
-            href: https://staging-prometheus.taildbd593.ts.net
-            description: 🧪 Staging — Metrics collection and alerting
-            target: _blank
-
-        - Alertmanager (Staging):
-            icon: mdi-bell
-            href: https://staging-alertmanager.taildbd593.ts.net
-            description: 🧪 Staging — Alert routing and management
-            target: _blank
-
-    - Data & Storage:
-        - Supabase (Staging):
-            icon: mdi-database
-            href: https://staging-supabase.taildbd593.ts.net
-            description: 🧪 Staging — PostgreSQL database and admin
-            target: _blank
-
-        - Logflare (Staging):
-            icon: mdi-math-log
-            href: https://staging-logflare.taildbd593.ts.net
-            description: 🧪 Staging — Log aggregation and search
-            target: _blank
-
-- Production:
-    - icon: mdi-server
-    - Observability:
-        - Grafana (Production):
-            icon: grafana
-            href: https://prod-grafana.taildbd593.ts.net
-            description: ⚠️ PRODUCTION — Metrics visualization and dashboards
-            target: _blank
-        
-        - Prometheus (Production):
-            icon: prometheus
-            href: https://prod-prometheus.taildbd593.ts.net
-            description: ⚠️ PRODUCTION — Metrics collection and alerting
-            target: _blank
-        
-        - Alertmanager (Production):
-            icon: mdi-bell
-            href: https://prod-alertmanager.taildbd593.ts.net
-            description: ⚠️ PRODUCTION — Alert routing and management
-            target: _blank
+- 🧪 Staging — Data & Identity:
+    - Supabase (Staging):
+        icon: mdi-database
+        href: https://staging-supabase.taildbd593.ts.net
+        description: PostgreSQL database and admin
+        target: _blank
     
-    - Data & Storage:
-        - Supabase (Production):
-            icon: mdi-database
-            href: https://prod-supabase.taildbd593.ts.net
-            description: ⚠️ PRODUCTION — PostgreSQL database and admin
-            target: _blank
-        
-        - Logflare (Production):
-            icon: mdi-math-log
-            href: https://prod-logflare.taildbd593.ts.net
-            description: ⚠️ PRODUCTION — Log aggregation and search
-            target: _blank
+    - Logflare (Staging):
+        icon: mdi-math-log
+        href: https://staging-logflare.taildbd593.ts.net
+        description: Log aggregation and search
+        target: _blank
+
+- 🧪 Staging — Observability:
+    - Grafana (Staging):
+        icon: grafana
+        href: https://staging-grafana.taildbd593.ts.net
+        description: Metrics visualization and dashboards
+        target: _blank
+    
+    - Prometheus (Staging):
+        icon: prometheus
+        href: https://staging-prometheus.taildbd593.ts.net
+        description: Metrics collection and alerting
+        target: _blank
+    
+    - Alertmanager (Staging):
+        icon: mdi-bell
+        href: https://staging-alertmanager.taildbd593.ts.net
+        description: Alert routing and management
+        target: _blank
+
+# =============================================================================
+# PRODUCTION ENVIRONMENT
+# =============================================================================
+
+- ⚠️ PROD — Core Platform:
+    - TutorDex Website:
+        icon: mdi-home
+        href: https://tutordex.web.app
+        description: ⚠️ PRODUCTION — Public tutor assignment portal
+        target: _blank
+
+- ⚠️ PROD — Data & Identity:
+    - Supabase (Production):
+        icon: mdi-database
+        href: https://prod-supabase.taildbd593.ts.net
+        description: ⚠️ PRODUCTION — PostgreSQL database and admin
+        target: _blank
+    
+    - Logflare (Production):
+        icon: mdi-math-log
+        href: https://prod-logflare.taildbd593.ts.net
+        description: ⚠️ PRODUCTION — Log aggregation and search
+        target: _blank
+
+- ⚠️ PROD — Observability:
+    - Grafana (Production):
+        icon: grafana
+        href: https://prod-grafana.taildbd593.ts.net
+        description: ⚠️ PRODUCTION — Metrics visualization and dashboards
+        target: _blank
+    
+    - Prometheus (Production):
+        icon: prometheus
+        href: https://prod-prometheus.taildbd593.ts.net
+        description: ⚠️ PRODUCTION — Metrics collection and alerting
+        target: _blank
+    
+    - Alertmanager (Production):
+        icon: mdi-bell
+        href: https://prod-alertmanager.taildbd593.ts.net
+        description: ⚠️ PRODUCTION — Alert routing and management
+        target: _blank
+
+# =============================================================================
+# Notes:
+# - All links are READ-ONLY — No restart/trigger/edit capabilities
+# - Environment clearly visible via prefix (🔧 Dev, 🧪 Staging, ⚠️ PROD)
+# - Grouped by mental model: Core Platform, Data & Identity, Observability, Bots
+# - Follows TutorDex Infrastructure Operating Doctrine
+# =============================================================================

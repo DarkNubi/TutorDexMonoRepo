@@ -8,16 +8,46 @@ language: en
 locale: en-SG
 timezone: Asia/Singapore
 
+# Layout organized by TutorDex Infrastructure Operating Doctrine
+# Environment-first grouping: Dev → Staging → Prod
+# Then by intent: Core Platform, Data & Identity, Observability, Bots
+
 layout:
-  "System Health":
-    style: row
-    columns: 4
-  Observability:
+  # Dev Environment
+  "🔧 Dev — Core Platform":
     style: row
     columns: 3
-  "Core Services":
+  "🔧 Dev — Data & Identity":
     style: row
     columns: 2
+  "🔧 Dev — Observability":
+    style: row
+    columns: 3
+  "🔧 Dev — Bots & Automation":
+    style: row
+    columns: 2
+  
+  # Staging Environment
+  "🧪 Staging — Core Platform":
+    style: row
+    columns: 1
+  "🧪 Staging — Data & Identity":
+    style: row
+    columns: 2
+  "🧪 Staging — Observability":
+    style: row
+    columns: 3
+  
+  # Production Environment
+  "⚠️ PROD — Core Platform":
+    style: row
+    columns: 1
+  "⚠️ PROD — Data & Identity":
+    style: row
+    columns: 2
+  "⚠️ PROD — Observability":
+    style: row
+    columns: 3
 
 # Density & Spacing
 cardBlur: sm
