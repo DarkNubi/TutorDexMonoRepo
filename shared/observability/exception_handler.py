@@ -12,6 +12,20 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger("tutordex.exceptions")
 
+_LOGRECORD_RESERVED_KEYS = set(
+    logging.LogRecord(
+        name="",
+        level=0,
+        pathname="",
+        lineno=0,
+        msg="",
+        args=(),
+        exc_info=None,
+    ).__dict__.keys()
+)
+# Common computed/reserved attributes that aren't always present in __dict__ at construction time.
+_LOGRECORD_RESERVED_KEYS.update({"message", "asctime"})
+
 
 def swallow_exception(
     exc: Exception,
@@ -49,13 +63,19 @@ def swallow_exception(
     # This is intentional: we always log/count exceptions here, so the computation
     # is not wasted
     exc_type_name = type(exc).__name__
+
+    log_extra: Dict[str, Any] = {"context": context, "exception_type": exc_type_name}
+    for key, value in (extra or {}).items():
+        # Python logging forbids overwriting LogRecord attributes (e.g. "module"),
+        # so we sanitize to prevent runtime failures in "best-effort" paths.
+        if key in _LOGRECORD_RESERVED_KEYS or key in log_extra:
+            log_extra[f"extra_{key}"] = value
+        else:
+            log_extra[key] = value
+
     logger.exception(
         "Swallowed exception",
-        extra={
-            "context": context,
-            "exception_type": exc_type_name,
-            **(extra or {}),
-        },
+        extra=log_extra,
     )
 
     # Increment metrics counter (best-effort - must never break runtime)

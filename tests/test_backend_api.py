@@ -135,7 +135,7 @@ class TestAssignmentEndpoints:
 
     def test_assignments_facets(self, client: TestClient, mock_supabase):
         """Test assignment facets endpoint."""
-        mock_supabase.get_assignment_facets.return_value = {
+        mock_supabase.open_assignment_facets.return_value = {
             "levels": ["Primary", "Secondary"],
             "subjects": ["Mathematics", "Science"],
             "regions": ["North", "South"]

@@ -313,9 +313,12 @@ class AggregatorConfig(BaseSettings):
         url = _clean_url(self.supabase_url)
         url_docker = _clean_url(self.supabase_url_docker)
         url_host = _clean_url(self.supabase_url_host)
+        # Explicit SUPABASE_URL must always win (important for tests and one-off tooling).
+        if url:
+            return url
         if _running_in_docker():
-            return (url_docker or url or url_host or "").strip().rstrip("/")
-        return (url_host or url or url_docker or "").strip().rstrip("/")
+            return (url_docker or url_host or "").strip().rstrip("/")
+        return (url_host or url_docker or "").strip().rstrip("/")
 
     @property
     def supabase_auth_key(self) -> str:
@@ -417,9 +420,12 @@ class BackendConfig(BaseSettings):
         url = _clean_url(self.supabase_url)
         url_docker = _clean_url(self.supabase_url_docker)
         url_host = _clean_url(self.supabase_url_host)
+        # Explicit SUPABASE_URL must always win (important for tests and one-off tooling).
+        if url:
+            return url
         if _running_in_docker():
-            return (url_docker or url or url_host or "").strip().rstrip("/")
-        return (url_host or url or url_docker or "").strip().rstrip("/")
+            return (url_docker or url_host or "").strip().rstrip("/")
+        return (url_host or url_docker or "").strip().rstrip("/")
 
     @property
     def supabase_auth_key(self) -> str:

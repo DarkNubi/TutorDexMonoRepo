@@ -40,8 +40,9 @@
         target: _blank
     
     - Redis:
-        icon: mdi-memory
-        description: Cache and session store (localhost:6379)
+        icon: mdi-database-outline
+        description: Cache and session store
+        # No direct UI - monitored via backend
 
 - 🔧 Dev — Observability:
     - Grafana:
@@ -91,32 +92,32 @@
     - Supabase (Staging):
         icon: mdi-database
         href: https://staging-supabase.taildbd593.ts.net
-        description: PostgreSQL database and admin
+        description: 🧪 Staging — PostgreSQL database and admin
         target: _blank
     
     - Logflare (Staging):
         icon: mdi-math-log
         href: https://staging-logflare.taildbd593.ts.net
-        description: Log aggregation and search
+        description: 🧪 Staging — Log aggregation and search
         target: _blank
 
 - 🧪 Staging — Observability:
     - Grafana (Staging):
         icon: grafana
         href: https://staging-grafana.taildbd593.ts.net
-        description: Metrics visualization and dashboards
+        description: 🧪 Staging — Metrics visualization and dashboards
         target: _blank
     
     - Prometheus (Staging):
         icon: prometheus
         href: https://staging-prometheus.taildbd593.ts.net
-        description: Metrics collection and alerting
+        description: 🧪 Staging — Metrics collection and alerting
         target: _blank
     
     - Alertmanager (Staging):
         icon: mdi-bell
         href: https://staging-alertmanager.taildbd593.ts.net
-        description: Alert routing and management
+        description: 🧪 Staging — Alert routing and management
         target: _blank
 
 # =============================================================================

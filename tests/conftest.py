@@ -40,24 +40,77 @@ def test_app():
 
 
 @pytest.fixture
-def client(test_app) -> Generator[TestClient, None, None]:
+def client(test_app, mock_redis, mock_supabase) -> Generator[TestClient, None, None]:
     """
     Create a FastAPI TestClient for making requests.
     """
+    from TutorDexBackend.app_context import AppContext, get_app_context
+    from TutorDexBackend.services.analytics_service import AnalyticsService
+    from TutorDexBackend.services.auth_service import AuthService
+    from TutorDexBackend.services.cache_service import CacheService
+    from TutorDexBackend.services.health_service import HealthService
+    from TutorDexBackend.services.telegram_service import TelegramService
+    from shared.config import load_backend_config
+    import logging
+
+    def _override_app_context() -> AppContext:
+        cfg = load_backend_config()
+        auth_service = AuthService()
+        health_service = HealthService(mock_redis, mock_supabase)
+        cache_service = CacheService(mock_redis)
+        telegram_service = TelegramService(mock_redis)
+        analytics_service = AnalyticsService(mock_supabase, mock_redis)
+        return AppContext(
+            logger=logging.getLogger("tutordex_backend"),
+            cfg=cfg,
+            store=mock_redis,
+            sb=mock_supabase,
+            auth_service=auth_service,
+            health_service=health_service,
+            cache_service=cache_service,
+            telegram_service=telegram_service,
+            analytics_service=analytics_service,
+        )
+
+    test_app.dependency_overrides[get_app_context] = _override_app_context
     with TestClient(test_app) as test_client:
         yield test_client
+    test_app.dependency_overrides.pop(get_app_context, None)
 
 
 @pytest.fixture
 def mock_redis():
     """Mock Redis store behaviors."""
     mock_store = MagicMock()
+    # CacheService expects a `.r` Redis client interface for rate limiting/caching.
+    mock_store.r = MagicMock()
+    mock_store.r.incr.return_value = 1
+    mock_store.r.expire.return_value = True
+    mock_store.r.get.return_value = None
+    mock_store.r.setex.return_value = True
+
     mock_store.enabled.return_value = True
     mock_store.save_tutor.return_value = True
     mock_store.get_tutor.return_value = None
     mock_store.delete_tutor.return_value = True
     mock_store.get_all_tutors.return_value = []
+
+    # Telegram linking helpers used by routes.
     mock_store.generate_link_code.return_value = "ABC123"
+
+    def _create_telegram_link_code(tutor_id: str, ttl_seconds: int = 600):
+        return {
+            "ok": True,
+            "tutor_id": tutor_id,
+            "link_code": mock_store.generate_link_code(),
+            "ttl_seconds": int(ttl_seconds),
+        }
+
+    mock_store.create_telegram_link_code.side_effect = _create_telegram_link_code
+    mock_store.consume_telegram_link_code.side_effect = lambda code: "test-123" if str(code) == "ABC123" else None
+    mock_store.set_chat_id.return_value = {"ok": True}
+
+    # Backward-compatible aliases (older callers/tests).
     mock_store.claim_link_code.return_value = {"tutor_id": "test-123"}
     return mock_store
 
@@ -67,6 +120,22 @@ def mock_supabase():
     """Mock Supabase store behaviors."""
     mock_store = MagicMock()
     mock_store.enabled.return_value = True
+    # Current backend routes use `list_open_assignments` + `open_assignment_facets`.
+    mock_store.list_open_assignments.return_value = {
+        "items": [],
+        "total": 0,
+    }
+    mock_store.list_open_assignments_v2.return_value = {
+        "items": [],
+        "total": 0,
+    }
+    mock_store.open_assignment_facets.return_value = {
+        "levels": ["Primary"],
+        "subjects": ["Mathematics"],
+        "regions": ["North"],
+    }
+
+    # Backward-compatible aliases for older tests/callers (keep these to reduce churn).
     mock_store.list_assignments_paged.return_value = {
         "assignments": [],
         "pagination": {"limit": 10, "offset": 0, "total": 0}

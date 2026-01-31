@@ -19,7 +19,8 @@ docker compose \
   -f docker-compose.yml \
   -p tutordex-staging \
   --env-file "$ENV_FILE" \
-  up -d --build
+  up -d --build \
+  --scale homepage=0
 
 echo "Staging deployment complete."
 echo "Backend: http://localhost:8001"

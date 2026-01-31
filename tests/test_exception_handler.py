@@ -38,7 +38,8 @@ def test_swallow_exception_with_extra_context(caplog):
         )
 
     record = caplog.records[0]
-    assert record.module == "test_module"
+    # "module" is a reserved LogRecord attribute and cannot be overwritten; it is sanitized.
+    assert record.extra_module == "test_module"
     assert record.operation == "test_op"
 
 

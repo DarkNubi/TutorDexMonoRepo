@@ -46,8 +46,9 @@ This document provides a **precise, execution-ready plan** to deploy Homepage (h
 - **Environment:** Windows Server with Docker Desktop (WSL2 backend)
 - **Deployment Method (implemented):**
   - Production: `scripts/deploy_prod.sh` (or `docker compose -p tutordex-prod --env-file .env.prod up -d --build`)
-  - Staging: `scripts/deploy_staging.sh` (or `docker compose -p tutordex-staging --env-file .env.staging up -d --build`)
-- **Note:** `.github/workflows/deploy.yml` currently runs a single `docker compose up -d --build` without `-p/--env-file`; treat it as a legacy/single-env deploy path unless updated.
+  - Staging: `scripts/deploy_staging.sh` (or `docker compose -p tutordex-staging --env-file .env.staging up -d --build --scale homepage=0`)
+    - Homepage is intended to run once (not per-environment); staging disables it to avoid port conflicts with prod.
+  - **Note:** `.github/workflows/deploy.yml` currently runs a single `docker compose up -d --build` without `-p/--env-file`; treat it as a legacy/single-env deploy path unless updated.
 
 ### 1.2 Ports Currently In Use
 
