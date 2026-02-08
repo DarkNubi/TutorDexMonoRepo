@@ -277,7 +277,12 @@ def safe_parse_json(json_string):
     try:
         return json.loads(raw)
     except Exception as e:
-        swallow_exception(e, context="json_parse_initial", extra={"raw_preview": str(raw)[:100], "module": __name__})
+        swallow_exception(
+            e,
+            context="json_parse_initial",
+            extra={"raw_preview": str(raw)[:100], "module": __name__},
+            level=logging.DEBUG,
+        )
 
     try:
         from json_repair import repair_json  # type: ignore
@@ -293,7 +298,12 @@ def safe_parse_json(json_string):
         if "return_objects" in inspect.signature(repair_json).parameters:
             return repair_json(raw, return_objects=True)
     except Exception as e:
-        swallow_exception(e, context="json_repair_advanced_sig", extra={"raw_preview": str(raw)[:100], "module": __name__})
+        swallow_exception(
+            e,
+            context="json_repair_advanced_sig",
+            extra={"raw_preview": str(raw)[:100], "module": __name__},
+            level=logging.DEBUG,
+        )
 
     repaired = repair_json(raw)
     if isinstance(repaired, (dict, list)):

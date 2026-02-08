@@ -53,7 +53,18 @@ def derive_agency(payload: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]
     if link and not link.startswith("t.me/") and not link.startswith("http"):
         link = link.lstrip("@")
         link = f"t.me/{link}"
-    return title, link
+
+    # Prefer the stable registry mapping (by chat ref) over Telegram's channel title.
+    # Channel titles can be missing, edited, or contain emojis/variants that aren't stable keys.
+    display_name = None
+    try:
+        if link:
+            v = safe_str(get_agency_display_name(link, default=""))  # type: ignore[arg-type]
+            display_name = v or None
+    except Exception:
+        display_name = None
+
+    return (display_name or title), link
 
 
 def derive_external_id(payload: Dict[str, Any]) -> str:

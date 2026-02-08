@@ -32,6 +32,7 @@ def swallow_exception(
     *,
     context: str,
     extra: Optional[Dict[str, Any]] = None,
+    level: int = logging.WARNING,
 ) -> None:
     """
     Log and count a swallowed exception with context.
@@ -73,8 +74,10 @@ def swallow_exception(
         else:
             log_extra[key] = value
 
-    logger.exception(
+    logger.log(
+        level,
         "Swallowed exception",
+        exc_info=(type(exc), exc, exc.__traceback__),
         extra=log_extra,
     )
 
