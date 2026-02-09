@@ -113,7 +113,16 @@ def main() -> None:
         try:
             resp = requests.get(
                 f"{_bot_base(token)}/getUpdates",
-                params={"timeout": 0, "offset": offset, "limit": 50},
+                # NOTE: This bot must receive user DMs (message updates). Some deployments
+                # configure the bot to only receive callback queries (e.g., for inline buttons),
+                # which would otherwise cause /link and /start messages to never appear here.
+                params={
+                    "timeout": 0,
+                    "offset": offset,
+                    "limit": 50,
+                    # Telegram expects a JSON-serialized list.
+                    "allowed_updates": json.dumps(["message", "edited_message"]),
+                },
                 timeout=20,
             )
             if resp.status_code == 409:
