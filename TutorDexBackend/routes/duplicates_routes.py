@@ -69,7 +69,8 @@ async def get_duplicate_group(request: Request, group_id: int, ctx: AppContext =
         raise HTTPException(status_code=503, detail="supabase_disabled")
 
     try:
-        group_query = f"duplicate_groups?id=eq.{group_id}&select=*"
+        # Supabase table name (migration 2026-01-09): public.assignment_duplicate_groups
+        group_query = f"assignment_duplicate_groups?id=eq.{group_id}&select=*"
         group_resp = ctx.sb.client.get(group_query, timeout=10)  # type: ignore[union-attr]
         if group_resp.status_code != 200:
             ctx.logger.error("Failed to fetch duplicate group %s: %s", group_id, group_resp.status_code)
