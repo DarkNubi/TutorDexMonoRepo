@@ -13,7 +13,8 @@ import { E, MAX_SUBJECT_CHIPS, S } from "./page-assignments.state.js";
 let _onFiltersChanged = null;
 let _onRetryLoad = null;
 
-const COMPACT_CARD_CLASS = "bg-background rounded-2xl p-5 shadow-md border border-border hover:shadow-lg transition-shadow block";
+const COMPACT_CARD_CLASS =
+  "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-2xl p-5 shadow-md border border-border hover:shadow-lg transition-shadow block";
 const COMPACT_TIER_CLASSES = {
   yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
   orange: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
@@ -473,7 +474,7 @@ function renderCards(data) {
 
       const title = document.createElement("h3");
       // show full title, allow wrapping instead of truncation
-      title.className = "text-lg whitespace-normal";
+      title.className = "text-lg whitespace-normal font-bold";
       title.textContent = job.academicDisplayText || "Tuition Assignment";
 
       left.appendChild(title);
@@ -606,7 +607,9 @@ function renderCards(data) {
     header.appendChild(rate);
 
     const title = document.createElement("h3");
-    title.className = compact ? "text-2xl brand-font leading-none mb-1" : "text-3xl brand-font leading-none mb-1";
+    title.className = compact
+      ? "text-xl font-bold tracking-tight leading-tight mb-1"
+      : "text-2xl font-bold tracking-tight leading-tight mb-1";
     title.textContent = job.academicDisplayText || "Tuition Assignment";
 
     const subtitle = document.createElement("p");

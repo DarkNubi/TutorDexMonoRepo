@@ -47,13 +47,9 @@
         background: hsl(var(--background));
         color: hsl(var(--foreground));
       }
-      h1,
-      h2,
-      h3,
       .brand-font {
-        font-family: "Anton", sans-serif;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+        font-family: inherit;
+        letter-spacing: -0.02em;
       }
 
       summary::-webkit-details-marker {
@@ -156,7 +152,7 @@
     >
       <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
         <img src="/TutorDex-icon-128.png" alt="TutorDex" class="w-10 h-10 rounded-lg object-contain" />
-        <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">TutorDex</div>
+        <div class="text-xl font-bold tracking-tight">TutorDex</div>
       </a>
 
       <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
@@ -221,11 +217,11 @@
 
       <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
         <div>
-          <h1 class="text-5xl md:text-7xl leading-none">Tuition Assignments</h1>
+          <h1 class="text-4xl sm:text-5xl xl:text-6xl leading-none font-bold tracking-tight">Tuition Assignments</h1>
           <p class="text-muted-foreground font-medium mt-2">Live assignments available for application.</p>
         </div>
         <div class="text-right">
-          <span class="text-4xl brand-font" id="job-count">0</span>
+          <span class="text-3xl md:text-4xl font-bold tracking-tight" id="job-count">0</span>
           <span class="text-sm font-bold uppercase text-muted-foreground block">Active Jobs</span>
         </div>
       </div>
@@ -394,7 +390,7 @@
       </div>
 
       <div id="load-error" class="hidden text-center py-20">
-        <h2 class="text-3xl text-muted-foreground">Assignments Unavailable</h2>
+        <h2 class="text-3xl font-bold tracking-tight text-muted-foreground">Assignments Unavailable</h2>
         <p class="text-muted-foreground mt-2" id="load-error-message">We couldn’t load assignments right now. Please try again.</p>
         <button
           id="retry-load-assignments"
@@ -406,7 +402,7 @@
       </div>
 
       <div id="no-results" class="hidden text-center py-20">
-        <h2 class="text-3xl text-muted-foreground">No Assignments Found</h2>
+        <h2 class="text-3xl font-bold tracking-tight text-muted-foreground">No Assignments Found</h2>
         <p class="text-muted-foreground mt-2">Try adjusting your filters.</p>
         <button onclick="clearFilters()" class="mt-4 text-sm font-bold underline text-muted-foreground hover:text-foreground">
           Clear All Filters

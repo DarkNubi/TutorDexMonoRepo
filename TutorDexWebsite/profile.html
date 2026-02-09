@@ -47,13 +47,9 @@
         background: hsl(var(--background));
         color: hsl(var(--foreground));
       }
-      h1,
-      h2,
-      h3,
       .brand-font {
-        font-family: "Anton", sans-serif;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+        font-family: inherit;
+        letter-spacing: -0.02em;
       }
 
       summary::-webkit-details-marker {
@@ -128,7 +124,7 @@
     >
       <a href="index.html" class="flex items-center space-x-3" aria-label="Tutor Dex home">
         <img src="/TutorDex-icon-128.png" alt="TutorDex" class="w-10 h-10 rounded-lg object-contain" />
-        <div class="text-2xl md:text-3xl brand-font tracking-tighter uppercase">Tutor Dex</div>
+        <div class="text-xl font-bold tracking-tight">TutorDex</div>
       </a>
 
       <div class="hidden md:flex space-x-8 font-bold text-sm uppercase tracking-wide">
@@ -159,7 +155,7 @@
 
     <div class="max-w-3xl mx-auto px-6 py-12">
       <div class="mb-12">
-        <h1 class="text-5xl md:text-7xl leading-none mb-4">
+        <h1 class="text-5xl md:text-7xl leading-none mb-4 font-bold tracking-tight">
           Build Your <br />
           Tutor Profile.
         </h1>
@@ -171,7 +167,7 @@
       <form id="profile-form">
         <section class="mb-16">
           <div class="flex justify-between items-end mb-6">
-            <h2 class="text-2xl">01. Levels & Subjects</h2>
+            <h2 class="text-2xl font-bold tracking-tight">01. Levels & Subjects</h2>
             <span class="text-xs font-bold text-muted-foreground uppercase tracking-widest">Multi-Select</span>
           </div>
 
@@ -270,7 +266,7 @@
         <hr class="border-border mb-16" />
 
         <section class="mb-16">
-          <h2 class="text-2xl mb-6">02. Where do you teach?</h2>
+          <h2 class="text-2xl mb-6 font-bold tracking-tight">02. Where do you teach?</h2>
           <div id="teaching-locations" class="flex flex-wrap gap-3">
             <button type="button" class="select-btn rounded-full px-8 py-3 font-bold uppercase text-sm tracking-wide" onclick="toggleBtn(this)">
               North
@@ -308,7 +304,7 @@
         <hr class="border-border mb-16" />
 
         <section class="mb-16">
-          <h2 class="text-2xl mb-6">03. Contact Details</h2>
+          <h2 class="text-2xl mb-6 font-bold tracking-tight">03. Contact Details</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
@@ -404,7 +400,7 @@
         <p id="profile-save-status" class="text-sm font-medium text-muted-foreground mb-4"></p>
         <button
           type="submit"
-          class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-5 rounded-full text-xl brand-font tracking-wide hover:from-blue-700 hover:to-indigo-700 transition transform hover:-translate-y-1"
+          class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-5 rounded-full text-xl font-bold tracking-tight hover:from-blue-700 hover:to-indigo-700 transition transform hover:-translate-y-1"
         >
           Save Profile
         </button>
