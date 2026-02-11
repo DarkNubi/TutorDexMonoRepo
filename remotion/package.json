@@ -1,0 +1,27 @@
+{
+  "name": "tutordex-remotion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio",
+    "brief": "node ../scripts/marketing/brief_from_git.mjs",
+    "render": "remotion render",
+    "render:launch": "remotion render Launch-Intro-Reel out/launch-intro-reel.mp4",
+    "render:feature": "remotion render Feature-Spotlight-Reel out/feature-spotlight-reel.mp4",
+    "render:signal": "remotion render TutorDex-Signal-Reel out/tutordex-signal-reel.mp4",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "remotion": "4.0.421",
+    "zod": "3.22.3"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.421",
+    "@remotion/tailwind": "4.0.421",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.25",
+    "typescript": "^5.7.3"
+  }
+}
