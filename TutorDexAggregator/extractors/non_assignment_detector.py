@@ -62,6 +62,22 @@ _ADMIN_PATTERNS = [
     re.compile(r"many\s+(tuition\s+)?job\s+opportunities", re.IGNORECASE),
     re.compile(r"important\s+announcement", re.IGNORECASE),
     re.compile(r"agency\s+(will\s+be\s+)?(closed|opening)", re.IGNORECASE),
+    # Tutor agency operational / contact updates
+    re.compile(r"dear\s+tutors", re.IGNORECASE),
+    re.compile(r"whatsapp\s+business\s+api", re.IGNORECASE),
+    re.compile(r"new\s+official\s+whatsapp\s+number", re.IGNORECASE),
+    re.compile(r"please\s+save\s+(?:this\s+)?new\s+number", re.IGNORECASE),
+    re.compile(r"will\s+be\s+phased\s+out", re.IGNORECASE),
+    re.compile(r"login\s+to\s+your\s+.*\baccount\b", re.IGNORECASE),
+    # Admin summaries / meta posts (not a specific assignment)
+    re.compile(r"update\s+on\s+open\s+&\s+available\s+assignments", re.IGNORECASE),
+    re.compile(r"\bcurrently\s*,?\s*\d+\s+assignments?\b", re.IGNORECASE),
+    re.compile(r"do\s+not\s+have\s+the\s+time\s+to\s+scroll", re.IGNORECASE),
+    re.compile(r"send\s+the\s+suitable\s+assignments", re.IGNORECASE),
+    # Non-tuition promos that sometimes appear in channels (keep specific to avoid false positives)
+    re.compile(r"driving\s+in\s+singapore", re.IGNORECASE),
+    re.compile(r"singaporeans?\s*/\s*prs?\s+only", re.IGNORECASE),
+    re.compile(r"\b(?:s\\$|sgd)\\s*\\d+\\s*incentive\\b", re.IGNORECASE),
 ]
 
 # Markers that suggest this is a real assignment, not administrative

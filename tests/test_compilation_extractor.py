@@ -89,6 +89,16 @@ JOB ID: xyz789
         # Should be filtered out as it's pure numeric
         assert "12345" not in codes
 
+    def test_extracts_code_id_numeric_letter_suffix(self):
+        text = "Code ID: 28011H (Tuition Centre)"
+        codes, _meta = extract_assignment_codes(text)
+        assert "28011H" in codes
+
+    def test_hashtag_requires_at_least_three_digits(self):
+        text = "Tags: #sec4, #english"
+        codes, _meta = extract_assignment_codes(text)
+        assert "SEC4" not in codes
+
     def test_real_compilation_example(self):
         # Based on actual compilation from the issue
         text = """

@@ -69,6 +69,15 @@ class TestTimeAvailability(unittest.TestCase):
             self.assertEqual(_slots(ta, "estimated", d), [])
         self.assertTrue((ta.get("note") or "").lower().find("tbc") >= 0)
 
+    def test_tutor_to_suggest_note_only(self):
+        raw = "Days and time: tutor to suggest"
+        norm = normalize_text(raw)
+        ta, _meta = extract_time_availability(raw_text=raw, normalized_text=norm)
+        for d in DAYS:
+            self.assertEqual(_slots(ta, "explicit", d), [])
+            self.assertEqual(_slots(ta, "estimated", d), [])
+        self.assertTrue((ta.get("note") or "").lower().find("tutor to suggest") >= 0)
+
     def test_day_list_with_single_relative_time_applies_to_all_days(self):
         raw = "Timing: MONDAY / THURSDAY / FRIDAY - AFTER 4PM"
         norm = normalize_text(raw)
