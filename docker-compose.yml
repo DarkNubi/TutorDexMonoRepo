@@ -336,6 +336,7 @@ services:
     image: ghcr.io/gethomepage/homepage:latest
     pull_policy: always
     restart: unless-stopped
+    profiles: ["prod"]
     ports:
       - "0.0.0.0:${HOMEPAGE_PORT:-7575}:3000"
     volumes:
