@@ -31,8 +31,7 @@ if (sentryEnabled) {
       
       // Performance Monitoring
       integrations: [
-        new Sentry.BrowserTracing({
-          // Trace navigation and page loads
+        Sentry.browserTracingIntegration({
           tracePropagationTargets: ["localhost", /^\//],
         }),
       ],

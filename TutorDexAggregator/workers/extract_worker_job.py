@@ -66,6 +66,18 @@ def work_one(
     def _run() -> str:
         attempt = int(get_job_attempt(job))
         if attempt >= int(toggles.max_attempts or 0):
+            last_error = job.get("error_json")
+            if not isinstance(last_error, dict):
+                last_error = None
+
+            # Preserve the last known error for diagnostics. "max_attempts" is a terminal condition,
+            # but overwriting the error_json makes downstream analytics lose the real failure cause.
+            error_payload: Dict[str, Any] = {"error": "max_attempts", "attempt": attempt}
+            if last_error:
+                error_payload = dict(last_error)
+                error_payload["attempt"] = attempt
+                error_payload["final_error"] = "max_attempts"
+
             try:
                 worker_parse_failure_total.labels(
                     channel=channel_link,
@@ -81,7 +93,7 @@ def work_one(
                 key,
                 extraction_id,
                 status="failed",
-                error={"error": "max_attempts", "attempt": attempt},
+                error=error_payload,
                 meta_patch=_with_prompt({"reason": "max_attempts", "ts": utc_now_iso()}),
                 existing_meta=existing_meta,
                 llm_model=llm_model,
@@ -351,4 +363,3 @@ def work_one(
         except Exception:
             logger.debug("mark_extraction_failed_unhandled_exception", exc_info=True)
         return "failed"
-
