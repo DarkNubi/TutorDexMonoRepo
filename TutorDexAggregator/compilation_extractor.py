@@ -25,9 +25,13 @@ _CODE_PATTERNS = [
     # Job/Assignment ID/Code with colon or hash
     re.compile(r"(?:job\s+(?:id|code|#)|assignment\s+(?:id|code|#))\s*[:\-]?\s*([A-Z0-9]+)", re.IGNORECASE),
     # Standalone code format (more restrictive to avoid false positives)
-    re.compile(r"\b(?:id|code)\s*[:\-]?\s*([A-Z]{2,}[0-9]+)\b", re.IGNORECASE),
+    re.compile(r"\b(?:id|code)\s*[:\-]?\s*#?([A-Z]{2,}[0-9]{3,})\b", re.IGNORECASE),
+    # "Code ID: 28011H" style (common for some tuition-centre templates)
+    # Intentionally requires trailing letter to avoid matching SG postal codes (6 digits) and other pure numerics.
+    re.compile(r"\bcode\s*id\s*[:\-]?\s*([0-9]{3,6}[A-Z])\b", re.IGNORECASE),
     # Hash tag format
-    re.compile(r"#([A-Z]{2,}[0-9]+)\b", re.IGNORECASE),
+    # Require at least 3 digits to avoid extracting tags like "#sec4".
+    re.compile(r"#([A-Z]{2,}[0-9]{3,})\b", re.IGNORECASE),
 ]
 
 

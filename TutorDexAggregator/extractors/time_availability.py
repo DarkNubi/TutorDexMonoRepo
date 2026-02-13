@@ -221,7 +221,12 @@ _RELATIVE_RE = re.compile(
 )
 
 _FUZZY_RE = re.compile(r"(?i)\b(morning|afternoon|evening|night)\b")
-_NOTE_HINT_RE = re.compile(r"(?i)\b(tbc|to be confirmed|flexible|tutor to propose|to be discussed)\b")
+_NOTE_HINT_RE = re.compile(
+    r"(?i)\b("
+    r"tbc|to be confirmed|flexible|to be discussed|"
+    r"tutor(?:s)?\s+to\s+(?:propose|suggest|indicate)(?:\s+all)?(?:\s+available)?(?:\s+timings?)?"
+    r")\b"
+)
 
 _NEGATION_NEAR_TIME_RE = re.compile(r"(?i)\b(no|not|exclude|except)\b")
 

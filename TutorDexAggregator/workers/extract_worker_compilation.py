@@ -61,7 +61,22 @@ def process_compilation_confirmed(
     any_failed = False
     any_requeueable_persist_fail = False
 
-    for seg_code_verbatim, seg_text in segments:
+    for seg in segments:
+        seg_code_verbatim: Any = None
+        seg_text: str = ""
+
+        # Backward/forward compatibility:
+        # - older splitters may return (identifier, text) tuples
+        # - current splitter returns dict segments (identifier_verbatim/text/etc.)
+        if isinstance(seg, dict):
+            seg_code_verbatim = seg.get("identifier_verbatim") or seg.get("identifier_normalized")
+            seg_text = str(seg.get("text") or "")
+        elif isinstance(seg, (list, tuple)) and len(seg) == 2:
+            seg_code_verbatim, seg_text_any = seg
+            seg_text = str(seg_text_any or "")
+        else:
+            continue
+
         seg_code_norm = str(seg_code_verbatim or "").strip().upper()
         normalized_seg_text = normalize_text(seg_text)
 

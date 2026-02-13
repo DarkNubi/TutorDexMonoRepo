@@ -127,6 +127,27 @@ We will resume operations on 5th Feb.
         assert is_non is True
         assert msg_type == MessageType.ADMINISTRATIVE
 
+    def test_whatsapp_number_upgrade_announcement(self):
+        text = """Dear Tutors,
+
+TutorNow is upgrading to an official WhatsApp Business API system.
+👉 New TutorNow WhatsApp Number:
++65 8813 7923
+Please save this new number in your contacts.
+
+You may login to your TutorNow Tutor Account to view and apply for assignments:
+https://www.tutornow.sg/login
+        """
+        is_non, msg_type, details = is_non_assignment(text)
+        assert is_non is True
+        assert msg_type == MessageType.ADMINISTRATIVE
+
+    def test_scroll_up_pm_me_admin_message(self):
+        text = "Hello tutors, if you are do not have the time to scroll up/search for assignments, kindly PM me."
+        is_non, msg_type, details = is_non_assignment(text)
+        assert is_non is True
+        assert msg_type == MessageType.ADMINISTRATIVE
+
 
 class TestValidAssignments:
     """Test that valid assignment messages are NOT filtered out."""

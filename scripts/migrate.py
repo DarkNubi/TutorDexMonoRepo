@@ -6,11 +6,11 @@ Applies SQL migrations from TutorDexAggregator/supabase sqls/ directory in order
 Tracks applied migrations in public.schema_migrations table.
 
 Usage:
-    python scripts/migrate.py [--dry-run] [--force-reapply MIGRATION_NAME]
+    python scripts/migrate.py --db-container supabase-staging-db-1 [--dry-run]
+    python scripts/migrate.py --db-container supabase-prod-db --apply-one 2026-02-11_ops_agent_gateway
 
 Environment Variables:
-    SUPABASE_URL: Supabase project URL
-    SUPABASE_SERVICE_ROLE_KEY: Service role key with full database access
+    SUPABASE_DB_CONTAINER: Docker container name for the Supabase Postgres instance (recommended)
 """
 
 import sys
@@ -20,18 +20,11 @@ import time
 from pathlib import Path
 from typing import List, Optional
 import argparse
+import subprocess
+import os
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from shared.config import load_aggregator_config
-
-try:
-    from supabase import create_client, Client
-except ImportError:
-    print("Error: supabase-py not installed. Run: pip install supabase")
-    sys.exit(1)
-
 
 # Configure logging
 logging.basicConfig(
@@ -41,17 +34,44 @@ logging.basicConfig(
 logger = logging.getLogger("migrate")
 
 
-def get_supabase_client() -> Client:
-    """Create Supabase client from environment variables."""
-    cfg = load_aggregator_config()
-    url = str(cfg.supabase_rest_url or "").strip()
-    key = str(cfg.supabase_service_role_key or "").strip()
+def _run_psql(*, container: str, sql: str, stdin_bytes: Optional[bytes] = None) -> str:
+    cmd = [
+        "docker",
+        "exec",
+        "-i",
+        container,
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-t",
+        "-A",
+        "-c",
+        sql,
+    ]
+    res = subprocess.run(cmd, input=stdin_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if res.returncode != 0:
+        stderr = (res.stderr or b"").decode("utf-8", errors="ignore")[:800]
+        raise RuntimeError(f"psql failed (code={res.returncode}): {stderr}")
+    return (res.stdout or b"").decode("utf-8", errors="ignore")
 
-    if not url or not key:
-        logger.error("SUPABASE_URL_* and SUPABASE_SERVICE_ROLE_KEY must be set")
-        sys.exit(1)
 
-    return create_client(url, key)
+def ensure_tracking_table(*, container: str) -> None:
+    sql = """
+    create table if not exists public.schema_migrations (
+        id serial primary key,
+        migration_name text unique not null,
+        applied_at timestamptz default now() not null,
+        checksum text,
+        execution_time_ms integer
+    );
+    create index if not exists idx_schema_migrations_name on public.schema_migrations(migration_name);
+    create index if not exists idx_schema_migrations_applied_at on public.schema_migrations(applied_at desc);
+    """
+    _run_psql(container=container, sql=sql)
 
 
 def calculate_checksum(content: str) -> str:
@@ -59,13 +79,15 @@ def calculate_checksum(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
-def get_applied_migrations(client: Client) -> set:
+def get_applied_migrations(*, container: str) -> set:
     """Get set of already-applied migration names."""
     try:
-        response = client.table("schema_migrations").select("migration_name").execute()
-        return {row["migration_name"] for row in response.data}
+        ensure_tracking_table(container=container)
+        out = _run_psql(container=container, sql="select migration_name from public.schema_migrations;")
+        rows = [ln.strip() for ln in out.splitlines() if ln.strip()]
+        return set(rows)
     except Exception as e:
-        logger.warning(f"Could not fetch applied migrations (table may not exist): {e}")
+        logger.warning(f"Could not fetch applied migrations: {e}")
         return set()
 
 
@@ -81,7 +103,7 @@ def get_migration_files(migrations_dir: Path) -> List[Path]:
 
 
 def execute_migration(
-    client: Client,
+    container: str,
     migration_file: Path,
     dry_run: bool = False
 ) -> bool:
@@ -99,33 +121,40 @@ def execute_migration(
             logger.info(f"  [DRY RUN] Size: {len(content)} bytes")
             return True
 
-        # Execute SQL via Supabase REST API
         start_time = time.time()
+        ensure_tracking_table(container=container)
 
-        # Use rpc to execute raw SQL (requires a custom function in Supabase)
-        # Alternative: Use psycopg2 or similar for direct SQL execution
-        # For now, we'll use the PostgREST query endpoint
-
-        # Split on semicolons for multiple statements
-        statements = [s.strip() for s in content.split(";") if s.strip()]
-
-        for statement in statements:
-            if not statement:
-                continue
-
-            # Execute via direct SQL (this requires service role key)
-            # Note: Supabase REST API doesn't support raw SQL directly
-            # You would need to use psycopg2 or similar
-            logger.debug(f"  Executing statement: {statement[:100]}...")
+        # Apply the whole file via stdin. Each migration file should be idempotent.
+        cmd = [
+            "docker",
+            "exec",
+            "-i",
+            container,
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "postgres",
+            "-v",
+            "ON_ERROR_STOP=1",
+        ]
+        res = subprocess.run(cmd, input=content.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        if res.returncode != 0:
+            stderr = (res.stderr or b"").decode("utf-8", errors="ignore")[:800]
+            logger.error(f"  ✗ SQL apply failed for {migration_name}: {stderr}")
+            return False
 
         execution_time_ms = int((time.time() - start_time) * 1000)
 
-        # Record migration as applied
-        client.table("schema_migrations").insert({
-            "migration_name": migration_name,
-            "checksum": checksum,
-            "execution_time_ms": execution_time_ms
-        }).execute()
+        # Record migration as applied (best-effort; idempotent).
+        _run_psql(
+            container=container,
+            sql=(
+                "insert into public.schema_migrations (migration_name, checksum, execution_time_ms) "
+                f"values ('{migration_name}', '{checksum}', {execution_time_ms}) "
+                "on conflict (migration_name) do nothing;"
+            ),
+        )
 
         logger.info(f"  ✓ Applied migration: {migration_name} ({execution_time_ms}ms)")
         return True
@@ -137,6 +166,7 @@ def execute_migration(
 
 def apply_migrations(
     migrations_dir: Path,
+    db_container: str,
     dry_run: bool = False,
     force_reapply: Optional[str] = None
 ) -> int:
@@ -146,15 +176,33 @@ def apply_migrations(
     Returns:
         Number of migrations applied (or would be applied in dry-run mode)
     """
-    client = get_supabase_client()
-
     # Get applied migrations
-    applied = get_applied_migrations(client)
+    applied = get_applied_migrations(container=db_container)
     logger.info(f"Found {len(applied)} already-applied migrations")
 
     # Get migration files
     migration_files = get_migration_files(migrations_dir)
     logger.info(f"Found {len(migration_files)} migration files")
+
+    # Safety: if tracking table is empty but DB has other tables, refuse bulk apply unless forced.
+    if not dry_run and not force_reapply and len(applied) == 0:
+        try:
+            out = _run_psql(
+                container=db_container,
+                sql=(
+                    "select count(*) from information_schema.tables "
+                    "where table_schema='public' and table_name <> 'schema_migrations';"
+                ),
+            )
+            existing_tables = int((out.strip() or "0").splitlines()[-1])
+        except Exception:
+            existing_tables = 0
+        if existing_tables > 0 and len(migration_files) > 1:
+            logger.error(
+                "Refusing to apply multiple migrations because schema_migrations is empty but the DB is not empty. "
+                "Use --apply-one to apply a single migration, or --force-reapply <name> for a specific file."
+            )
+            return 0
 
     # Filter pending migrations
     pending = []
@@ -179,7 +227,7 @@ def apply_migrations(
     # Apply pending migrations
     applied_count = 0
     for migration_file in pending:
-        success = execute_migration(client, migration_file, dry_run)
+        success = execute_migration(db_container, migration_file, dry_run)
         if success:
             applied_count += 1
         else:
@@ -199,18 +247,23 @@ def main():
         epilog="""
 Examples:
   # Apply all pending migrations
-  python scripts/migrate.py
+  python scripts/migrate.py --db-container supabase-prod-db
 
   # Dry run to see what would be applied
-  python scripts/migrate.py --dry-run
+  python scripts/migrate.py --db-container supabase-prod-db --dry-run
 
-  # Force re-apply a specific migration
-  python scripts/migrate.py --force-reapply 2025-12-22_add_postal_latlon
+  # Apply a single migration safely
+  python scripts/migrate.py --db-container supabase-staging-db-1 --apply-one 2026-02-11_ops_agent_gateway
 
 Environment Variables:
-  SUPABASE_URL                Supabase project URL (required)
-  SUPABASE_SERVICE_ROLE_KEY   Service role key (required)
+  SUPABASE_DB_CONTAINER       Docker container name for Supabase Postgres (optional if --db-container provided)
         """
+    )
+
+    parser.add_argument(
+        "--db-container",
+        default="",
+        help="Docker container name for Supabase Postgres (e.g., supabase-prod-db or supabase-staging-db-1).",
     )
 
     parser.add_argument(
@@ -226,6 +279,12 @@ Environment Variables:
     )
 
     parser.add_argument(
+        "--apply-one",
+        metavar="MIGRATION_NAME",
+        help="Apply exactly one migration by stem name (recommended for production).",
+    )
+
+    parser.add_argument(
         "--migrations-dir",
         type=Path,
         default=Path(__file__).parent.parent / "TutorDexAggregator" / "supabase sqls",
@@ -238,6 +297,16 @@ Environment Variables:
     if not args.migrations_dir.exists():
         logger.error(f"Migrations directory not found: {args.migrations_dir}")
         sys.exit(1)
+
+    db_container = str(args.db_container or "").strip() or str(os.environ.get("SUPABASE_DB_CONTAINER") or "").strip()
+    if not db_container:
+        logger.error("Missing --db-container (or SUPABASE_DB_CONTAINER).")
+        sys.exit(1)
+
+    if args.apply_one:
+        args.force_reapply = str(args.apply_one).strip()
+
+    apply_migrations(args.migrations_dir, db_container=db_container, dry_run=args.dry_run, force_reapply=args.force_reapply)
 
     # Apply migrations
     try:

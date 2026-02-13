@@ -1,4 +1,4 @@
-import taxonomy from "../generated/subjects_taxonomy_v2.json";
+import taxonomy from "../generated/subjects_taxonomy_v2.json" with { type: "json" };
 
 function uniq(list) {
   const out = [];

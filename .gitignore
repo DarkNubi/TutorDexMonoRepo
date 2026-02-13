@@ -23,6 +23,7 @@ TutorDexAggregator/monitoring/monitor_state.json
 TutorDexAggregator/monitoring/telegram_message_edits.sqlite*
 TutorDexAggregator/outgoing_broadcasts.jsonl
 logs/
+ops_audit.jsonl
 
 # Local state
 TutorDexAggregator/processed_ids.json

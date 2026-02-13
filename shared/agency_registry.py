@@ -17,6 +17,8 @@ def normalize_chat_ref(value: str) -> str:
     Accepts inputs like:
     - `t.me/ChannelUsername`
     - `https://t.me/ChannelUsername`
+    - `https://t.me/ChannelUsername/12345` (message link)
+    - `t.me/ChannelUsername/12345` (message link)
     - `@ChannelUsername`
     - `ChannelUsername`
     """
@@ -24,13 +26,22 @@ def normalize_chat_ref(value: str) -> str:
     if not v:
         return ""
 
+    # Strip query/fragment early.
+    v = v.split("?", 1)[0].split("#", 1)[0].strip()
     lv = v.lower()
-    if lv.startswith("https://") or lv.startswith("http://"):
-        v = v.rstrip("/").split("/")[-1]
-        lv = v.lower()
 
-    if lv.startswith("t.me/"):
-        v = v.split("/", 1)[1]
+    # Handle full URLs and message links robustly.
+    if "t.me/" in lv:
+        try:
+            after = v[lv.index("t.me/") + len("t.me/") :]
+            after = after.lstrip("/")
+            # Take only the username segment (ignore message id and deeper paths).
+            username = after.split("/", 1)[0].strip()
+            if username:
+                v = username
+                lv = v.lower()
+        except Exception:
+            pass
 
     if v.startswith("@"):
         v = v[1:]

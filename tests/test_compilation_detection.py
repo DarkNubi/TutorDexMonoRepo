@@ -55,3 +55,40 @@ Job ID: CC30003
     assert is_comp is True
     assert any("Multiple enumerated items" in t for t in triggers)
 
+
+def test_single_assignment_with_timeslots_and_one_url_not_flagged():
+    # Single assignment template: many "Slot A/B/..." lines + one apply URL (often contains https:// + www.).
+    text = """
+Code ID: 28011H (Tuition Centre)
+(NIE-Trained Tutors)
+Subject: IB HL Chemistry
+Address: Beauty World Centre
+Frequency: 2 Hrs, multiple timeslots
+Rate: $120/Hr
+
+- Working Hours:
+Slot A: Fri 6.30pm-8.30pm
+Slot B: Sat 12.30pm-2.30pm
+Slot C: Sat 2.45pm-4.45pm
+------------------------------------
+To apply: https://www.singaporetuitionteachers.com/adm/tutor/
+    """.strip()
+
+    is_comp, triggers = is_compilation(text)
+    assert is_comp is False
+    assert triggers == []
+
+
+def test_single_assignment_with_hashtag_code_and_tags_not_flagged():
+    # Tags like "#sec4" should not be treated as assignment codes.
+    text = """
+⚡️Sec 4 G3 English @ 455 Tampines Street 42⚡️
+Rate: $35 - $45 hr
+Code: #ASN1712
+
+Tags: #sec4, #english
+    """.strip()
+
+    is_comp, triggers = is_compilation(text)
+    assert is_comp is False
+    assert triggers == []

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -30,6 +31,10 @@ PREFIX = _env("ALERT_PREFIX", "[TutorDex]")
 ENVIRONMENT = _env("APP_ENV", "dev").upper()
 
 
+def _esc(s: Any) -> str:
+    return html.escape(str(s or ""), quote=False).strip()
+
+
 def _format_alertmanager(payload: Dict[str, Any]) -> str:
     status = str(payload.get("status") or "").upper() or "FIRING"
     common = payload.get("commonLabels") if isinstance(payload.get("commonLabels"), dict) else {}
@@ -40,29 +45,48 @@ def _format_alertmanager(payload: Dict[str, Any]) -> str:
     schema_version = str(common.get("schema_version") or "")
 
     lines: List[str] = []
-    lines.append(f"<b>{PREFIX} [{ENVIRONMENT}]</b> <b>{status}</b>: {alertname}")
+    lines.append(f"<b>{_esc(PREFIX)} [{_esc(ENVIRONMENT)}]</b> <b>{_esc(status)}</b>: {_esc(alertname)}")
     if status == "RESOLVED":
         lines.append("<i>Note: RESOLVED messages include the last observed value before the alert cleared.</i>")
-    lines.append(f"<b>Component</b>: {component}")
+    lines.append(f"<b>Component</b>: {_esc(component)}")
     if channel:
-        lines.append(f"<b>Channel</b>: {channel}")
+        lines.append(f"<b>Channel</b>: {_esc(channel)}")
     if pipeline_version:
-        lines.append(f"<b>Pipeline</b>: {pipeline_version}")
+        lines.append(f"<b>Pipeline</b>: {_esc(pipeline_version)}")
     if schema_version:
-        lines.append(f"<b>Schema</b>: {schema_version}")
+        lines.append(f"<b>Schema</b>: {_esc(schema_version)}")
 
     alerts = payload.get("alerts") if isinstance(payload.get("alerts"), list) else []
     for a in alerts[:10]:
         if not isinstance(a, dict):
             continue
         ann = a.get("annotations") if isinstance(a.get("annotations"), dict) else {}
-        summary = str(ann.get("summary") or "").strip()
-        desc = str(ann.get("description") or "").strip()
-        if summary or desc:
-            lines.append(f"• {summary} — {desc}".strip(" —"))
+        summary = _esc(ann.get("summary"))
+        desc = _esc(ann.get("description"))
+        if summary and desc:
+            lines.append(f"• {summary} — {desc}")
+        elif summary:
+            lines.append(f"• {summary}")
+        elif desc:
+            lines.append(f"• {desc}")
     if len(alerts) > 10:
         lines.append(f"…and {len(alerts) - 10} more")
-    return "\n".join(lines)
+
+    # Telegram sendMessage limit is 4096 characters. Truncate on line boundaries to avoid
+    # breaking HTML tags/entities.
+    text = "\n".join(lines)
+    max_len = _env_int("TELEGRAM_MAX_CHARS") or 3900
+    suffix = "\n…(truncated)"
+    if len(text) <= max_len:
+        return text
+
+    out_lines: List[str] = []
+    for ln in lines:
+        candidate = "\n".join(out_lines + [ln]) + suffix
+        if len(candidate) > max_len:
+            break
+        out_lines.append(ln)
+    return "\n".join(out_lines) + suffix
 
 
 def _send_telegram(text: str) -> Tuple[bool, Dict[str, Any]]:
@@ -78,12 +102,18 @@ def _send_telegram(text: str) -> Tuple[bool, Dict[str, Any]]:
     }
     if THREAD_ID is not None:
         body["message_thread_id"] = int(THREAD_ID)
-    resp = requests.post(url, json=body, timeout=10)
+
+    timeout_s = float(_env("TELEGRAM_TIMEOUT_SECONDS", "20") or "20")
+    try:
+        resp = requests.post(url, json=body, timeout=timeout_s)
+    except requests.RequestException as e:
+        return False, {"status_code": 599, "error": type(e).__name__, "detail": str(e)[:200]}
     try:
         data = resp.json()
     except Exception:
         data = {"status_code": resp.status_code, "text": resp.text[:300]}
-    return resp.status_code < 400, {"status_code": resp.status_code, "data": data}
+    ok = resp.status_code < 400 and bool(isinstance(data, dict) and data.get("ok") is True)
+    return ok, {"status_code": resp.status_code, "data": data}
 
 
 class Handler(BaseHTTPRequestHandler):
