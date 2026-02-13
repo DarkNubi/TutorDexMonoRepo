@@ -10,10 +10,22 @@ except Exception:  # pragma: no cover
     # When importing via namespace package in tests/tools
     from TutorDexAggregator.compilation_extractor import extract_assignment_codes
 
-MULTI_ITEM_LABEL_RE = re.compile(r"(?im)^(?:\s*)(slot\s*[a-z]\s*:|assignment\s*\d+\s*:|job\s*\d+\s*:)\s*")
+MULTI_ITEM_LABEL_RE = re.compile(r"(?im)^(?:\s*)(assignment\s*\d+\s*:|job\s*\d+\s*:)\s*")
 POSTAL_RE = re.compile(r"\b\d{6}\b")
-URL_RE = re.compile(r"https?://|t\.me/|www\.", re.I)
+URL_OCCURRENCE_RE = re.compile(r"(?i)\bhttps?://[^\s<>\]]+|\bt\.me/[^\s<>\]]+|\bwww\.[^\s<>\]]+")
 APPLY_NOW_RE = re.compile(r"(?i)\bapply\s+now\b")
+
+
+def _extract_urls(text: str) -> List[str]:
+    if not text:
+        return []
+    urls: List[str] = []
+    for m in URL_OCCURRENCE_RE.finditer(text):
+        u = str(m.group(0) or "").strip()
+        u = u.rstrip(").,;:!?]\"'")
+        if u:
+            urls.append(u)
+    return urls
 
 
 def load_compilation_thresholds() -> dict[str, int]:
@@ -52,7 +64,8 @@ def is_compilation(text: str) -> Tuple[bool, List[str]]:
     label_hits = len(MULTI_ITEM_LABEL_RE.findall(text))
     postal_codes = {c.strip() for c in POSTAL_RE.findall(text) if str(c).strip()}
     postal_hits = len(postal_codes)
-    url_hits = len(URL_RE.findall(text))
+    urls = _extract_urls(text)
+    url_hits = len({u.lower() for u in urls})
     blocks = [b for b in re.split(r"\n{2,}", text) if b.strip()]
     block_count = len(blocks)
     apply_now_hits = len(APPLY_NOW_RE.findall(text))

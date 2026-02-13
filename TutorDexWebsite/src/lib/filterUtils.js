@@ -58,7 +58,17 @@ export function matchesFilters(job, filters) {
         .toLowerCase()
         .replace(/\s+/g, "")
         .replace(/_/g, "-");
-      if (jobRegion !== want) return false;
+      if (jobRegion) {
+        if (jobRegion !== want) return false;
+      } else {
+        // Back-compat: older rows may not have `region`; allow matching against `location` text.
+        const jobLocNorm = String(job.location || "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "")
+          .replace(/_/g, "-");
+        if (!(jobLocNorm === want || jobLocNorm.includes(want))) return false;
+      }
     } else if (isOnline) {
       const lm = String(job.learningMode || "").toLowerCase();
       const loc = String(job.location || "").toLowerCase();

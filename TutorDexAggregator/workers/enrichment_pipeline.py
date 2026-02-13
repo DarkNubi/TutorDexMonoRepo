@@ -5,11 +5,63 @@ Handles deterministic enrichment: signals, time availability, postal codes, hard
 """
 
 import logging
+import re
 from typing import Any, Dict, Optional, Tuple
 
 from workers.utils import coerce_list_of_str, extract_sg_postal_codes
 
 logger = logging.getLogger("enrichment_pipeline")
+
+
+_LEARNING_MODE_ONLINE_RE = re.compile(
+    r"(?im)^\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location)\s*[:\-]\s*(online|zoom|google\s*meet|teams)\b|^\s*(online)\s*$"
+)
+_LEARNING_MODE_F2F_RE = re.compile(
+    r"(?im)^\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location)\s*[:\-]\s*(face[-\s]*to[-\s]*face|f2f|physical|home)\b"
+)
+
+
+def fill_learning_mode_from_text(parsed: Dict[str, Any], raw_text: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Best-effort, deterministic enrichment for learning_mode.
+
+    This exists mainly to prevent online-only assignments from failing schema validation
+    due to missing address/postal fields.
+
+    Policy:
+    - Only infer when the raw text contains an explicit "venue/mode/location: <...>" style marker
+      or a standalone "ONLINE" line.
+    - Do not infer from incidental words like "online interview".
+    """
+    meta: Dict[str, Any] = {"ok": True, "changed": False, "inferred": None}
+    if not isinstance(parsed, dict):
+        return {}, {"ok": False, "error": "parsed_not_dict"}
+
+    existing = parsed.get("learning_mode")
+    if isinstance(existing, dict):
+        mode = existing.get("mode")
+        if isinstance(mode, str) and mode.strip() in {"Online", "Face-to-Face", "Hybrid"}:
+            return parsed, meta
+    elif isinstance(existing, str) and existing.strip() in {"Online", "Face-to-Face", "Hybrid"}:
+        return parsed, meta
+
+    text = str(raw_text or "")
+    has_online = bool(_LEARNING_MODE_ONLINE_RE.search(text))
+    has_f2f = bool(_LEARNING_MODE_F2F_RE.search(text))
+
+    inferred: Optional[str] = None
+    if has_online and has_f2f:
+        inferred = "Hybrid"
+    elif has_online:
+        inferred = "Online"
+    elif has_f2f:
+        inferred = "Face-to-Face"
+
+    if inferred:
+        parsed["learning_mode"] = {"mode": inferred, "raw_text": inferred}
+        meta["changed"] = True
+        meta["inferred"] = inferred
+    return parsed, meta
 
 
 def _build_signals_summary(signals: Optional[Dict[str, Any]]) -> Dict[str, Any]:

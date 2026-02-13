@@ -8,6 +8,8 @@ class AgencyRegistrySharedTests(unittest.TestCase):
     def test_normalize_chat_reference(self) -> None:
         self.assertEqual(normalize_chat_ref("https://t.me/TuitionAssignmentsSG"), "t.me/tuitionassignmentssg")
         self.assertEqual(normalize_chat_ref("@TutorSociety"), "t.me/tutorsociety")
+        self.assertEqual(normalize_chat_ref("https://t.me/PTHTassignments/201157"), "t.me/pthtassignments")
+        self.assertEqual(normalize_chat_ref("t.me/learntogethersg/4011"), "t.me/learntogethersg")
 
     def test_display_name_lookup(self) -> None:
         self.assertEqual(get_agency_display_name("t.me/tuitionassignmentssg"), "MindFlex")
