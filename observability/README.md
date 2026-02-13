@@ -1,4 +1,4 @@
-# Observability (Prometheus + Grafana + Alertmanager + Sentry)
+# Observability (Prometheus + Grafana + Alertmanager + Tempo + OTEL + Sentry)
 
 This repo runs observability **fully in Docker** via the root `docker-compose.yml`.
 
@@ -23,7 +23,8 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 - Grafana: `http://localhost:3300`
 - Prometheus: `http://localhost:9090`
 - Alertmanager: `http://localhost:9093`
--- **Sentry**: Use Sentry Cloud (set `SENTRY_DSN` in your service envs)
+- Tempo: `http://localhost:3200`
+- **Sentry**: Use Sentry Cloud (set `SENTRY_DSN` in your service envs)
 
 ## Grafana login
 
@@ -39,10 +40,10 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 ## What's wired
 
 - Metrics: services expose `/metrics` internally; Prometheus scrapes them.
--- Logs: services emit structured JSON logs to stdout. (Log aggregation via Loki has been removed.)
--- Alerts: Prometheus evaluates rules; Alertmanager routes alerts to Telegram via `alertmanager-telegram`.
--- Traces: OTEL collector and Tempo are not included in the default stack. Enable tracing by integrating a hosted tracing backend and setting the corresponding OTEL environment variables.
--- **Error tracking**: Use Sentry Cloud by providing `SENTRY_DSN` in your service environment.
+- Logs: services emit structured JSON logs to stdout. (Log aggregation via Loki/Promtail is not included by default.)
+- Alerts: Prometheus evaluates rules; Alertmanager routes alerts to Telegram via `alertmanager-telegram`.
+- Traces: OTEL Collector and Tempo are included in the default stack. Service-side instrumentation is enabled when `OTEL_ENABLED=1`.
+- **Error tracking**: Use Sentry Cloud by providing `SENTRY_DSN` in your service environment.
 
 ## Quick sanity check
 
@@ -110,4 +111,3 @@ If you've disabled an alert (e.g., by setting `expr: vector(0)`) but still recei
 3. `observability/alertmanager/alertmanager.yml` - Routing and notification settings
 
 Changes to alert definitions require Prometheus reload. Changes to alerting routing require Alertmanager reload.
-

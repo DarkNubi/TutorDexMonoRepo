@@ -59,8 +59,8 @@ Think of the system as a pipeline with two optional “sinks”:
 - Optional DMs: Aggregator calls backend matching endpoint to determine recipient chat_ids and sends DMs (`TutorDexAggregator/dm_assignments.py`).
 
 5) **Observability (optional, but wired in compose)**
-- Prometheus + Grafana + Alertmanager run via root `docker-compose.yml` (see `observability/`).
-- Note: Loki (logs), Tempo (traces) and the OTEL Collector have been removed from the default local stack; add them back if you need centralized logs or tracing.
+- Prometheus + Grafana + Alertmanager + Tempo + OTEL Collector run via root `docker-compose.yml` (see `observability/`).
+- Note: Loki/Promtail are not in the default local stack; use container logs directly (`docker compose logs`) unless you add a log aggregation backend.
 
 **Recent Code Changes (2026-01)**
 
@@ -137,10 +137,10 @@ Note on docs upkeep: `docs/SYSTEM_INTERNAL.md` is intended to be the authoritati
 - `blackbox-exporter`: Blackbox Exporter v0.25.0 (endpoint probing + uptime)
 
 **Note on observability:**
-- Loki (logs), Tempo (traces), Promtail, and OTEL Collector are NOT included in default local stack
-- OTEL instrumentation is wired in code but only active when `OTEL_ENABLED=1`
-- To add centralized logs/traces, see `observability/README.md` and restore from git history
-- Default setup focuses on metrics + dashboards + alerts (lighter resource footprint)
+- Tempo + OTEL Collector are included in the default local stack.
+- Loki/Promtail are not included in the default local stack.
+- OTEL instrumentation is wired in code but only active when `OTEL_ENABLED=1`.
+- Default setup provides metrics + dashboards + alerts + trace backend, while logs remain on container stdout.
 
 ### How the three projects relate
 - Aggregator produces the data. The Backend and Website do not ingest from Telegram.
@@ -970,7 +970,7 @@ Services:
 - `backend` (FastAPI)
 - `telegram-link-bot` (Telegram poller)
 - `redis`
- - Observability stack: `prometheus`, `grafana`, `alertmanager` (Loki/Promtail/Tempo/OTEL removed from default local stack).
+ - Observability stack: `prometheus`, `grafana`, `alertmanager`, `tempo`, `otel-collector` (`loki/promtail` not included by default).
 
 ### Environments (dev / prod)
 There is not a rigid environment abstraction. Reality is env vars + docker compose.
@@ -1054,7 +1054,7 @@ py -3 scripts/smoke_test.py
 4) Start the stack:
 - From repo root: `docker compose up -d --build`
   - This brings up BOTH the main TutorDex services and the observability stack under the `tutordex` compose project.
-  - Note: observability services like Grafana/Prometheus/Loki/Tempo/Promtail/Otel Collector are `image:` services, so `--build` does not rebuild them. To refresh them, run `docker compose pull` first (or use `docker compose up -d --build --pull always`).
+  - Note: observability services like Grafana/Prometheus/Alertmanager/Tempo/OTEL Collector are `image:` services, so `--build` does not rebuild them. To refresh them, run `docker compose pull` first (or use `docker compose up -d --build --pull always`).
 
 Avoid:
 - Running `observability/docker-compose.observability.yml` standalone; it creates a second compose project named `observability` and duplicates the monitoring stack.
@@ -1080,7 +1080,7 @@ Reality: rollback is “git checkout previous commit + docker compose up”.
 - Website:
   - Firebase Hosting deploy status and browser console auth messages
 - Observability:
-  - Grafana dashboards + Loki logs (see `observability/README.md`)
+  - Grafana dashboards + container logs (`docker compose logs`, see `observability/README.md`)
 
 ---
 

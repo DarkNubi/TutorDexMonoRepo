@@ -31,7 +31,7 @@ TutorDex has achieved **Aggregation Accuracy** with a production-ready infrastru
 - [TutorDexAggregator/README.md](TutorDexAggregator/README.md) - Message collector and LLM parser
 - [TutorDexBackend/README.md](TutorDexBackend/README.md) - FastAPI matching engine and API
 - [TutorDexWebsite/README.md](TutorDexWebsite/README.md) - React + Firebase website
-- [observability/](observability/) - Prometheus, Grafana, Loki, Tempo stack
+- [observability/](observability/) - Prometheus, Grafana, Alertmanager, Tempo/OTEL stack
 
 **Feature Documentation:**
 - [docs/DUPLICATE_DETECTION_INDEX.md](docs/DUPLICATE_DETECTION_INDEX.md) - Duplicate detection hub
@@ -40,7 +40,7 @@ TutorDex has achieved **Aggregation Accuracy** with a production-ready infrastru
 - [docs/TELEGRAM_WEBHOOK_SETUP.md](docs/TELEGRAM_WEBHOOK_SETUP.md) - Telegram integration
 
 **Quality & Testing:**
-- [docs/CODEBASE_QUALITY_AUDIT_2026-01.md](docs/CODEBASE_QUALITY_AUDIT_2026-01.md) - Full audit report
+- [docs/CODEBASE_QUALITY_AUDIT_2026-01-15.md](docs/CODEBASE_QUALITY_AUDIT_2026-01-15.md) - Full audit report
 - [docs/AUDIT_CHECKLIST.md](docs/AUDIT_CHECKLIST.md) - Audit completion status (16/16 ✅)
 - [tests/](tests/) - Test suite (70+ tests)
 - [.githooks/](.githooks/) - Pre-commit hooks for code quality
@@ -144,7 +144,7 @@ See [DEPENDENCIES.md](DEPENDENCIES.md) for detailed setup instructions.
 
 **Infrastructure:**
 - Docker + Docker Compose
-- Prometheus, Grafana, Loki, Alertmanager
+- Prometheus, Grafana, Alertmanager, Tempo
 - Self-hosted Supabase
 
 ---
@@ -163,7 +163,7 @@ See [DEPENDENCIES.md](DEPENDENCIES.md) for detailed setup instructions.
 
 All services emit metrics and structured logs:
 - **Metrics:** Scraped by Prometheus, visualized in Grafana
-- **Logs:** Collected by Promtail, stored in Loki, queried in Grafana
+- **Logs:** Services emit structured logs to container stdout (`docker compose logs`)
 - **Traces:** Collected by OTEL Collector, stored in Tempo (enabled by default)
 - **Alerts:** Defined in Prometheus, routed by Alertmanager to Telegram
 
@@ -238,13 +238,13 @@ Proprietary - All rights reserved
 
 ## 🔗 Quick Links
 
-- [Visual Roadmap](MILESTONES_VISUAL.md) - Week-by-week breakdown
-- [Executive Summary](MILESTONE_SUMMARY.md) - High-level overview
-- [Full Milestone Details](NEXT_MILESTONES.md) - Complete implementation guide
+- [System Internal](docs/SYSTEM_INTERNAL.md) - Authoritative architecture and behavior
+- [Outstanding Tasks](docs/OUTSTANDING_TASKS_SUMMARY.md) - Prioritized work summary
+- [Implementation Plan](docs/IMPLEMENTATION_PLAN_2026-01-16.md) - Current implementation plan
 - [Component READMEs](TutorDexAggregator/README.md) - Detailed setup instructions
 - [Observability Guide](observability/README.md) - Monitoring and alerting
 
 ---
 
-**Last Updated:** January 8, 2026  
+**Last Updated:** February 13, 2026  
 **Status:** Production-ready, Milestone 2 in progress
