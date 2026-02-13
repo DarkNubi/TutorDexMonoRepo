@@ -1,6 +1,7 @@
 import React from 'react';
 import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {cn} from '@/lib/cn';
+import {MOTION} from '../constants';
 
 type ProgressBarProps = {
   value: number;
@@ -15,7 +16,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({value, start, className
   const progress = spring({
     frame: frame - start,
     fps,
-    config: {damping: 18, stiffness: 120},
+    config: MOTION.spring,
   });
   const width = interpolate(progress, [0, 1], [0, value], {
     extrapolateLeft: 'clamp',
@@ -23,9 +24,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({value, start, className
   });
 
   return (
-    <div className={cn('h-2 w-full rounded-full bg-muted/70 overflow-hidden', className)}>
+    <div className={cn('h-2 w-full rounded-full bg-muted/60 overflow-hidden', className)}>
       <div
-        className={cn('h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600', fillClassName)}
+        className={cn('h-full rounded-full bg-foreground/35', fillClassName)}
         style={{width: `${width}%`}}
       />
     </div>

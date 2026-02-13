@@ -3,14 +3,18 @@ import {Img, interpolate, staticFile, useCurrentFrame} from 'remotion';
 import {SceneFrame} from '../components/SceneFrame';
 import {StaggerLines} from '../components/StaggerLines';
 
-const LOCKUP = ['TutorDex.', 'The operating system', 'for tutor decisions.'];
-const FOOTER = ['Not an agency.', 'Not a marketplace.', 'Just clarity.'];
+const LOCKUP = ['TutorDex.', 'The operating system for tutor decisions.'];
+const FOOTER = ['Not an agency. Not a marketplace. Just clarity.'];
 
 export const OutroScene: React.FC = () => {
   const frame = useCurrentFrame();
-  const fade = interpolate(frame, [0, 20], [0, 1], {
+  const fadeIn = interpolate(frame, [0, 20], [0, 1], {
     extrapolateRight: 'clamp',
   });
+  const fadeOut = interpolate(frame, [200, 240], [1, 0], {
+    extrapolateRight: 'clamp',
+  });
+  const fade = fadeIn * fadeOut;
 
   return (
     <SceneFrame className="items-center justify-center">
@@ -34,16 +38,16 @@ export const OutroScene: React.FC = () => {
         <StaggerLines
           lines={LOCKUP}
           startFrame={6}
-          stagger={10}
+          stagger={14}
           className="text-4xl font-bold text-center"
           lineClassName="leading-tight"
         />
 
         <StaggerLines
           lines={FOOTER}
-          startFrame={24}
-          stagger={8}
-          className="text-xl font-semibold text-muted-foreground text-center"
+          startFrame={40}
+          stagger={12}
+          className="text-lg font-semibold text-muted-foreground text-center"
         />
       </div>
     </SceneFrame>

@@ -76,14 +76,14 @@ export const SignalCard: React.FC<SignalCardProps> = ({
               <span>Freshness</span>
               <span>{freshness}%</span>
             </div>
-            <ProgressBar value={freshness} start={startFrame + 6} />
+            <ProgressBar value={freshness} start={startFrame + 6} fillClassName="bg-blue-600/35" />
           </div>
           <div>
             <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <span>Match score</span>
               <span>{match}%</span>
             </div>
-            <ProgressBar value={match} start={startFrame + 10} fillClassName="from-emerald-500 to-teal-500" />
+            <ProgressBar value={match} start={startFrame + 10} fillClassName="bg-foreground/30" />
           </div>
         </div>
       </CardContent>

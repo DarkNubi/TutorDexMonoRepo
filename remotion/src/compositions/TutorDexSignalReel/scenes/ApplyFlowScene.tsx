@@ -3,7 +3,7 @@ import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
 import {SceneFrame} from '../components/SceneFrame';
-import {StaggerLines} from '../components/StaggerLines';
+import {MOTION} from '../constants';
 
 const STATUS = [
   {label: 'Applied', className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-200'},
@@ -18,10 +18,6 @@ export const ApplyFlowScene: React.FC = () => {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const harderFade = interpolate(frame, [24, 48], [1, 0.6], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
 
   return (
     <SceneFrame className="px-16 py-20">
@@ -29,11 +25,7 @@ export const ApplyFlowScene: React.FC = () => {
       <div className="relative z-10 grid grid-cols-2 gap-12 items-center">
         <div>
           <div className="text-4xl font-bold tracking-tight">
-            <div>apply smarter.</div>
-            <div style={{opacity: harderFade}}>not harder.</div>
-          </div>
-          <div className="mt-8 text-lg text-muted-foreground">
-            Status moves with you, not against you.
+            <div>apply smarter. not harder.</div>
           </div>
         </div>
 
@@ -45,7 +37,7 @@ export const ApplyFlowScene: React.FC = () => {
             <div
               className="absolute inset-0 rounded-2xl border border-blue-500/40"
               style={{
-                transform: `scale(${1 + ripple * 0.25})`,
+                transform: `scale(${1 + ripple * 0.12})`,
                 opacity: 0.6 * (1 - ripple),
               }}
             />
@@ -56,7 +48,7 @@ export const ApplyFlowScene: React.FC = () => {
               const progress = spring({
                 frame: frame - 16 - index * 10,
                 fps,
-                config: {damping: 18, stiffness: 140},
+                config: MOTION.spring,
               });
               return (
                 <Badge

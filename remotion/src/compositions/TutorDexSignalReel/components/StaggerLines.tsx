@@ -1,6 +1,7 @@
 import React from 'react';
 import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {cn} from '@/lib/cn';
+import {MOTION} from '../constants';
 
 type StaggerLinesProps = {
   lines: string[];
@@ -24,7 +25,7 @@ export const StaggerLines: React.FC<StaggerLinesProps> = ({
     <div className={cn('flex flex-col gap-3', className)}>
       {lines.map((line, index) => {
         const localFrame = frame - startFrame - index * stagger;
-        const progress = spring({frame: localFrame, fps, config: {damping: 18, stiffness: 160}});
+        const progress = spring({frame: localFrame, fps, config: MOTION.spring});
         const translateY = 18 * (1 - progress);
         const opacity = progress;
 
