@@ -295,12 +295,12 @@ function updateFilterSubjects() {
   const allowedGeneral = new Set(
     generalCategoriesForLevel(level, { includeAny: false })
       .map((c) => String(c?.code || "").trim())
-      .filter(Boolean)
+      .filter(Boolean),
   );
   const allowedCanonical = new Set(
     canonicalSubjectsForLevel(level, { includeAny: false })
       .map((s) => String(s?.code || "").trim())
-      .filter(Boolean)
+      .filter(Boolean),
   );
 
   _ensureSubjectStateInitialized();
@@ -463,7 +463,7 @@ async function loadAssignments({ reset = false, append = false } = {}) {
 
   const isInitial = !append && S.allAssignments.length === 0;
   if (isInitial) {
-    setStatus("Loading assignments from backend...", "info");
+    setStatus("Loading assignments...", "info");
     renderSkeleton(6);
   }
   try {
@@ -518,10 +518,10 @@ async function loadAssignments({ reset = false, append = false } = {}) {
       sort === "distance"
         ? Boolean(
             S.nextCursorLastSeen &&
-              S.nextCursorId !== null &&
-              S.nextCursorId !== undefined &&
-              S.nextCursorDistanceKm !== null &&
-              S.nextCursorDistanceKm !== undefined
+            S.nextCursorId !== null &&
+            S.nextCursorId !== undefined &&
+            S.nextCursorDistanceKm !== null &&
+            S.nextCursorDistanceKm !== undefined,
           )
         : Boolean(S.nextCursorLastSeen && S.nextCursorId !== null && S.nextCursorId !== undefined);
     setLoadMoreVisible(canLoadMore);
