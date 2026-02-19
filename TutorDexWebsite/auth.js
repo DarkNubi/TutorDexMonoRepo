@@ -81,16 +81,35 @@ function getParam(name) {
   }
 }
 
-function sanitizeNext(next) {
+export function sanitizeNext(next) {
   const raw = String(next || "").trim();
   if (!raw) return null;
 
-  // Prevent open redirects. Only allow same-site static pages.
-  if (raw.includes("://") || raw.startsWith("//") || raw.includes("\\") || raw.includes("/") || raw.includes("..")) {
+  if (
+    raw.includes("://") ||
+    raw.startsWith("//") ||
+    raw.includes("\\") ||
+    raw.includes("/") ||
+    raw.includes("..") ||
+    /\s/.test(raw)
+  ) {
     return null;
   }
 
   const allow = new Set(["assignments.html", "profile.html", "index.html"]);
+  return allow.has(raw) ? raw : null;
+}
+
+export function sanitizeNotice(notice) {
+  const raw = String(notice || "").trim();
+  if (!raw) return null;
+  const allow = new Set([
+    "password_reset_success",
+    "signed_out",
+    "session_expired",
+    "password_reset_email_sent",
+    "password_reset_link_invalid",
+  ]);
   return allow.has(raw) ? raw : null;
 }
 
@@ -178,13 +197,43 @@ function initAuth() {
     } catch {}
   }
 
-  function redirectAfterAuth() {
+  function redirectAfterSignIn() {
     const next = sanitizeNext(getParam("next"));
     if (next && next !== "index.html") {
       window.location.replace(next);
       return;
     }
     window.location.replace("assignments.html");
+  }
+
+  function redirectAfterSignUp() {
+    const next = sanitizeNext(getParam("next"));
+    if (next && next !== "index.html") {
+      window.location.replace(next);
+      return;
+    }
+    window.location.replace("profile.html");
+  }
+
+  function signInErrorCopy(code) {
+    if (code === "auth/user-not-found" || code === "auth/wrong-password") return "Invalid email or password.";
+    if (code === "auth/invalid-email") return "Enter a valid email address.";
+    return "Sign in failed. Please try again.";
+  }
+
+  function signUpErrorCopy(code) {
+    if (code === "auth/invalid-email") return "Enter a valid email address.";
+    if (code === "auth/email-already-in-use") return "An account already exists for that email.";
+    return "Sign up failed. Please try again.";
+  }
+
+  function isGooglePopupFallbackCode(code) {
+    return (
+      code === "auth/popup-blocked" ||
+      code === "auth/popup-closed-by-user" ||
+      code === "auth/cancelled-popup-request" ||
+      code === "auth/operation-not-supported-in-this-environment"
+    );
   }
 
   async function doGoogleSignIn() {
@@ -194,9 +243,13 @@ function initAuth() {
       await auth.signInWithPopup(googleProvider);
       closeIndexModalsIfAny();
       // Redirect after successful Google sign-in (consistent with email/password flow)
-      redirectAfterAuth();
+      redirectAfterSignIn();
     } catch (err) {
-      const message = err?.message || "Google sign-in failed.";
+      if (isGooglePopupFallbackCode(err?.code)) {
+        await auth.signInWithRedirect(googleProvider);
+        return;
+      }
+      const message = signInErrorCopy(err?.code);
       const hint = getHelpfulAuthHint(err?.code);
       setText(loginError, message);
       setText(signupError, message);
@@ -230,7 +283,8 @@ function initAuth() {
     updateAuthUI(user);
 
     if (!user && pageRequireAuth) {
-      const dest = `index.html?next=${encodeURIComponent(window.location.pathname.split("/").pop() || "")}`;
+      const currentPage = window.location.pathname.split("/").pop() || "index.html";
+      const dest = `auth.html?mode=login&next=${encodeURIComponent(currentPage)}&notice=session_expired`;
       window.location.replace(dest);
     }
 
@@ -261,11 +315,9 @@ function initAuth() {
       setBusy(loginForm, true);
       try {
         await auth.signInWithEmailAndPassword(loginEmail.value.trim(), loginPassword.value);
-        const next = sanitizeNext(getParam("next"));
-        if (next) window.location.assign(next);
-        else window.location.assign("assignments.html");
+        redirectAfterSignIn();
       } catch (err) {
-        setText(loginError, err?.message || "Login failed.");
+        setText(loginError, signInErrorCopy(err?.code));
         console.error("Email/password sign-in failed", {
           code: err?.code,
           message: err?.message,
@@ -289,7 +341,7 @@ function initAuth() {
       const confirm = signupConfirm.value;
 
       if (pass.length < 8) {
-        setText(signupError, "Password must be at least 8 characters long.");
+        setText(signupError, "Password must be at least 8 characters.");
         return;
       }
       if (pass !== confirm) {
@@ -304,11 +356,9 @@ function initAuth() {
         if (displayName && cred?.user?.updateProfile) {
           await cred.user.updateProfile({ displayName });
         }
-        const next = sanitizeNext(getParam("next"));
-        if (next) window.location.assign(next);
-        else window.location.assign("profile.html");
+        redirectAfterSignUp();
       } catch (err) {
-        setText(signupError, err?.message || "Sign up failed.");
+        setText(signupError, signUpErrorCopy(err?.code));
         console.error("Email/password sign-up failed", {
           code: err?.code,
           message: err?.message,
@@ -362,8 +412,10 @@ function startAuthBootstrap() {
   }, 100);
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", startAuthBootstrap);
-} else {
-  startAuthBootstrap();
+if (typeof document !== "undefined" && typeof window !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startAuthBootstrap);
+  } else {
+    startAuthBootstrap();
+  }
 }

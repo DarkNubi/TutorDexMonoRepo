@@ -1,4 +1,4 @@
-import "../auth.js";
+import { sanitizeNext, waitForAuth } from "../auth.js";
 
 function _byId(id) {
   return document.getElementById(id);
@@ -59,8 +59,23 @@ function _initAuthModal() {
   });
 }
 
+async function _handleAuthRedirectResult() {
+  try {
+    const auth = await waitForAuth();
+    const res = await auth.getRedirectResult();
+    if (!res?.user) return;
+    const next = sanitizeNext(new URL(window.location.href).searchParams.get("next"));
+    if (next && next !== "index.html") window.location.replace(next);
+    else window.location.replace("assignments.html");
+  } catch {}
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", _initAuthModal);
+  document.addEventListener("DOMContentLoaded", () => {
+    _initAuthModal();
+    _handleAuthRedirectResult();
+  });
 } else {
   _initAuthModal();
+  _handleAuthRedirectResult();
 }

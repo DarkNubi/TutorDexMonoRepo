@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TutorDex | Sign In</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              border: "hsl(var(--border))",
+              card: "hsl(var(--card))",
+              muted: "hsl(var(--muted))",
+              "muted-foreground": "hsl(var(--muted-foreground))",
+            },
+          },
+        },
+      };
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <style>
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --border: 214.3 31.8% 91.4%;
+        --card: 0 0% 100%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+      }
+      .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --card: 222.2 84% 4.9%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+      }
+      body {
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-background text-foreground">
+    <main class="min-h-screen flex items-center justify-center p-4">
+      <div class="w-full max-w-md">
+        <a href="index.html" class="inline-flex items-center gap-3 mb-6" aria-label="TutorDex home">
+          <img src="/TutorDex-icon-128.png" alt="TutorDex" class="w-10 h-10 rounded-lg object-contain" />
+          <div class="text-xl font-bold tracking-tight">TutorDex</div>
+        </a>
+
+        <div id="auth-notice" class="hidden mb-4 rounded-2xl border border-border bg-muted/40 p-4">
+          <p id="auth-notice-text" class="text-sm font-medium text-foreground"></p>
+        </div>
+
+        <div class="rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
+          <div class="px-8 pt-8 pb-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+            <h1 class="text-2xl font-bold">Welcome back</h1>
+            <p class="mt-1 text-sm text-blue-100">Sign in to continue.</p>
+          </div>
+
+          <div class="px-8 py-7">
+            <div id="auth-view-login" class="grid gap-3">
+              <button
+                id="auth-login-google"
+                type="button"
+                class="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold hover:bg-muted/60 transition"
+              >
+                Continue with Google
+              </button>
+
+              <div class="relative my-2">
+                <div class="absolute inset-0 flex items-center">
+                  <div class="w-full border-t border-border"></div>
+                </div>
+                <div class="relative flex justify-center text-xs uppercase tracking-wide text-muted-foreground">
+                  <span class="bg-card px-2">or</span>
+                </div>
+              </div>
+
+              <form id="auth-login-form" class="grid gap-3">
+                <label class="grid gap-1">
+                  <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</span>
+                  <input
+                    id="auth-login-email"
+                    type="email"
+                    autocomplete="email"
+                    class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                    placeholder="you@example.com"
+                  />
+                </label>
+
+                <label class="grid gap-1">
+                  <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Password</span>
+                  <input
+                    id="auth-login-password"
+                    type="password"
+                    autocomplete="current-password"
+                    class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                    placeholder="••••••••"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  class="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 font-bold hover:from-blue-700 hover:to-indigo-700 transition"
+                >
+                  Sign In
+                </button>
+
+                <p id="auth-login-error" role="alert" class="min-h-[1.25rem] text-sm text-red-400"></p>
+              </form>
+
+              <div class="flex items-center justify-between text-sm text-muted-foreground">
+                <button id="auth-to-signup" type="button" class="underline hover:text-foreground transition">Create account</button>
+                <button id="auth-to-forgot" type="button" class="underline hover:text-foreground transition">Forgot password?</button>
+              </div>
+            </div>
+
+            <div id="auth-view-signup" class="hidden grid gap-3">
+              <button
+                id="auth-signup-google"
+                type="button"
+                class="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold hover:bg-muted/60 transition"
+              >
+                Continue with Google
+              </button>
+
+              <div class="relative my-2">
+                <div class="absolute inset-0 flex items-center">
+                  <div class="w-full border-t border-border"></div>
+                </div>
+                <div class="relative flex justify-center text-xs uppercase tracking-wide text-muted-foreground">
+                  <span class="bg-card px-2">or</span>
+                </div>
+              </div>
+
+              <form id="auth-signup-form" class="grid gap-3">
+                <label class="grid gap-1">
+                  <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name (optional)</span>
+                  <input
+                    id="auth-signup-name"
+                    type="text"
+                    autocomplete="name"
+                    class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                    placeholder="Your name"
+                  />
+                </label>
+
+                <label class="grid gap-1">
+                  <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</span>
+                  <input
+                    id="auth-signup-email"
+                    type="email"
+                    autocomplete="email"
+                    class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                    placeholder="you@example.com"
+                  />
+                </label>
+
+                <label class="grid gap-1">
+                  <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Password</span>
+                  <input
+                    id="auth-signup-password"
+                    type="password"
+                    autocomplete="new-password"
+                    class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                    placeholder="At least 8 characters"
+                  />
+                </label>
+
+                <label class="grid gap-1">
+                  <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Confirm password</span>
+                  <input
+                    id="auth-signup-confirm"
+                    type="password"
+                    autocomplete="new-password"
+                    class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                    placeholder="Repeat password"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  class="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 font-bold hover:from-blue-700 hover:to-indigo-700 transition"
+                >
+                  Create Account
+                </button>
+
+                <p id="auth-signup-error" role="alert" class="min-h-[1.25rem] text-sm text-red-400"></p>
+              </form>
+
+              <div class="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Already have an account?</span>
+                <button id="auth-to-login" type="button" class="underline hover:text-foreground transition">Sign in</button>
+              </div>
+            </div>
+
+            <div id="auth-view-forgot" class="hidden grid gap-3">
+              <p class="text-sm text-muted-foreground">We’ll email you a link to reset your password.</p>
+
+              <form id="auth-forgot-form" class="grid gap-3">
+                <label class="grid gap-1">
+                  <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</span>
+                  <input
+                    id="auth-forgot-email"
+                    type="email"
+                    autocomplete="email"
+                    class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                    placeholder="you@example.com"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  class="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 font-bold hover:from-blue-700 hover:to-indigo-700 transition"
+                >
+                  Send reset email
+                </button>
+
+                <p id="auth-forgot-status" role="status" class="min-h-[1.25rem] text-sm text-foreground"></p>
+                <p id="auth-forgot-error" role="alert" class="min-h-[1.25rem] text-sm text-red-400"></p>
+              </form>
+
+              <button id="auth-forgot-to-login" type="button" class="text-sm underline text-muted-foreground hover:text-foreground transition">
+                Back to sign in
+              </button>
+            </div>
+
+            <div id="auth-view-signed-in" class="hidden grid gap-4">
+              <div class="rounded-2xl border border-border bg-muted/40 p-4">
+                <div class="text-xs font-bold uppercase tracking-widest text-muted-foreground">Signed in as</div>
+                <div id="auth-signed-in-email" class="mt-1 font-semibold"></div>
+              </div>
+
+              <button
+                id="auth-signed-in-continue"
+                type="button"
+                class="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 font-bold hover:from-blue-700 hover:to-indigo-700 transition"
+              >
+                Continue
+              </button>
+
+              <button
+                id="auth-signed-in-signout"
+                type="button"
+                class="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold hover:bg-muted/60 transition"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <p
+      id="auth-init-error"
+      class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] bg-background border border-red-500/40 text-red-300 p-4 rounded-xl shadow-lg text-sm"
+    >
+      Authentication failed to initialize. If you're running locally, use `firebase emulators:start --only hosting`. If deployed, confirm Firebase
+      Hosting is serving `__/firebase/init.js` and Auth is enabled.
+    </p>
+
+    <!-- @vite-ignore -->
+    <script src="/__/firebase/10.14.1/firebase-app-compat.js"></script>
+    <!-- @vite-ignore -->
+    <script src="/__/firebase/10.14.1/firebase-auth-compat.js"></script>
+    <!-- @vite-ignore -->
+    <script src="/__/firebase/init.js"></script>
+
+    <script type="module" src="/src/page-auth.js"></script>
+  </body>
+</html>
+

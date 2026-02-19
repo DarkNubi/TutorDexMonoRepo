@@ -18,6 +18,8 @@ export default defineConfig({
         index: resolve(__dirname, "index.html"),
         assignments: resolve(__dirname, "assignments.html"),
         profile: resolve(__dirname, "profile.html"),
+        auth: resolve(__dirname, "auth.html"),
+        resetPassword: resolve(__dirname, "reset-password.html"),
         notFound: resolve(__dirname, "404.html"),
       },
     },
