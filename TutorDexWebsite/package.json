@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@sentry/browser": "^10.38.0",
-    "framer-motion": "^12.34.0",
-    "lucide-react": "^0.564.0",
+    "@sentry/browser": "^10.39.0",
+    "framer-motion": "^12.34.3",
+    "lucide-react": "^0.575.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
