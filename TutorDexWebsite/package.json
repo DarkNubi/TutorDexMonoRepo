@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@sentry/browser": "^10.38.0",
-    "framer-motion": "^12.34.0",
-    "lucide-react": "^0.564.0",
+    "@sentry/browser": "^10.43.0",
+    "framer-motion": "^12.36.0",
+    "lucide-react": "^0.577.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.4",
+    "@vitejs/plugin-react": "^5.2.0",
     "chai": "^4.3.8",
     "mocha": "^10.2.0",
     "typescript": "^5.7.3",
