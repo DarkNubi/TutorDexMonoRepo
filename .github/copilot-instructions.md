@@ -193,13 +193,13 @@ python -m py_compile TutorDexAggregator/*.py TutorDexAggregator/workers/*.py Tut
 
 Located in `.github/workflows/`:
 - `deploy.yml` - Deploys to production via Tailscale SSH after PR merge
-- `firebase-hosting.yml` - Deploys website to Firebase Hosting
+- `firebase-hosting.yml` - Deploys website to Firebase Hosting staging on `main` pushes; production is manual
 - `taxonomy-validate.yml` - Validates taxonomy on changes
 - `contracts-validate.yml` - Validates contracts on changes
 
 ### Production Deployment
 
-Production runs on a Windows server via Docker Compose:
+Server production runs on a Windows server via Docker Compose:
 1. PR is merged to `main`
 2. GitHub Actions triggers `deploy.yml`
 3. Server pulls latest code via git
@@ -207,12 +207,14 @@ Production runs on a Windows server via Docker Compose:
 
 ### Website Deployment
 
-Firebase Hosting auto-deploys on push to `main`:
-```bash
-cd TutorDexWebsite
-npm run build
-firebase deploy --only hosting
-```
+Firebase Hosting uses a staging-first release flow:
+1. Push/merge to `main` triggers `firebase-hosting.yml`.
+2. The `deploy_staging` job deploys `TutorDexWebsite` to Firebase Hosting target `staging`.
+3. Smoke test staging against the deployed backend.
+4. Manually run `firebase-hosting.yml` via GitHub Actions `workflow_dispatch` to deploy target `prod`.
+5. Smoke test production after the manual promotion.
+
+Do not describe Firebase Hosting production as auto-deployed from `main`; only staging is automatic. See `docs/DEPLOYMENT_RELEASE_FLOW.md`.
 
 ## Key Patterns and Best Practices
 

@@ -995,7 +995,10 @@ Current reality:
   - Trigger: PR merged into `main`.
   - Action: uses Tailscale then SSH into a Windows server and runs `git pull` + `docker compose up -d --build`.
 - `.github/workflows/firebase-hosting.yml`:
-  - Deploys the website to Firebase Hosting on `main` pushes and PR previews.
+  - Trigger: `main` pushes and manual `workflow_dispatch`.
+  - Action on `main` push: deploys `TutorDexWebsite` to Firebase Hosting target `staging`.
+  - Action on manual dispatch: deploys `TutorDexWebsite` to Firebase Hosting target `prod`.
+  - Firebase Hosting production is intentionally a manual promotion after staging smoke checks, not an automatic `main` push deploy.
 
 ### Hosting assumptions
 - The “server” is a Windows machine running Docker Desktop.

@@ -24,6 +24,10 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
   - Signal extraction (deterministic + LLM)
   - Distribution and broadcasting
   - Recovery and catchup procedures
+- **[DEPLOYMENT_RELEASE_FLOW.md](DEPLOYMENT_RELEASE_FLOW.md)** - GitHub Actions and Firebase release flow
+  - `main` push deploy surfaces
+  - Firebase staging and production promotion checklist
+  - Documentation rules for deploy behavior
 
 ### Features
 - **[signals.md](signals.md)** - Signal extraction documentation (tutor types, rate breakdown)
