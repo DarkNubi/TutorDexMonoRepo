@@ -54,8 +54,8 @@ def derive_agency(payload: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]
         link = link.lstrip("@")
         link = f"t.me/{link}"
 
-    # Prefer the stable registry mapping (by chat ref) over Telegram's channel title.
-    # Channel titles can be missing, edited, or contain emojis/variants that aren't stable keys.
+    # Keep the raw Telegram title for internal correlation; the user-facing
+    # registry name is written separately as agency_display_name.
     display_name = None
     try:
         if link:
@@ -64,7 +64,7 @@ def derive_agency(payload: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]
     except Exception:
         display_name = None
 
-    return (display_name or title), link
+    return (title or display_name), link
 
 
 def derive_external_id(payload: Dict[str, Any]) -> str:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import json
 import urllib.error
 import urllib.request
 
@@ -11,8 +12,17 @@ def check(url: str) -> bool:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=10) as resp:
             status = int(getattr(resp, "status", 200) or 200)
-            ok = status < 300
-            print(("OK" if ok else "FAIL") + f": GET {url} status={status}")
+            body = resp.read()
+            json_ok = True
+            try:
+                payload = json.loads(body.decode("utf-8"))
+            except Exception:
+                payload = None
+            if isinstance(payload, dict) and payload.get("ok") is False:
+                json_ok = False
+            ok = status < 300 and json_ok
+            detail = " ok=false" if status < 300 and not json_ok else ""
+            print(("OK" if ok else "FAIL") + f": GET {url} status={status}{detail}")
             return ok
     except urllib.error.HTTPError as e:
         print(f"FAIL: GET {url} status={getattr(e, 'code', 'unknown')}")
@@ -34,4 +44,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
-

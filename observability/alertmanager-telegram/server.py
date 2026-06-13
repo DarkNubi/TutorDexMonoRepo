@@ -5,8 +5,7 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, List, Optional, Tuple
-
-import requests
+from urllib import error, request
 
 
 def _env(name: str, default: str = "") -> str:
@@ -104,19 +103,67 @@ def _send_telegram(text: str) -> Tuple[bool, Dict[str, Any]]:
         body["message_thread_id"] = int(THREAD_ID)
 
     timeout_s = float(_env("TELEGRAM_TIMEOUT_SECONDS", "20") or "20")
+    req = request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"content-type": "application/json"},
+        method="POST",
+    )
     try:
-        resp = requests.post(url, json=body, timeout=timeout_s)
-    except requests.RequestException as e:
-        return False, {"status_code": 599, "error": type(e).__name__, "detail": str(e)[:200]}
+        with request.urlopen(req, timeout=timeout_s) as resp:
+            status_code = int(getattr(resp, "status", 200) or 200)
+            raw = resp.read().decode("utf-8", errors="ignore")
+    except error.HTTPError as e:
+        status_code = int(getattr(e, "code", 500) or 500)
+        raw = e.read().decode("utf-8", errors="ignore")[:300]
+    except Exception as e:
+        return False, {"status_code": 599, "error": type(e).__name__}
     try:
-        data = resp.json()
+        data = json.loads(raw or "{}")
     except Exception:
-        data = {"status_code": resp.status_code, "text": resp.text[:300]}
-    ok = resp.status_code < 400 and bool(isinstance(data, dict) and data.get("ok") is True)
-    return ok, {"status_code": resp.status_code, "data": data}
+        data = {"status_code": status_code, "text": raw[:300]}
+    ok = status_code < 400 and bool(isinstance(data, dict) and data.get("ok") is True)
+    return ok, {"status_code": status_code, "data": data}
 
 
 class Handler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:  # noqa: N802
+        if self.path == "/metrics":
+            lines = [
+                "# HELP alertmanager_telegram_configured Alertmanager Telegram bridge has token and chat id configured.",
+                "# TYPE alertmanager_telegram_configured gauge",
+                f"alertmanager_telegram_configured {1 if BOT_TOKEN and CHAT_ID else 0}",
+                "# HELP alertmanager_telegram_thread_configured Alertmanager Telegram bridge has a Telegram thread id configured.",
+                "# TYPE alertmanager_telegram_thread_configured gauge",
+                f"alertmanager_telegram_thread_configured {1 if THREAD_ID is not None else 0}",
+            ]
+            body = ("\n".join(lines) + "\n").encode("utf-8")
+            self.send_response(200)
+            self.send_header("content-type", "text/plain; version=0.0.4; charset=utf-8")
+            self.send_header("content-length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        if self.path not in {"/health", "/healthz"}:
+            self.send_response(404)
+            self.end_headers()
+            return
+
+        body = json.dumps(
+            {
+                "ok": True,
+                "telegram_configured": bool(BOT_TOKEN and CHAT_ID),
+                "thread_configured": THREAD_ID is not None,
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+        self.send_response(200)
+        self.send_header("content-type", "application/json; charset=utf-8")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self) -> None:  # noqa: N802
         if self.path != "/alert":
             self.send_response(404)

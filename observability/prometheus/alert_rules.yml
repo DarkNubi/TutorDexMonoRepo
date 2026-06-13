@@ -27,8 +27,21 @@ groups:
           dashboard: "http://grafana:3300/d/tutordex-infra/tutordex-infra"
           current_value: "probe_success = {{ $value }}"
 
+      - alert: PublicApiDown
+        expr: probe_success{instance=~"https://tutordex-api\\.duckdns\\.org/.*"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Public TutorDex API is down"
+          description: "The public API endpoint {{ $labels.instance }} is not passing health checks. Firebase Hosting may still load while assignments fail."
+          runbook: "observability/runbooks/PublicApiDown.md"
+          dashboard: "http://grafana:3300/d/tutordex-infra/tutordex-infra"
+          current_value: "probe_success = {{ $value }}"
+
       - alert: HostDiskLow
-        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) < 0.10
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|fuse\\.snapfuse|nsfs",mountpoint!~"^/(snap|var/lib/docker/overlay2|run/docker|mnt/wsl)($|/)"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|fuse\\.snapfuse|nsfs",mountpoint!~"^/(snap|var/lib/docker/overlay2|run/docker|mnt/wsl)($|/)"}) < 0.10
         for: 15m
         labels:
           severity: warning

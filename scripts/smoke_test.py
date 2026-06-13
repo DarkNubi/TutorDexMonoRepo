@@ -40,8 +40,18 @@ def _http_get(url: str, *, timeout_s: int = 10) -> Tuple[bool, str]:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
             status = int(getattr(resp, "status", 200) or 200)
-            ok = status < 300
-            return ok, f"status={status}"
+            body = resp.read()
+            payload = None
+            try:
+                payload = json.loads(body.decode("utf-8"))
+            except Exception:
+                pass
+            json_ok = not (isinstance(payload, dict) and payload.get("ok") is False)
+            ok = status < 300 and json_ok
+            detail = f"status={status}"
+            if status < 300 and not json_ok:
+                detail += " ok=false"
+            return ok, detail
     except urllib.error.HTTPError as e:
         return False, f"status={getattr(e, 'code', 'unknown')}"
     except Exception as e:

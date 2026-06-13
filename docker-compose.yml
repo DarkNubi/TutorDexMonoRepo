@@ -180,7 +180,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.50.1
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -200,7 +200,7 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
@@ -227,7 +227,7 @@ services:
 
   grafana:
     image: grafana/grafana:12.3.1
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
@@ -252,7 +252,7 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     privileged: true
     command:
@@ -274,7 +274,7 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     command:
       - "--path.procfs=/host/proc"
@@ -293,7 +293,7 @@ services:
 
   blackbox-exporter:
     image: prom/blackbox-exporter:v0.25.0
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     volumes:
       - ./observability/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
@@ -304,7 +304,7 @@ services:
 
   tempo:
     image: grafana/tempo:2.4.1
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     user: "0"
     command: ["-config.file=/etc/tempo.yaml"]
@@ -320,7 +320,7 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector:latest
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     command: ["--config=/etc/otel-collector.yaml"]
     volumes:
@@ -334,7 +334,7 @@ services:
 
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
-    pull_policy: always
+    pull_policy: missing
     restart: unless-stopped
     ports:
       - "0.0.0.0:${HOMEPAGE_PORT:-7575}:3000"

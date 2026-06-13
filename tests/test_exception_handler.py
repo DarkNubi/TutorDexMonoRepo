@@ -12,16 +12,16 @@ import pytest
 from shared.observability.exception_handler import swallow_exception
 
 
-def test_swallow_exception_logs_error(caplog):
+def test_swallow_exception_logs_warning(caplog):
     """Test that swallow_exception logs the exception with context."""
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.WARNING):
         exc = ValueError("test error")
         swallow_exception(exc, context="test_context")
 
     # Check that exception was logged
     assert len(caplog.records) == 1
     record = caplog.records[0]
-    assert record.levelname == "ERROR"
+    assert record.levelname == "WARNING"
     assert "Swallowed exception" in record.message
     assert record.context == "test_context"
     assert record.exception_type == "ValueError"
@@ -29,7 +29,7 @@ def test_swallow_exception_logs_error(caplog):
 
 def test_swallow_exception_with_extra_context(caplog):
     """Test that extra context is included in logs."""
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.WARNING):
         exc = RuntimeError("test error")
         swallow_exception(
             exc,

@@ -30,6 +30,8 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
+          - https://tutordex-api.duckdns.org/health
+          - https://tutordex-api.duckdns.org/health/dependencies
           - http://collector-tail:9001/health/collector
           - http://aggregator-worker:9002/health/worker
           - http://backend:8000/health/dependencies
