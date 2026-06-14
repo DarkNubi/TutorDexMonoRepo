@@ -332,6 +332,45 @@ def safe_parse_json(json_string):
     raise Exception("JSON parsing error: json-repair produced empty output")
 
 
+def _json_object_spans(text: str) -> list[tuple[int, int]]:
+    if text is None:
+        return []
+
+    s = str(text)
+    spans: list[tuple[int, int]] = []
+    in_string = False
+    escape = False
+    depth = 0
+    start: Optional[int] = None
+
+    for i, ch in enumerate(s):
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+            continue
+
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start is not None:
+                    spans.append((start, i + 1))
+                    start = None
+
+    return spans
+
+
 def extract_first_json_object(text: str) -> str:
     """
     Extract the first JSON object from a string by scanning for a brace-balanced `{...}`.
@@ -388,7 +427,37 @@ def extract_first_json_object(text: str) -> str:
     return tail
 
 
-def extract_assignment_with_model(message: str, chat: str = "", model_name: str = MODEL_NAME, max_tokens=2048, temp=0.0, cid: Optional[str] = None):
+def extract_preferred_json_object(text: str) -> str:
+    """
+    Extract the most likely final JSON object from model output.
+
+    LFM2.5 via llama.cpp can emit a long `<think>...</think>` prelude containing
+    JSON-shaped examples before the final answer. Prefer the first JSON object
+    after the closing think tag; otherwise preserve the legacy first-object path.
+    """
+    if text is None:
+        raise ValueError("No text to extract JSON from")
+
+    s = str(text)
+    lower = s.lower()
+    marker = "</think>"
+    marker_index = lower.rfind(marker)
+    if marker_index != -1:
+        final_text = s[marker_index + len(marker):]
+        spans = _json_object_spans(final_text)
+        if spans:
+            start, end = spans[0]
+            return final_text[start:end]
+
+    spans = _json_object_spans(s)
+    if spans:
+        start, end = spans[-1]
+        return s[start:end]
+
+    return extract_first_json_object(s)
+
+
+def extract_assignment_with_model(message: str, chat: str = "", model_name: str = MODEL_NAME, max_tokens: Optional[int] = None, temp=0.0, cid: Optional[str] = None):
     """
     Generate extraction JSON by calling LM Studio/Mixtral using chat format
     with proper system + user messages.
@@ -404,6 +473,7 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
     llm_api = str(_CFG.llm_api_url or "http://localhost:1234")
     model_name_env = str(_CFG.llm_model_name or model_name)
     timeout_s = int(_CFG.llm_timeout_seconds or 200)
+    max_tokens_resolved = int(max_tokens if max_tokens is not None else (_CFG.llm_max_tokens or 4096))
 
     system_prompt = get_system_prompt_text().strip()
     prompt_with_examples = build_prompt(message, chat=chat)
@@ -436,7 +506,7 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
             "model": model_name_env,
             "messages": messages,
             "temperature": float(temp),
-            "max_tokens": int(max_tokens),
+            "max_tokens": max_tokens_resolved,
         }
 
         mock_path = str(_CFG.llm_mock_output_file or "").strip()
@@ -496,7 +566,7 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
                 raise RuntimeError(f"Failed to parse LLM response: {e}")
 
         text = text.strip().strip("```")
-        candidate = extract_first_json_object(text).replace("\\_", "_")
+        candidate = extract_preferred_json_object(text).replace("\\_", "_")
 
         try:
             parsed = safe_parse_json(candidate)
