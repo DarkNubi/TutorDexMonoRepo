@@ -92,6 +92,7 @@ Blocked:
 - Added recovery-safe side-effect gates so TutorCity fetch respects broadcast/DM toggles, and freshness Telegram edits/deletes require explicit `FRESHNESS_PROPAGATE_TELEGRAM_ENABLED` / `FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED` opt-ins.
 - Added `scripts/ops/supabase_backup.sh` and `docs/SUPABASE_BACKUP_RESTORE.md`.
 - Created a verified local Supabase dump at `/home/insanepc/backups/tutordex/supabase/tutordex-prod-supabase-postgres-20260614T052909Z.dump` with mode `0600`; `pg_restore --list` succeeds inside the Supabase Postgres container.
+- Added `scripts/ops/supabase_backup_check.sh`; live check verifies latest dump age, size, and `pg_restore --list` readability.
 - Added a staging/prod parity gate: smoke now checks real backend assignment routes, staging validation fails on non-staging Supabase network or enabled Telegram side effects, and `docs/STAGING_PROD_PARITY_CHECKLIST.md` documents the release gate.
 
 ## Recovery Still Needed
@@ -115,7 +116,7 @@ Blocked:
 3. Let recovery catchup drain and confirm the queue returns below alert thresholds.
 4. Review and re-enable broadcast/DM side effects only after queue recovery is stable.
 5. Fill the remaining staging config blockers documented in `docs/STAGING_PROD_PARITY_CHECKLIST.md`.
-6. Add scheduled backup automation and alert if the latest verified artifact is too old.
+6. Wire `scripts/ops/supabase_backup.sh` and `scripts/ops/supabase_backup_check.sh` into host scheduling, then alert if the latest verified artifact is too old.
 
 ## Side-Effect Re-Enable Checklist
 
