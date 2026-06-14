@@ -52,6 +52,7 @@ def update_tiers(
     cfg = load_config_from_env()
     if not cfg.enabled:
         return {"ok": False, "skipped": True, "reason": "supabase_disabled"}
+    agg_cfg = load_aggregator_config()
 
     client = SupabaseRestClient(cfg)
     now = _utc_now()
@@ -227,21 +228,28 @@ def update_tiers(
 
         return {"ok": True, **results}
 
-    # Propagate for each tier change
-    try:
-        out["propagate_green"] = _propagate(out["green"].get("rows", []), "🟢", "Likely open")
-        out["propagate_yellow"] = _propagate(out["yellow"].get("rows", []), "🟡", "Probably open")
-        out["propagate_orange"] = _propagate(out["orange"].get("rows", []), "🟠", "Uncertain")
-        out["propagate_red"] = _propagate(out["red"].get("rows", []), "🔴", "Likely closed")
-    except Exception:
-        log_event(logger, logging.WARNING, "freshness_propagation_failed", exc_info=True)
+    # Telegram edits are a separate side effect from DB tier updates. Keep them opt-in.
+    if bool(getattr(agg_cfg, "freshness_propagate_telegram_enabled", False)):
+        try:
+            out["propagate_green"] = _propagate(out["green"].get("rows", []), "🟢", "Likely open")
+            out["propagate_yellow"] = _propagate(out["yellow"].get("rows", []), "🟡", "Probably open")
+            out["propagate_orange"] = _propagate(out["orange"].get("rows", []), "🟠", "Uncertain")
+            out["propagate_red"] = _propagate(out["red"].get("rows", []), "🔴", "Likely closed")
+        except Exception:
+            log_event(logger, logging.WARNING, "freshness_propagation_failed", exc_info=True)
+    else:
+        out["telegram_propagation"] = {"ok": True, "skipped": True, "reason": "freshness_propagate_telegram_disabled"}
 
     if expire_action in {"closed", "expired"}:
         out["expired"] = patch_where(expired_q, {"freshness_tier": "red", "status": expire_action})
     else:
         out["expired"] = {"ok": True, "skipped": True, "reason": "expire_action_none"}
 
-    if delete_expired_telegram and expire_action in {"closed", "expired"}:
+    if (
+        delete_expired_telegram
+        and expire_action in {"closed", "expired"}
+        and bool(getattr(agg_cfg, "freshness_delete_expired_telegram_enabled", False))
+    ):
         out["telegram_delete"] = delete_expired_broadcast_messages(
             client=client,
             assignments_table=cfg.assignments_table,
@@ -251,6 +259,8 @@ def update_tiers(
             dry_run=dry_run,
             limit=int(delete_batch_limit),
         )
+    elif delete_expired_telegram and expire_action in {"closed", "expired"}:
+        out["telegram_delete"] = {"ok": True, "skipped": True, "reason": "freshness_delete_expired_telegram_disabled"}
     else:
         out["telegram_delete"] = {"ok": True, "skipped": True}
 

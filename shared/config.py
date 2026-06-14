@@ -137,6 +137,8 @@ class AggregatorConfig(BaseSettings):
     freshness_yellow_hours: int = Field(default=36, validation_alias=AliasChoices("FRESHNESS_YELLOW_HOURS"))
     freshness_orange_hours: int = Field(default=48, validation_alias=AliasChoices("FRESHNESS_ORANGE_HOURS"))
     freshness_red_hours: int = Field(default=72, validation_alias=AliasChoices("FRESHNESS_RED_HOURS"))
+    freshness_propagate_telegram_enabled: bool = Field(default=False, validation_alias=AliasChoices("FRESHNESS_PROPAGATE_TELEGRAM_ENABLED"))
+    freshness_delete_expired_telegram_enabled: bool = Field(default=False, validation_alias=AliasChoices("FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED"))
     geo_enrichment_enabled: bool = Field(default=True, validation_alias=AliasChoices("GEO_ENRICHMENT_ENABLED"))
 
     # -------------------------

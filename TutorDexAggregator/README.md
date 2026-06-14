@@ -223,6 +223,9 @@ For the current hardened pipeline version (`2026-01-02_det_time_v1`), the recomm
   - Enable writes from aggregator: set `FRESHNESS_TIER_ENABLED=true` in `TutorDexAggregator/.env`
   - Default tier thresholds: green `<24h`, yellow `<36h`, orange `<48h`, red `<72h`
   - Default expiry cutoff: `<168h` (7d) for `status=expired` + Telegram delete (optional)
+  - Telegram broadcast edits/deletes are separately gated:
+    - Set `FRESHNESS_PROPAGATE_TELEGRAM_ENABLED=1` before allowing freshness tier edits of already-sent broadcasts.
+    - Set `FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED=1` before allowing `--delete-expired-telegram` to delete already-sent broadcasts.
   - Auto-expire + delete broadcast message after 7d: `python update_freshness_tiers.py --expire-action expired --expire-hours 168 --delete-expired-telegram`
   - Docker sidecar (profile `tiers`): `docker compose --profile tiers up -d freshness-tiers`
     - Interval env: `FRESHNESS_TIERS_INTERVAL_SECONDS` (default 3600)

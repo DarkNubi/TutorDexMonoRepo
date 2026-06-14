@@ -554,12 +554,12 @@ def main() -> None:
             log_event(logger, logging.INFO, "tutorcity_persist_result", res=res)
 
             is_insert = bool(res.get("ok")) and str(res.get("action")).lower() == "inserted"
-            if broadcast_assignments is not None and is_insert:
+            if bool(getattr(cfg, "enable_broadcast", False)) and broadcast_assignments is not None and is_insert:
                 try:
                     broadcast_assignments.send_broadcast(payload)
                 except Exception:
                     logger.exception("tutorcity_broadcast_failed")
-            if send_dms is not None and is_insert:
+            if bool(getattr(cfg, "enable_dms", False)) and send_dms is not None and is_insert:
                 try:
                     send_dms(payload)
                 except Exception:
