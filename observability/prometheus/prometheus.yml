@@ -28,7 +28,6 @@ scrape_configs:
     metrics_path: /probe
     scrape_interval: 60s
     scrape_timeout: 20s
-    scrape_protocols: [PrometheusText0.0.4]
     params:
       module: [http_2xx]
     static_configs:
@@ -43,30 +42,29 @@ scrape_configs:
       - target_label: __address__
         replacement: blackbox-exporter:9115
 
-  - job_name: blackbox_http_internal
-    metrics_path: /probe
-    scrape_interval: 30s
-    scrape_timeout: 20s
+  - job_name: tutordex_collector
+    metrics_path: /metrics
+    scrape_timeout: 10s
     scrape_protocols: [PrometheusText0.0.4]
-    params:
-      module: [http_2xx]
     static_configs:
-      - targets:
-          # Docker Desktop embedded DNS is currently unreliable from Prometheus/blackbox
-          # netgo paths; use current TutorDex network IPs for recovery monitoring.
-          - http://172.25.0.13:9001/health/collector
-          - http://172.25.0.17:9002/health/worker
-          - http://172.25.0.15:8000/health/dependencies
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: blackbox-exporter:9115
+      - targets: ["172.25.0.13:9001"]
+        labels:
+          component: collector
 
-  # Direct app /metrics scrapes are temporarily disabled during recovery.
-  # From inside the Prometheus container, manual /metrics requests are fast, but
-  # Prometheus' own concurrent scrapes time out and also starve blackbox health
-  # probes. Keep blackbox health probes active until the scrape/runtime conflict
-  # is fixed with stable Docker DNS/IPAM and app metrics profiling.
+  - job_name: tutordex_worker
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    scrape_protocols: [PrometheusText0.0.4]
+    static_configs:
+      - targets: ["172.25.0.17:9002"]
+        labels:
+          component: worker
+
+  - job_name: tutordex_backend
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    scrape_protocols: [PrometheusText0.0.4]
+    static_configs:
+      - targets: ["172.25.0.15:8000"]
+        labels:
+          component: backend
