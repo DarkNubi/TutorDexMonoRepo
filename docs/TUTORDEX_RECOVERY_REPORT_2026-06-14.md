@@ -18,11 +18,12 @@ Working:
 - Supabase prod stack is running again and schema/grants are working.
 - Backend `/health/dependencies` is green for backend + Redis + Supabase.
 - Local assignments API is loading rows from Supabase.
-- Local assignments page smoke loads live assignments through the backend (`Loaded 50 of 94 assignments`).
+- Local assignments page smoke loads live assignments through the backend (`Loaded 50 of 111 assignments`).
 - Collector and worker are running; recovery queue is draining.
 - LLM extraction path is using the local Hermes/Qwen endpoint successfully.
 - Prometheus app scrapes for backend, collector, and worker are green from inside the Prometheus container.
 - Broadcast and DM side effects remain disabled during recovery.
+- Latest recovery queue snapshot: `ok=120`, `pending=155`, `processing=6`, `assignments=120`, `open=111`.
 
 Blocked:
 
