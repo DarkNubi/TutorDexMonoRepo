@@ -18,10 +18,10 @@ Working:
 - Supabase prod stack is running again and schema/grants are working.
 - Backend `/health/dependencies` is green for backend + Redis + Supabase.
 - Local assignments API is loading rows from Supabase.
-- Local assignments page smoke loads live assignments through the backend.
+- Local assignments page smoke loads live assignments through the backend (`Loaded 50 of 94 assignments`).
 - Collector and worker are running; recovery queue is draining.
 - LLM extraction path is using the local Hermes/Qwen endpoint successfully.
-- Prometheus app scrapes for backend, collector, and worker are green after config reload.
+- Prometheus app scrapes for backend, collector, and worker are green from inside the Prometheus container.
 - Broadcast and DM side effects remain disabled during recovery.
 
 Blocked:
@@ -87,7 +87,8 @@ Blocked:
 - Fixed the worker LLM endpoint path to the local Hermes/Qwen service.
 - Fixed frontend assignment loading so public assignment fetches are not blocked by slow/missing Firebase auth token initialization.
 - Reset seven real assignment rows that had been incorrectly stranded at `max_attempts` during the unhealthy LLM period.
-- Reworked Prometheus app scraping to direct backend/collector/worker `/metrics` targets and verified all app targets are green.
+- Reworked Prometheus app scraping to prod container-name backend/collector/worker `/metrics` targets and verified all app targets are green from inside the Prometheus container.
+- Documented that WSL `127.0.0.1:9090` can hit a stale/wrong surface on this Docker Desktop setup; use `docker exec tutordex-prod-prometheus-1 ...` for authoritative Prometheus checks.
 - Scoped worker queue metrics to the active pipeline version so backlog alerts do not mix historical pipeline rows.
 - Added recovery-safe side-effect gates so TutorCity fetch respects broadcast/DM toggles, and freshness Telegram edits/deletes require explicit `FRESHNESS_PROPAGATE_TELEGRAM_ENABLED` / `FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED` opt-ins.
 - Added `scripts/ops/supabase_backup.sh` and `docs/SUPABASE_BACKUP_RESTORE.md`.

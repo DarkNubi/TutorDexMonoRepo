@@ -47,7 +47,7 @@ scrape_configs:
     scrape_timeout: 10s
     scrape_protocols: [PrometheusText0.0.4]
     static_configs:
-      - targets: ["172.25.0.13:9001"]
+      - targets: ["tutordex-prod-collector-tail-1:9001"]
         labels:
           component: collector
 
@@ -56,7 +56,7 @@ scrape_configs:
     scrape_timeout: 10s
     scrape_protocols: [PrometheusText0.0.4]
     static_configs:
-      - targets: ["172.25.0.17:9002"]
+      - targets: ["tutordex-prod-aggregator-worker-1:9002"]
         labels:
           component: worker
 
@@ -65,6 +65,6 @@ scrape_configs:
     scrape_timeout: 10s
     scrape_protocols: [PrometheusText0.0.4]
     static_configs:
-      - targets: ["172.25.0.15:8000"]
+      - targets: ["tutordex-prod-backend-1:8000"]
         labels:
           component: backend
