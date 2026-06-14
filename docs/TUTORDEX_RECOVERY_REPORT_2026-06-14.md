@@ -90,6 +90,8 @@ Blocked:
 - Reworked Prometheus app scraping to direct backend/collector/worker `/metrics` targets and verified all app targets are green.
 - Scoped worker queue metrics to the active pipeline version so backlog alerts do not mix historical pipeline rows.
 - Added recovery-safe side-effect gates so TutorCity fetch respects broadcast/DM toggles, and freshness Telegram edits/deletes require explicit `FRESHNESS_PROPAGATE_TELEGRAM_ENABLED` / `FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED` opt-ins.
+- Added `scripts/ops/supabase_backup.sh` and `docs/SUPABASE_BACKUP_RESTORE.md`.
+- Created a verified local Supabase dump at `/home/insanepc/backups/tutordex/supabase/tutordex-prod-supabase-postgres-20260614T052909Z.dump` with mode `0600`; `pg_restore --list` succeeds inside the Supabase Postgres container.
 
 ## Recovery Still Needed
 
@@ -112,7 +114,7 @@ Blocked:
 3. Let recovery catchup drain and confirm the queue returns below alert thresholds.
 4. Review and re-enable broadcast/DM side effects only after queue recovery is stable.
 5. Make staging production-like enough to catch assignment loading, backend dependency, and alerting failures before prod.
-6. Add a DB backup/restore runbook and scheduled backup verification.
+6. Add scheduled backup automation and alert if the latest verified artifact is too old.
 
 ## Side-Effect Re-Enable Checklist
 
