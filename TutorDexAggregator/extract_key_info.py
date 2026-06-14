@@ -473,7 +473,7 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
     llm_api = str(_CFG.llm_api_url or "http://localhost:1234")
     model_name_env = str(_CFG.llm_model_name or model_name)
     timeout_s = int(_CFG.llm_timeout_seconds or 200)
-    max_tokens_resolved = int(max_tokens if max_tokens is not None else (_CFG.llm_max_tokens or 4096))
+    max_tokens_resolved = int(max_tokens if max_tokens is not None else (_CFG.llm_max_tokens or 6144))
 
     system_prompt = get_system_prompt_text().strip()
     prompt_with_examples = build_prompt(message, chat=chat)

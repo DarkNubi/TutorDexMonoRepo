@@ -147,7 +147,7 @@ class AggregatorConfig(BaseSettings):
     llm_api_url: str = Field(default="http://localhost:1234", validation_alias=AliasChoices("LLM_API_URL"))
     llm_model_name: str = Field(default="lfm2-8b-a1b", validation_alias=AliasChoices("LLM_MODEL_NAME"))
     llm_timeout_seconds: int = Field(default=200, validation_alias=AliasChoices("LLM_TIMEOUT_SECONDS"))
-    llm_max_tokens: int = Field(default=4096, validation_alias=AliasChoices("LLM_MAX_TOKENS"))
+    llm_max_tokens: int = Field(default=6144, validation_alias=AliasChoices("LLM_MAX_TOKENS"))
     llm_system_prompt_file: Optional[str] = Field(default=None, validation_alias=AliasChoices("LLM_SYSTEM_PROMPT_FILE"))
     llm_system_prompt_text: Optional[str] = Field(default=None, validation_alias=AliasChoices("LLM_SYSTEM_PROMPT_TEXT"))
     llm_include_examples: bool = Field(default=False, validation_alias=AliasChoices("LLM_INCLUDE_EXAMPLES"))
