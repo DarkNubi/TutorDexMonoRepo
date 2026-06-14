@@ -92,3 +92,80 @@ Tags: #sec4, #english
     is_comp, triggers = is_compilation(text)
     assert is_comp is False
     assert triggers == []
+
+
+def test_compilation_split_includes_details_before_bottom_job_id():
+    from TutorDexAggregator.compilation_message_handler import (
+        order_verified_identifiers,
+        split_compilation_message,
+    )
+
+    text = """
+🔻 Level and Subject(s): Economics
+🔻 Location/Area: Online Tuition
+🔻 Lesson Per Week: Once a week, 1.5 hours
+Job ID: NT29838
+
+🔻 Level and Subject(s): Primary 5 Math
+🔻 Location/Area: Lorong Lew Lian
+🔻 Lesson Per Week: Twice a week
+Job ID: NT29839
+    """.strip()
+
+    identifiers = order_verified_identifiers(raw_message=text, verified=["NT29838", "NT29839"])
+    segments = split_compilation_message(raw_message=text, identifiers=identifiers)
+
+    assert len(segments) == 2
+    assert "Economics" in segments[0]["text"]
+    assert "Online Tuition" in segments[0]["text"]
+    assert "NT29838" in segments[0]["text"]
+    assert "Primary 5 Math" in segments[1]["text"]
+    assert "Lorong Lew Lian" in segments[1]["text"]
+
+
+def test_compilation_identifier_confirm_uses_deterministic_fallback(monkeypatch):
+    from TutorDexAggregator import compilation_message_handler as handler
+
+    text = """
+Assignment 1
+Subject: Economics
+Job ID: NT29838
+
+Assignment 2
+Subject: Math
+Job ID: NT29839
+    """.strip()
+
+    monkeypatch.setattr(
+        handler,
+        "extract_assignment_identifiers_llm",
+        lambda **_: {"ok": False, "candidates": [], "parse_error": "No JSON"},
+    )
+
+    audit = handler.confirm_compilation_identifiers(raw_message=text, min_verified=2)
+
+    assert audit["confirmed"] is True
+    assert audit["verified"] == ["NT29838", "NT29839"]
+    assert audit["deterministic_fallback_codes"] == ["NT29838", "NT29839"]
+
+
+def test_compact_tuition_assignment_codes_trigger_compilation():
+    from TutorDexAggregator.compilation_extractor import extract_assignment_codes
+
+    text = """
+Compiled Tuition Assignments
+
+0706si: N1 Abacus @ 414 Jurong West Street 42 (S)640414
+1 Hr, 1x A Week; $25-35/Hr
+
+0706ts: N1 Phonics @ 105 Clementi Street 12. (S)120105
+Female Tutor; 1.5 Hr, 1x A Week; $25-35/Hr
+    """.strip()
+
+    codes, meta = extract_assignment_codes(text)
+    is_comp, triggers = is_compilation(text)
+
+    assert codes[:2] == ["0706SI", "0706TS"]
+    assert meta["codes_count"] == 2
+    assert is_comp is True
+    assert any("Multiple distinct assignment codes" in t for t in triggers)

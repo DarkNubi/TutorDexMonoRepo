@@ -14,10 +14,22 @@ logger = logging.getLogger("enrichment_pipeline")
 
 
 _LEARNING_MODE_ONLINE_RE = re.compile(
-    r"(?im)^\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location)\s*[:\-]\s*(online|zoom|google\s*meet|teams)\b|^\s*(online)\s*$"
+    r"(?im)^\s*(?:[^\w\n]+)?\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location(?:\s*/\s*area)?)\s*[:：\-]\s*(online|zoom|google\s*meet|teams)\b|^\s*(online)\s*$"
 )
 _LEARNING_MODE_F2F_RE = re.compile(
-    r"(?im)^\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location)\s*[:\-]\s*(face[-\s]*to[-\s]*face|f2f|physical|home)\b"
+    r"(?im)^\s*(?:[^\w\n]+)?\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location(?:\s*/\s*area)?)\s*[:：\-]\s*(face[-\s]*to[-\s]*face|f2f|physical|home)\b"
+)
+_LESSON_SCHEDULE_RE = re.compile(
+    r"(?im)^\s*(?:[^\w\n]+)?\s*(?:frequency|duration|schedule|timing|time|lesson\s*frequency|lesson\s*per\s*week|no\.?\s*of\s*lesson(?:s)?(?:\s*per\s*week)?|lessons?)\s*[:：\-]\s*(.+?)\s*$"
+)
+_ADDRESS_LINE_RE = re.compile(
+    r"(?im)^\s*(?:[^\w\n]+)?\s*(?:address|venue|location(?:\s*/\s*area)?)\s*[:：\-]\s*(.+?)\s*$"
+)
+_COMPACT_SCHEDULE_RE = re.compile(
+    r"(?im)^\s*(?:[^;\n]*;\s*)?(?:\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?\s*(?:hr|hrs|hour|hours)\s*,?\s*\d+(?:\s*-\s*\d+)?\s*(?:x|times?)\s*a?\s*week(?:[^;\n]*)?)"
+)
+_COMPACT_HEADER_RE = re.compile(
+    r"(?im)^\s*[0-9]{3,6}[A-Za-z]{1,3}\s*:\s*.+?\s+@\s+(.+?)(?:\s+on\s+|\s+\[|;|$)"
 )
 
 
@@ -61,6 +73,87 @@ def fill_learning_mode_from_text(parsed: Dict[str, Any], raw_text: str) -> Tuple
         parsed["learning_mode"] = {"mode": inferred, "raw_text": inferred}
         meta["changed"] = True
         meta["inferred"] = inferred
+    return parsed, meta
+
+
+def fill_lesson_schedule_from_text(parsed: Dict[str, Any], raw_text: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Fill missing lesson_schedule from explicit schedule/frequency lines.
+
+    This is intentionally conservative: it only copies text after a clear field
+    marker and only when the model left lesson_schedule empty.
+    """
+    meta: Dict[str, Any] = {"ok": True, "changed": False, "source": None}
+    if not isinstance(parsed, dict):
+        return {}, {"ok": False, "error": "parsed_not_dict"}
+
+    existing = coerce_list_of_str(parsed.get("lesson_schedule"))
+    if existing:
+        parsed["lesson_schedule"] = existing
+        return parsed, meta
+
+    text = str(raw_text or "")
+    schedules = []
+    for match in _LESSON_SCHEDULE_RE.finditer(text):
+        value = str(match.group(1) or "").strip()
+        value = re.sub(r"\s+", " ", value)
+        if value and value not in schedules:
+            schedules.append(value)
+
+    for match in _COMPACT_SCHEDULE_RE.finditer(text):
+        value = str(match.group(0) or "").strip()
+        value = re.sub(r"\s+", " ", value)
+        if value and value not in schedules:
+            schedules.append(value)
+
+    for line in text.splitlines():
+        if " @ " not in line or " on " not in line:
+            continue
+        value = line.rsplit(" on ", 1)[-1].strip()
+        value = re.sub(r"\s+", " ", value)
+        if value and value not in schedules:
+            schedules.append(value)
+
+    if schedules:
+        parsed["lesson_schedule"] = schedules
+        meta.update({"changed": True, "source": "explicit_frequency_line", "count": len(schedules)})
+    return parsed, meta
+
+
+def fill_address_from_text(parsed: Dict[str, Any], raw_text: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Fill missing address from explicit address/location lines.
+
+    This avoids rejecting assignments where the LLM missed a clear location such
+    as "Location/Area: Lorong Lew Lian". Online markers are deliberately skipped.
+    """
+    meta: Dict[str, Any] = {"ok": True, "changed": False, "source": None}
+    if not isinstance(parsed, dict):
+        return {}, {"ok": False, "error": "parsed_not_dict"}
+
+    existing = coerce_list_of_str(parsed.get("address"))
+    if existing:
+        parsed["address"] = existing
+        return parsed, meta
+
+    addresses = []
+    for match in _ADDRESS_LINE_RE.finditer(str(raw_text or "")):
+        value = re.sub(r"\s+", " ", str(match.group(1) or "").strip())
+        if not value:
+            continue
+        if re.search(r"(?i)\b(online|zoom|google\s*meet|teams)\b", value):
+            continue
+        if value not in addresses:
+            addresses.append(value)
+
+    for match in _COMPACT_HEADER_RE.finditer(str(raw_text or "")):
+        value = re.sub(r"\s+", " ", str(match.group(1) or "").strip())
+        if value and not re.search(r"(?i)\b(online|zoom|google\s*meet|teams)\b", value) and value not in addresses:
+            addresses.append(value)
+
+    if addresses:
+        parsed["address"] = addresses
+        meta.update({"changed": True, "source": "explicit_address_line", "count": len(addresses)})
     return parsed, meta
 
 
@@ -148,7 +241,10 @@ def apply_postal_code_estimated(
     postal_estimated_meta: Optional[Dict[str, Any]] = None
 
     try:
-        res = estimate_func(parsed, raw_text)
+        try:
+            res = estimate_func(parsed=parsed, raw_text=raw_text)
+        except TypeError:
+            res = estimate_func(parsed, raw_text)
         if res and hasattr(res, "estimated") and hasattr(res, "meta"):
             if isinstance(parsed, dict):
                 parsed["postal_code_estimated"] = res.estimated

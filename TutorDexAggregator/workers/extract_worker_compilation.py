@@ -130,6 +130,11 @@ def process_compilation_confirmed(
             )
             continue
 
+        if seg_code_norm:
+            parsed_code = parsed.get("assignment_code")
+            if not isinstance(parsed_code, str) or not parsed_code.strip():
+                parsed["assignment_code"] = str(seg_code_verbatim or seg_code_norm).strip()
+
         payload: Dict[str, Any] = {
             "cid": cid,
             "pipeline_version": version.pipeline_version,

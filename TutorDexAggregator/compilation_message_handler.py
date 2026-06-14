@@ -14,12 +14,18 @@ from __future__ import annotations
 import json
 import logging
 import hashlib
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
+
+try:
+    from compilation_extractor import extract_assignment_codes
+except Exception:  # pragma: no cover
+    from TutorDexAggregator.compilation_extractor import extract_assignment_codes
 
 try:
     from logging_setup import bind_log_context, log_event, setup_logging, timed  # type: ignore
@@ -247,6 +253,30 @@ def _find_verified_occurrence(text: str, token: str, *, start_at: int = 0) -> Op
         return pos
 
 
+def _segment_start_for_identifier(raw_message: str, pos: int) -> int:
+    """
+    Return the likely start of the assignment segment containing an identifier.
+
+    Some agencies put `Job ID` at the bottom of each assignment block. Starting
+    the segment at the ID line drops the actual details, so anchor to the start
+    of the surrounding paragraph instead.
+    """
+    text = str(raw_message or "")
+    if pos <= 0:
+        return 0
+
+    blank_end = None
+    for match in re.finditer(r"\n[ \t\r]*\n", text[:pos]):
+        blank_end = match.end()
+    if blank_end is not None:
+        start = blank_end
+        while start < len(text) and text[start] in "\r\n\t ":
+            start += 1
+        return start
+
+    return 0
+
+
 def verify_identifiers(
     *,
     raw_message: str,
@@ -317,8 +347,7 @@ def order_verified_identifiers(*, raw_message: str, verified: List[str]) -> List
         pos = _find_verified_occurrence(raw_message, v, start_at=0)
         if pos is None:
             continue
-        line_start = raw_message.rfind("\n", 0, pos)
-        line_start = 0 if line_start == -1 else line_start + 1
+        line_start = _segment_start_for_identifier(raw_message, pos)
         items.append(
             VerifiedIdentifier(
                 verbatim=v,
@@ -388,6 +417,20 @@ def confirm_compilation_identifiers(
     verify = verify_identifiers(raw_message=raw_message, candidates=list(llm_audit.get("candidates") or []))
     verified = list(verify.get("verified") or [])
     dropped = list(verify.get("dropped") or [])
+
+    fallback_codes: List[str] = []
+    fallback_meta: Dict[str, Any] = {}
+    if len(verified) < int(min_verified):
+        try:
+            fallback_codes, fallback_meta = extract_assignment_codes(raw_message)
+            fallback_verify = verify_identifiers(raw_message=raw_message, candidates=fallback_codes)
+            fallback_verified = list(fallback_verify.get("verified") or [])
+            if len(fallback_verified) > len(verified):
+                verified = fallback_verified
+                dropped = list(fallback_verify.get("dropped") or [])
+        except Exception as e:
+            fallback_meta = {"ok": False, "error": str(e)}
+
     ordered = order_verified_identifiers(raw_message=raw_message, verified=verified)
     confirmed = len(verified) >= int(min_verified)
     return {
@@ -399,5 +442,7 @@ def confirm_compilation_identifiers(
         "parse_error": llm_audit.get("parse_error"),
         "verified": verified,
         "dropped": dropped,
+        "deterministic_fallback_codes": fallback_codes,
+        "deterministic_fallback_meta": fallback_meta,
         "ordered": [it.__dict__ for it in ordered],
     }

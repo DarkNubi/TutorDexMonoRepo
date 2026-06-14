@@ -22,6 +22,9 @@ from typing import List, Set, Tuple
 # - "Code: DEF456"
 # - "#ABC123" or "Job #123"
 _CODE_PATTERNS = [
+    # Compact list item prefix, common in TuitionAssignmentsSG:
+    # "0706si: N1 Abacus @ 414 Jurong West..."
+    re.compile(r"(?m)^\s*([0-9]{3,6}[A-Z]{1,3})\s*:", re.IGNORECASE),
     # Job/Assignment ID/Code with colon or hash
     re.compile(r"(?:job\s+(?:id|code|#)|assignment\s+(?:id|code|#))\s*[:\-]?\s*([A-Z0-9]+)", re.IGNORECASE),
     # Standalone code format (more restrictive to avoid false positives)

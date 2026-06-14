@@ -10,6 +10,8 @@ def _ensure_aggregator_sys_path() -> None:
     if agg_path in sys.path:
         sys.path.remove(agg_path)
     sys.path.insert(0, agg_path)
+    sys.modules.pop("logging_setup", None)
+    sys.modules.pop("extract_key_info", None)
 
 
 class _StructuredLLMError(RuntimeError):
@@ -94,3 +96,54 @@ def test_fill_lesson_schedule_from_frequency_line():
     assert parsed["lesson_schedule"] == ["1.5 Hr, 1x A Week"]
     assert meta["changed"] is True
     assert meta["source"] == "explicit_frequency_line"
+
+
+def test_fill_learning_mode_from_location_area_online():
+    _ensure_aggregator_sys_path()
+    from workers.enrichment_pipeline import fill_learning_mode_from_text
+
+    parsed, meta = fill_learning_mode_from_text(
+        {"assignment_code": "NT29838"},
+        "Looking for Online Tutor\n🔻 Location/Area: Online Tuition\nLesson Per Week: Once a week",
+    )
+
+    assert parsed["learning_mode"]["mode"] == "Online"
+    assert meta["changed"] is True
+
+
+def test_fill_address_from_location_area_line_skips_online():
+    _ensure_aggregator_sys_path()
+    from workers.enrichment_pipeline import fill_address_from_text
+
+    parsed, meta = fill_address_from_text(
+        {"assignment_code": "NT29838"},
+        "🔻 Location/Area: Lorong Lew Lian\nRate: $45/hr",
+    )
+
+    assert parsed["address"] == ["Lorong Lew Lian"]
+    assert meta["source"] == "explicit_address_line"
+
+    online_parsed, online_meta = fill_address_from_text(
+        {"assignment_code": "NT29838"},
+        "🔻 Location/Area: Online Tuition\nRate: $45/hr",
+    )
+
+    assert online_parsed.get("address") is None
+    assert online_meta["changed"] is False
+
+
+def test_compact_tuition_assignment_lines_fill_schedule_and_address():
+    _ensure_aggregator_sys_path()
+    from workers.enrichment_pipeline import fill_address_from_text, fill_lesson_schedule_from_text
+
+    text = """0706si: N1 Abacus @ 414 Jurong West Street 42 (S)640414
+1.5 Hrs, 1-2x A Week; $55-70/Hr
+"""
+
+    parsed, schedule_meta = fill_lesson_schedule_from_text({"assignment_code": "0706si"}, text)
+    parsed, address_meta = fill_address_from_text(parsed, text)
+
+    assert parsed["lesson_schedule"] == ["1.5 Hrs, 1-2x A Week"]
+    assert parsed["address"] == ["414 Jurong West Street 42 (S)640414"]
+    assert schedule_meta["changed"] is True
+    assert address_meta["changed"] is True

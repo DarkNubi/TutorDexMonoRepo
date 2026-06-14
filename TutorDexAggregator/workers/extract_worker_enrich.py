@@ -11,7 +11,9 @@ from workers.enrichment_pipeline import (
     apply_hard_validation,
     apply_postal_code_estimated,
     build_signals as build_signals_wrapper,
+    fill_address_from_text,
     fill_learning_mode_from_text,
+    fill_lesson_schedule_from_text,
     fill_postal_code_from_text,
 )
 from workers.extract_worker_types import WorkerToggles
@@ -45,6 +47,18 @@ def enrich_payload(
         parsed_obj, learning_mode_meta = fill_learning_mode_from_text(parsed_obj, raw_text)
     except Exception as e:
         learning_mode_meta = {"ok": False, "error": str(e)}
+
+    lesson_schedule_meta: Optional[Dict[str, Any]] = None
+    try:
+        parsed_obj, lesson_schedule_meta = fill_lesson_schedule_from_text(parsed_obj, raw_text)
+    except Exception as e:
+        lesson_schedule_meta = {"ok": False, "error": str(e)}
+
+    address_meta: Optional[Dict[str, Any]] = None
+    try:
+        parsed_obj, address_meta = fill_address_from_text(parsed_obj, raw_text)
+    except Exception as e:
+        address_meta = {"ok": False, "error": str(e)}
 
     parsed_obj, postal_estimated_meta = apply_postal_code_estimated(
         parsed_obj,
@@ -82,6 +96,8 @@ def enrich_payload(
         "normalization": norm_meta,
         "postal_code_fill": postal_meta,
         "learning_mode_fill": learning_mode_meta,
+        "lesson_schedule_fill": lesson_schedule_meta,
+        "address_fill": address_meta,
         "postal_code_estimated": postal_estimated_meta,
         "time_deterministic": time_meta,
         "hard_validation": hard_meta,
