@@ -6,7 +6,7 @@ TutorDex is mostly recovered on the host: backend, Supabase, collector, worker, 
 
 Working:
 
-- Python test suite passes: `308 passed, 4 warnings`.
+- Python test suite passes: `312 passed, 4 warnings`.
 - Ruff passes.
 - Website tests pass: `11 passing`.
 - Website production build succeeds.
@@ -88,6 +88,8 @@ Blocked:
 - Fixed frontend assignment loading so public assignment fetches are not blocked by slow/missing Firebase auth token initialization.
 - Reset seven real assignment rows that had been incorrectly stranded at `max_attempts` during the unhealthy LLM period.
 - Reworked Prometheus app scraping to direct backend/collector/worker `/metrics` targets and verified all app targets are green.
+- Scoped worker queue metrics to the active pipeline version so backlog alerts do not mix historical pipeline rows.
+- Added recovery-safe side-effect gates so TutorCity fetch respects broadcast/DM toggles, and freshness Telegram edits/deletes require explicit `FRESHNESS_PROPAGATE_TELEGRAM_ENABLED` / `FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED` opt-ins.
 
 ## Recovery Still Needed
 
@@ -111,6 +113,15 @@ Blocked:
 4. Review and re-enable broadcast/DM side effects only after queue recovery is stable.
 5. Make staging production-like enough to catch assignment loading, backend dependency, and alerting failures before prod.
 6. Add a DB backup/restore runbook and scheduled backup verification.
+
+## Side-Effect Re-Enable Checklist
+
+- Keep these off until queue recovery is fully quiet: `ENABLE_BROADCAST=0`, `ENABLE_DMS=0`, `DM_ENABLED=0`, `BROADCAST_SYNC_ON_STARTUP=0`, `FRESHNESS_PROPAGATE_TELEGRAM_ENABLED=0`, `FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED=0`.
+- Confirm `pending=0`, `processing=0`, and no fresh failure spike before re-enabling.
+- Re-enable broadcast before DMs, with a single worker replica and duplicate tracking enabled.
+- Do not enable broadcast startup sync until `sync_broadcast_channel.py --dry-run` is reviewed.
+- Re-enable DMs last, with low `DM_MAX_RECIPIENTS` and duplicate filtering enabled.
+- Treat Telegram freshness edits/deletes as high-risk and leave delete disabled until a dry run is reviewed.
 
 ## Public Ingress Alternatives
 
