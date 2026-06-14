@@ -42,6 +42,20 @@ ls -lh /home/insanepc/backups/tutordex/supabase/*.dump
 pg_restore --list /home/insanepc/backups/tutordex/supabase/<artifact>.dump >/tmp/tutordex-restore-list.txt
 ```
 
+For the scheduled-backup health gate, use the repo-owned freshness/readability checker:
+
+```bash
+TD_BACKUP_DIR=/home/insanepc/backups/tutordex/supabase \
+  scripts/ops/supabase_backup_check.sh --env prod --max-age-hours 26
+```
+
+If local `pg_restore` is not installed on the host, run the readability check through the Supabase DB container:
+
+```bash
+TD_BACKUP_DIR=/home/insanepc/backups/tutordex/supabase \
+  scripts/ops/supabase_backup_check.sh --env prod --container supabase_db_supabase-prod --max-age-hours 26
+```
+
 If local `pg_restore` is unavailable, copy the dump into a staging or disposable Postgres container and run `pg_restore --list` there:
 
 ```bash
@@ -91,3 +105,35 @@ curl -fsS 'http://127.0.0.1:8000/assignments?limit=1'
 - A staging restore proves PostgreSQL can replay the artifact; it does not prove public ingress, Firebase config, Telegram side effects, or the recovery queue are safe.
 - Keep broadcast, DM, and freshness Telegram delete/edit side effects disabled until the restored state has been reviewed.
 - Schedule automation should run the backup script, verify `pg_restore --list`, and alert if the latest successful artifact is too old. Do not store backup artifacts in git.
+
+## Scheduled Backup Wiring
+
+Do not install this from an agent without explicit operator approval. The repo-owned pieces are safe to run from cron or systemd later:
+
+```bash
+cd /home/insanepc/repos/TutorDexMonoRepo
+TD_BACKUP_DIR=/home/insanepc/backups/tutordex/supabase \
+  scripts/ops/supabase_backup.sh --env prod --container supabase_db_supabase-prod
+TD_BACKUP_DIR=/home/insanepc/backups/tutordex/supabase \
+  scripts/ops/supabase_backup_check.sh --env prod --container supabase_db_supabase-prod --max-age-hours 26
+```
+
+Example user crontab lines:
+
+```cron
+15 3 * * * cd /home/insanepc/repos/TutorDexMonoRepo && TD_BACKUP_DIR=/home/insanepc/backups/tutordex/supabase scripts/ops/supabase_backup.sh --env prod --container supabase_db_supabase-prod >> /home/insanepc/backups/tutordex/supabase/backup.log 2>&1
+45 3 * * * cd /home/insanepc/repos/TutorDexMonoRepo && TD_BACKUP_DIR=/home/insanepc/backups/tutordex/supabase scripts/ops/supabase_backup_check.sh --env prod --container supabase_db_supabase-prod --max-age-hours 26 >> /home/insanepc/backups/tutordex/supabase/backup-check.log 2>&1
+```
+
+Example Prometheus textfile output for a node-exporter textfile collector:
+
+```bash
+TD_BACKUP_DIR=/home/insanepc/backups/tutordex/supabase \
+  scripts/ops/supabase_backup_check.sh \
+    --env prod \
+    --container supabase_db_supabase-prod \
+    --max-age-hours 26 \
+    --prometheus-file /var/lib/node_exporter/textfile_collector/tutordex_supabase_backup.prom
+```
+
+The checker emits `tutordex_supabase_backup_fresh`, `tutordex_supabase_backup_age_seconds`, and `tutordex_supabase_backup_bytes`. Wire alerting after the host has a writable textfile collector directory.
