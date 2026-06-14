@@ -110,6 +110,23 @@ check_component_true() {
   esac
 }
 
+check_component_not_true() {
+  local label="$1"
+  local path="$2"
+  local var_name="$3"
+  local var_value
+  var_value="$(component_value "$path" "$var_name")"
+  case "${var_value,,}" in
+    true|1|yes|on)
+      echo "  INVALID: ${label}.${var_name} must not be true in staging"
+      fail=1
+      ;;
+    *)
+      echo "  OK: ${label}.${var_name} staging-safe"
+      ;;
+  esac
+}
+
 check_required "APP_ENV"
 check_required "COMPOSE_PROJECT_NAME"
 check_required "BACKEND_PORT"
@@ -142,6 +159,13 @@ elif [ "$env" = "staging" ]; then
   if [ "${BACKEND_PORT:-8000}" = "8000" ]; then
     echo "  WARNING: Staging BACKEND_PORT is 8000; expected alternate port (e.g., 8001)"
   fi
+  case "${SUPABASE_NETWORK:-}" in
+    *staging*) ;;
+    *)
+      echo "  INVALID: Staging SUPABASE_NETWORK must be staging-specific"
+      fail=1
+      ;;
+  esac
 else
   echo "  WARNING: APP_ENV is neither staging nor prod (found: $env)"
 fi
@@ -180,6 +204,14 @@ if [ "$env" = "prod" ] || [ "$env" = "production" ] || [ "$env" = "staging" ]; t
       fail=1
     else
       echo "  OK: aggregator.ALERT_BOT_TOKEN or aggregator.GROUP_BOT_TOKEN"
+    fi
+    if [ "$env" = "staging" ]; then
+      check_component_not_true "aggregator" "$aggregator_env_path" "ENABLE_BROADCAST"
+      check_component_not_true "aggregator" "$aggregator_env_path" "ENABLE_DMS"
+      check_component_not_true "aggregator" "$aggregator_env_path" "DM_ENABLED"
+      check_component_not_true "aggregator" "$aggregator_env_path" "BROADCAST_SYNC_ON_STARTUP"
+      check_component_not_true "aggregator" "$aggregator_env_path" "FRESHNESS_PROPAGATE_TELEGRAM_ENABLED"
+      check_component_not_true "aggregator" "$aggregator_env_path" "FRESHNESS_DELETE_EXPIRED_TELEGRAM_ENABLED"
     fi
   fi
 fi

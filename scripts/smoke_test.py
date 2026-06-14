@@ -136,6 +136,8 @@ def main() -> int:
         ("backend /health", _join_url(backend, "health")),
         ("backend /health/redis", _join_url(backend, "health/redis")),
         ("backend /health/supabase", _join_url(backend, "health/supabase")),
+        ("backend /assignments", _join_url(backend, "assignments?limit=1&sort=newest")),
+        ("backend /assignments/facets", _join_url(backend, "assignments/facets")),
     ]
     for name, url in checks:
         ok, detail = _http_get(url)

@@ -18,7 +18,7 @@ Do not describe Firebase Hosting production as auto-deployed from `main`. Only F
 1. Merge or push the intended changes to `main`.
 2. Confirm `.github/workflows/deploy.yml` completed successfully.
 3. Confirm `.github/workflows/firebase-hosting.yml` completed its automatic `deploy_staging` job successfully.
-4. Smoke test Firebase staging against the deployed backend.
+4. Smoke test Firebase staging against the deployed backend, including backend `/assignments` and `/assignments/facets`.
 5. If staging is healthy, manually run `.github/workflows/firebase-hosting.yml` from GitHub Actions.
 6. Confirm the manual `deploy_prod` job completed successfully.
 7. Smoke test Firebase production.
@@ -27,6 +27,7 @@ Do not describe Firebase Hosting production as auto-deployed from `main`. Only F
 
 - Keep the GitHub `production` environment protected so `deploy_prod` is a conscious approval step.
 - Prefer staging smoke evidence before running the production workflow.
+- Keep `docs/STAGING_PROD_PARITY_CHECKLIST.md` current and treat a failing `.env.staging` validation as a release blocker.
 - If auto deploy fails, fix or rerun the workflow instead of deploying Firebase Hosting from a local machine.
 - Longer term, prefer building one frontend artifact and promoting that exact artifact from staging to production.
 
