@@ -78,7 +78,7 @@ def process_standard_message(
         return "skipped"
 
     llm_input = normalized_text if bool(toggles.use_normalized_text_for_llm) else raw_text
-    parsed, llm_err, llm_latency = extract_with_llm(
+    parsed, llm_err, llm_latency, llm_error_payload = extract_with_llm(
         llm_input,
         channel_link,
         cid=cid,
@@ -109,7 +109,7 @@ def process_standard_message(
             key,
             extraction_id,
             status="failed",
-            error={"error": llm_err},
+            error=llm_error_payload or {"error": llm_err},
             meta_patch=with_prompt(
                 {
                     "stage": "llm",

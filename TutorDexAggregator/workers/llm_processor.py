@@ -30,6 +30,10 @@ def classify_llm_error(err: Exception) -> str:
     - llm_bad_response: Bad response format
     - llm_error: Other errors
     """
+    structured_type = getattr(err, "error_type", None)
+    if structured_type:
+        return str(structured_type)
+
     s = str(err or "").lower()
 
     if "timeout" in s or "timed out" in s:
@@ -47,6 +51,18 @@ def classify_llm_error(err: Exception) -> str:
     return "llm_error"
 
 
+def build_llm_error_payload(err: Exception, error_type: str) -> Dict[str, Any]:
+    """Build bounded diagnostics for telegram_extractions.error_json."""
+    payload: Dict[str, Any] = {
+        "error": error_type,
+        "message": str(err or "")[:1000],
+    }
+    details = getattr(err, "details", None)
+    if isinstance(details, dict) and details:
+        payload["details"] = details
+    return payload
+
+
 def extract_with_llm(
     text: str,
     channel: str,
@@ -54,7 +70,7 @@ def extract_with_llm(
     circuit_breaker: CircuitBreaker,
     extract_func: Any,
     metrics: Optional[Dict[str, Any]] = None
-) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
+) -> Tuple[Optional[Dict[str, Any]], Optional[str], float, Optional[Dict[str, Any]]]:
     """
     Extract assignment data using LLM with circuit breaker protection.
 
@@ -67,7 +83,7 @@ def extract_with_llm(
         metrics: Optional dict to track metrics
 
     Returns:
-        Tuple of (parsed_data, error_type, latency_seconds)
+        Tuple of (parsed_data, error_type, latency_seconds, error_payload)
     """
     model = get_llm_model_name()
     t0 = time.perf_counter()
@@ -104,7 +120,7 @@ def extract_with_llm(
             except Exception:
                 pass  # Metrics must never break runtime
 
-        return parsed, None, latency
+        return parsed, None, latency, None
 
     except CircuitBreakerOpenError as e:
         # Circuit breaker is open - fail fast
@@ -120,7 +136,7 @@ def extract_with_llm(
             except Exception:
                 pass  # Metrics must never break runtime
 
-        return None, "llm_circuit_open", latency
+        return None, "llm_circuit_open", latency, build_llm_error_payload(e, "llm_circuit_open")
 
     except Exception as e:
         # Extraction failed
@@ -137,7 +153,7 @@ def extract_with_llm(
             except Exception:
                 pass  # Metrics must never break runtime
 
-        return None, error_type, latency
+        return None, error_type, latency, build_llm_error_payload(e, error_type)
 
 
 def get_prompt_metadata(get_system_prompt_meta_func: Any) -> Optional[Dict[str, Any]]:

@@ -24,6 +24,25 @@ _LLM_SESSION = requests.Session()
 # Default to the Mixtral instruct model you installed in LM Studio
 MODEL_NAME = "lfm2-8b-a1b"
 
+
+class LLMExtractionError(RuntimeError):
+    """LLM extraction failure with bounded diagnostics safe for error_json."""
+
+    def __init__(self, message: str, *, error_type: str, details: Optional[dict] = None):
+        super().__init__(message)
+        self.error_type = error_type
+        self.details = details or {}
+
+
+def _text_artifact(text: str, *, limit: int = 4000) -> dict:
+    value = text or ""
+    return {
+        "chars": len(value),
+        "sha256": hashlib.sha256(value.encode("utf-8")).hexdigest(),
+        "snippet": value[:limit],
+        "truncated": len(value) > limit,
+    }
+
 # -----------------------------
 # System prompt overrides (A/B)
 # -----------------------------
@@ -459,8 +478,21 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
                         if isinstance(parts, list) and len(parts) > 0:
                             text = "".join([c.get("text", "") for c in parts if isinstance(c, dict)])
                 if not text:
-                    raise ValueError("No valid text found in LLM response")
+                    try:
+                        response_preview = json.dumps(data, ensure_ascii=False, sort_keys=True)[:2000]
+                    except Exception:
+                        response_preview = str(data)[:2000]
+                    raise LLMExtractionError(
+                        "No valid text found in LLM response",
+                        error_type="llm_bad_response",
+                        details={
+                            "response_preview": response_preview,
+                            "response_keys": sorted([str(k) for k in data.keys()]) if isinstance(data, dict) else [],
+                        },
+                    )
             except Exception as e:
+                if isinstance(e, LLMExtractionError):
+                    raise
                 raise RuntimeError(f"Failed to parse LLM response: {e}")
 
         text = text.strip().strip("```")
@@ -477,7 +509,15 @@ def extract_assignment_with_model(message: str, chat: str = "", model_name: str 
                 candidate_chars=len(candidate or ""),
                 error=str(e),
             )
-            raise RuntimeError(f"Failed to parse JSON from model output: {e}") from e
+            raise LLMExtractionError(
+                f"Failed to parse JSON from model output: {e}",
+                error_type="llm_invalid_json",
+                details={
+                    "parse_error": str(e)[:1000],
+                    "model_output": _text_artifact(text),
+                    "json_candidate": _text_artifact(candidate),
+                },
+            ) from e
 
         # NOTE: Legacy `validator.py` post-processor removed. Hardening happens in:
         # - `hard_validator.py` (null/drop invariants)

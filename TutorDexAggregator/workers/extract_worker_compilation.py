@@ -81,7 +81,7 @@ def process_compilation_confirmed(
         normalized_seg_text = normalize_text(seg_text)
 
         llm_input = normalized_seg_text if bool(toggles.use_normalized_text_for_llm) else seg_text
-        parsed, llm_err, lat = extract_with_llm(
+        parsed, llm_err, lat, llm_error_payload = extract_with_llm(
             llm_input,
             channel_link,
             cid=f"{cid}:seg:{seg_code_norm}",
@@ -125,6 +125,7 @@ def process_compilation_confirmed(
                     "identifier_normalized": seg_code_norm,
                     "segment_chars": len(seg_text),
                     "llm_error": llm_err,
+                    "llm_error_payload": llm_error_payload,
                 }
             )
             continue

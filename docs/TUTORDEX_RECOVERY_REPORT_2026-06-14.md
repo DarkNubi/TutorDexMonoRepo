@@ -24,6 +24,7 @@ Working:
 - Prometheus app scrapes for backend, collector, and worker are green from inside the Prometheus container.
 - Broadcast and DM side effects remain disabled during recovery.
 - Latest recovery queue snapshot: `ok=120`, `pending=155`, `processing=6`, `assignments=120`, `open=111`.
+- Live extraction rows are stamped `qwen3.6-35b-a3b-local`; the active TutorDex LLM path is the `hermes-qwen-mtp-ik` local container, not LFM 2.5 8B A1B.
 
 Blocked:
 
@@ -96,6 +97,7 @@ Blocked:
 - Created a verified local Supabase dump at `/home/insanepc/backups/tutordex/supabase/tutordex-prod-supabase-postgres-20260614T052909Z.dump` with mode `0600`; `pg_restore --list` succeeds inside the Supabase Postgres container.
 - Added `scripts/ops/supabase_backup_check.sh`; live check verifies latest dump age, size, and `pg_restore --list` readability.
 - Added a staging/prod parity gate: smoke now checks real backend assignment routes, staging validation fails on non-staging Supabase network or enabled Telegram side effects, and `docs/STAGING_PROD_PARITY_CHECKLIST.md` documents the release gate.
+- Improved future LLM failure artifacts: JSON parse / bad-response failures now preserve bounded model-output diagnostics in `telegram_extractions.error_json` for later triage and fine-tuning dataset construction.
 
 ## Recovery Still Needed
 
