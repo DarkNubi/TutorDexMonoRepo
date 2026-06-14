@@ -111,3 +111,27 @@ Blocked:
 4. Review and re-enable broadcast/DM side effects only after queue recovery is stable.
 5. Make staging production-like enough to catch assignment loading, backend dependency, and alerting failures before prod.
 6. Add a DB backup/restore runbook and scheduled backup verification.
+
+## Public Ingress Alternatives
+
+If router access is unavailable, ranked fallback options are:
+
+1. **Tailscale Funnel temporary restore**
+
+   Fastest no-router workaround if Funnel is enabled for the tailnet. It would expose either the backend directly or Caddy through the Windows host's Tailscale hostname. This changes the public API URL, so Firebase Hosting must be rebuilt with a new `VITE_BACKEND_URL` and backend CORS must allow the Firebase Hosting origins.
+
+   Example shape, not yet applied:
+
+   ```bash
+   tailscale funnel --bg --https=443 http://127.0.0.1:8000
+   ```
+
+   Rollback is to turn the funnel off, restore `VITE_BACKEND_URL=https://tutordex-api.duckdns.org`, and redeploy Firebase.
+
+2. **Cloudflare Tunnel durable restore**
+
+   Better long-term no-router path if a Cloudflare-managed domain is available. A tunnel can map a public hostname to `http://127.0.0.1:8000` or to the local Caddy ingress. This also requires changing `VITE_BACKEND_URL` and redeploying Firebase.
+
+3. **Keep DuckDNS + Caddy**
+
+   Lowest app-change path once router access is available. Current Caddy config is valid for `tutordex-api.duckdns.org`; the missing piece is WAN reachability to host ports `80`/`443`.
