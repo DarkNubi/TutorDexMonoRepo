@@ -1,11 +1,22 @@
 import { debugError, debugLog } from "./debug.js";
 
 const BACKEND_URL = (import.meta.env?.VITE_BACKEND_URL ?? "").trim().replace(/\/$/, "");
+const AUTH_HEADER_TIMEOUT_MS = 1500;
+
+function withTimeout(promise, ms) {
+  let timeoutId;
+  const timeout = new Promise((resolve) => {
+    timeoutId = globalThis.setTimeout(() => resolve(null), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) globalThis.clearTimeout(timeoutId);
+  });
+}
 
 async function buildAuthHeaders({ forceRefresh = false } = {}) {
   try {
     const mod = await import("../auth.js");
-    const token = await mod.getIdToken?.(forceRefresh);
+    const token = await withTimeout(Promise.resolve(mod.getIdToken?.(forceRefresh)), AUTH_HEADER_TIMEOUT_MS);
     if (!token) return {};
     return { Authorization: `Bearer ${token}` };
   } catch {
