@@ -2,7 +2,7 @@
 
 ## Current Status
 
-TutorDex is partially recovered. Local code/tests/tooling and the observability alert path are repaired, but production assignment loading is still blocked by runtime state outside the repo.
+TutorDex is mostly recovered on the host: backend, Supabase, collector, worker, local assignment loading, and observability are running again. Public Firebase assignment loading is still blocked by public ingress to `https://tutordex-api.duckdns.org`, which is timing out before it reaches the Windows/Docker host.
 
 Working:
 
@@ -10,19 +10,26 @@ Working:
 - Ruff passes.
 - Website tests pass: `11 passing`.
 - Website production build succeeds.
-- npm audit is clean.
-- pip-audit is clean for backend/aggregator requirements.
+- Website and Remotion production npm audits are clean.
 - Prod env validation passes.
 - Prod Prometheus, Alertmanager, blackbox-exporter, node-exporter, cAdvisor, and Alertmanager Telegram bridge are running.
 - Alertmanager Telegram bridge accepted a post-rebuild Telegram delivery smoke test.
 - Public API outage is now monitored by `PublicApiDown` critical alerts.
+- Supabase prod stack is running again and schema/grants are working.
+- Backend `/health/dependencies` is green for backend + Redis + Supabase.
+- Local assignments API is loading rows from Supabase.
+- Local assignments page smoke loads live assignments through the backend.
+- Collector and worker are running; recovery queue is draining.
+- LLM extraction path is using the local Hermes/Qwen endpoint successfully.
+- Prometheus app scrapes for backend, collector, and worker are green after config reload.
+- Broadcast and DM side effects remain disabled during recovery.
 
 Blocked:
 
 - Public API `https://tutordex-api.duckdns.org` times out.
-- Local port `8000` is occupied by a root-owned stray Uvicorn process that returns `404` for TutorDex health routes.
-- The configured self-hosted Supabase runtime is absent from reachable Docker state: no `supabase-prod_default` network, no Supabase/Kong/PostgREST/Postgres containers, and no TutorDex DB volume or dump found in reachable WSL/Windows-mounted paths.
-- BizServer filesystem/runtime state could not be inspected from this session because node-host shell execution is not exposed in the current tool lane.
+- WAN `115.66.211.92:80` and `115.66.211.92:443` time out from outside, while Caddy answers locally on `127.0.0.1` and over LAN at `192.168.1.31`.
+- Router/NAT forwarding is still needed: external TCP `80` and `443` to Windows host `192.168.1.31`, same ports.
+- Recovery backlog is still draining, so `QueueOldestPendingTooOld` may fire until catchup finishes.
 
 ## Root Causes Found
 
@@ -32,11 +39,11 @@ Blocked:
 
 2. **Missing database runtime ownership**
 
-   TutorDex prod env points to a local self-hosted Supabase stack at host `127.0.0.1:54321`, Docker `kong:8000`, network `supabase-prod_default`. That stack is not present in reachable Docker state, and no DB backup/dump was found.
+   TutorDex prod env points to a local self-hosted Supabase stack at host `127.0.0.1:54321`, Docker `kong:8000`, network `supabase-prod_default`. During recovery that runtime was absent from the initial app stack and had to be recreated. No older prod data dump/backup was found in the reachable workspace, so the current DB is a fresh recovered runtime that is being repopulated from raw Telegram messages.
 
 3. **Wrong process on backend port**
 
-   Port `8000` is bound by a root-owned Uvicorn process outside the compose prod stack. It is not serving TutorDex health routes and cannot be stopped by the current WSL user.
+   Port `8000` was bound by a non-TutorDex Uvicorn process from another stack. That made backend health probes hit the wrong app until the process conflict was cleared and the TutorDex backend was started through compose.
 
 4. **Staging was not production-like**
 
@@ -54,6 +61,10 @@ Blocked:
 
    Compose used `pull_policy: always` for observability images. During DNS/registry trouble, restarts and rebuilds became unnecessarily fragile.
 
+8. **Public ingress depended on router state**
+
+   Docker/Caddy/backend are healthy locally, DuckDNS resolves to the observed WAN IP, and Windows Docker owns ports `80`/`443`, but public curls time out before reaching the host. The remaining public outage is upstream router/NAT/CGNAT state, not the TutorDex app stack.
+
 ## Fixes Applied
 
 - Hardened HTTP smoke scripts to fail on JSON `ok: false`.
@@ -70,12 +81,25 @@ Blocked:
 - Added public API blackbox probes and the critical `PublicApiDown` alert.
 - Changed compose image `pull_policy` from `always` to `missing` for cache-first recovery.
 - Reduced noisy host disk alerts by excluding WSL/Docker/snap pseudo filesystems.
+- Added the Caddy API ingress proxy and verified local/LAN Caddy responses.
+- Recreated the Supabase prod runtime and applied the schema/grants.
+- Restored backend, collector, and worker containers.
+- Fixed the worker LLM endpoint path to the local Hermes/Qwen service.
+- Fixed frontend assignment loading so public assignment fetches are not blocked by slow/missing Firebase auth token initialization.
+- Reset seven real assignment rows that had been incorrectly stranded at `max_attempts` during the unhealthy LLM period.
+- Reworked Prometheus app scraping to direct backend/collector/worker `/metrics` targets and verified all app targets are green.
 
 ## Recovery Still Needed
 
-1. Stop the root-owned wrong Uvicorn process on port `8000`.
-2. Locate or restore the Supabase prod stack and data volume/backup for `supabase-prod_default`.
-3. After Supabase is healthy, start only the backend and verify:
+1. Fix public ingress on the router/modem path:
+
+   - Forward external TCP `80` to `192.168.1.31:80`.
+   - Forward external TCP `443` to `192.168.1.31:443`.
+   - Ensure router remote management is not claiming `80`/`443`.
+   - Ensure those ports are not forwarded to another device.
+   - If the router WAN address is not `115.66.211.92`, resolve upstream double-NAT/CGNAT with bridge mode, upstream forwarding, or a public IP.
+
+2. After router/NAT is fixed, verify:
 
    ```bash
    curl -i http://127.0.0.1:8000/health
@@ -83,7 +107,7 @@ Blocked:
    curl -i https://tutordex-api.duckdns.org/health
    ```
 
-4. Only after backend and DB are healthy, start collectors/workers with broadcast/DM side effects reviewed.
+3. Let recovery catchup drain and confirm the queue returns below alert thresholds.
+4. Review and re-enable broadcast/DM side effects only after queue recovery is stable.
 5. Make staging production-like enough to catch assignment loading, backend dependency, and alerting failures before prod.
 6. Add a DB backup/restore runbook and scheduled backup verification.
-
