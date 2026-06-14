@@ -13,6 +13,10 @@ Use this skill when asked to deploy, monitor, debug incidents, or operate TutorD
 - For prod changes, require a runbook + rollback path.
 - Never print secrets; do not echo env files.
 - Use the repo runbooks in `scripts/ops/*` instead of ad-hoc docker commands.
+- Before reporting service/container health, state the execution surface you actually checked:
+  host or shell (`WSL`, `BizServer Windows node`, `Docker Desktop`, container), docker context/endpoint, compose project/env, and public ingress path if claiming user-facing availability.
+- Keep WSL-local, Windows-node, Docker-context, in-container, and public-ingress evidence separate. Do not treat `localhost` from one surface as proof for another.
+- For BizServer/Docker Desktop ambiguity, verify with the active OpenClaw node status plus the Docker context used by the command before making status claims.
 
 ## Environment selection
 
