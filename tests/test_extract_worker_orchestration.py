@@ -10,8 +10,13 @@ import pytest
 def _ensure_aggregator_sys_path() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     agg_dir = repo_root / "TutorDexAggregator"
-    if str(agg_dir) not in sys.path:
-        sys.path.insert(0, str(agg_dir))
+    agg_path = str(agg_dir)
+    if agg_path in sys.path:
+        sys.path.remove(agg_path)
+    sys.path.insert(0, agg_path)
+    loaded_logging_setup = sys.modules.get("logging_setup")
+    if loaded_logging_setup is not None and "TutorDexAggregator" not in str(getattr(loaded_logging_setup, "__file__", "")):
+        sys.modules.pop("logging_setup", None)
 
 
 @dataclass(frozen=True)
@@ -45,7 +50,7 @@ def worker_main_module():
 
 def test_worker_oneshot_exits_when_no_jobs(monkeypatch, worker_main_module):
     cfg = SimpleNamespace(extraction_worker_oneshot=True)
-    logger = SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None, debug=lambda *a, **k: None)
+    logger = SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None, debug=lambda *a, **k: None, log=lambda *a, **k: None)
     version = _Version(pipeline_version="pv-test", schema_version="sv-test")
 
     monkeypatch.setattr(worker_main_module, "bootstrap_worker", lambda: (cfg, logger, version, object()))
@@ -100,7 +105,7 @@ def test_worker_oneshot_exits_when_no_jobs(monkeypatch, worker_main_module):
 
 def test_worker_dependency_health_handler_uses_count_exact(monkeypatch, worker_main_module):
     cfg = SimpleNamespace(extraction_worker_oneshot=True)
-    logger = SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None, debug=lambda *a, **k: None)
+    logger = SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None, debug=lambda *a, **k: None, log=lambda *a, **k: None)
     version = _Version(pipeline_version="pv-test", schema_version="sv-test")
 
     monkeypatch.setattr(worker_main_module, "bootstrap_worker", lambda: (cfg, logger, version, object()))
@@ -142,7 +147,7 @@ def test_worker_dependency_health_handler_uses_count_exact(monkeypatch, worker_m
 
 def test_worker_stops_after_max_jobs(monkeypatch, worker_main_module):
     cfg = SimpleNamespace(extraction_worker_oneshot=False, extraction_worker_max_jobs=1)
-    logger = SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None, debug=lambda *a, **k: None)
+    logger = SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None, debug=lambda *a, **k: None, log=lambda *a, **k: None)
     version = _Version(pipeline_version="pv-test", schema_version="sv-test")
 
     monkeypatch.setattr(worker_main_module, "bootstrap_worker", lambda: (cfg, logger, version, object()))
@@ -208,3 +213,46 @@ def test_resolve_side_effect_toggles_fallbacks_to_configured_channels(worker_mai
 
     assert enable_broadcast is True
     assert enable_dms is True
+
+
+def test_queue_metrics_filter_by_pipeline_version(monkeypatch):
+    _ensure_aggregator_sys_path()
+    import importlib
+
+    supabase_ops = importlib.import_module("workers.supabase_operations")
+
+    calls = []
+
+    class _Resp:
+        headers = {"content-range": "*/7"}
+
+    def _requests_get(url: str, *, headers: Dict[str, str], timeout: int):
+        calls.append(url)
+        return _Resp()
+
+    monkeypatch.setattr(supabase_ops.requests, "get", _requests_get)
+
+    counts = supabase_ops.get_queue_counts("http://sb", "key", ["pending"], pipeline_version="pv-test")
+
+    assert counts["pending"] == 7
+    assert "status=eq.pending" in calls[0]
+    assert "pipeline_version=eq.pv-test" in calls[0]
+
+
+def test_oldest_queue_age_filters_by_pipeline_version(monkeypatch):
+    _ensure_aggregator_sys_path()
+    import importlib
+
+    supabase_ops = importlib.import_module("workers.supabase_operations")
+
+    captured = {}
+
+    def _get_one(url: str, key: str, table: str, query: str, **kwargs: Any):
+        captured["query"] = query
+        return None
+
+    monkeypatch.setattr(supabase_ops, "get_one", _get_one)
+
+    assert supabase_ops.get_oldest_created_age_seconds("http://sb", "key", "processing", pipeline_version="pv-test") is None
+    assert "status=eq.processing" in captured["query"]
+    assert "pipeline_version=eq.pv-test" in captured["query"]

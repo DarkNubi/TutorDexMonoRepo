@@ -199,13 +199,13 @@ def main() -> None:
 
             if (now - last_metrics) > metrics_interval_s:
                 try:
-                    counts = get_queue_counts(url, key, ["pending", "processing", "ok", "failed"])
+                    counts = get_queue_counts(url, key, ["pending", "processing", "ok", "failed"], pipeline_version=pv)
                     queue_pending.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("pending") or 0))
                     queue_processing.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("processing") or 0))
                     queue_ok.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("ok") or 0))
                     queue_failed.labels(pipeline_version=pv, schema_version=sv).set(float(counts.get("failed") or 0))
-                    oldest_pending = get_oldest_created_age_seconds(url, key, "pending")
-                    oldest_processing = get_oldest_created_age_seconds(url, key, "processing")
+                    oldest_pending = get_oldest_created_age_seconds(url, key, "pending", pipeline_version=pv)
+                    oldest_processing = get_oldest_created_age_seconds(url, key, "processing", pipeline_version=pv)
                     queue_oldest_pending_age_seconds.labels(pipeline_version=pv, schema_version=sv).set(float(oldest_pending or 0.0))
                     queue_oldest_processing_age_seconds.labels(pipeline_version=pv, schema_version=sv).set(float(oldest_processing or 0.0))
                 except Exception:

@@ -249,7 +249,8 @@ def count_from_range(content_range: Optional[str]) -> Optional[int]:
 def get_queue_counts(
     url: str,
     key: str,
-    statuses: List[str]
+    statuses: List[str],
+    pipeline_version: str = "",
 ) -> Dict[str, Optional[int]]:
     """
     Get counts of extraction jobs by status.
@@ -258,6 +259,7 @@ def get_queue_counts(
         url: Supabase base URL
         key: Supabase API key
         statuses: List of statuses to count (e.g., ["pending", "ok", "failed"])
+        pipeline_version: Optional pipeline version filter
 
     Returns:
         Dict mapping status to count
@@ -268,9 +270,13 @@ def get_queue_counts(
 
     for status in statuses:
         try:
+            pipeline_filter = ""
+            if pipeline_version:
+                pipeline_filter = f"&pipeline_version=eq.{requests.utils.quote(str(pipeline_version), safe='')}"
             resp = requests.get(
                 f"{url}/rest/v1/telegram_extractions"
                 f"?status=eq.{requests.utils.quote(status, safe='')}"
+                f"{pipeline_filter}"
                 f"&select=id&limit=0",
                 headers=h,
                 timeout=15
@@ -285,7 +291,8 @@ def get_queue_counts(
 def get_oldest_created_age_seconds(
     url: str,
     key: str,
-    status: str
+    status: str,
+    pipeline_version: str = "",
 ) -> Optional[float]:
     """
     Get age in seconds of the oldest extraction job with given status.
@@ -294,16 +301,21 @@ def get_oldest_created_age_seconds(
         url: Supabase base URL
         key: Supabase API key
         status: Job status to query
+        pipeline_version: Optional pipeline version filter
 
     Returns:
         Age in seconds, or None if no jobs found
     """
+    pipeline_filter = ""
+    if pipeline_version:
+        pipeline_filter = f"&pipeline_version=eq.{requests.utils.quote(str(pipeline_version), safe='')}"
     row = get_one(
         url,
         key,
         "telegram_extractions",
         f"select=created_at"
         f"&status=eq.{requests.utils.quote(status, safe='')}"
+        f"{pipeline_filter}"
         f"&order=created_at.asc&limit=1",
         timeout=15
     )
