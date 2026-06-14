@@ -29,9 +29,11 @@ Working:
 Blocked:
 
 - Public API `https://tutordex-api.duckdns.org` times out.
-- WAN `115.66.211.92:80` and `115.66.211.92:443` time out from outside, while Caddy answers locally on `127.0.0.1` and over LAN at `192.168.1.31`.
-- Router/NAT forwarding is still needed: external TCP `80` and `443` to Windows host `192.168.1.31`, same ports.
+- WAN `115.66.211.92:80` and `115.66.211.92:443` time out from outside, while Caddy answers locally on `127.0.0.1` and over LAN at the BizServer host `192.168.1.42`.
+- Router/NAT forwarding should target BizServer: external TCP `80` and `443` to Windows host `192.168.1.42`, same ports.
 - Recovery backlog is still draining, so `QueueOldestPendingTooOld` may fire until catchup finishes.
+
+Correction on 2026-06-15 SGT: an earlier version of this report listed `192.168.1.31` as the LAN ingress target. Fresh host-specific verification showed the active BizServer node is `DESKTOP-3SFMT9L` with LAN IP `192.168.1.42`, and TutorDex prod/staging containers plus host Caddy are running there. Treat `.31` as stale recovery evidence, not the current forwarding target.
 
 ## Root Causes Found
 
@@ -103,8 +105,8 @@ Blocked:
 
 1. Fix public ingress on the router/modem path:
 
-   - Forward external TCP `80` to `192.168.1.31:80`.
-   - Forward external TCP `443` to `192.168.1.31:443`.
+   - Forward external TCP `80` to `192.168.1.42:80`.
+   - Forward external TCP `443` to `192.168.1.42:443`.
    - Ensure router remote management is not claiming `80`/`443`.
    - Ensure those ports are not forwarded to another device.
    - If the router WAN address is not `115.66.211.92`, resolve upstream double-NAT/CGNAT with bridge mode, upstream forwarding, or a public IP.
