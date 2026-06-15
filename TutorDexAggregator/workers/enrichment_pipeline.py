@@ -20,15 +20,15 @@ _LEARNING_MODE_ONLINE_RE = re.compile(
     rf"(?:venue|mode|learning\s*mode|lesson\s*mode|le\s*on\s*mode|location(?:\s*/\s*area)?|address|addre(?:ss)?|platform)"
     rf"\s*[:：\-]\s*.*?\b{_ONLINE_TERMS_RE}\b"
     rf"|^\s*(?:[^\w\n]+)?\s*{_ONLINE_TERMS_RE}\s*$"
-    rf"|^\s*(?:[^\w\n]+)?\s*{_ONLINE_TERMS_RE}\s+(?:lesson|le\s*on|tuition|class)\b"
-    rf"|^\s*(?:[^\w\n]+)?\s*.*?\b{_ONLINE_TERMS_RE}\s+(?:lesson|le\s*on|tuition|class)\s+(?:only|permanently)\b"
-    rf"|^\s*(?:[^\w\n]+)?\s*.*?(?:\bvia|@)\s+{_ONLINE_TERMS_RE}\s+(?:lesson|le\s*on|tuition|class)\b"
+    rf"|^\s*(?:[^\w\n]+)?\s*{_ONLINE_TERMS_RE}\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
+    rf"|^\s*(?:[^\w\n]+)?\s*.*?\b{_ONLINE_TERMS_RE}\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\s+(?:only|permanently)\b"
+    rf"|^\s*(?:[^\w\n]+)?\s*.*?(?:\bvia|@)\s+{_ONLINE_TERMS_RE}\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
     rf"|^\s*(?:[^\w\n]+)?\s*.*?\b{_ONLINE_TERMS_RE}\s+(?:group\s+)?tuition\b"
-    rf"|^\s*(?:[^\w\n]+)?\s*.*?\b(?:tuition\s+)?a\s*ignment\s+{_ONLINE_TERMS_RE}\b"
+    rf"|^\s*(?:[^\w\n]+)?\s*.*?\b(?:tuition\s+)?(?:assignment|a\s*ignment)\s+{_ONLINE_TERMS_RE}\b"
 )
 _LEARNING_MODE_F2F_RE = re.compile(
     r"(?im)^\s*(?:[^\w\n]+)?\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|le\s*on\s*mode|location(?:\s*/\s*area)?)\s*[:：\-]\s*(face[-\s]*to[-\s]*face|f2f|physical|home)\b"
-    r"|^\s*(?:[^\w\n]+)?\s*.*?\b(face[-\s]*to[-\s]*face|f2f|physical|home)\s+(?:lesson|le\s*on|tuition|class)\b"
+    r"|^\s*(?:[^\w\n]+)?\s*.*?\b(face[-\s]*to[-\s]*face|f2f|physical|home)\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
 )
 _LESSON_SCHEDULE_RE = re.compile(
     r"(?im)^\s*(?:[^\w\n]+)?\s*(?:frequency|duration|schedule|timing|time|lesson\s*frequency|lesson\s*per\s*week|no\.?\s*of\s*lesson(?:s)?(?:\s*per\s*week)?|lessons?)\s*[:：\-]\s*(.+?)\s*$"

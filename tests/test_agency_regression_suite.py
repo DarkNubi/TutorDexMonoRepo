@@ -191,10 +191,10 @@ Timing: 3 WEEKDAYS - 6PM TO 9PM THIS TIME FRAME
         ),
         (
             "newtuitionassignments",
-            """Secondary 5 NA Combined Biology Tuition A ignment Online. $35/hr to $40/hr. Urgent (A600)
-A ignment Code: A600
-Combined Biology Tuition A ignment Online: (A600)
-Once a week, 1.5 hour each se ion
+            """Secondary 5 NA Combined Biology Tuition Assignment Online. $35/hr to $40/hr. Urgent (A600)
+Assignment Code: A600
+Combined Biology Tuition Assignment Online: (A600)
+Once a week, 1.5 hours each session
 """,
         ),
         (
@@ -206,7 +206,7 @@ Requirement: An experienced tutor
         (
             "TuitionAssignmentsSGCompilation",
             """Compiled Tuition A ignment
-2604xu: SMU Year 1 Law @ Online Le on
+2604xu: SMU Year 1 Law @ Online Lessons
 1.5 Hr, 1x A Week; $40-55/Hr
 """,
         ),
