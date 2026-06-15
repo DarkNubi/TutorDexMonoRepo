@@ -72,7 +72,7 @@ begin
       from public.telegram_extractions te
       where te.pipeline_version = p_pipeline_version
         and te.status = 'pending'
-      order by te.created_at asc, te.id asc
+      order by te.message_date desc nulls last, te.created_at desc, te.id desc
       for update skip locked
       limit greatest(1, p_limit)
     )
