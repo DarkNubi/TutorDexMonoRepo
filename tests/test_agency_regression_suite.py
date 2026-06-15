@@ -175,6 +175,41 @@ Timing: Tuesday evening
 Frequency: Once a week
 """,
         ),
+        (
+            "TutorNowAssignments",
+            """ONLINE GROUP TUITION (For IP Year 4 Student ) - TO PREPARE FOR NEXT YEAR A LEVELS GP/ENGLISH
+Frequency: 1 Le on( ) Per Week, 1.5 Hour / Le on
+Timing: Tutor can tate their time lot
+""",
+        ),
+        (
+            "TutorNowAssignments",
+            """AEIS SEC 1 MATH - ONLINE TUITION
+Frequency: 3 Le on( ) Per Week, 2 Hour / Le on
+Timing: 3 WEEKDAYS - 6PM TO 9PM THIS TIME FRAME
+""",
+        ),
+        (
+            "newtuitionassignments",
+            """Secondary 5 NA Combined Biology Tuition A ignment Online. $35/hr to $40/hr. Urgent (A600)
+A ignment Code: A600
+Combined Biology Tuition A ignment Online: (A600)
+Once a week, 1.5 hour each se ion
+""",
+        ),
+        (
+            "sgTuitions",
+            """Info: Sec 3 Engli h via ONLINE CLASS on Mon-Fri evening [1-2 le on /week, 1.5 hr /le on]
+Requirement: An experienced tutor
+""",
+        ),
+        (
+            "TuitionAssignmentsSGCompilation",
+            """Compiled Tuition A ignment
+2604xu: SMU Year 1 Law @ Online Le on
+1.5 Hr, 1x A Week; $40-55/Hr
+""",
+        ),
     ],
 )
 def test_live_online_address_failure_patterns_infer_online_and_validate(agency, raw_text):
@@ -192,3 +227,24 @@ def test_live_online_address_failure_patterns_infer_online_and_validate(agency, 
     assert ok is True
     assert "missing_address_or_postal" not in errors
     assert enriched["learning_mode"]["mode"] == "Online"
+
+
+def test_contradictory_online_and_face_to_face_stays_hybrid_and_requires_address():
+    raw_text = """Code ID: 0605nx
+Subject: Adult Beginner Chine e
+Addre : Online Le on
+Frequency: 1.5 Hr , 1x A Week
+- Face-to-Face Le on
+"""
+    parsed = {
+        "assignment_code": "0605nx",
+        "learning_mode": {"mode": None, "raw_text": None},
+        "address": None,
+        "lesson_schedule": ["Once a week"],
+    }
+
+    enriched, (ok, errors) = _enrich_and_validate(parsed, raw_text)
+
+    assert enriched["learning_mode"]["mode"] == "Hybrid"
+    assert ok is False
+    assert "missing_address_or_postal" in errors
