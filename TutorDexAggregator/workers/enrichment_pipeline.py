@@ -13,8 +13,15 @@ from workers.utils import coerce_list_of_str, extract_sg_postal_codes
 logger = logging.getLogger("enrichment_pipeline")
 
 
+_ONLINE_TERMS_RE = r"(?:online|zoom|google\s*meet|teams|virtual|remote)"
 _LEARNING_MODE_ONLINE_RE = re.compile(
-    r"(?im)^\s*(?:[^\w\n]+)?\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location(?:\s*/\s*area)?)\s*[:：\-]\s*(online|zoom|google\s*meet|teams)\b|^\s*(online)\s*$"
+    rf"(?im)"
+    rf"^\s*(?:[^\w\n]+)?\s*(?:tuition\s*)?"
+    rf"(?:venue|mode|learning\s*mode|lesson\s*mode|le\s*on\s*mode|location(?:\s*/\s*area)?|address|addre(?:ss)?|platform)"
+    rf"\s*[:：\-]\s*.*?\b{_ONLINE_TERMS_RE}\b"
+    rf"|^\s*(?:[^\w\n]+)?\s*{_ONLINE_TERMS_RE}\s*$"
+    rf"|^\s*(?:[^\w\n]+)?\s*{_ONLINE_TERMS_RE}\s+(?:lesson|le\s*on|tuition|class)\b"
+    rf"|^\s*(?:[^\w\n]+)?\s*.*?\b{_ONLINE_TERMS_RE}\s+(?:lesson|le\s*on|tuition|class)\s+(?:only|permanently)\b"
 )
 _LEARNING_MODE_F2F_RE = re.compile(
     r"(?im)^\s*(?:[^\w\n]+)?\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|location(?:\s*/\s*area)?)\s*[:：\-]\s*(face[-\s]*to[-\s]*face|f2f|physical|home)\b"
@@ -23,7 +30,7 @@ _LESSON_SCHEDULE_RE = re.compile(
     r"(?im)^\s*(?:[^\w\n]+)?\s*(?:frequency|duration|schedule|timing|time|lesson\s*frequency|lesson\s*per\s*week|no\.?\s*of\s*lesson(?:s)?(?:\s*per\s*week)?|lessons?)\s*[:：\-]\s*(.+?)\s*$"
 )
 _ADDRESS_LINE_RE = re.compile(
-    r"(?im)^\s*(?:[^\w\n]+)?\s*(?:address|venue|location(?:\s*/\s*area)?)\s*[:：\-]\s*(.+?)\s*$"
+    r"(?im)^\s*(?:[^\w\n]+)?\s*(?:address|addre(?:ss)?|venue|location(?:\s*/\s*area)?)\s*[:：\-]\s*(.+?)\s*$"
 )
 _COMPACT_SCHEDULE_RE = re.compile(
     r"(?im)^\s*(?:[^;\n]*;\s*)?(?:\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?\s*(?:hr|hrs|hour|hours)\s*,?\s*\d+(?:\s*-\s*\d+)?\s*(?:x|times?)\s*a?\s*week(?:[^;\n]*)?)"
@@ -141,14 +148,14 @@ def fill_address_from_text(parsed: Dict[str, Any], raw_text: str) -> Tuple[Dict[
         value = re.sub(r"\s+", " ", str(match.group(1) or "").strip())
         if not value:
             continue
-        if re.search(r"(?i)\b(online|zoom|google\s*meet|teams)\b", value):
+        if re.search(rf"(?i)\b{_ONLINE_TERMS_RE}\b", value):
             continue
         if value not in addresses:
             addresses.append(value)
 
     for match in _COMPACT_HEADER_RE.finditer(str(raw_text or "")):
         value = re.sub(r"\s+", " ", str(match.group(1) or "").strip())
-        if value and not re.search(r"(?i)\b(online|zoom|google\s*meet|teams)\b", value) and value not in addresses:
+        if value and not re.search(rf"(?i)\b{_ONLINE_TERMS_RE}\b", value) and value not in addresses:
             addresses.append(value)
 
     if addresses:

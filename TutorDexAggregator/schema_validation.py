@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Tuple
 REQUIRED_FIELDS_V2: Tuple[str, ...] = ()
 # Address fields are optional for online-only lessons (learning_mode == "online").
 ADDRESS_FIELDS = ("address", "postal_code", "postal_code_estimated", "nearest_mrt")
-ONLINE_LOCATION_RE = re.compile(r"\b(?:online|zoom|google\s*meet|teams|virtual)\b", re.IGNORECASE)
+ONLINE_LOCATION_RE = re.compile(r"\b(?:online|zoom|google\s*meet|teams|virtual|remote)\b", re.IGNORECASE)
 
 
 def _has_value(value: Any) -> bool:
