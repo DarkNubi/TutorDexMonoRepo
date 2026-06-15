@@ -16,6 +16,7 @@ from observability_metrics import (
 from workers.extract_worker_metrics import quality_metrics
 from workers.extract_worker_store import mark_extraction
 from workers.extract_worker_triage import try_report_triage_message
+from workers.side_effects import side_effect_suppression_reason
 from workers.extract_worker_types import VersionInfo, WorkerToggles
 from workers.utils import utc_now_iso
 from workers.validation_pipeline import run_quality_checks
@@ -98,9 +99,12 @@ def persist_and_finalize(
         return "requeued"
 
     is_insert = bool(persist_res.get("ok")) and str(persist_res.get("action") or "").lower() == "inserted"
+    side_effect_skip_reason = side_effect_suppression_reason(payload, existing_meta)
 
     broadcast_res: Any = None
-    if is_insert and toggles.enable_broadcast and broadcast_assignments is not None:
+    if is_insert and side_effect_skip_reason:
+        broadcast_res = {"ok": True, "skipped": True, "reason": side_effect_skip_reason}
+    elif is_insert and toggles.enable_broadcast and broadcast_assignments is not None:
         try:
             broadcast_assignments.send_broadcast(payload)
             broadcast_res = {"ok": True}
@@ -108,7 +112,9 @@ def persist_and_finalize(
             broadcast_res = {"ok": False, "error": str(e)}
 
     dm_res: Any = None
-    if is_insert and toggles.enable_dms and send_dms is not None:
+    if is_insert and side_effect_skip_reason:
+        dm_res = {"ok": True, "skipped": True, "reason": side_effect_skip_reason}
+    elif is_insert and toggles.enable_dms and send_dms is not None:
         try:
             dm_res = send_dms(payload)
         except Exception as e:
@@ -181,4 +187,3 @@ def persist_and_finalize(
             pass
 
     return "ok" if ok else "failed"
-

@@ -23,6 +23,7 @@ from workers.extract_worker_metrics import llm_metrics
 from workers.extract_worker_store import mark_extraction
 from workers.extract_worker_triage import try_report_triage_message
 from workers.extract_worker_types import VersionInfo, WorkerToggles
+from workers.side_effects import side_effect_suppression_reason
 from workers.llm_processor import extract_with_llm
 from workers.utils import build_message_link, sha256_hash, utc_now_iso
 from workers.validation_pipeline import validate_schema
@@ -224,16 +225,21 @@ def process_compilation_confirmed(
 
         ok_persist = bool(persist_res.get("ok"))
         is_insert = ok_persist and str(persist_res.get("action") or "").lower() == "inserted"
+        side_effect_skip_reason = side_effect_suppression_reason(payload, existing_meta)
 
         broadcast_res: Any = None
-        if is_insert and toggles.enable_broadcast and broadcast_assignments is not None:
+        if is_insert and side_effect_skip_reason:
+            broadcast_res = {"ok": True, "skipped": True, "reason": side_effect_skip_reason}
+        elif is_insert and toggles.enable_broadcast and broadcast_assignments is not None:
             try:
                 broadcast_res = broadcast_assignments.broadcast_single_assignment(payload)
             except Exception as e:
                 broadcast_res = {"ok": False, "error": str(e)}
 
         dm_res: Any = None
-        if is_insert and toggles.enable_dms and send_dms is not None:
+        if is_insert and side_effect_skip_reason:
+            dm_res = {"ok": True, "skipped": True, "reason": side_effect_skip_reason}
+        elif is_insert and toggles.enable_dms and send_dms is not None:
             try:
                 dm_res = send_dms(payload)
             except Exception as e:

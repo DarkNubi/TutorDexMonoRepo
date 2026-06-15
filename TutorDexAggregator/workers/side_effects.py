@@ -5,9 +5,45 @@ Handles broadcast and DM delivery coordination.
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger("side_effects")
+
+
+HISTORICAL_SIDE_EFFECT_CUTOFF_HOURS = 24
+
+
+def _parse_iso_datetime(value: Any) -> Optional[datetime]:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        dt = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def side_effect_suppression_reason(payload: Dict[str, Any], existing_meta: Any = None) -> Optional[str]:
+    """Return a reason to suppress broadcast/DM for replay or historical backfill rows."""
+
+    if isinstance(existing_meta, dict):
+        if existing_meta.get("requeued_at") or existing_meta.get("requeue_reason"):
+            return "requeued_extraction"
+
+    source_dt = _parse_iso_datetime(payload.get("date") or payload.get("source_last_seen"))
+    if source_dt is None:
+        return None
+
+    age_hours = (datetime.now(timezone.utc) - source_dt).total_seconds() / 3600
+    if age_hours > HISTORICAL_SIDE_EFFECT_CUTOFF_HOURS:
+        return "historical_source_message"
+    return None
 
 
 def should_broadcast(
