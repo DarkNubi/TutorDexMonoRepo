@@ -114,6 +114,16 @@ Frequency: 1.5 Hr , 1x A Week
 """,
         ),
         (
+            "TuitionAssignmentsSG",
+            """Code ID: 1306xj
+Subject: JC2 H1 Economics (MI)
+Address: Online Lessons Only
+Frequency: 2 Hrs, 1x A Week
+- Available on: Tue/Wed/Thu aft 4pm, Sat
+- Online Lessons Permanently
+""",
+        ),
+        (
             "tuitionassignmentsttrsg",
             """🌟9 year old KET Math #A9638
 🔻Rate: $35/h
@@ -248,3 +258,25 @@ Frequency: 1.5 Hr , 1x A Week
     assert enriched["learning_mode"]["mode"] == "Hybrid"
     assert ok is False
     assert "missing_address_or_postal" in errors
+
+
+def test_mixed_online_or_physical_address_keeps_physical_address_for_hybrid():
+    raw_text = """Code ID: 1306eh
+Subject: P4 Science (Catholic High Pri)
+Address: Online Lessons OR Jalan Batai
+Frequency: 1.5 Hr, 1x A Week
+- Face-to-Face OR Online Lessons
+"""
+    parsed = {
+        "assignment_code": "1306eh",
+        "learning_mode": {"mode": None, "raw_text": None},
+        "address": None,
+        "lesson_schedule": ["Once a week"],
+    }
+
+    enriched, (ok, errors) = _enrich_and_validate(parsed, raw_text)
+
+    assert enriched["learning_mode"]["mode"] == "Hybrid"
+    assert enriched["address"] == ["Jalan Batai"]
+    assert ok is True
+    assert "missing_address_or_postal" not in errors

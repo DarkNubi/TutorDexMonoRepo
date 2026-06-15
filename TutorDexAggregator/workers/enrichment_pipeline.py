@@ -29,6 +29,7 @@ _LEARNING_MODE_ONLINE_RE = re.compile(
 _LEARNING_MODE_F2F_RE = re.compile(
     r"(?im)^\s*(?:[^\w\n]+)?\s*(?:tuition\s*)?(?:venue|mode|learning\s*mode|lesson\s*mode|le\s*on\s*mode|location(?:\s*/\s*area)?)\s*[:：\-]\s*(face[-\s]*to[-\s]*face|f2f|physical|home)\b"
     r"|^\s*(?:[^\w\n]+)?\s*.*?\b(face[-\s]*to[-\s]*face|f2f|physical|home)\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
+    r"|^\s*(?:[^\w\n]+)?\s*.*?\b(face[-\s]*to[-\s]*face|f2f|physical|home)\b.*?\b(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
 )
 _LESSON_SCHEDULE_RE = re.compile(
     r"(?im)^\s*(?:[^\w\n]+)?\s*(?:frequency|duration|schedule|timing|time|lesson\s*frequency|lesson\s*per\s*week|no\.?\s*of\s*lesson(?:s)?(?:\s*per\s*week)?|lessons?)\s*[:：\-]\s*(.+?)\s*$"
@@ -41,6 +42,9 @@ _COMPACT_SCHEDULE_RE = re.compile(
 )
 _COMPACT_HEADER_RE = re.compile(
     r"(?im)^\s*[0-9]{3,6}[A-Za-z]{1,3}\s*:\s*.+?\s+@\s+(.+?)(?:\s+on\s+|\s+\[|;|$)"
+)
+_ONLINE_ADDRESS_FRAGMENT_RE = re.compile(
+    rf"(?i)\b{_ONLINE_TERMS_RE}\b\s*(?:lessons?|le\s*ons?|tuition|class(?:es)?)?\s*(?:only|permanently)?"
 )
 
 
@@ -152,10 +156,17 @@ def fill_address_from_text(parsed: Dict[str, Any], raw_text: str) -> Tuple[Dict[
         value = re.sub(r"\s+", " ", str(match.group(1) or "").strip())
         if not value:
             continue
+        candidates = [value]
         if re.search(rf"(?i)\b{_ONLINE_TERMS_RE}\b", value):
-            continue
-        if value not in addresses:
-            addresses.append(value)
+            candidates = [
+                re.sub(r"\s+", " ", _ONLINE_ADDRESS_FRAGMENT_RE.sub("", part).strip(" -/,"))
+                for part in re.split(r"(?i)\bOR\b|/", value)
+            ]
+        for candidate in candidates:
+            if not candidate or re.search(rf"(?i)\b{_ONLINE_TERMS_RE}\b", candidate):
+                continue
+            if candidate not in addresses:
+                addresses.append(candidate)
 
     for match in _COMPACT_HEADER_RE.finditer(str(raw_text or "")):
         value = re.sub(r"\s+", " ", str(match.group(1) or "").strip())
