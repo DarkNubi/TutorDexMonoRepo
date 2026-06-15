@@ -95,3 +95,27 @@ class TestOnlineAssignmentValidation:
 
         ok, errors = validate_parsed_assignment(parsed)
         assert ok is True
+
+    def test_online_location_as_address_passes(self):
+        """LLM outputs sometimes put explicit online location in address."""
+        parsed = {
+            "learning_mode": {"mode": None, "raw_text": None},
+            "address": ["Online"],
+            "lesson_schedule": ["Once a week, 1.5 hours"],
+        }
+
+        ok, errors = validate_parsed_assignment(parsed)
+        assert ok is True
+        assert "missing_address_or_postal" not in errors
+
+    def test_zoom_location_as_address_passes(self):
+        """Virtual platform names in address/location fields are online hints."""
+        parsed = {
+            "learning_mode": None,
+            "address": ["Zoom"],
+            "lesson_schedule": ["Once a week, 1.5 hours"],
+        }
+
+        ok, errors = validate_parsed_assignment(parsed)
+        assert ok is True
+        assert "missing_address_or_postal" not in errors

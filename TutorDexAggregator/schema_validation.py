@@ -5,6 +5,7 @@ These checks are intentionally minimal to avoid blocking on optional fields;
 they catch clearly incomplete outputs that will break downstream consumers.
 """
 
+import re
 from typing import Any, Dict, List, Tuple
 
 
@@ -12,6 +13,7 @@ from typing import Any, Dict, List, Tuple
 REQUIRED_FIELDS_V2: Tuple[str, ...] = ()
 # Address fields are optional for online-only lessons (learning_mode == "online").
 ADDRESS_FIELDS = ("address", "postal_code", "postal_code_estimated", "nearest_mrt")
+ONLINE_LOCATION_RE = re.compile(r"\b(?:online|zoom|google\s*meet|teams|virtual)\b", re.IGNORECASE)
 
 
 def _has_value(value: Any) -> bool:
@@ -47,6 +49,22 @@ def _is_online_only(learning_mode: Any) -> bool:
         return mode_str == "online" or mode_str.startswith("online ")
     except Exception:
         return False
+
+
+def _has_online_location_hint(data: Dict[str, Any]) -> bool:
+    """Return True when location-ish fields explicitly say the lesson is online."""
+
+    for field in ("address", "nearest_mrt"):
+        value = data.get(field)
+        values: List[Any]
+        if isinstance(value, (list, tuple, set)):
+            values = list(value)
+        else:
+            values = [value]
+        for item in values:
+            if isinstance(item, str) and ONLINE_LOCATION_RE.search(item):
+                return True
+    return False
 
 
 def _v2_has_schedule_info(data: Dict[str, Any]) -> bool:
@@ -86,7 +104,7 @@ def validate_parsed_assignment(parsed: Dict[str, Any]) -> Tuple[bool, List[str]]
         if not _has_value(data.get(field)):
             errors.append(f"missing_{field}")
 
-    if not _is_online_only(data.get("learning_mode")) and not any(
+    if not _is_online_only(data.get("learning_mode")) and not _has_online_location_hint(data) and not any(
         _has_value(data.get(f)) for f in ADDRESS_FIELDS
     ):
         errors.append("missing_address_or_postal")
