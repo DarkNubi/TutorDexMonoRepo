@@ -21,6 +21,7 @@ _LEARNING_MODE_ONLINE_RE = re.compile(
     rf"\s*[:：\-]\s*.*?\b{_ONLINE_TERMS_RE}\b"
     rf"|^\s*(?:[^\w\n]+)?\s*{_ONLINE_TERMS_RE}\s*$"
     rf"|^\s*(?:[^\w\n]+)?\s*{_ONLINE_TERMS_RE}\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
+    rf"|^\s*(?:[^\w\n]+)\s*.*?\b{_ONLINE_TERMS_RE}\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
     rf"|^\s*(?:[^\w\n]+)?\s*.*?\b{_ONLINE_TERMS_RE}\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\s+(?:only|permanently)\b"
     rf"|^\s*(?:[^\w\n]+)?\s*.*?(?:\bvia|@)\s+{_ONLINE_TERMS_RE}\s+(?:lessons?|le\s*ons?|tuition|class(?:es)?)\b"
     rf"|^\s*(?:[^\w\n]+)?\s*.*?\b{_ONLINE_TERMS_RE}\s+(?:group\s+)?tuition\b"
@@ -39,6 +40,9 @@ _ADDRESS_LINE_RE = re.compile(
 )
 _COMPACT_SCHEDULE_RE = re.compile(
     r"(?im)^\s*(?:[^;\n]*;\s*)?(?:\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?\s*(?:hr|hrs|hour|hours)\s*,?\s*\d+(?:\s*-\s*\d+)?\s*(?:x|times?)\s*a?\s*week(?:[^;\n]*)?)"
+)
+_ICON_SCHEDULE_RE = re.compile(
+    r"(?im)^\s*(?:[^\w\n]+)\s*((?:once|twice|\d+(?:\s*-\s*\d+)?)\s*(?:lesson(?:s)?|x|times?)\s*(?:/|per|\s+a\s+)?\s*week(?:[^;\n]*)?)"
 )
 _COMPACT_HEADER_RE = re.compile(
     r"(?im)^\s*[0-9]{3,6}[A-Za-z]{1,3}\s*:\s*.+?\s+@\s+(.+?)(?:\s+on\s+|\s+\[|;|$)"
@@ -117,6 +121,12 @@ def fill_lesson_schedule_from_text(parsed: Dict[str, Any], raw_text: str) -> Tup
 
     for match in _COMPACT_SCHEDULE_RE.finditer(text):
         value = str(match.group(0) or "").strip()
+        value = re.sub(r"\s+", " ", value)
+        if value and value not in schedules:
+            schedules.append(value)
+
+    for match in _ICON_SCHEDULE_RE.finditer(text):
+        value = str(match.group(1) or "").strip()
         value = re.sub(r"\s+", " ", value)
         if value and value not in schedules:
             schedules.append(value)

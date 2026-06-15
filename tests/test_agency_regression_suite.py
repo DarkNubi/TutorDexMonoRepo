@@ -178,6 +178,17 @@ Rate: $50/hr
 """,
         ),
         (
+            "starttuition",
+            """☀ Good day! Today is 10-June, here are the 🔥 Most Recent Assignments:
+
+🌟 Sec 1, Mathematics 🌟
+📍 One-to-one online lessons
+🕒 1 lesson/week, 1.5 hours/lesson
+💰 70-85/hr
+🔗 https://starttuition.sg/tuition-assignments/A14419805ET
+""",
+        ),
+        (
             "sgTuitions",
             """Assignment
 Platform: Teams
