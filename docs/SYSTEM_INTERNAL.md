@@ -1,5 +1,14 @@
 # TutorDex Monorepo — Internal System Documentation (Authoritative)
 
+<!-- doc_lint:enforce -->
+Doc type: Reference
+
+**Docs metadata:**
+**Status:** active
+**Owner:** Mochi
+**Last reviewed:** 2026-06-17
+**Review trigger:** Update when detailed system behavior, data flows, schema contracts, runtime surfaces, or component interactions change.
+
 > Audience: senior engineers / founder returning after time away.
 >
 > Goal: document how the system **actually** works today.

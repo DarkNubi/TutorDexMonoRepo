@@ -35,6 +35,7 @@ METADATA_REQUIRED = [
     "docs/DEPLOYMENT_TOPOLOGY.md",
     "docs/OPERATIONS.md",
     "docs/TESTING.md",
+    "docs/SYSTEM_INTERNAL.md",
     "docs/DOCS_CHANGE_POLICY.md",
     "docs/DOCS_CATALOG.md",
     "docs/DOCS_SCORECARD.md",
