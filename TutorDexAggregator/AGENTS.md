@@ -1,8 +1,19 @@
 # TutorDexAggregator - Agent Notes
 
+<!-- doc_lint:enforce -->
+Doc type: Agent doorway
+
+**Docs metadata:**
+**Status:** active
+**Owner:** Mochi
+**Last reviewed:** 2026-06-17
+**Review trigger:** Update when aggregator startup, extraction/queue/persistence behavior, side effects, docs routing, or verification expectations change.
+
 This folder contains the Telegram ingestion + LLM extraction + broadcast pipeline for TutorDex.
 
 Use this document as the "map" when making changes, debugging incidents, or adding new agencies.
+
+Before non-trivial edits, read `../AGENTS.md`, `../docs/SYSTEM_MAP.md`, `../docs/ARCHITECTURE.md`, `../docs/KNOWN_INVARIANTS.md`, `../docs/TESTING.md`, `../docs/OPERATIONS.md`, and `../docs/DOCS_CHANGE_POLICY.md`. For docs or behavior changes, run `python3 scripts/docs_health.py` from the repo root and record the docs update/skip decision in task evidence.
 
 ## High-level flow (current queue pipeline)
 
@@ -116,4 +127,3 @@ Any of these may be blocked/unavailable depending on the runtime environment; er
 - Keep prompt/schema edits consistent with example files in `message_examples/`.
 - Do not add new dependencies unless necessary.
 - Prefer UTF-8 text files; avoid smart quotes in docs to keep Windows terminals happy.
-

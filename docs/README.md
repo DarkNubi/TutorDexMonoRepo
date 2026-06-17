@@ -1,5 +1,14 @@
 # TutorDex Documentation
 
+<!-- doc_lint:enforce -->
+Doc type: Index
+
+**Docs metadata:**
+**Status:** active
+**Owner:** Mochi
+**Last reviewed:** 2026-06-17
+**Review trigger:** Update when canonical docs, historical classification, docs health, ADR lane, or generated inventory surfaces change.
+
 ## 📚 Documentation Index
 
 Welcome to the TutorDex technical documentation. This directory contains comprehensive documentation for the TutorDex tuition assignment aggregator system.
@@ -8,6 +17,10 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 
 ## 🚀 Quick Start
 
+- **AI agent / operator?** Start with [../AGENTS.md](../AGENTS.md), then [SYSTEM_MAP.md](SYSTEM_MAP.md), [ARCHITECTURE.md](ARCHITECTURE.md), [KNOWN_INVARIANTS.md](KNOWN_INVARIANTS.md), [DEPLOYMENT_TOPOLOGY.md](DEPLOYMENT_TOPOLOGY.md), [TESTING.md](TESTING.md), [OPERATIONS.md](OPERATIONS.md), and [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md)
+- **Changing behavior?** Check [DOCS_CHANGE_POLICY.md](DOCS_CHANGE_POLICY.md), run `python3 scripts/docs_change_guard.py --base HEAD`, and record the docs update/skip decision in task evidence.
+- **Architecture decision?** Use [adr/README.md](adr/README.md) and [adr/ADR_TEMPLATE.md](adr/ADR_TEMPLATE.md) for TutorDex-local decisions.
+- **Docs health?** Run `python3 scripts/docs_health.py` and use [DOCS_SCORECARD.md](DOCS_SCORECARD.md) for the current SOTA audit.
 - **New Developer?** Start with [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md) for architecture overview
 - **Setting up environment?** See [../DEPENDENCIES.md](../DEPENDENCIES.md) and [../scripts/bootstrap.sh](../scripts/bootstrap.sh)
 - **What to work on?** See [OUTSTANDING_TASKS_SUMMARY.md](OUTSTANDING_TASKS_SUMMARY.md) ⭐ for prioritized task list
@@ -18,6 +31,13 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
 ## 📖 Core Documentation
 
 ### System Architecture
+- **[../AGENTS.md](../AGENTS.md)** - Short repo-wide agent entrypoint: canonical docs, execution surfaces, safety rules
+- **[SYSTEM_MAP.md](SYSTEM_MAP.md)** - Skimmable repo map: what exists, primary flows, runtime surfaces, debug entry points
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Design boundaries, ownership, invariants, runtime boundaries, failure modes
+- **[KNOWN_INVARIANTS.md](KNOWN_INVARIANTS.md)** - Must-not-break assumptions for data, extraction, side effects, runtime surfaces, security, and docs
+- **[DEPLOYMENT_TOPOLOGY.md](DEPLOYMENT_TOPOLOGY.md)** - Deployment/runtime surfaces, release flow, proof requirements, rollback paths
+- **[TESTING.md](TESTING.md)** - Test layers, smoke gates, what each check proves, evidence recording
+- **[OPERATIONS.md](OPERATIONS.md)** - Current operational runbook: health checks, incident starting points, proof expectations
 - **[SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md)** - Authoritative system architecture and behavior documentation (1,246 lines)
   - Message collection and extraction pipeline
   - Persistence and merge strategies
@@ -28,6 +48,11 @@ Welcome to the TutorDex technical documentation. This directory contains compreh
   - `main` push deploy surfaces
   - Firebase staging and production promotion checklist
   - Documentation rules for deploy behavior
+- **[DOCS_CHANGE_POLICY.md](DOCS_CHANGE_POLICY.md)** - Change-to-docs routing matrix and local advisory guard
+- **[DOCS_CATALOG.md](DOCS_CATALOG.md)** - Active vs historical docs classification
+- **[GENERATED_INVENTORY.md](GENERATED_INVENTORY.md)** - Compact generated repo inventory
+- **[DOCS_SCORECARD.md](DOCS_SCORECARD.md)** - SOTA docs audit, residual gaps, final recommendation
+- **[adr/README.md](adr/README.md)** - TutorDex repo-local ADR lane and decision index
 
 ### Features
 - **[signals.md](signals.md)** - Signal extraction documentation (tutor types, rate breakdown)
@@ -119,6 +144,7 @@ Historical documentation from completed projects is preserved in the archive:
 ### Developer Tools
 - **[codex-instructions.md](codex-instructions.md)** - AI coding assistant instructions
 - **[../.github/copilot-instructions.md](../.github/copilot-instructions.md)** - GitHub Copilot configuration
+- **[../scripts/tutordex_healthcheck.sh](../scripts/tutordex_healthcheck.sh)** - Read-only orientation helper for agents; does not source or print env files itself
 
 ### Component READMEs
 - **[../TutorDexAggregator/README.md](../TutorDexAggregator/README.md)** - Aggregator service documentation
@@ -145,6 +171,17 @@ Historical documentation from completed projects is preserved in the archive:
 ```
 docs/
 ├── README.md (this file)                        # Documentation index
+├── SYSTEM_MAP.md                                # Skimmable repo map
+├── ARCHITECTURE.md                              # Design boundaries and invariants
+├── KNOWN_INVARIANTS.md                          # Must-not-break assumptions
+├── DEPLOYMENT_TOPOLOGY.md                       # Runtime/deploy surfaces
+├── TESTING.md                                   # Test and proof gates
+├── OPERATIONS.md                                # Current operator runbook
+├── DOCS_CHANGE_POLICY.md                        # Change-to-docs routing
+├── DOCS_CATALOG.md                              # Active/historical classification
+├── GENERATED_INVENTORY.md                       # Generated inventory
+├── DOCS_SCORECARD.md                            # SOTA docs scorecard
+├── adr/                                         # Repo-local ADR lane
 ├── CONSOLIDATION_PLAN.md                        # Documentation consolidation strategy
 ├── IMPLEMENTATION_PLAN_2026-01-16.md            # Current implementation plan
 │
@@ -202,9 +239,12 @@ docs/
 ## 🎯 Common Tasks
 
 ### Understanding the System
-1. Read [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md) for overall architecture
-2. Check [../DEPENDENCIES.md](../DEPENDENCIES.md) for external services
-3. Review [DUPLICATE_DETECTION_INDEX.md](DUPLICATE_DETECTION_INDEX.md) for duplicate handling
+1. Read [SYSTEM_MAP.md](SYSTEM_MAP.md) for navigation and debug entry points
+2. Read [ARCHITECTURE.md](ARCHITECTURE.md) for boundaries and ownership
+3. Read [KNOWN_INVARIANTS.md](KNOWN_INVARIANTS.md) for assumptions that must not break
+4. Read [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md) for detailed behavior
+5. Check [../DEPENDENCIES.md](../DEPENDENCIES.md) for external services
+6. Review [DUPLICATE_DETECTION_INDEX.md](DUPLICATE_DETECTION_INDEX.md) for duplicate handling
 
 ### Setting Up Development Environment
 1. Run `../scripts/bootstrap.sh` to set up everything automatically
@@ -218,9 +258,11 @@ docs/
 4. Run pre-commit hooks with `git commit` (see `../.githooks/`)
 
 ### Monitoring & Debugging
-1. See [GRAFANA_AUDIT_SUMMARY.md](GRAFANA_AUDIT_SUMMARY.md) for available dashboards
-2. Check `../observability/` for Prometheus, Grafana, Tempo configuration
-3. Use [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md) for debugging pipeline issues
+1. Start with [OPERATIONS.md](OPERATIONS.md) and state the execution surface checked
+2. Run `../scripts/tutordex_healthcheck.sh` for a read-only orientation pass
+3. See [GRAFANA_AUDIT_SUMMARY.md](GRAFANA_AUDIT_SUMMARY.md) for available dashboards
+4. Check `../observability/` for Prometheus, Grafana, Tempo configuration
+5. Use [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md) for debugging pipeline issues
 
 ---
 
@@ -239,7 +281,13 @@ docs/
 - Include troubleshooting sections
 
 ### Maintenance
+- Update [SYSTEM_MAP.md](SYSTEM_MAP.md) when components, flows, or debug entry points move
+- Update [ARCHITECTURE.md](ARCHITECTURE.md) when ownership boundaries, invariants, or runtime boundaries change
+- Update [KNOWN_INVARIANTS.md](KNOWN_INVARIANTS.md) when a must-not-break assumption changes
+- Update [DEPLOYMENT_TOPOLOGY.md](DEPLOYMENT_TOPOLOGY.md) when deployment/runtime surfaces change
+- Update [TESTING.md](TESTING.md) when test commands, smoke gates, or proof expectations change
 - Update [SYSTEM_INTERNAL.md](SYSTEM_INTERNAL.md) when changing core behavior
+- Update [OPERATIONS.md](OPERATIONS.md) when changing production operations, health checks, recovery, or verification procedures
 - Keep audit documentation frozen (historical record)
 - Update this index when adding new major documentation
 

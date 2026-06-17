@@ -1,0 +1,21 @@
+name: Docs Health
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  docs-health:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: TutorDex docs health
+        run: python3 scripts/docs_health.py
+      - name: TutorDex docs change guard
+        run: python3 scripts/docs_change_guard.py --base HEAD
+
