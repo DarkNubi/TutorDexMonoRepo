@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_DOCS = [
     "AGENTS.md",
+    "TutorDexAggregator/AGENTS.md",
     "docs/README.md",
     "docs/SYSTEM_MAP.md",
     "docs/ARCHITECTURE.md",
