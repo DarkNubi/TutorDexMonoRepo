@@ -36,4 +36,3 @@ What are we choosing?
 ## Rollback / Supersession
 
 How can this decision be reversed or superseded safely?
-

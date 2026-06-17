@@ -34,4 +34,3 @@ Do not add an ADR for routine bug fixes unless the fix changes a durable rule.
 3. Link the ADR from this index.
 4. Update `docs/SYSTEM_MAP.md`, `docs/ARCHITECTURE.md`, `docs/KNOWN_INVARIANTS.md`, or `docs/OPERATIONS.md` if the decision changes active behavior.
 5. Run `python3 scripts/docs_health.py` before verification.
-

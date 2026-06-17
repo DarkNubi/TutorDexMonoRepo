@@ -18,4 +18,3 @@ jobs:
         run: python3 scripts/docs_health.py
       - name: TutorDex docs change guard
         run: python3 scripts/docs_change_guard.py --base HEAD
-

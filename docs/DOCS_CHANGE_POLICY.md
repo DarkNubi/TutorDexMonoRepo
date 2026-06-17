@@ -37,4 +37,3 @@ python3 scripts/docs_change_guard.py --base HEAD
 The guard is advisory. It reports changed path groups and the docs that should be inspected. It does not read env files, secrets, logs, or production state.
 
 Use `--changed-file <path>` for task evidence when checking a synthetic or staged path list.
-
