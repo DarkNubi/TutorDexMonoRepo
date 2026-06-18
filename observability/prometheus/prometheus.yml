@@ -29,15 +29,20 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 20s
     params:
-      module: [http_2xx]
+      module: [http_2xx_tutordex_lan_sni]
     static_configs:
       - targets:
-          - https://tutordex-api.duckdns.org/health
-          - https://tutordex-api.duckdns.org/health/dependencies
+          - https://192.168.1.42/health
+          - https://192.168.1.42/health/dependencies
+        labels:
+          public_host: tutordex-api.duckdns.org
+          probe_route: lan_sni
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
-      - source_labels: [__param_target]
+      - source_labels: [__param_target, public_host]
+        regex: "https://192\\.168\\.1\\.42(/.*);(.+)"
+        replacement: "https://${2}${1}"
         target_label: instance
       - target_label: __address__
         replacement: blackbox-exporter:9115

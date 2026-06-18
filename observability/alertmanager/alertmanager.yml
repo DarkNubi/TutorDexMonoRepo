@@ -15,6 +15,12 @@ route:
       group_interval: 1h
       repeat_interval: 24h
     - matchers:
+        - alertname=~"PublicApiDown|BlackboxProbeFailed"
+      receiver: telegram-probe
+      group_wait: 60s
+      group_interval: 15m
+      repeat_interval: 1h
+    - matchers:
         - severity="critical"
       receiver: telegram-critical
       group_wait: 5s
@@ -37,5 +43,10 @@ receivers:
     webhook_configs:
       - url: http://alertmanager-telegram:8080/alert
         send_resolved: true
+
+  - name: telegram-probe
+    webhook_configs:
+      - url: http://alertmanager-telegram:8080/alert
+        send_resolved: false
 
   - name: blackhole
