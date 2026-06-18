@@ -6,7 +6,7 @@ Doc type: How-to
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-06-18
 **Review trigger:** Update when operational commands, runtime proof requirements, health checks, incident starts, or rollback paths change.
 
 Current operator entrypoint for agents and humans running TutorDex checks from Strawberry HQ.
@@ -48,6 +48,14 @@ With a public API health endpoint:
 ```
 
 The helper is read-only. It does not source or print env files itself. When `--env staging|prod` is used, Docker Compose may read the selected env file for interpolation.
+
+For prod `tutordex-api.duckdns.org`, distinguish three ingress surfaces:
+
+- Backend-in-container: `http://backend:8000/health`
+- LAN-SNI ingress monitor: blackbox probes `https://192.168.1.42/health` with Host/SNI `tutordex-api.duckdns.org` and relabels the result as the public URL
+- True outside-WAN public availability: an external network probe to `https://tutordex-api.duckdns.org/health`
+
+WSL/LAN curls to DuckDNS can fail on router hairpin/NAT even when Caddy and backend are healthy. Use mobile data, an external VM/CI runner, or another network for real public-WAN proof.
 
 ## Canonical Ops Commands
 
@@ -95,6 +103,7 @@ If one of these cannot be checked from the current shell, write `unknown` and ex
 | Staging smoke | `./scripts/ops/smoke.sh --env staging` | Selected compose env | Does not prove prod |
 | Prod status | `./scripts/ops/status.sh --env prod` | BizServer/selected compose env | Requires explicit prod intent |
 | Public API | `./scripts/tutordex_healthcheck.sh --public-url <url>` | Public ingress/API URL | Does not prove queue |
+| LAN-SNI API monitor | Prometheus query for `probe_success{job="blackbox_http_public",probe_route="lan_sni"}` | Prod Prometheus in-container API | Not outside-WAN proof |
 | Queue/Supabase | `scripts/ops/supabase_queue_health.sh --env <env>` | Supabase/PostgREST/RPC | Redact credentials |
 
 ## Collector And Catchup
@@ -113,6 +122,8 @@ Canonical docs:
 - `docs/SYSTEM_INTERNAL.md`
 
 Important rule: recovery catchup state alone is not full proof. Pair it with newest raw message time, queue depth, and worker/API health.
+
+Suggested catchup closure for T2-2061/T2-2060 overlap: keep collector catchup as its own verification item. To close it, capture newest `telegram_messages_raw` timestamp, recovery cursor/state, pending/processing extraction counts, worker logs, and backend assignment freshness. If those agree, mark catchup healthy; if not, leave it as a separate backlog/catchup task instead of mixing it into ingress availability.
 
 ## Incident Starting Points
 

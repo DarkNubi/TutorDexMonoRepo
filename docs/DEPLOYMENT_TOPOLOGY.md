@@ -6,7 +6,7 @@ Doc type: Reference
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-06-18
 **Review trigger:** Update when deployment workflows, runtime hosts, compose services, public ingress, Firebase release behavior, or rollback procedures change.
 
 Runtime and deployment surfaces for TutorDex. This document is about where things run and how to prove which surface you checked.
@@ -43,6 +43,9 @@ Public ingress/API:
 
 - User-facing backend/API health must be checked through the intended public URL or ingress path.
 - A container or localhost health check is not enough for user-facing availability.
+- Current prod Caddy ingress terminates `tutordex-api.duckdns.org` and proxies to the Docker service alias `backend:8000`.
+- Prod blackbox monitoring uses a LAN-SNI route: it probes `https://192.168.1.42/...` while sending Host/SNI `tutordex-api.duckdns.org`, then relabels the `instance` back to the public URL. This proves Caddy/TLS/backend from inside the LAN, not outside-WAN reachability.
+- Do not treat a failed DuckDNS curl from WSL/LAN as definitive public outage proof; that path can fail because of router hairpin/NAT loopback. Use an outside-LAN probe for true WAN availability.
 
 Firebase Hosting:
 
@@ -144,6 +147,7 @@ If checking public availability, include the public URL or route checked without
 | Docker Desktop context | `./scripts/tutordex_healthcheck.sh --env staging` | Compose ps output for selected project | Depends on local Docker reachability |
 | BizServer Windows node | GitHub Actions deploy log or explicit node-host status command | Correct checkout and compose project on server | Requires node/credential access |
 | Public ingress/API | `curl <public-url>/health` or healthcheck `--public-url` | HTTP success from public route | Does not prove worker queue health |
+| LAN-SNI ingress monitor | `probe_success{job="blackbox_http_public",probe_route="lan_sni"}` in prod Prometheus | `1` for `/health` and `/health/dependencies` | Proves Caddy/TLS/backend from LAN only; not outside-WAN proof |
 | Supabase/PostgREST/RPC | `scripts/ops/supabase_queue_health.sh --env <env>` | Queue/read checks succeed | Never paste service role keys |
 | Firebase Hosting | Workflow or Firebase target inspection | Staging/prod target matches intended release | Production is manual dispatch |
 
@@ -169,5 +173,6 @@ Docs-only changes:
 
 - Do not assume Docker context `default` is the production Docker host.
 - Do not assume `localhost` means the same thing from WSL, Windows, a container, or BizServer.
+- Do not equate LAN-SNI blackbox success with outside-WAN success. If user-facing internet availability matters, verify from mobile data, an external runner, or another network.
 - Do not use Supabase Studio UI as the primary agent access path; prefer documented scripts/RPCs.
 - Do not run prod-changing commands without explicit prod intent, rollback, and verification evidence.

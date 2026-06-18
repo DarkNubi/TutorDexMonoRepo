@@ -45,6 +45,16 @@ This repo runs observability **fully in Docker** via the root `docker-compose.ym
 - Traces: OTEL Collector and Tempo are included in the default stack. Service-side instrumentation is enabled when `OTEL_ENABLED=1`.
 - **Error tracking**: Use Sentry Cloud by providing `SENTRY_DSN` in your service environment.
 
+## Public API Monitoring Note
+
+Prod `blackbox_http_public` intentionally uses a LAN-SNI route rather than a raw DuckDNS hairpin from inside the LAN:
+
+- probe target: `https://192.168.1.42/health` and `/health/dependencies`
+- Host/SNI: `tutordex-api.duckdns.org`
+- Prometheus label: `instance=https://tutordex-api.duckdns.org/...`, `probe_route=lan_sni`
+
+This proves Caddy/TLS/backend from the LAN and avoids router hairpin/NAT false positives. It does not prove outside-WAN availability; use mobile data, a remote VM, GitHub Actions, or another external network for that.
+
 ## Quick sanity check
 
 - `./observability/doctor.sh`

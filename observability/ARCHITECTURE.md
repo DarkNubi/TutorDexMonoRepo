@@ -2,6 +2,8 @@
 
 This document provides a visual overview of how the TutorDex observability stack is structured.
 
+**Last reviewed:** 2026-06-18
+
 ---
 
 ## System Architecture
@@ -123,6 +125,7 @@ This document provides a visual overview of how the TutorDex observability stack
 │  • Worker health       │      │  • Network I/O         │
 │  • Backend health      │      │  • Disk I/O            │
 │  • Dependencies        │      │  • Container stats     │
+│  • LAN-SNI API probe   │      │                        │
 └────────────────────────┘      └────────────────────────┘
 
 ┌────────────────────────┐
@@ -137,6 +140,20 @@ This document provides a visual overview of how the TutorDex observability stack
 │  • System load         │
 └────────────────────────┘
 ```
+
+---
+
+## Public API Probe Topology
+
+The production public API monitor intentionally avoids router hairpin/NAT loopback.
+
+- Caddy serves `tutordex-api.duckdns.org` and proxies to `backend:8000`.
+- Blackbox target URLs are LAN-direct (`https://192.168.1.42/health` and `/health/dependencies`).
+- The blackbox module sends Host/SNI `tutordex-api.duckdns.org` and skips certificate verification only because it is probing by LAN IP while validating the SNI/TLS/backend route.
+- Prometheus relabels the `instance` back to `https://tutordex-api.duckdns.org/...` and adds `probe_route="lan_sni"`.
+- Alert rules for `PublicApiDown` and blackbox probe failure use the `probe_route="lan_sni"` series so stale pre-change DuckDNS hairpin samples do not fire alerts.
+
+This monitor proves Caddy/TLS/backend from inside the LAN. It does not prove outside-WAN availability. For outside-WAN proof, run the public URL check from mobile data, a remote VM, GitHub Actions, or another network.
 
 ---
 
