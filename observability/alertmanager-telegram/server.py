@@ -3,7 +3,9 @@ from __future__ import annotations
 import html
 import json
 import os
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib import error, request
 
@@ -28,6 +30,15 @@ CHAT_ID = _env("ALERT_CHAT_ID")
 THREAD_ID = _env_int("ALERT_THREAD_ID")
 PREFIX = _env("ALERT_PREFIX", "[TutorDex]")
 ENVIRONMENT = _env("APP_ENV", "dev").upper()
+
+
+def _log_event(event: str, **fields: Any) -> None:
+    safe_fields = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "event": event,
+        **{k: v for k, v in fields.items() if v is not None},
+    }
+    print(json.dumps(safe_fields, ensure_ascii=False, sort_keys=True), file=sys.stderr, flush=True)
 
 
 def _esc(s: Any) -> str:
@@ -180,8 +191,27 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             payload = {}
 
+        common = payload.get("commonLabels") if isinstance(payload, dict) and isinstance(payload.get("commonLabels"), dict) else {}
+        alerts = payload.get("alerts") if isinstance(payload, dict) and isinstance(payload.get("alerts"), list) else []
+        _log_event(
+            "alert_webhook_received",
+            remote_addr=self.client_address[0] if self.client_address else None,
+            receiver=payload.get("receiver") if isinstance(payload, dict) else None,
+            status=payload.get("status") if isinstance(payload, dict) else None,
+            alertname=common.get("alertname"),
+            component=common.get("component"),
+            severity=common.get("severity"),
+            alert_count=len(alerts),
+        )
+
         text = _format_alertmanager(payload if isinstance(payload, dict) else {})
         ok, meta = _send_telegram(text)
+        _log_event(
+            "telegram_send_result",
+            ok=ok,
+            status_code=meta.get("status_code"),
+            error=meta.get("error"),
+        )
 
         out = {"ok": ok, "meta": meta}
         body = json.dumps(out, ensure_ascii=False).encode("utf-8")
