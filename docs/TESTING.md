@@ -6,7 +6,7 @@ Doc type: How-to
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-06-20
 **Review trigger:** Update when test commands, proof gates, CI gates, docs health, or evidence requirements change.
 
 Proof gates and test entry points for TutorDex. Use this with `OPERATIONS.md` when deciding what a change proves.
@@ -158,6 +158,7 @@ CI is useful evidence, but it does not replace environment-specific smoke checks
 | Docs guard / inventory scripts | `python3 -m py_compile scripts/docs_health.py scripts/docs_change_guard.py scripts/docs_inventory.py`; script help/run | Exit 0 and non-secret output | Record exact stderr if unavailable |
 | Shell ops helper | `bash -n`; `--help`; read-only dry run | Exit 0 or documented unavailable dependency | Dependency failures are unknown, not live outage |
 | Aggregator extraction/persistence | Targeted pytest plus docs guard | Tests pass and docs update/skip recorded | If LLM/Supabase unavailable, run local unit slice and record gap |
+| BizServer host LLM | `schtasks /Query /TN TutorDexLlamaServer /FO LIST /V`; host `/v1/models`; worker `/v1/models` or `/v1/chat/completions` | SYSTEM startup task and worker route both pass | Startup-safe config is not a real reboot test |
 | Backend/API | Backend pytest plus smoke where reachable | Tests pass; smoke surface named | Local smoke is not public proof |
 | Website | `npm test`, `npm run build` | Tests/build pass | Record package/tooling blocker |
 | Deployment/ops | `scripts/ops/status.sh`, `scripts/ops/smoke.sh`, rollback docs check | Surface-specific pass | Prod checks require explicit prod intent |

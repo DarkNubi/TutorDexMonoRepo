@@ -6,7 +6,7 @@ Doc type: Reference
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-06-20
 **Review trigger:** Update when repo components, primary flows, runtime surfaces, docs routing, or generated inventory change.
 
 Skimmable navigation for agents and operators. For deeper design boundaries, read `docs/ARCHITECTURE.md`. For detailed behavior, read `docs/SYSTEM_INTERNAL.md`.
@@ -132,6 +132,7 @@ Targeted docs:
 - Time availability: `time_availability.md`
 - Duplicate detection: `DUPLICATE_DETECTION_INDEX.md`
 - Observability: `../observability/README.md`
+- BizServer host LLM: `OPERATIONS.md#bizserver-local-llm-endpoint`
 
 ## Canonical Docs Model
 

@@ -6,7 +6,7 @@ Doc type: Reference
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-18
+**Last reviewed:** 2026-06-20
 **Review trigger:** Update when deployment workflows, runtime hosts, compose services, public ingress, Firebase release behavior, or rollback procedures change.
 
 Runtime and deployment surfaces for TutorDex. This document is about where things run and how to prove which surface you checked.
@@ -38,6 +38,7 @@ BizServer Windows node:
 - Production server surface reached by GitHub Actions through Tailscale SSH.
 - Workflow path pulls under `D:/TutorDex` and runs `docker compose up -d --build --pull=never`.
 - Evidence from WSL localhost is not evidence from BizServer.
+- Host-side LLM dependency for production extraction: Windows scheduled task `TutorDexLlamaServer` runs `D:\TutorDex\TutorDexAggregator\start_llama_server_loop.bat` as `SYSTEM` at system startup. It serves llama.cpp on `0.0.0.0:1234`; worker containers reach it at `http://host.docker.internal:1234`.
 
 Public ingress/API:
 
@@ -68,6 +69,8 @@ flowchart TB
   Compose --> Backend[backend]
   Compose --> Collector[collector-tail]
   Compose --> Worker[aggregator-worker]
+  BizServer --> HostLLM[host llama.cpp / TutorDexLlamaServer]
+  Worker --> HostLLM
   Compose --> Redis[redis]
   Compose --> Observability[Prometheus/Grafana/Alertmanager]
   Backend --> Public[public ingress / API health]
@@ -146,6 +149,8 @@ If checking public availability, include the public URL or route checked without
 | Local WSL shell | `python3 scripts/docs_health.py` or `./scripts/tutordex_healthcheck.sh --skip-docker` | Docs/helper checks pass and surface is labeled local | Not production proof |
 | Docker Desktop context | `./scripts/tutordex_healthcheck.sh --env staging` | Compose ps output for selected project | Depends on local Docker reachability |
 | BizServer Windows node | GitHub Actions deploy log or explicit node-host status command | Correct checkout and compose project on server | Requires node/credential access |
+| BizServer host LLM | `schtasks /Query /TN TutorDexLlamaServer /FO LIST /V` plus `http://127.0.0.1:1234/v1/models` | SYSTEM startup task enabled and llama.cpp endpoint returns model list | Startup-safe config is not the same as a real reboot test |
+| Worker-to-host LLM | `docker exec tutordex-prod-aggregator-worker-1 ... host.docker.internal:1234/v1/models` | HTTP 200 from inside worker container | Proves container route only, not LLM extraction quality |
 | Public ingress/API | `curl <public-url>/health` or healthcheck `--public-url` | HTTP success from public route | Does not prove worker queue health |
 | LAN-SNI ingress monitor | `probe_success{job="blackbox_http_public",probe_route="lan_sni"}` in prod Prometheus | `1` for `/health` and `/health/dependencies` | Proves Caddy/TLS/backend from LAN only; not outside-WAN proof |
 | Supabase/PostgREST/RPC | `scripts/ops/supabase_queue_health.sh --env <env>` | Queue/read checks succeed | Never paste service role keys |

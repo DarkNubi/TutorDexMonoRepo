@@ -4,11 +4,11 @@ REM Expects you to set LLAMA_SERVER_EXE and LLAMA_MODEL_PATH (either in this fil
 REM
 REM Recommended:
 REM - Keep port at 1234 so TutorDexAggregator's default LLM_API_URL works unchanged.
-REM - Keep ctx at 16384 to match your current LM Studio setup.
+REM - Keep ctx at 16384 to match the current BizServer llama.cpp setup.
 REM
 REM Example (edit to your actual paths):
 REM set "LLAMA_SERVER_EXE=C:\llama-bin\llama-server.exe"
-REM set "LLAMA_MODEL_PATH=D:\models\liquidai-lfm2-8b-a1b.Q4_K_M.gguf"
+REM set "LLAMA_HF_REPO=LiquidAI/LFM2.5-8B-A1B-GGUF:Q4_K_M"
 REM
 REM Optional overrides:
 REM set "LLAMA_SERVER_HOST=0.0.0.0"
@@ -24,7 +24,7 @@ cd /D d:\TutorDex\TutorDexAggregator
 
 REM Local defaults (safe to override via env vars).
 if "%LLAMA_SERVER_EXE%"=="" set "LLAMA_SERVER_EXE=C:\llama-bin\llama-server.exe"
-if "%LLAMA_MODEL_PATH%"=="" set "LLAMA_MODEL_PATH=C:\models\LFM2-8B-A1B-Q4_K_M.gguf"
+if "%LLAMA_MODEL_PATH%"=="" set "LLAMA_MODEL_PATH=C:\models\LFM2.5-8B-A1B-Q4_K_M.gguf"
 
 if "%LLAMA_SERVER_EXE%"=="" (
   echo [ERROR] LLAMA_SERVER_EXE is not set.
@@ -32,9 +32,9 @@ if "%LLAMA_SERVER_EXE%"=="" (
   pause
   exit /b 2
 )
-if "%LLAMA_MODEL_PATH%"=="" (
-  echo [ERROR] LLAMA_MODEL_PATH is not set.
-  echo Set it to the full path of your GGUF model and re-run.
+if "%LLAMA_MODEL_PATH%"=="" if "%LLAMA_HF_REPO%"=="" (
+  echo [ERROR] Neither LLAMA_MODEL_PATH nor LLAMA_HF_REPO is set.
+  echo Set LLAMA_HF_REPO to a Hugging Face repo:quant or LLAMA_MODEL_PATH to a GGUF path and re-run.
   pause
   exit /b 2
 )
@@ -47,7 +47,7 @@ if "%LLAMA_THREADS%"=="" set "LLAMA_THREADS=6"
 if "%LLAMA_BATCH%"=="" set "LLAMA_BATCH=512"
 if "%LLAMA_NGL%"=="" set "LLAMA_NGL=999"
 REM Default: force single slot and KV offload unless explicitly overridden.
-if "%LLAMA_SERVER_ARGS%"=="" set "LLAMA_SERVER_ARGS=-np 1"
+if "%LLAMA_SERVER_ARGS%"=="" set "LLAMA_SERVER_ARGS=--reasoning off --reasoning-format deepseek --reasoning-budget 0 -np 1"
 
 
 :loop
@@ -55,17 +55,26 @@ echo ========================================
 echo Starting llama-server at %date% %time%
 echo - exe:  %LLAMA_SERVER_EXE%
 echo - model:%LLAMA_MODEL_PATH%
+echo - hf:   %LLAMA_HF_REPO%
 echo - host: %LLAMA_SERVER_HOST%  port: %LLAMA_SERVER_PORT%
 echo - ctx:  %LLAMA_CTX%  threads: %LLAMA_THREADS%  batch: %LLAMA_BATCH%  ngl: %LLAMA_NGL%
 echo ========================================
 
 REM Keep flags conservative for compatibility across llama.cpp versions.
 REM Add any version-specific flags via LLAMA_SERVER_ARGS.
-"%LLAMA_SERVER_EXE%" ^
-  -m "%LLAMA_MODEL_PATH%" ^
-  --host %LLAMA_SERVER_HOST% --port %LLAMA_SERVER_PORT% ^
-  -c %LLAMA_CTX% -t %LLAMA_THREADS% -b %LLAMA_BATCH% -ngl %LLAMA_NGL% ^
-  %LLAMA_SERVER_ARGS%
+if not "%LLAMA_HF_REPO%"=="" (
+  "%LLAMA_SERVER_EXE%" ^
+    -hf "%LLAMA_HF_REPO%" ^
+    --host %LLAMA_SERVER_HOST% --port %LLAMA_SERVER_PORT% ^
+    -c %LLAMA_CTX% -t %LLAMA_THREADS% -b %LLAMA_BATCH% -ngl %LLAMA_NGL% ^
+    %LLAMA_SERVER_ARGS%
+) else (
+  "%LLAMA_SERVER_EXE%" ^
+    -m "%LLAMA_MODEL_PATH%" ^
+    --host %LLAMA_SERVER_HOST% --port %LLAMA_SERVER_PORT% ^
+    -c %LLAMA_CTX% -t %LLAMA_THREADS% -b %LLAMA_BATCH% -ngl %LLAMA_NGL% ^
+    %LLAMA_SERVER_ARGS%
+)
 
 echo.
 echo llama-server stopped at %date% %time% - restarting in 5 seconds...

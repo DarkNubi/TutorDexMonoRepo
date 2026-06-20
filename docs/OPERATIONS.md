@@ -6,7 +6,7 @@ Doc type: How-to
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-18
+**Last reviewed:** 2026-06-20
 **Review trigger:** Update when operational commands, runtime proof requirements, health checks, incident starts, or rollback paths change.
 
 Current operator entrypoint for agents and humans running TutorDex checks from Strawberry HQ.
@@ -92,6 +92,67 @@ Minimum healthy evidence for live TutorDex:
 7. Public website/API path is checked separately when the user-facing surface matters.
 
 If one of these cannot be checked from the current shell, write `unknown` and explain the missing surface.
+
+## BizServer Local LLM Endpoint
+
+Production extraction workers call a host-side OpenAI-compatible llama.cpp server through:
+
+- Worker env: `LLM_API_URL=http://host.docker.internal:1234`
+- Windows endpoint: `http://127.0.0.1:1234`
+- Model file: `C:\models\LFM2.5-8B-A1B-Q4_K_M.gguf`
+- Launcher: `D:\TutorDex\TutorDexAggregator\start_llama_server_loop.bat`
+- Windows scheduled task: `TutorDexLlamaServer`
+
+`TutorDexLlamaServer` is intentionally registered as a SYSTEM startup task:
+
+- `Run As User: SYSTEM`
+- `Schedule Type: At system start up`
+- `Stop Task If Runs X Hours and X Mins: Disabled`
+
+This avoids depending on the `Living Room` interactive login session. The task was proven by a controlled stop/start and endpoint smoke, but an actual BizServer reboot is a separate disruptive check.
+
+Read-only inspection:
+
+```bat
+schtasks /Query /TN TutorDexLlamaServer /FO LIST /V
+tasklist | findstr /I llama
+```
+
+Endpoint smoke from BizServer Windows:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 http://127.0.0.1:1234/v1/models
+```
+
+Worker-path smoke from Docker:
+
+```bash
+docker exec tutordex-prod-aggregator-worker-1 python -c "import urllib.request; print(urllib.request.urlopen('http://host.docker.internal:1234/v1/models', timeout=15).status)"
+```
+
+Minimal generation smoke:
+
+```bash
+docker exec tutordex-prod-aggregator-worker-1 python -c "import json, urllib.request; data=json.dumps({'model':'lfm2-8b-a1b','messages':[{'role':'user','content':'Reply OK.'}],'max_tokens':4,'temperature':0}).encode(); req=urllib.request.Request('http://host.docker.internal:1234/v1/chat/completions', data=data, headers={'Content-Type':'application/json'}); print(urllib.request.urlopen(req, timeout=120).read().decode()[:500])"
+```
+
+If extraction logs show `llm_connection` or `Network unreachable` for `host.docker.internal:1234`, check this host-side service before restarting workers.
+
+Repair path:
+
+```bat
+schtasks /Run /TN TutorDexLlamaServer
+```
+
+If the task is wedged, end it, stop `llama-server.exe`, run the task again, then repeat the endpoint and worker-path smokes:
+
+```bat
+schtasks /End /TN TutorDexLlamaServer
+taskkill /IM llama-server.exe /F
+schtasks /Run /TN TutorDexLlamaServer
+```
+
+Rollback path: recreate the previous interactive logon task only as a temporary fallback; the desired durable state is the SYSTEM startup task above.
 
 ## Runtime Proof Matrix
 

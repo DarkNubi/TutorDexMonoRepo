@@ -6,7 +6,7 @@ Doc type: Explanation
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-06-20
 **Review trigger:** Update when data ownership, runtime boundaries, component ownership, failure modes, diagrams, or architecture decisions change.
 
 Design boundaries and ownership notes for TutorDex. For quick navigation, read `SYSTEM_MAP.md`. For must-not-break assumptions, read `KNOWN_INVARIANTS.md`. For detailed system behavior, read `SYSTEM_INTERNAL.md`.
@@ -61,6 +61,7 @@ flowchart TB
 - Deterministic extractors and validators should fail closed rather than invent values.
 - Telegram broadcast and DM delivery are side effects; manual reprocessing should disable them unless explicitly intended.
 - Runtime evidence must name the surface checked. Local Docker/WSL health is not BizServer/public production proof.
+- Production extraction has a host-side LLM dependency on BizServer; prove both the Windows host endpoint and worker-container route before declaring LLM extraction healthy.
 - Secrets live in env/config stores, never in docs, logs, commits, or verification snippets.
 
 ## Data Ownership
@@ -105,6 +106,7 @@ Common service boundaries:
 
 - `collector-tail`: runs `python collector.py live`.
 - `aggregator-worker`: runs `python workers/extract_worker.py`.
+- BizServer host LLM: `TutorDexLlamaServer` runs llama.cpp outside Docker on port `1234`; workers reach it via `host.docker.internal`.
 - `backend`: runs FastAPI.
 - `telegram-link-bot`: handles link-code polling where enabled.
 - `redis`: stores matching/linking/cooldown state.
@@ -115,6 +117,7 @@ Common service boundaries:
 - A healthy local compose project can mask a broken BizServer or public ingress path.
 - Telegram session collisions can block collection/catchup while the rest of the stack looks healthy.
 - Queue backlog can mean worker failure, pipeline-version mismatch, Supabase/RPC failure, LLM failure, or intentionally paused processing.
+- LLM failures can be in-container worker issues or host-side `TutorDexLlamaServer`/llama.cpp issues; keep those surfaces separate.
 - Polled sources can update `last_seen` without representing a newly published assignment.
 - Broadcast/DM side effects can make reprocessing user-visible if not disabled.
 - Env/log inspection can leak secrets if pasted raw.

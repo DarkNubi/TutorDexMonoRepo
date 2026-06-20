@@ -6,7 +6,7 @@ Doc type: Reference
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-06-20
 **Review trigger:** Update when data, extraction, side-effect, runtime, security, or documentation invariants change.
 
 Assumptions and rules that future changes must preserve unless a task explicitly changes them and updates the docs/tests.
@@ -41,6 +41,7 @@ Assumptions and rules that future changes must preserve unless a task explicitly
 - A local WSL/Docker result is not BizServer/public production proof.
 - Status reports must name the checked surface.
 - Staging and prod compose projects/env files must not be conflated.
+- Production LLM extraction health requires both BizServer host llama.cpp endpoint proof and worker-container route proof; `docs/OPERATIONS.md` owns the `TutorDexLlamaServer` runbook.
 - Firebase Hosting staging auto-deploys from `main`; Firebase Hosting production is manual `workflow_dispatch`.
 - Production-changing operations require rollback and verification evidence.
 

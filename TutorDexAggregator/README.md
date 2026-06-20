@@ -7,7 +7,7 @@ Reads Telegram tuition assignment posts, extracts structured display fields usin
 1. Install Python deps:
    - `pip install -r requirements.txt`
 2. Create `TutorDexAggregator/.env` (see `TutorDexAggregator/.env.example`).
-3. Ensure your local LLM server is running (LM Studio, etc.).
+3. Ensure your local OpenAI-compatible LLM server is running (LM Studio, llama.cpp, etc.).
 
 ## Environment variables
 
@@ -183,6 +183,7 @@ Progress:
     - In `.env`, prefer `SUPABASE_URL_DOCKER=http://supabase-kong:8000` (so Docker runs work).
     - If you also run scripts with Windows Python, set `SUPABASE_URL_HOST=...` to a host-reachable Supabase REST URL/port.
   - Host llama server: keep `LLM_API_URL=http://host.docker.internal:1234`.
+  - On BizServer production, this endpoint is the Windows scheduled task `TutorDexLlamaServer`, which runs `D:\TutorDex\TutorDexAggregator\start_llama_server_loop.bat` as `SYSTEM` at system startup and serves llama.cpp on port `1234`.
   - DM/backend matching uses the internal service `backend:8000` (already set in `.env`).
   - Mounts `./logs` for persistence (optional). Services emit structured JSON to stdout; log aggregation via Loki is not included by default.
   - TutorCity API fetcher (no LLM): `tutorcity-fetch` polls `TUTORCITY_API_URL` on an interval and persists/broadcasts/DMs directly (source label is always `TutorCity`).
@@ -195,6 +196,35 @@ Progress:
 ## Extraction
 
 The queue worker (`workers/extract_worker.py`) calls the LLM once per message (see `extract_key_info.py`), overwrites `time_availability` deterministically, hard-validates the output, persists to Supabase, and optionally broadcasts/DMs.
+
+### BizServer LLM startup task
+
+Production BizServer extraction depends on a host-side llama.cpp server:
+
+- Scheduled task: `TutorDexLlamaServer`
+- User: `SYSTEM`
+- Trigger: system startup
+- Launcher: `D:\TutorDex\TutorDexAggregator\start_llama_server_loop.bat`
+- Default model: `C:\models\LFM2.5-8B-A1B-Q4_K_M.gguf`
+- Worker URL: `http://host.docker.internal:1234`
+
+Quick checks from BizServer:
+
+```bat
+schtasks /Query /TN TutorDexLlamaServer /FO LIST /V
+```
+
+```powershell
+Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 http://127.0.0.1:1234/v1/models
+```
+
+From a worker container:
+
+```bash
+docker exec tutordex-prod-aggregator-worker-1 python -c "import urllib.request; print(urllib.request.urlopen('http://host.docker.internal:1234/v1/models', timeout=15).status)"
+```
+
+See `docs/OPERATIONS.md` for the repair and rollback runbook.
 
 ## Deterministic matching signals (recommended)
 

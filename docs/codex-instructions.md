@@ -26,7 +26,7 @@ Additional components:
 - **Framework**: FastAPI, Uvicorn
 - **Database**: Redis (matching preferences), Supabase (PostgreSQL for persistence)
 - **Message Queue**: Telegram API (Telethon), extraction queue in Supabase (versioned by pipeline)
-- **AI/ML & Deterministic Extraction**: Hybrid — a local LLM API (OpenAI-compatible, typically LM Studio) is used for canonical parsing, while tutor-type and per-type rate extraction are deterministic, rule-based. Persisted signals prefer deterministic `meta.signals` outputs for `tutor_types` and `rate_breakdown` to avoid LLM variance.
+- **AI/ML & Deterministic Extraction**: Hybrid — a local OpenAI-compatible LLM API is used for canonical parsing, while tutor-type and per-type rate extraction are deterministic, rule-based. Local development can use LM Studio or llama.cpp; BizServer production uses the SYSTEM startup task `TutorDexLlamaServer` serving llama.cpp on port `1234`. Persisted signals prefer deterministic `meta.signals` outputs for `tutor_types` and `rate_breakdown` to avoid LLM variance.
 - **Observability**: Prometheus metrics, OpenTelemetry, structured logging
 - **Authentication**: Firebase Admin SDK (token verification)
 
@@ -50,7 +50,7 @@ Additional components:
 - Node.js 18+ with npm
 - Docker Desktop (for local development)
 - Firebase CLI (`npm i -g firebase-tools`)
-- Local LLM server (LM Studio or compatible) — LLM is optional for some workflows
+- Local LLM server (LM Studio, llama.cpp, or compatible) — LLM is optional for some workflows. On BizServer production, see `docs/OPERATIONS.md#bizserver-local-llm-endpoint`.
 
 ### Environment Configuration
 

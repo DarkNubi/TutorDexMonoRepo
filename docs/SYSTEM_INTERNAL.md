@@ -6,7 +6,7 @@ Doc type: Reference
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-06-20
 **Review trigger:** Update when detailed system behavior, data flows, schema contracts, runtime surfaces, or component interactions change.
 
 > Audience: senior engineers / founder returning after time away.
@@ -265,6 +265,7 @@ This matters operationally: if an agency posts "10 assignments in one message", 
 #### LLM extraction call
 - Code: `TutorDexAggregator/extract_key_info.py` (worker calls `extract_assignment_with_model`).
 - Transport: OpenAI-compatible HTTP API configured by `LLM_API_URL` (default in `.env.example`: `http://host.docker.internal:1234`).
+- Production BizServer route: worker containers call `http://host.docker.internal:1234`; the host endpoint is served by llama.cpp under Windows scheduled task `TutorDexLlamaServer`.
 - The model name is set by `LLM_MODEL_NAME` / `MODEL_NAME`.
 
 Inferred contract:
@@ -660,8 +661,11 @@ This is designed so operators can tweak prompts without code changes.
 - The worker calls an OpenAI-compatible API at `LLM_API_URL`.
 - The model name is selected via `LLM_MODEL_NAME` / `MODEL_NAME`.
 
-The repo assumes a local model server (LM Studio / llama.cpp HTTP server).
-- Evidence: `.env.example` default `LLM_API_URL=http://host.docker.internal:1234` and `start_llama_server_loop.bat`.
+The repo assumes a local OpenAI-compatible model server.
+- Local/dev can use LM Studio or another compatible server.
+- Production BizServer uses llama.cpp via `D:\TutorDex\TutorDexAggregator\start_llama_server_loop.bat`, registered as Windows scheduled task `TutorDexLlamaServer`.
+- Current BizServer model path: `C:\models\LFM2.5-8B-A1B-Q4_K_M.gguf`.
+- Evidence: `.env.example` default `LLM_API_URL=http://host.docker.internal:1234`, `start_llama_server_loop.bat`, and `docs/OPERATIONS.md`.
 
 #### Validation / auditing flow
 - Raw is stored first (audit).
