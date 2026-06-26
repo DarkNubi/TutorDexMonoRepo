@@ -28,6 +28,8 @@ if [ "$http_code" = "200" ]; then
     echo "  2. Check Prometheus rules: $PROMETHEUS_URL/rules"
     echo "  3. Check active alerts: $PROMETHEUS_URL/alerts"
     echo "  4. Check Alertmanager: ${ALERTMANAGER_URL:-http://localhost:9093}/#/alerts"
+    echo "  5. Check target drift: $PROMETHEUS_URL/targets?search=down"
+    echo "     App metrics should scrape stable compose service names (backend, collector-tail, aggregator-worker), not ephemeral container instance names."
     echo ""
     echo "If you disabled an alert but still see notifications:"
     echo "  - Alertmanager may have cached the alert (repeat_interval: 4-24h)"

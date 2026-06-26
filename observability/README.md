@@ -89,6 +89,17 @@ docker compose up -d --build
 
 ## Troubleshooting Alerts
 
+### After an alert repair, check target drift
+
+Before calling a repair clean, check Prometheus targets as well as rules and Alertmanager:
+
+```bash
+curl -fsS http://localhost:9090/api/v1/targets?state=active
+curl -fsS 'http://localhost:9090/api/v1/query?query=up'
+```
+
+For app metrics inside the compose network, scrape stable service DNS names (`backend`, `collector-tail`, `aggregator-worker`) rather than generated container names such as `tutordex-prod-aggregator-worker-1`. Container names can change after recreate/scale operations and leave Prometheus with stale warning noise even after the original critical alert is resolved.
+
 ### Still receiving alerts after disabling them?
 
 If you've disabled an alert (e.g., by setting `expr: vector(0)`) but still receive notifications:
