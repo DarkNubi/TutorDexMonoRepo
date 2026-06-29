@@ -6,7 +6,7 @@ Doc type: Reference
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-20
+**Last reviewed:** 2026-06-29
 **Review trigger:** Update when deployment workflows, runtime hosts, compose services, public ingress, Firebase release behavior, or rollback procedures change.
 
 Runtime and deployment surfaces for TutorDex. This document is about where things run and how to prove which surface you checked.
@@ -105,6 +105,10 @@ Logs are primarily container stdout unless a log backend is configured and verif
 
 ## Normal Deployment Flow
 
+Do not substitute local/manual deploy commands or direct server pushes for these GitHub Actions paths. TutorDex release automation owns the deploy secrets, environment gates, and audit trail; workflow failures should be repaired or rerun.
+
+Local/manual server deploy entrypoints are guarded. `scripts/ops/deploy.sh`, `scripts/ops/deploy_git.sh`, and legacy `scripts/deploy_*.sh` refuse outside GitHub Actions unless Nubi explicitly overrides with both `TD_DEPLOY_OVERRIDE=yes` and `TD_DEPLOY_OVERRIDE_REASON=<why this manual deploy is approved>`.
+
 Backend/compose stack:
 
 1. Push or merge to `main`.
@@ -181,3 +185,4 @@ Docs-only changes:
 - Do not equate LAN-SNI blackbox success with outside-WAN success. If user-facing internet availability matters, verify from mobile data, an external runner, or another network.
 - Do not use Supabase Studio UI as the primary agent access path; prefer documented scripts/RPCs.
 - Do not run prod-changing commands without explicit prod intent, rollback, and verification evidence.
+- Do not bypass `.github/workflows/deploy.yml` or `.github/workflows/firebase-hosting.yml` with local/manual deploys. If Actions is broken, repair Actions.

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+source "$(dirname "$0")/ops/_lib.sh"
+require_actions_deploy_guard "legacy prod deploy"
+
 echo "=== Deploying TutorDex PRODUCTION ==="
 echo "WARNING: This will restart production services."
 read -p "Continue? (yes/no): " confirm

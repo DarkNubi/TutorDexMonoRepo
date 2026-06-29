@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+source "$(dirname "$0")/ops/_lib.sh"
+require_actions_deploy_guard "legacy staging deploy"
+
 echo "=== Deploying TutorDex STAGING ==="
 
 cd "$(dirname "$0")/.."

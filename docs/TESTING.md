@@ -128,6 +128,7 @@ npm run build
 Deployment or ops:
 
 ```bash
+.venv/bin/python -m pytest tests/test_deploy_guard.py -q
 ./scripts/tutordex_healthcheck.sh --env staging
 ./scripts/ops/status.sh --env staging
 ./scripts/ops/smoke.sh --env staging

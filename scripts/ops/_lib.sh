@@ -110,6 +110,24 @@ require_confirm_prod() {
   fi
 }
 
+require_actions_deploy_guard() {
+  local action="${1:-deploy}"
+
+  if [[ "${GITHUB_ACTIONS:-}" == "true" || "${TD_GITHUB_ACTIONS_DEPLOY:-}" == "yes" ]]; then
+    return 0
+  fi
+
+  if [[ "${TD_DEPLOY_OVERRIDE:-}" == "yes" ]]; then
+    if [[ -z "${TD_DEPLOY_OVERRIDE_REASON:-}" ]]; then
+      die "TD_DEPLOY_OVERRIDE=yes requires TD_DEPLOY_OVERRIDE_REASON describing Nubi's explicit override."
+    fi
+    echo "WARN: manual TutorDex ${action} override accepted: ${TD_DEPLOY_OVERRIDE_REASON}" >&2
+    return 0
+  fi
+
+  die "Refusing manual TutorDex ${action}. Use GitHub Actions deploy paths; if Nubi explicitly overrides, set TD_DEPLOY_OVERRIDE=yes and TD_DEPLOY_OVERRIDE_REASON."
+}
+
 audit_log() {
   local action="$1"
   local env="$2"

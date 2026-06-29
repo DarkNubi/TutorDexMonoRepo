@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 
 env="$(resolve_env "$@")"
+require_actions_deploy_guard "deploy_git"
 require_confirm_prod "${env}" "$@"
 
 target="${TD_GIT_REF:-}"
@@ -35,4 +36,3 @@ echo "Deploying ${env} at $(git rev-parse --short HEAD)..."
 "${ROOT_DIR}/scripts/ops/deploy.sh" --env "${env}" --yes
 
 echo "deploy_git complete."
-

@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 
 env="$(resolve_env "$@")"
+require_actions_deploy_guard "deploy"
 require_confirm_prod "${env}" "$@"
 
 env_file="$(env_file_for "${env}")"
@@ -23,4 +24,3 @@ docker compose -p "${project}" pull prometheus alertmanager grafana redis tempo 
 docker compose -f docker-compose.yml -p "${project}" --env-file "${env_file}" up -d --build
 
 echo "Deploy complete (${env})."
-
