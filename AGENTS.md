@@ -6,7 +6,7 @@ Doc type: Agent doorway
 **Docs metadata:**
 **Status:** active
 **Owner:** Mochi
-**Last reviewed:** 2026-06-17
+**Last reviewed:** 2026-07-01
 **Review trigger:** Update when TutorDex agent startup, docs routing, runtime proof, safety, or verification expectations change.
 
 This repo runs a tuition assignment aggregator: Telegram collection, LLM/deterministic extraction, Supabase persistence, matching, notifications, website, and observability.
@@ -66,6 +66,8 @@ Always state which surface you checked before claiming health:
 
 Do not treat WSL `localhost`, local Docker, or an old compose project as production proof. If the request is about live TutorDex, verify the BizServer/public path or clearly say that you only checked local state.
 
+Before making any TutorDex runtime, deployment, prod-health, outage, or recovery claim, re-enter through the `Start Here` docs above and the proof matrices in `docs/TESTING.md`, `docs/OPERATIONS.md`, and `docs/DEPLOYMENT_TOPOLOGY.md`. Name the doorway docs and exact surfaces checked in the final assertion; if you only continued from a narrow investigation thread, say the claim is partial until that doorway/proof pass is complete.
+
 ## Safe First Commands
 
 Read-only orientation:
@@ -92,6 +94,7 @@ Prod-changing commands require the repo runbooks and explicit confirmation flags
 
 - Never print secrets, `.env` contents, tokens, cookies, session strings, or auth headers.
 - Do not edit env files, restart prod services, run migrations, or trigger backfills unless the task explicitly calls for it.
+- Do not deploy TutorDex from a local machine or by direct/manual server push. Use the GitHub Actions paths triggered by branch/`main` pushes and manual workflow dispatch; if they fail, fix or rerun the workflow.
 - Prefer staging unless the user explicitly asks about prod or the incident is already known to be prod.
 - For prod changes, include rollback path and verification evidence.
 - Keep collector, worker, queue, and website/API evidence separate.
