@@ -34,4 +34,4 @@ jobs:
               -o IdentitiesOnly=yes \
               "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" \
               powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass \
-              -File D:\TutorDex.autodeploy\scripts\trigger_windows_autodeploy.ps1
+              -File D:/TutorDex.autodeploy/scripts/trigger_windows_autodeploy.ps1
