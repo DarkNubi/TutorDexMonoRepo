@@ -22,8 +22,10 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          umask 077
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -y -f ~/.ssh/id_ed25519 | ssh-keygen -lf - -E sha256
           ssh-keyscan -H ${{ secrets.SERVER_TS_IP }} >> ~/.ssh/known_hosts
 
       - name: Deploy to Windows server
