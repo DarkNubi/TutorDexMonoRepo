@@ -37,7 +37,8 @@ jobs:
           $taskName = 'TutorDexAutodeploy'
           $statusPath = 'D:\TutorDex.autodeploy\autodeploy.status.json'
           Remove-Item -LiteralPath $statusPath -Force -ErrorAction SilentlyContinue
-          Start-ScheduledTask -TaskName $taskName
+          $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(15)
+          Set-ScheduledTask -TaskName $taskName -Trigger $trigger | Out-Null
           for ($i = 0; $i -lt 180; $i++) {
             Start-Sleep -Seconds 10
             if (Test-Path -LiteralPath $statusPath) {
