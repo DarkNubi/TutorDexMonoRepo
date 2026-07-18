@@ -1000,7 +1000,7 @@ Current reality:
 - Docker compose loads `.env` files from `TutorDexAggregator/.env` and `TutorDexBackend/.env`.
 - Firebase Admin JSON is mounted as a Docker secret-ish file (`/run/secrets/firebase-admin-service-account.json`).
 - GitHub Actions store secrets for:
-  - Tailscale deploy: `TAILSCALE_AUTHKEY`, `SERVER_TS_IP`, `SERVER_USER`, `SERVER_SSH_KEY`
+  - Tailscale deploy: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `SERVER_TS_IP`, `SERVER_USER`, `SERVER_SSH_KEY` (the workflow uses the `tag:ci` runner identity)
   - Firebase Hosting: `FIREBASE_SERVICE_ACCOUNT`, `VITE_BACKEND_URL` and repo var `FIREBASE_PROJECT_ID`.
 
 ### CI/CD

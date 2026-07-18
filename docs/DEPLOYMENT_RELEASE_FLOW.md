@@ -4,7 +4,7 @@
 
 TutorDex has two production-facing deploy paths:
 
-- `deploy.yml`: runs automatically on pushes to `main`; connects to the Windows server through Tailscale SSH, pulls the latest code under `D:/TutorDex`, then runs `docker compose up -d --build --pull=never`.
+- `deploy.yml`: runs automatically on pushes to `main`; authenticates the GitHub runner with the Tailscale OAuth trust credential and `tag:ci`, connects to the Windows server through Tailscale SSH, pulls the latest code under `D:/TutorDex`, then runs `docker compose up -d --build --pull=never`.
 - `firebase-hosting.yml`: runs automatically on pushes to `main` for Firebase Hosting target `staging`; deploys Firebase Hosting target `prod` only when manually started with `workflow_dispatch`.
 
 ## Release policy
