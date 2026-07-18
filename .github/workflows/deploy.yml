@@ -32,9 +32,21 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 \
               -o IdentitiesOnly=yes \
-              "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" << 'EOF'
-   
-            cd /d D:/TutorDex
-            git pull
-            docker compose up -d --build --pull=never
-          EOF
+              "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_TS_IP }}" \
+              powershell.exe -NoProfile -NonInteractive -Command - << 'PS'
+          $taskName = 'TutorDexAutodeploy'
+          $statusPath = 'D:\TutorDex.autodeploy\autodeploy.status.json'
+          Remove-Item -LiteralPath $statusPath -Force -ErrorAction SilentlyContinue
+          Start-ScheduledTask -TaskName $taskName
+          for ($i = 0; $i -lt 180; $i++) {
+            Start-Sleep -Seconds 10
+            if (Test-Path -LiteralPath $statusPath) {
+              $status = Get-Content -LiteralPath $statusPath -Raw | ConvertFrom-Json
+              $status | ConvertTo-Json -Compress
+              if ($status.success -eq $true) { exit 0 }
+              exit 1
+            }
+          }
+          Write-Error 'Timed out waiting for TutorDexAutodeploy task.'
+          exit 1
+          PS
