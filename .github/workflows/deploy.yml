@@ -3,6 +3,7 @@ name: Deploy via Tailscale + OpenSSH
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   deploy:
