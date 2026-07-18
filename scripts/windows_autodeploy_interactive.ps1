@@ -31,7 +31,9 @@ try {
   Set-Location -LiteralPath $deploy
   docker context use desktop-linux | Out-Host
   $composeLogPath = Join-Path $deploy 'autodeploy-compose.log'
-  docker compose -p tutordex-prod --env-file (Join-Path $deploy '.env.prod') up -d --build --pull=never --scale api-ingress=0 *> $composeLogPath
+  $composeEnvPath = Join-Path $deploy '.env.prod'
+  $composeCommand = 'docker compose -p tutordex-prod --env-file "' + $composeEnvPath + '" up -d --build --pull=never --scale api-ingress=0 > "' + $composeLogPath + '" 2>&1'
+  cmd.exe /d /c $composeCommand | Out-Host
   $composeExitCode = $LASTEXITCODE
   Get-Content -LiteralPath $composeLogPath | Out-Host
   if ($composeExitCode -ne 0) {
