@@ -28,6 +28,7 @@ try {
   }
   Copy-Item -LiteralPath (Join-Path $source 'TutorDexBackend\secrets\firebase-admin-service-account.json') -Destination $secretPath -Force
 
+  Set-Location -LiteralPath $deploy
   docker context use desktop-linux | Out-Host
   $composeLogPath = Join-Path $deploy 'autodeploy-compose.log'
   docker compose -p tutordex-prod --env-file (Join-Path $deploy '.env.prod') up -d --build --pull=never --scale api-ingress=0 *> $composeLogPath
