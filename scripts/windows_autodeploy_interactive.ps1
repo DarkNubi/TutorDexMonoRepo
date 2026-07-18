@@ -29,9 +29,12 @@ try {
   Copy-Item -LiteralPath (Join-Path $source 'TutorDexBackend\secrets\firebase-admin-service-account.json') -Destination $secretPath -Force
 
   docker context use desktop-linux | Out-Host
-  docker compose -p tutordex-prod --env-file (Join-Path $deploy '.env.prod') up -d --build --pull=never --scale api-ingress=0 | Out-Host
-  if ($LASTEXITCODE -ne 0) {
-    throw "docker compose failed with exit code $LASTEXITCODE"
+  $composeLogPath = Join-Path $deploy 'autodeploy-compose.log'
+  docker compose -p tutordex-prod --env-file (Join-Path $deploy '.env.prod') up -d --build --pull=never --scale api-ingress=0 *> $composeLogPath
+  $composeExitCode = $LASTEXITCODE
+  Get-Content -LiteralPath $composeLogPath | Out-Host
+  if ($composeExitCode -ne 0) {
+    throw "docker compose failed with exit code $composeExitCode"
   }
 
   $status = [ordered]@{
