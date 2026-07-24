@@ -261,6 +261,21 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
         )
         store.finish_run(run_id=run_id, status="ok", meta_patch=final_meta)
         return 0
+    except asyncio.CancelledError:
+        # Python 3.11+ CancelledError inherits BaseException, so it does not
+        # reach the generic Exception handler. Persist a terminal run state
+        # before re-raising so an interrupted Telethon run is not left falsely
+        # marked as running forever.
+        err_meta = dict(base_meta)
+        err_meta.update(
+            {
+                "error": "asyncio.CancelledError",
+                "cancelled": True,
+                "finished_at": utc_now().isoformat(),
+            }
+        )
+        store.finish_run(run_id=run_id, status="error", meta_patch=err_meta)
+        raise
     except Exception as e:
         err_meta = dict(base_meta)
         err_meta.update({"error": str(e), "finished_at": utc_now().isoformat()})
