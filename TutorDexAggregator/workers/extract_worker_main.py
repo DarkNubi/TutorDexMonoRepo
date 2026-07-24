@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Any, Dict
 
@@ -131,6 +132,8 @@ def main() -> None:
     toggles = WorkerToggles(
         enable_broadcast=enable_broadcast,
         enable_dms=enable_dms,
+        materialize_assignments=str(os.environ.get("EXTRACTION_MATERIALIZE_ASSIGNMENTS", "1")).strip().lower()
+        not in {"0", "false", "no", "off"},
         max_attempts=int(getattr(cfg, "extraction_max_attempts", None) or DEFAULT_MAX_ATTEMPTS),
         backoff_base_s=float(getattr(cfg, "extraction_backoff_base_s", None) or DEFAULT_BACKOFF_BASE_S),
         backoff_max_s=float(getattr(cfg, "extraction_backoff_max_s", None) or DEFAULT_BACKOFF_MAX_S),
@@ -155,6 +158,7 @@ def main() -> None:
         batch_size=claim_batch_size,
         broadcast=toggles.enable_broadcast and broadcast_assignments is not None,
         dms=toggles.enable_dms and send_dms is not None,
+        materialize_assignments=toggles.materialize_assignments,
         max_attempts=toggles.max_attempts,
         backoff_base_s=toggles.backoff_base_s,
         backoff_max_s=toggles.backoff_max_s,

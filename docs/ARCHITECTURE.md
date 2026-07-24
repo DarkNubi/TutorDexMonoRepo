@@ -58,6 +58,7 @@ flowchart TB
 - `public.telegram_extractions` is a replayable queue keyed by raw row and pipeline version.
 - `public.assignments` is a materialized projection for API/website consumption, not the raw source of truth.
 - `EXTRACTION_PIPELINE_VERSION` isolates reprocessing runs; bump it when prompt/schema/model changes require a clean extraction lane.
+- `EXTRACTION_MATERIALIZE_ASSIGNMENTS=0` provides an analysis-only replay lane: extraction output is recorded without changing `public.assignments`.
 - Deterministic extractors and validators should fail closed rather than invent values.
 - Telegram broadcast and DM delivery are side effects; manual reprocessing should disable them unless explicitly intended.
 - Runtime evidence must name the surface checked. Local Docker/WSL health is not BizServer/public production proof.

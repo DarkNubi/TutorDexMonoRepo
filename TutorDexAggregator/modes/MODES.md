@@ -103,6 +103,33 @@ When you bump the version, the queue keys by `(raw_id, pipeline_version)`, so yo
 **Use when:**
 - You want to validate a reparse/re-enqueue on production data without spamming the Telegram channel / users.
 
+## Mode 6 — Isolated historical analysis replay (Manual)
+
+**Purpose:** Process the full configured Telegram history with a new extraction version while preserving old extraction results and the live `assignments` projection.
+
+**Required settings:**
+- `EXTRACTION_PIPELINE_VERSION=historical_full_<cutoff>_v1`
+- `EXTRACTION_MATERIALIZE_ASSIGNMENTS=0`
+- `EXTRACTION_WORKER_BROADCAST=0`
+- `EXTRACTION_WORKER_DMS=0`
+- `EXTRACTION_WORKER_ONESHOT=1`
+
+**Safety contract:**
+- Backfill uses `(channel_link, message_id)` upserts; overlapping raw history does not create duplicate messages.
+- A new pipeline version creates separate `(raw_id, pipeline_version)` extraction rows.
+- `EXTRACTION_MATERIALIZE_ASSIGNMENTS=0` skips assignment persistence while still marking extraction output and metadata as complete.
+- Do not run the Telegram backfill concurrently with the live collector using the same Telethon session.
+
+**Recommended sequence:**
+1. Capture a fixed UTC cutoff and pause/coordinate the live collector.
+2. Run `collector.py backfill` with no `--since`, `--until <cutoff>`, and the complete configured channel list.
+3. Verify raw coverage and one successful ingestion run per configured channel.
+4. Drain the new pipeline version in oneshot analysis-only mode.
+5. Audit `telegram_extractions` for `ok`, `failed`, `skipped`, and `pending` before analysis.
+6. Resume the normal live collector and worker using the live pipeline version.
+
+Do not use `--force-enqueue` against the live pipeline version for this replay.
+
 ## Mode 5 — Enqueue edited Telegram messages from raw (Manual)
 
 **Purpose:** Reprocess edited Telegram posts *without* re-reading Telegram.

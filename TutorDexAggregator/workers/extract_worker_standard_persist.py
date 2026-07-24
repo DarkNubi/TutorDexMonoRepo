@@ -56,7 +56,11 @@ def persist_and_finalize(
             pass
         from supabase_persist import persist_assignment_to_supabase
 
-        r = persist_assignment_to_supabase(payload)
+        r = (
+            persist_assignment_to_supabase(payload)
+            if toggles.materialize_assignments
+            else {"ok": True, "action": "analysis_only"}
+        )
         persist_res = r if isinstance(r, dict) else {}
     except Exception as e:
         persist_res = {"ok": False, "error": str(e)}

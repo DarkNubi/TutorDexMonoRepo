@@ -213,7 +213,11 @@ def process_compilation_confirmed(
         try:
             from supabase_persist import persist_assignment_to_supabase
 
-            persist_res = persist_assignment_to_supabase(payload)
+            persist_res = (
+                persist_assignment_to_supabase(payload)
+                if toggles.materialize_assignments
+                else {"ok": True, "action": "analysis_only"}
+            )
             persist_res = persist_res if isinstance(persist_res, dict) else {}
         except Exception as e:
             persist_res = {"ok": False, "error": str(e)}

@@ -13,6 +13,7 @@ class VersionInfo:
 class WorkerToggles:
     enable_broadcast: bool
     enable_dms: bool
+    materialize_assignments: bool
     max_attempts: int
     backoff_base_s: float
     backoff_max_s: float
