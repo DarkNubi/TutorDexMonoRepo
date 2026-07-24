@@ -27,6 +27,9 @@ class _FakeClient:
         assert reverse is False
         return _StallingIterator()
 
+    async def disconnect(self):
+        return None
+
 
 def test_message_fetch_watchdog_bounds_a_stalled_telethon_iterator():
     async def run():

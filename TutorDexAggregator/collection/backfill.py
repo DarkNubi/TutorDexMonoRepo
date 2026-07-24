@@ -41,12 +41,23 @@ async def iter_messages_with_timeout(*, client: TelegramClient, entity: Any, unt
     """
     iterator = client.iter_messages(entity, reverse=False, offset_date=until)
     while True:
+        fetch_task = asyncio.create_task(iterator.__anext__())
+        done, _pending = await asyncio.wait({fetch_task}, timeout=timeout_seconds)
+        if not done:
+            fetch_task.cancel()
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            try:
+                await asyncio.wait_for(fetch_task, timeout=5.0)
+            except BaseException:
+                pass
+            raise RuntimeError(f"Telegram message fetch timed out after {timeout_seconds:.1f}s")
         try:
-            yield await asyncio.wait_for(iterator.__anext__(), timeout=timeout_seconds)
+            yield fetch_task.result()
         except StopAsyncIteration:
             return
-        except asyncio.TimeoutError as exc:
-            raise RuntimeError(f"Telegram message fetch timed out after {timeout_seconds:.1f}s") from exc
         except asyncio.CancelledError:
             task = asyncio.current_task()
             if task is not None and task.cancelling():
