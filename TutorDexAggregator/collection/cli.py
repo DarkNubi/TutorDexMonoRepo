@@ -25,6 +25,7 @@ def main() -> None:
     p_backfill.add_argument("--max-messages", type=int, help="Optional cap per channel (useful for dry smoke runs).")
     p_backfill.add_argument("--message-timeout-seconds", type=float, default=180.0, help="Bound each Telegram message fetch request (default: 180).")
     p_backfill.add_argument("--channel-retries", type=int, default=3, help="Retry a failed channel with a fresh Telegram client (default: 3).")
+    p_backfill.add_argument("--window-size", type=int, default=0, help="Partition each channel into message-ID windows; 0 keeps legacy whole-channel mode.")
     p_backfill.add_argument(
         "--force-enqueue",
         action="store_true",

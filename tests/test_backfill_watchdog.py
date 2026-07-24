@@ -22,9 +22,10 @@ class _StallingIterator:
 
 
 class _FakeClient:
-    def iter_messages(self, entity, *, reverse, offset_date):
+    def iter_messages(self, entity, *, reverse, offset_date, max_id):
         assert entity == "channel"
         assert reverse is False
+        assert max_id == 0
         return _StallingIterator()
 
     async def disconnect(self):

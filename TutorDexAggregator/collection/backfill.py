@@ -32,14 +32,14 @@ DEFAULT_CHANNEL_RETRIES = 3
 DEFAULT_RETRY_DELAY_SECONDS = 5.0
 
 
-async def iter_messages_with_timeout(*, client: TelegramClient, entity: Any, until: Optional[datetime], timeout_seconds: float):
+async def iter_messages_with_timeout(*, client: TelegramClient, entity: Any, until: Optional[datetime], timeout_seconds: float, max_message_id: Optional[int] = None):
     """Yield Telegram messages while bounding each Telethon request.
 
     Telethon can leave an async iterator awaiting forever after a broken MTProto
     connection. A per-request timeout lets the caller disconnect/rebuild the
     client and retry the current channel without killing the whole replay.
     """
-    iterator = client.iter_messages(entity, reverse=False, offset_date=until)
+    iterator = client.iter_messages(entity, reverse=False, offset_date=until, max_id=int(max_message_id or 0))
     while True:
         fetch_task = asyncio.create_task(iterator.__anext__())
         done, _pending = await asyncio.wait({fetch_task}, timeout=timeout_seconds)
@@ -78,6 +78,7 @@ async def backfill_channel(
     max_messages: Optional[int],
     force_enqueue: bool = False,
     message_timeout_seconds: float = DEFAULT_MESSAGE_TIMEOUT_SECONDS,
+    max_message_id: Optional[int] = None,
 ) -> Counters:
     counters = Counters()
 
@@ -100,6 +101,7 @@ async def backfill_channel(
         entity=entity,
         until=until,
         timeout_seconds=max(1.0, float(message_timeout_seconds)),
+        max_message_id=max_message_id,
     ):
         if msg is None:
             continue
@@ -215,6 +217,7 @@ async def backfill_channel_with_retries(
     message_timeout_seconds: float,
     channel_retries: int,
     retry_delay_seconds: float,
+    max_message_id: Optional[int] = None,
 ) -> tuple[TelegramClient, Counters]:
     """Run one channel with fresh-client retries after Telethon stalls/fails."""
     active_client = client
@@ -234,6 +237,7 @@ async def backfill_channel_with_retries(
                 max_messages=max_messages,
                 force_enqueue=force_enqueue,
                 message_timeout_seconds=message_timeout_seconds,
+                max_message_id=max_message_id,
             )
             return active_client, result
         except asyncio.CancelledError:
@@ -265,6 +269,49 @@ async def backfill_channel_with_retries(
 
     assert last_error is not None
     raise last_error
+
+
+async def backfill_channel_windowed(
+    *,
+    ctx: CollectorContext,
+    client: TelegramClient,
+    store: SupabaseRawStore,
+    run_id: Optional[int],
+    channel_ref: str,
+    since: Optional[datetime],
+    until: Optional[datetime],
+    batch_size: int,
+    window_size: int,
+    force_enqueue: bool,
+    message_timeout_seconds: float,
+    channel_retries: int,
+    retry_delay_seconds: float,
+) -> tuple[TelegramClient, Counters]:
+    total = Counters()
+    cursor: Optional[int] = None
+    while True:
+        client, window = await backfill_channel_with_retries(
+            ctx=ctx, client=client, store=store, run_id=run_id,
+            channel_ref=channel_ref, since=since, until=until,
+            batch_size=batch_size, max_messages=window_size,
+            force_enqueue=force_enqueue,
+            message_timeout_seconds=message_timeout_seconds,
+            channel_retries=channel_retries,
+            retry_delay_seconds=retry_delay_seconds,
+            max_message_id=cursor,
+        )
+        total.scanned += window.scanned
+        total.written += window.written
+        total.errors += window.errors
+        total.last_message_id = window.last_message_id or total.last_message_id
+        total.last_message_date_iso = window.last_message_date_iso or total.last_message_date_iso
+        log_event(ctx.logger, logging.INFO, "raw_backfill_window_done", run_id=run_id, channel=channel_ref, scanned=window.scanned, last_message_id=window.last_message_id)
+        if window.scanned < window_size or not window.last_message_id:
+            return client, total
+        next_cursor = int(window.last_message_id) - 1
+        if cursor is not None and next_cursor >= cursor:
+            raise RuntimeError(f"non-decreasing Telegram window cursor for {channel_ref}: {cursor} -> {next_cursor}")
+        cursor = next_cursor
 
 
 async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
@@ -301,6 +348,7 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
     message_timeout_seconds = max(1.0, float(getattr(args, "message_timeout_seconds", DEFAULT_MESSAGE_TIMEOUT_SECONDS) or DEFAULT_MESSAGE_TIMEOUT_SECONDS))
     channel_retries = max(1, int(getattr(args, "channel_retries", DEFAULT_CHANNEL_RETRIES) or DEFAULT_CHANNEL_RETRIES))
     retry_delay_seconds = DEFAULT_RETRY_DELAY_SECONDS
+    window_size = max(0, int(getattr(args, "window_size", 0) or 0))
 
     base_meta = {
         "since": args.since,
@@ -315,6 +363,7 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
         "message_timeout_seconds": message_timeout_seconds,
         "channel_retries": channel_retries,
         "retry_delay_seconds": retry_delay_seconds,
+        "window_size": window_size,
     }
     t0 = timed()
     while True:
@@ -342,21 +391,26 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
                 schema_version=ctx.version.schema_version,
             ):
                 log_event(ctx.logger, logging.INFO, "raw_backfill_channel_start", channel=ch, run_id=run_id)
-                client, res = await backfill_channel_with_retries(
-                    ctx=ctx,
-                    client=client,
-                    store=store,
-                    run_id=run_id,
-                    channel_ref=ch,
-                    since=since,
-                    until=until,
-                    batch_size=batch_size,
-                    max_messages=max_messages,
-                    force_enqueue=bool(getattr(args, "force_enqueue", False)),
-                    message_timeout_seconds=message_timeout_seconds,
-                    channel_retries=channel_retries,
-                    retry_delay_seconds=retry_delay_seconds,
-                )
+                if window_size > 0:
+                    client, res = await backfill_channel_windowed(
+                        ctx=ctx, client=client, store=store, run_id=run_id,
+                        channel_ref=ch, since=since, until=until,
+                        batch_size=batch_size, window_size=window_size,
+                        force_enqueue=bool(getattr(args, "force_enqueue", False)),
+                        message_timeout_seconds=message_timeout_seconds,
+                        channel_retries=channel_retries,
+                        retry_delay_seconds=retry_delay_seconds,
+                    )
+                else:
+                    client, res = await backfill_channel_with_retries(
+                        ctx=ctx, client=client, store=store, run_id=run_id,
+                        channel_ref=ch, since=since, until=until,
+                        batch_size=batch_size, max_messages=max_messages,
+                        force_enqueue=bool(getattr(args, "force_enqueue", False)),
+                        message_timeout_seconds=message_timeout_seconds,
+                        channel_retries=channel_retries,
+                        retry_delay_seconds=retry_delay_seconds,
+                    )
                 log_event(
                     ctx.logger,
                     logging.INFO,
