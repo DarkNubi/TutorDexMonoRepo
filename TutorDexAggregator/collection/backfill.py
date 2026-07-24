@@ -27,6 +27,33 @@ from supabase_raw_persist import SupabaseRawStore, build_raw_row
 from shared.observability.exception_handler import swallow_exception
 
 
+DEFAULT_MESSAGE_TIMEOUT_SECONDS = 180.0
+DEFAULT_CHANNEL_RETRIES = 3
+DEFAULT_RETRY_DELAY_SECONDS = 5.0
+
+
+async def iter_messages_with_timeout(*, client: TelegramClient, entity: Any, until: Optional[datetime], timeout_seconds: float):
+    """Yield Telegram messages while bounding each Telethon request.
+
+    Telethon can leave an async iterator awaiting forever after a broken MTProto
+    connection. A per-request timeout lets the caller disconnect/rebuild the
+    client and retry the current channel without killing the whole replay.
+    """
+    iterator = client.iter_messages(entity, reverse=False, offset_date=until)
+    while True:
+        try:
+            yield await asyncio.wait_for(iterator.__anext__(), timeout=timeout_seconds)
+        except StopAsyncIteration:
+            return
+        except asyncio.TimeoutError as exc:
+            raise RuntimeError(f"Telegram message fetch timed out after {timeout_seconds:.1f}s") from exc
+        except asyncio.CancelledError:
+            task = asyncio.current_task()
+            if task is not None and task.cancelling():
+                raise
+            raise RuntimeError("Telethon cancelled a Telegram message fetch")
+
+
 async def backfill_channel(
     *,
     ctx: CollectorContext,
@@ -39,6 +66,7 @@ async def backfill_channel(
     batch_size: int,
     max_messages: Optional[int],
     force_enqueue: bool = False,
+    message_timeout_seconds: float = DEFAULT_MESSAGE_TIMEOUT_SECONDS,
 ) -> Counters:
     counters = Counters()
 
@@ -56,7 +84,12 @@ async def backfill_channel(
     rows: List[Dict[str, Any]] = []
     t0 = timed()
 
-    async for msg in client.iter_messages(entity, reverse=False, offset_date=until):
+    async for msg in iter_messages_with_timeout(
+        client=client,
+        entity=entity,
+        until=until,
+        timeout_seconds=max(1.0, float(message_timeout_seconds)),
+    ):
         if msg is None:
             continue
         dt = getattr(msg, "date", None)
@@ -156,6 +189,73 @@ async def backfill_channel(
     return counters
 
 
+async def backfill_channel_with_retries(
+    *,
+    ctx: CollectorContext,
+    client: TelegramClient,
+    store: SupabaseRawStore,
+    run_id: int,
+    channel_ref: str,
+    since: Optional[datetime],
+    until: Optional[datetime],
+    batch_size: int,
+    max_messages: Optional[int],
+    force_enqueue: bool,
+    message_timeout_seconds: float,
+    channel_retries: int,
+    retry_delay_seconds: float,
+) -> tuple[TelegramClient, Counters]:
+    """Run one channel with fresh-client retries after Telethon stalls/fails."""
+    active_client = client
+    last_error: Optional[BaseException] = None
+    attempts = max(1, int(channel_retries))
+    for attempt in range(1, attempts + 1):
+        try:
+            result = await backfill_channel(
+                ctx=ctx,
+                client=active_client,
+                store=store,
+                run_id=run_id,
+                channel_ref=channel_ref,
+                since=since,
+                until=until,
+                batch_size=batch_size,
+                max_messages=max_messages,
+                force_enqueue=force_enqueue,
+                message_timeout_seconds=message_timeout_seconds,
+            )
+            return active_client, result
+        except asyncio.CancelledError:
+            task = asyncio.current_task()
+            if task is not None and task.cancelling():
+                raise
+            last_error = RuntimeError("Telethon cancelled a message fetch")
+        except Exception as exc:
+            last_error = exc
+
+        log_event(
+            ctx.logger,
+            logging.WARNING,
+            "raw_backfill_channel_retry",
+            run_id=run_id,
+            channel=channel_ref,
+            attempt=attempt,
+            max_attempts=attempts,
+            error=str(last_error),
+        )
+        try:
+            await active_client.disconnect()
+        except Exception:
+            pass
+        if attempt < attempts:
+            await asyncio.sleep(max(0.0, float(retry_delay_seconds)))
+            active_client = build_client(ctx.cfg)
+            await active_client.connect()
+
+    assert last_error is not None
+    raise last_error
+
+
 async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
     store = SupabaseRawStore()
 
@@ -187,6 +287,9 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
     batch_size = int(args.batch_size or 200)
     batch_size = max(20, min(1000, batch_size))
     max_messages = int(args.max_messages) if args.max_messages else None
+    message_timeout_seconds = max(1.0, float(getattr(args, "message_timeout_seconds", DEFAULT_MESSAGE_TIMEOUT_SECONDS) or DEFAULT_MESSAGE_TIMEOUT_SECONDS))
+    channel_retries = max(1, int(getattr(args, "channel_retries", DEFAULT_CHANNEL_RETRIES) or DEFAULT_CHANNEL_RETRIES))
+    retry_delay_seconds = DEFAULT_RETRY_DELAY_SECONDS
 
     base_meta = {
         "since": args.since,
@@ -198,6 +301,9 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
         "pipeline_version": pipeline_version(ctx.cfg),
         "queue_rpc_sql": "supabase sqls/2025-12-22_extraction_queue_rpc.sql",
         "force_enqueue": bool(getattr(args, "force_enqueue", False)),
+        "message_timeout_seconds": message_timeout_seconds,
+        "channel_retries": channel_retries,
+        "retry_delay_seconds": retry_delay_seconds,
     }
     t0 = timed()
     while True:
@@ -225,7 +331,7 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
                 schema_version=ctx.version.schema_version,
             ):
                 log_event(ctx.logger, logging.INFO, "raw_backfill_channel_start", channel=ch, run_id=run_id)
-                res = await backfill_channel(
+                client, res = await backfill_channel_with_retries(
                     ctx=ctx,
                     client=client,
                     store=store,
@@ -236,6 +342,9 @@ async def run_backfill(ctx: CollectorContext, args: argparse.Namespace) -> int:
                     batch_size=batch_size,
                     max_messages=max_messages,
                     force_enqueue=bool(getattr(args, "force_enqueue", False)),
+                    message_timeout_seconds=message_timeout_seconds,
+                    channel_retries=channel_retries,
+                    retry_delay_seconds=retry_delay_seconds,
                 )
                 log_event(
                     ctx.logger,
